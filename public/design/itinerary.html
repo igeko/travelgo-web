@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Componente Itinerario (da day_view)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+/* Inline SVG fallback per icone non sempre rese dal font */
+.icon-pencil, .icon-x { display:inline-flex; align-items:center; justify-content:center; width:1em; height:1em; vertical-align:-0.125em; }
+.icon-pencil svg, .icon-x svg { width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+</style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="activity-row.css">
+<style>
+/* Solo gli stili specifici della pagina-component (header sandbox) */
+body { padding:32px 24px; }
+.component-wrap { max-width:980px; margin:0 auto; }
+.component-header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; padding-bottom:12px; border-bottom:0.5px solid var(--border); }
+.component-header h1 { font-size:18px; font-weight:500; margin:0; color:var(--ink); }
+.component-header .meta { font-size:11px; color:var(--ink-faint); }
+.component-header a { color:var(--orange-deep); text-decoration:underline; font-size:12px; }
+.sandbox-controls { display:flex; align-items:center; gap:18px; }
+.edit-switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+.edit-switch input { display:none; }
+.edit-switch .track { position:relative; width:36px; height:20px; background:var(--surface-soft); border:0.5px solid var(--border-strong); border-radius:999px; transition:background 0.18s, border-color 0.18s; }
+.edit-switch .knob { position:absolute; top:1px; left:1px; width:16px; height:16px; border-radius:50%; background:white; box-shadow:0 1px 3px rgba(13,44,61,0.2); transition:transform 0.18s; }
+.edit-switch input:checked + .track { background:var(--orange); border-color:var(--orange); }
+.edit-switch input:checked + .track .knob { transform:translateX(16px); }
+.edit-switch .lbl { font-size:12px; color:var(--ink); font-weight:500; }
+</style>
+</head>
+<body>
+
+<div class="component-wrap">
+
+  <div class="component-header">
+    <div>
+      <h1>Componente · Itinerario del giorno</h1>
+      <div class="meta">Sandbox · Giappone 2026 / Giorno 4</div>
+    </div>
+    <div class="sandbox-controls">
+      <label class="edit-switch">
+        <input type="checkbox" id="edit-mode-toggle" />
+        <span class="track"><span class="knob"></span></span>
+        <span class="lbl">Edit mode</span>
+      </label>
+      <a href="day_view.html">← Torna a day_view.html</a>
+    </div>
+  </div>
+
+  <section class="day-main" id="day-main"><!-- contenuto renderizzato da JS --></section>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   STATO
+───────────────────────────────────────────────────────────────── */
+const PERIODS = [
+  { id:'morning',   name:'MATTINA',    range:'05–12', hours:[5,6,7,8,9,10,11] },
+  { id:'afternoon', name:'POMERIGGIO', range:'12–18', hours:[12,13,14,15,16,17] },
+  { id:'evening',   name:'SERA',       range:'18–22', hours:[18,19,20,21] },
+  { id:'night',     name:'NOTTE',      range:'22–05', hours:[22,23,0,1,2,3,4] },
+];
+const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+const FX_JPY_EUR = 0.0062; // 1 JPY = 0.0062 EUR
+
+const state = {
+  // Flip questo a `true` per attivare l'edit mode.
+  editMode: false,
+
+  // Attività in modifica: id numerico, 'new', o null
+  editingActivityId: null,
+  // Picker ore/minuti aperto?
+  _pickerOpen: false,
+  // Selezione corrente (id attività selezionata in view mode)
+  selectedId: 2,
+  // ID hardcoded dell'attività "ora corrente"
+  nowId: 3,
+
+  activities: [
+    { id:1, periodId:'morning',   hour:9,  minute:0,  title:'Visita al Kabukiza',           desc:"Il principale teatro di kabuki di Tōkyō. L'esterno con i tendaggi vale già una sosta; chi vuole entrare può comprare un biglietto per un singolo atto al box-office laterale.", loc:'Higashi-Ginza',   budget:1800, currency:'JPY', status:'paid'   },
+    { id:2, periodId:'morning',   hour:10, minute:30, title:'Una passeggiata a Ginza',      desc:"Dalle architetture storiche alle boutique di lusso. 5 tappe in 2,4 km — dal grande orologio di Wako alla facciata-medusa di Louis Vuitton.",                                       loc:'Ginza, Tōkyō',    budget:0,    currency:'JPY', status:null     },
+    { id:3, periodId:'morning',   hour:12, minute:30, title:'Sushi e kaisen-don a Tsukiji', desc:"Nel mercato esterno di Tsukiji ci si siede al banco di un kaisen-don — riso e pesce crudo del giorno. La famiglia di Sushi Dai serve la stessa colazione dal 1970.",                  loc:'Tsukiji, Tōkyō',  budget:3200, currency:'JPY', status:'booked' },
+    { id:4, periodId:'afternoon', hour:15, minute:0,  title:'Il giardino di Hama-Rikyū',    desc:"L'oasi del clan Tokugawa nel cuore della città — stagno con casa-da-tè galleggiante, peonie e una vista sul porto che pochi turisti scoprono.",                                   loc:'Shiodome, Tōkyō', budget:300,  currency:'JPY', status:'todo'   },
+    { id:5, periodId:'evening',   hour:19, minute:30, title:'Cena a Roppongi',              desc:"Robatayaki e bar di quartiere — la zona si accende dopo il tramonto, tra izakaya minuscole e cocktail bar discreti sui piani alti.",                                                 loc:'Roppongi, Tōkyō', budget:6500, currency:'JPY', status:'booked' },
+  ],
+  nextActivityId: 6,
+  _draftNew: null,
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────────────────── */
+const $  = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON_PENCIL = '<span class="icon-pencil"><svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></span>';
+const ICON_X      = '<span class="icon-x"><svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></span>';
+const ICON_TRASH  = '<span class="icon-pencil"><svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></span>';
+const periodOf = id => PERIODS.find(p => p.id === id);
+const fmtTime = (h, m) => h == null || m == null ? '—' : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+function fmtMoney(amount, cur) {
+  if (amount == null) return '—';
+  if (cur === 'JPY') return '¥' + amount.toLocaleString('it-IT');
+  if (cur === 'EUR') return amount.toLocaleString('it-IT', {minimumFractionDigits: amount % 1 ? 2 : 0}) + ' €';
+  return String(amount);
+}
+function convert(amount, cur) {
+  if (cur === 'JPY') return Math.round(amount * FX_JPY_EUR * 100) / 100;
+  if (cur === 'EUR') return Math.round(amount / FX_JPY_EUR);
+  return amount;
+}
+function fmtConv(amount, cur) {
+  const conv = convert(amount, cur);
+  if (cur === 'JPY') return '≈ ' + conv.toLocaleString('it-IT', {minimumFractionDigits: conv % 1 ? 2 : 0}) + ' €';
+  if (cur === 'EUR') return '≈ ¥' + conv.toLocaleString('it-IT');
+  return '';
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RENDER
+───────────────────────────────────────────────────────────────── */
+function render() {
+  document.body.classList.toggle('edit-mode', state.editMode);
+  const main = $('#day-main');
+  main.innerHTML = renderItinerary();
+  bindAll();
+}
+
+function renderItinerary() {
+  const acts = state.activities;
+  const isEditing = state.editingActivityId != null;
+  const editingAct = isEditing && state.editingActivityId !== 'new'
+    ? acts.find(a => a.id === state.editingActivityId)
+    : null;
+  const isNew = state.editingActivityId === 'new';
+
+  // Stops-bar — riprodotta come oggi (numero · ora · loc breve)
+  const stopsBar = acts.map((a, idx) => {
+    const num = idx + 1;
+    const time = fmtTime(a.hour, a.minute);
+    const short = (a.loc || a.title).split(',')[0].trim();
+    const isActive = !state.editMode && state.selectedId === a.id;
+    const isNow = a.id === state.nowId;
+    const cls = isActive ? 'stop-pill active'
+              : isNow    ? 'stop-pill active'
+              : (idx >= acts.findIndex(x => x.id === state.nowId)) ? 'stop-pill future'
+              : 'stop-pill';
+    return `<button class="${cls}" data-activity-id="${a.id}">${num} · ${time} · ${esc(short)}</button>`;
+  }).join('');
+
+  // Timeline raggruppata per periodo
+  const grouped = {};
+  for (const p of PERIODS) grouped[p.id] = acts.filter(a => a.periodId === p.id);
+
+  const periodLabel = id => {
+    const p = periodOf(id);
+    if (!p) return '';
+    return p.name.charAt(0) + p.name.slice(1).toLowerCase();
+  };
+
+  const newForm = (state.editMode && isNew) ? renderActForm(null, true) : '';
+
+  const timeline = PERIODS.map(p => {
+    const items = grouped[p.id];
+    if (!items.length) return '';
+    const rows = items.map(a => {
+      const isInEdit = !!(state.editMode && editingAct && a.id === editingAct.id);
+      const row = renderActivityRow(a, isInEdit);
+      const inlineForm = isInEdit ? renderActForm(a, false) : '';
+      return row + inlineForm;
+    }).join('');
+    return `
+      <div class="slot-station">
+        <span class="slot-station-label">${periodLabel(p.id)}</span>
+        <span class="slot-station-rule"></span>
+        <span class="slot-station-count">${items.length} att.</span>
+      </div>
+      ${rows}
+    `;
+  }).join('');
+
+  // Mappa SVG: la lascio statica (come l'attuale itinerary.html) — sarà data-driven in futuro
+  const mapBlock = `
+    <div class="map-canvas">
+      <svg viewBox="0 0 720 280" preserveAspectRatio="xMidYMid slice">
+        <g stroke="rgba(13,44,61,0.07)" stroke-width="0.5">
+          <path d="M0 70 L720 70 M0 140 L720 140 M0 210 L720 210"/>
+          <path d="M120 0 L120 320 M260 0 L260 320 M400 0 L400 320 M540 0 L540 320 M660 0 L660 320"/>
+        </g>
+        <g stroke="rgba(13,44,61,0.06)" stroke-width="9" stroke-linecap="round" fill="none">
+          <path d="M80 230 L210 168 L350 130 L500 88 L650 48"/>
+        </g>
+        <path d="M80 230 L210 168 L350 130 L500 88 L650 48" fill="none" stroke="#f47b3a" stroke-width="2.5" stroke-dasharray="7 4" stroke-linecap="round"/>
+        <g>
+          <circle cx="80" cy="230" r="11" fill="#fdf5ee" stroke="#b5b3a8" stroke-width="1.5"/>
+          <text x="80" y="234" text-anchor="middle" fill="#5b6b78" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">1</text>
+          <circle cx="210" cy="168" r="11" fill="#fdf5ee" stroke="#b5b3a8" stroke-width="1.5"/>
+          <text x="210" y="172" text-anchor="middle" fill="#5b6b78" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">2</text>
+          <circle cx="350" cy="130" r="18" fill="#f47b3a"/>
+          <text x="350" y="135" text-anchor="middle" fill="#fff" font-size="14" font-weight="500" font-family="-apple-system,sans-serif">3</text>
+          <circle cx="500" cy="88" r="13" fill="#fff" stroke="#f47b3a" stroke-width="2"/>
+          <text x="500" y="92" text-anchor="middle" fill="#0d2c3d" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">4</text>
+          <circle cx="650" cy="48" r="13" fill="#fff" stroke="#f47b3a" stroke-width="2"/>
+          <text x="650" y="52" text-anchor="middle" fill="#0d2c3d" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">5</text>
+        </g>
+        <g>
+          <rect x="372" y="100" width="156" height="26" rx="4" fill="#0d2c3d"/>
+          <polygon points="368,116 378,108 378,124" fill="#0d2c3d"/>
+          <text x="450" y="117" text-anchor="middle" fill="#fff" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">Mercato di Tsukiji · 12:30</text>
+        </g>
+      </svg>
+      <div class="map-controls">
+        <button class="map-btn"><i class="ti ti-walk" style="font-size:13px;"></i> A piedi</button>
+        <button class="map-btn" aria-label="Espandi mappa"><i class="ti ti-arrows-maximize" style="font-size:13px;"></i></button>
+      </div>
+    </div>
+  `;
+
+  return `
+    <div class="section-block">
+      <div class="section-head">
+        <div class="section-eyebrow">Itinerario del giorno</div>
+        <div class="section-actions">
+          ${state.editMode
+            ? '<button class="btn-icon btn-md solid has-label" id="btn-add-activity"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Aggiungi attività</button>'
+            : '<div class="section-meta">12,4 km · 5 tappe</div>'}
+        </div>
+      </div>
+      ${mapBlock}
+      <div class="stops-bar">${stopsBar}</div>
+    </div>
+
+    <div class="timeline">
+      ${newForm}
+      ${timeline}
+    </div>
+  `;
+}
+
+function renderActivityRow(a, isInEdit) {
+  const statusBadge = a.status === 'paid'   ? '<span class="status-badge status-paid"><i class="ti ti-check"></i> Pagato</span>'
+                    : a.status === 'booked' ? '<span class="status-badge status-booked"><i class="ti ti-bookmark"></i> Prenotato</span>'
+                    : a.status === 'todo'   ? '<span class="status-badge status-todo"><i class="ti ti-alert-triangle"></i> Da prenotare</span>'
+                    : '';
+  const idx = state.activities.indexOf(a) + 1;
+  const isNow = a.id === state.nowId;
+  const isSelected = !state.editMode && state.selectedId === a.id;
+  const classes = ['activity-row'];
+  if (isNow) classes.push('now');
+  if (isSelected) classes.push('selected');
+  if (isInEdit) classes.push('in-edit');
+
+  const budget = a.budget ? `<span class="activity-budget"><i class="ti ti-coin"></i> <b>${fmtMoney(a.budget, a.currency)}</b> · ${fmtConv(a.budget, a.currency)}</span>` : '';
+
+  const actions = state.editMode && !isInEdit
+    ? `<span class="activity-actions">
+         <button class="btn-icon btn-sm ghost has-label" data-edit-activity="${a.id}" title="Modifica">${ICON_PENCIL} Modifica</button>
+         <button class="btn-icon btn-sm ghost btn-danger has-label" data-delete-activity="${a.id}" title="Elimina">${ICON_TRASH} Elimina</button>
+       </span>`
+    : '';
+  const dragHandle = state.editMode
+    ? `<span class="drag-handle" title="Trascina per riordinare"><i class="ti ti-grip-vertical"></i></span>`
+    : '';
+
+  const nowTag = isNow ? '<span class="tag-now"><i class="ti ti-player-play"></i> ORA</span>' : '';
+
+  return `
+    <a href="#" class="${classes.join(' ')}" id="activity-${a.id}" data-activity-id="${a.id}" data-activity-index="${idx}" ${state.editMode ? 'draggable="true"' : ''}>
+      ${dragHandle}
+      <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+        ${nowTag}
+        <div class="activity-time-start">${fmtTime(a.hour, a.minute)}</div>
+      </div>
+      <div class="activity-content">
+        <div class="activity-title-row">
+          <div class="activity-title">${esc(a.title)}</div>
+          ${statusBadge}
+        </div>
+        <div class="activity-desc">${esc(a.desc)}</div>
+        <div class="activity-footer">
+          <span class="activity-loc" role="button" tabindex="0" title="Vai al pin ${idx} sulla mappa">
+            <span class="activity-pin">${idx}</span>
+            <span class="activity-loc-text">${esc(a.loc)}</span>
+            <span class="activity-loc-arrow">↗</span>
+          </span>
+          ${budget}
+          ${actions}
+        </div>
+      </div>
+      <i class="ti ti-chevron-right activity-chev"></i>
+    </a>
+  `;
+}
+
+function renderActForm(act, isNew) {
+  const a = isNew
+    ? (state._draftNew || (state._draftNew = { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null }))
+    : act;
+  const periodId = a.periodId;
+  const p = periodOf(periodId);
+  const hasTime = a.hour != null && a.minute != null;
+
+  const periodBar = PERIODS.map(pp => {
+    const isActive = pp.id === periodId;
+    const showTimeHere = isActive && hasTime;
+    const sub = showTimeHere
+      ? `<div class="time-inline">${String(a.hour).padStart(2,'0')}<span class="sep">:</span>${String(a.minute).padStart(2,'0')}</div>`
+      : `<div class="range">${pp.range}</div>`;
+    return `
+      <div class="period-cell ${isActive?'active':''}" data-period="${pp.id}">
+        <div class="name">${pp.name}</div>
+        ${sub}
+      </div>
+    `;
+  }).join('');
+
+  const hoursList = (p?.hours || []).map(h => `<div class="num ${h===a.hour?'selected':''}" data-set-hour="${h}">${String(h).padStart(2,'0')}</div>`).join('');
+  const minsList  = MINUTES.map(m => `<div class="num ${m===a.minute?'selected':''}" data-set-min="${m}">${String(m).padStart(2,'0')}</div>`).join('');
+
+  return `
+    <div class="act-form" id="act-form">
+      <div class="act-form-head">
+        <div class="ttl">
+          <span class="eyebrow">${isNew ? 'Nuova attività' : 'Modifica attività'}</span>
+        </div>
+        <span class="act-form-close" data-act-close title="Chiudi senza salvare">${ICON_X}</span>
+      </div>
+
+      <div class="act-photo-row">
+        <div class="act-photo" title="Cambia immagine">
+          <div class="photo-overlay"><i class="ti ti-upload"></i><span>Cambia</span></div>
+        </div>
+        <div class="act-title-grow">
+          <div class="act-title-row">
+            <div class="soft" style="flex:1;">
+              <span class="ghost">Titolo</span>
+              <input data-bind="act.title" value="${esc(a.title)}" maxlength="80" placeholder="Titolo dell'attività" />
+            </div>
+            <button class="pill-status" data-status-cycle>
+              <span class="dot ${a.status||''}"></span>
+              <span class="lbl">${a.status==='todo'?'Da prenotare':a.status==='booked'?'Prenotato':a.status==='paid'?'Pagato':'Stato'}</span>
+              <i class="ti ti-chevron-down"></i>
+            </button>
+          </div>
+          <div class="soft">
+            <span class="ghost">Descrizione</span>
+            <textarea data-bind="act.desc" maxlength="240" placeholder="Breve descrizione (opzionale)">${esc(a.desc)}</textarea>
+          </div>
+          <div class="period-bar slim">${periodBar}</div>
+          ${state._pickerOpen ? `
+          <div class="when-picker">
+            <div>
+              <div class="col-head">Ora</div>
+              <div class="num-list">${hoursList}</div>
+            </div>
+            <div>
+              <div class="col-head">Minuti</div>
+              <div class="num-list">${minsList}</div>
+            </div>
+          </div>
+          ${hasTime ? '<div class="when-clear-row"><span class="clear" data-clear-time>azzera orario</span></div>' : ''}
+          ` : ''}
+          ${(!a.loc || !(a.budget && a.budget > 0)) ? `
+          <div class="add-row">
+            ${!a.loc ? '<a href="#" class="opt-inline" data-act="add-addr">+ Aggiungi indirizzo</a>' : ''}
+            ${!(a.budget && a.budget > 0) ? '<a href="#" class="opt-inline" data-act="add-budget">+ Aggiungi budget</a>' : ''}
+          </div>
+          ` : ''}
+          ${a.loc ? `
+          <div class="row-with-rm">
+            <div class="addr-row">
+              <span class="ghost">Indirizzo</span>
+              <i class="ti ti-map-pin addr-icon"></i>
+              <input data-bind="act.loc" value="${esc(a.loc)}" placeholder="Inizia a digitare per suggerimenti…" autocomplete="off" />
+              <button class="btn-icon btn-sm has-label" data-act="addr-advanced" title="Ricerca avanzata sulla mappa"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6 -6"/><path d="M10 17a7 7 0 1 1 0 -14 7 7 0 0 1 0 14z"/></svg> mappa</button>
+            </div>
+            <button class="btn-icon btn-sm btn-danger" data-act="rm-addr" title="Rimuovi indirizzo" aria-label="Rimuovi indirizzo">${ICON_X}</button>
+          </div>
+          ` : ''}
+          ${a.budget && a.budget > 0 ? `
+          <div class="row-with-rm">
+            <div class="budget-row">
+              <span class="symbol">${a.currency==='JPY'?'¥':'€'}</span>
+              <input data-bind="act.budget" value="${a.budget}" type="number" min="0" />
+              <span class="budget-conv-inline">≈ <b>${fmtConv(a.budget, a.currency).replace('≈ ','')}</b></span>
+              <button class="cur-pill" data-currency-cycle>${a.currency} <i class="ti ti-chevron-down"></i></button>
+            </div>
+            <button class="btn-icon btn-sm btn-danger" data-act="rm-budget" title="Rimuovi budget" aria-label="Rimuovi budget">${ICON_X}</button>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        ${!isNew ? `<button class="btn-icon btn-md btn-danger has-label" data-act-delete><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina attività</button>` : '<span></span>'}
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-act-close>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-act-save>${isNew?'Crea attività':'Salva attività'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BINDING / EVENTI
+───────────────────────────────────────────────────────────────── */
+function bindAll() {
+  // Activity row click — comportamento dipende da editMode
+  $$('.activity-row[data-activity-id]').forEach(row => {
+    row.addEventListener('click', e => {
+      // Evita conflitti con drag-handle e matita
+      if (e.target.closest('.drag-handle') || e.target.closest('[data-edit-activity]') || e.target.closest('[data-delete-activity]')) return;
+      e.preventDefault();
+      const id = parseInt(row.dataset.activityId, 10);
+      if (state.editMode) {
+        if (state.editingActivityId === id) return;
+        state.editingActivityId = id;
+        state._pickerOpen = false;
+        render();
+      } else {
+        // View mode: toggle selezione
+        if (state.selectedId === id) {
+          state.selectedId = null;
+        } else {
+          state.selectedId = id;
+        }
+        render();
+      }
+    });
+  });
+
+  // Stops-bar click → seleziona (solo in view mode)
+  $$('.stop-pill[data-activity-id]').forEach(pill => {
+    pill.addEventListener('click', e => {
+      e.preventDefault();
+      if (state.editMode) return;
+      const id = parseInt(pill.dataset.activityId, 10);
+      state.selectedId = id;
+      render();
+      const row = document.querySelector(`.activity-row[data-activity-id="${id}"]`);
+      if (row) row.scrollIntoView({ behavior:'smooth', block:'center' });
+    });
+  });
+
+  // Matita → apre form di modifica
+  $$('[data-edit-activity]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = parseInt(el.dataset.editActivity, 10);
+    state.editingActivityId = id;
+    state._pickerOpen = false;
+    render();
+  }));
+
+  // Cestino → elimina attività (con conferma)
+  $$('[data-delete-activity]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = parseInt(el.dataset.deleteActivity, 10);
+    const a = state.activities.find(x => x.id === id);
+    if (!a) return;
+    if (confirm(`Eliminare l'attività "${a.title}"?`)) {
+      state.activities = state.activities.filter(x => x.id !== id);
+      if (state.editingActivityId === id) state.editingActivityId = null;
+      if (state.selectedId === id) state.selectedId = null;
+      render();
+    }
+  }));
+
+  // + Aggiungi attività
+  $('#btn-add-activity')?.addEventListener('click', e => {
+    e.preventDefault();
+    state.editingActivityId = 'new';
+    state._draftNew = null;
+    state._pickerOpen = false;
+    render();
+  });
+
+  // Chiudi form
+  $$('[data-act-close]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.editingActivityId = null;
+    state._draftNew = null;
+    state._pickerOpen = false;
+    render();
+  }));
+
+  // Salva attività
+  $$('[data-act-save]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    saveActivity();
+  }));
+
+  // Elimina attività
+  $$('[data-act-delete]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.activities = state.activities.filter(a => a.id !== state.editingActivityId);
+    state.editingActivityId = null;
+    render();
+  }));
+
+  // Componente "Quando"
+  $$('.period-cell[data-period]').forEach(el => el.addEventListener('click', () => {
+    state._pickerOpen = true;
+    setActField('periodId', el.dataset.period);
+  }));
+  $$('[data-set-hour]').forEach(el => el.addEventListener('click', () => {
+    setActField('hour', parseInt(el.dataset.setHour, 10));
+  }));
+  $$('[data-set-min]').forEach(el => el.addEventListener('click', () => {
+    state._pickerOpen = false;
+    setActField('minute', parseInt(el.dataset.setMin, 10));
+  }));
+  $('[data-clear-time]')?.addEventListener('click', () => {
+    setActField('hour', null);
+    setActField('minute', null);
+  });
+
+  // Status cycle
+  $$('[data-status-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    const cycle = [null, 'todo', 'booked', 'paid'];
+    const a = getEditingActivity();
+    if (!a) return;
+    const idx = cycle.indexOf(a.status);
+    const next = cycle[(idx + 1) % cycle.length];
+    setActField('status', next);
+  }));
+
+  // Budget add / remove / currency cycle
+  $$('[data-act="add-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('budget', 1000);
+  }));
+  $$('[data-act="rm-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('budget', 0);
+  }));
+  $$('[data-currency-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    const a = getEditingActivity();
+    if (!a) return;
+    setActField('currency', a.currency === 'JPY' ? 'EUR' : 'JPY');
+  }));
+
+  // Indirizzo add / remove
+  $$('[data-act="add-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('loc', ' ');
+    setTimeout(() => $('.addr-row input')?.focus(), 30);
+  }));
+  $$('[data-act="rm-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('loc', '');
+  }));
+  $$('[data-act="addr-advanced"]').forEach(el => el.addEventListener('click', e => e.preventDefault()));
+
+  // Data-bind (input listeners) — aggiornano lo stato senza ri-render
+  $$('[data-bind]').forEach(el => {
+    el.addEventListener('input', () => {
+      const path = el.dataset.bind;
+      const val = el.type === 'number' ? parseFloat(el.value) || 0 : el.value;
+      const [scope, key] = path.split('.');
+      if (scope === 'act') setActField(key, val, false);
+    });
+  });
+
+  // Drag & drop
+  bindDragDrop();
+}
+
+function setActField(key, val, doRender=true) {
+  const isNew = state.editingActivityId === 'new';
+  if (isNew) {
+    if (!state._draftNew) state._draftNew = { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null };
+    state._draftNew[key] = val;
+  } else {
+    const a = state.activities.find(x => x.id === state.editingActivityId);
+    if (!a) return;
+    a[key] = val;
+  }
+  if (doRender) render();
+}
+
+function getEditingActivity() {
+  if (state.editingActivityId === 'new') {
+    if (!state._draftNew) state._draftNew = { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null };
+    return state._draftNew;
+  }
+  return state.activities.find(a => a.id === state.editingActivityId);
+}
+
+function saveActivity() {
+  if (state.editingActivityId === 'new') {
+    const d = state._draftNew;
+    if (!d || !d.title.trim()) return; // senza titolo non si salva
+    d.id = state.nextActivityId++;
+    state.activities.push(d);
+    state._draftNew = null;
+    state.editingActivityId = null;
+  } else {
+    state.editingActivityId = null;
+  }
+  render();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DRAG & DROP attività
+───────────────────────────────────────────────────────────────── */
+let dragSrcId = null;
+function bindDragDrop() {
+  $$('.activity-row[data-activity-id]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      if (!state.editMode) { e.preventDefault(); return; }
+      dragSrcId = parseInt(row.dataset.activityId, 10);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      $$('.activity-row.drop-target').forEach(r => r.classList.remove('drop-target'));
+      dragSrcId = null;
+    });
+    row.addEventListener('dragover', e => {
+      if (!state.editMode) return;
+      e.preventDefault();
+      if (dragSrcId == null) return;
+      if (parseInt(row.dataset.activityId, 10) === dragSrcId) return;
+      row.classList.add('drop-target');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+    row.addEventListener('drop', e => {
+      if (!state.editMode) return;
+      e.preventDefault();
+      const dstId = parseInt(row.dataset.activityId, 10);
+      if (dragSrcId == null || dragSrcId === dstId) return;
+      const src = state.activities.findIndex(a => a.id === dragSrcId);
+      const dst = state.activities.findIndex(a => a.id === dstId);
+      const [moved] = state.activities.splice(src, 1);
+      state.activities.splice(dst, 0, moved);
+      render();
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   AVVIO
+───────────────────────────────────────────────────────────────── */
+const editToggle = document.getElementById('edit-mode-toggle');
+if (editToggle) {
+  editToggle.checked = state.editMode;
+  editToggle.addEventListener('change', () => {
+    state.editMode = editToggle.checked;
+    if (!state.editMode) {
+      state.editingActivityId = null;
+      state._pickerOpen = false;
+    }
+    render();
+  });
+}
+render();
+</script>
+
+</body>
+</html>

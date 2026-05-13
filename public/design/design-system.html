@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Design System</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="activity-row.css">
+<style>
+body { padding: 40px 24px 80px; }
+.ds-wrap { max-width: 1040px; margin: 0 auto; }
+
+.ds-header { margin-bottom: 32px; padding-bottom: 16px; border-bottom: 0.5px solid var(--border); }
+.ds-eyebrow { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; }
+.ds-header h1 { font-size: 28px; font-weight: 500; margin: 6px 0 4px; }
+.ds-header .sub { font-size: 13px; color: var(--ink-soft); }
+.ds-header a { color: var(--orange-deep); text-decoration: underline; font-size: 12px; }
+
+.ds-section { margin-top: 40px; }
+.ds-section-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); }
+
+.ds-row { margin-bottom: 28px; }
+.ds-row-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.ds-row-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.ds-row-code { font-size: 11px; color: var(--ink-faint); font-family: 'SF Mono', Menlo, monospace; }
+.ds-row-note { font-size: 11px; color: var(--ink-faint); margin-bottom: 10px; }
+
+.ds-block { background: white; border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+.ds-block + .ds-block { margin-top: 8px; }
+.ds-cluster { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.ds-states { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.ds-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px; background: var(--surface-soft); border-radius: var(--radius-sm); }
+.ds-state-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+
+.ds-mini-label { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<div class="ds-wrap">
+
+  <div class="ds-header">
+    <div class="ds-eyebrow">JapanGo · Design System</div>
+    <h1>Componenti</h1>
+    <div class="sub">Catalogo dei componenti UI riutilizzabili. <a href="index.html">← Index</a></div>
+  </div>
+
+  <section class="ds-section">
+    <div class="ds-section-title">Button · icon-only, icon+label, text-only</div>
+
+    <!-- Stati su md+label (un solo cluster, vale per tutte le size/varianti) -->
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Stati</div>
+        <div class="ds-row-code">.btn-icon.btn-md.has-label</div>
+      </div>
+      <div class="ds-row-note">Default outline ink. Hover: fondo ink pieno, testo bianco. Stessi stati validi per tutte le varianti/size.</div>
+      <div class="ds-block">
+        <div class="ds-states">
+          <div class="ds-state">
+            <button class="btn-icon btn-md has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+            <span class="ds-state-label">Default</span>
+          </div>
+          <div class="ds-state">
+            <button class="btn-icon btn-md has-label is-hover"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+            <span class="ds-state-label">Hover</span>
+          </div>
+          <div class="ds-state">
+            <button class="btn-icon btn-md has-label is-active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+            <span class="ds-state-label">Active</span>
+          </div>
+          <div class="ds-state">
+            <button class="btn-icon btn-md has-label is-focus"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+            <span class="ds-state-label">Focus</span>
+          </div>
+          <div class="ds-state">
+            <button class="btn-icon btn-md has-label" disabled><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+            <span class="ds-state-label">Disabled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutte le size, una sola riga per ognuna -->
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Size · sm / md / lg</div>
+        <div class="ds-row-code">.btn-icon.btn-sm | .btn-md | .btn-lg</div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Icon only</span>
+          <button class="btn-icon btn-sm"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button class="btn-icon btn-md"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button class="btn-icon btn-lg"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+        </div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Icon + label</span>
+          <button class="btn-icon btn-sm has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+          <button class="btn-icon btn-md has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+          <button class="btn-icon btn-lg has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+        </div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Text only</span>
+          <button class="btn-icon btn-sm text-only">Modifica</button>
+          <button class="btn-icon btn-md text-only">Modifica</button>
+          <button class="btn-icon btn-lg text-only">Modifica</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="ds-section">
+    <div class="ds-section-title">Button · varianti semantiche</div>
+
+    <!-- DANGER -->
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Danger</div>
+        <div class="ds-row-code">.btn-danger</div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Icon only</span>
+          <button class="btn-icon btn-sm btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-md btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-lg btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <span class="ds-mini-label" style="margin-left:14px;">Icon + label</span>
+          <button class="btn-icon btn-md btn-danger has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina</button>
+          <span class="ds-mini-label" style="margin-left:14px;">Text only</span>
+          <button class="btn-icon btn-md btn-danger text-only">Elimina</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WARNING -->
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Warning</div>
+        <div class="ds-row-code">.btn-warning</div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Icon only</span>
+          <button class="btn-icon btn-sm btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-md btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-lg btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <span class="ds-mini-label" style="margin-left:14px;">Icon + label</span>
+          <button class="btn-icon btn-md btn-warning has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg> Attenzione</button>
+          <span class="ds-mini-label" style="margin-left:14px;">Text only</span>
+          <button class="btn-icon btn-md btn-warning text-only">Attenzione</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="ds-section">
+    <div class="ds-section-title">Button · ghost (border e background trasparenti)</div>
+
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Ghost</div>
+        <div class="ds-row-code">.btn-icon.ghost</div>
+      </div>
+      <div class="ds-row-note">Nessun bordo, nessun fondo. Hover: leggero fondo soft del colore corrispondente. Adatto per azioni discrete inline (es. nei header di blocco).</div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Default</span>
+          <button class="btn-icon btn-sm ghost"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button class="btn-icon btn-md ghost"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button class="btn-icon btn-md ghost has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+          <button class="btn-icon btn-md ghost text-only">Modifica</button>
+
+          <span class="ds-mini-label" style="margin-left:14px;">Danger</span>
+          <button class="btn-icon btn-md ghost btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-md ghost btn-danger has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina</button>
+
+          <span class="ds-mini-label" style="margin-left:14px;">Warning</span>
+          <button class="btn-icon btn-md ghost btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-md ghost btn-warning has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg> Attenzione</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="ds-section">
+    <div class="ds-section-title">Button · over-media (sopra immagini scure)</div>
+
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Over-media</div>
+        <div class="ds-row-code">.btn-icon.over-media</div>
+      </div>
+      <div class="ds-row-note">Fondo semitrasparente con blur, bordo bianco soft, icona bianca. Pensato per overlay su hero / thumbnail. Stesse 3 size e tutte le varianti (icon-only, icon+label, text-only).</div>
+
+      <div class="ds-block" style="background:linear-gradient(135deg,#3c5547 0%,#5f8071 50%,#7a8a6e 100%); padding:32px 24px;">
+        <div class="ds-cluster">
+          <span class="ds-mini-label" style="color:rgba(255,255,255,0.7);">Icon only</span>
+          <button class="btn-icon btn-sm over-media" title="Indietro"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></button>
+          <button class="btn-icon btn-md over-media" title="Indietro"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></button>
+          <button class="btn-icon btn-lg over-media" title="Indietro"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></button>
+          <button class="btn-icon btn-md over-media" title="Avanti"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></button>
+
+          <span class="ds-mini-label" style="margin-left:14px; color:rgba(255,255,255,0.7);">Icon + label</span>
+          <button class="btn-icon btn-md over-media has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg> Giorno prec.</button>
+
+          <span class="ds-mini-label" style="margin-left:14px; color:rgba(255,255,255,0.7);">Text only</span>
+          <button class="btn-icon btn-md over-media text-only">Apri</button>
+        </div>
+      </div>
+
+      <div class="ds-block" style="background:linear-gradient(135deg,#3c5547 0%,#5f8071 100%); padding:18px 20px;">
+        <div class="ds-cluster">
+          <span class="ds-mini-label" style="color:rgba(255,255,255,0.7);">Stati</span>
+          <button class="btn-icon btn-md over-media has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Default</button>
+          <button class="btn-icon btn-md over-media has-label is-hover"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Hover</button>
+          <button class="btn-icon btn-md over-media has-label is-active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Active</button>
+          <button class="btn-icon btn-md over-media has-label is-focus"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Focus</button>
+          <button class="btn-icon btn-md over-media has-label" disabled><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Disabled</button>
+        </div>
+      </div>
+
+      <!-- Varianti semantiche over-media -->
+      <div class="ds-block" style="background:linear-gradient(135deg,#3c5547 0%,#5f8071 100%); padding:18px 20px;">
+        <div class="ds-cluster">
+          <span class="ds-mini-label" style="color:rgba(255,255,255,0.7);">Danger</span>
+          <button class="btn-icon btn-sm over-media btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-md over-media btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-md over-media btn-danger has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina</button>
+          <button class="btn-icon btn-md over-media btn-danger has-label is-hover"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Hover</button>
+
+          <span class="ds-mini-label" style="color:rgba(255,255,255,0.7); margin-left:14px;">Warning</span>
+          <button class="btn-icon btn-sm over-media btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-md over-media btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-md over-media btn-warning has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg> Attenzione</button>
+          <button class="btn-icon btn-md over-media btn-warning has-label is-hover"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg> Hover</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="ds-section">
+    <div class="ds-section-title">Button · solid (fondo pieno, hover inverte)</div>
+
+    <div class="ds-row">
+      <div class="ds-row-head">
+        <div class="ds-row-name">Solid</div>
+        <div class="ds-row-code">.btn-icon.solid (+ .btn-danger | .btn-warning)</div>
+      </div>
+      <div class="ds-block">
+        <div class="ds-cluster">
+          <span class="ds-mini-label">Default</span>
+          <button class="btn-icon btn-md solid"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button class="btn-icon btn-md solid has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg> Modifica</button>
+          <button class="btn-icon btn-md solid text-only">Modifica</button>
+
+          <span class="ds-mini-label" style="margin-left:14px;">Danger</span>
+          <button class="btn-icon btn-md solid btn-danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
+          <button class="btn-icon btn-md solid btn-danger has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina</button>
+
+          <span class="ds-mini-label" style="margin-left:14px;">Warning</span>
+          <button class="btn-icon btn-md solid btn-warning"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></button>
+          <button class="btn-icon btn-md solid btn-warning has-label"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg> Attenzione</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+
+</body>
+</html>

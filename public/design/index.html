@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Design Prototype · Index</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 24px;
+  background: #f1efe8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Arial, sans-serif;
+  color: #0d2c3d;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.wrap { max-width: 1120px; margin: 0 auto; }
+.eyebrow { color: #f47b3a; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; }
+h1 { font-size: 28px; font-weight: 500; margin: 6px 0 8px; }
+.sub { font-size: 13px; color: #5b6b78; line-height: 1.6; max-width: 720px; }
+
+/* due colonne: UI prodotto / esplorazione */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 32px;
+}
+@media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
+
+.col-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid rgba(13,44,61,0.12);
+}
+.col-head h2 { font-size: 16px; font-weight: 500; margin: 0; }
+.col-head .col-tag { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #8a98a3; }
+
+/* card lista */
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.cards.nested { margin: 6px 0 0 28px; padding-left: 14px; border-left: 1.5px dashed rgba(244,123,58,0.35); gap: 8px; }
+.cards.nested .card { padding: 12px 14px; }
+.cards.nested .card-title { font-size: 14px; }
+.cards.nested .card-desc { font-size: 11px; }
+
+.card {
+  background: #fff;
+  border: 0.5px solid rgba(13,44,61,0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover { border-color: rgba(13,44,61,0.2); transform: translateY(-1px); }
+.card.primary { background: #fdf5ee; border-color: #f9d4b6; }
+.card.muted { opacity: 0.7; }
+
+.card-icon {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: #f1efe8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #5b6b78;
+}
+.card.primary .card-icon { background: #f47b3a; color: #fff; }
+.card-icon i { font-size: 15px; }
+
+.card-body { flex: 1; min-width: 0; }
+.card-title-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.card-title { font-size: 14px; font-weight: 500; }
+.card-status {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.card-status.live { background: #e4f3da; color: #3d6e0e; }
+.card-status.wip { background: #fef5cf; color: #7a5e0e; }
+.card-status.draft { background: #ecebe5; color: #5b6b78; }
+.card-status.archive { background: #f1efe8; color: #8a98a3; }
+.card-status.exploration { background: #e8f1ff; color: #1d4ed8; }
+
+.card-desc { font-size: 12px; color: #5b6b78; line-height: 1.5; }
+.card-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8a98a3;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.card-meta b { color: #5b6b78; font-weight: 500; }
+.card-arrow { color: #8a98a3; font-size: 16px; flex-shrink: 0; align-self: center; }
+
+/* notes panel */
+.notes {
+  margin-top: 36px;
+  padding: 20px 22px;
+  background: #fff;
+  border: 0.5px solid rgba(13,44,61,0.08);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5b6b78;
+}
+.notes h3 { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #f47b3a; margin: 0 0 10px; }
+.notes h3:not(:first-child) { margin-top: 22px; }
+.notes b { color: #0d2c3d; font-weight: 500; }
+.notes code { background: #f5f3ee; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: 'SF Mono', Menlo, monospace; color: #0d2c3d; }
+.notes ul { margin: 6px 0; padding-left: 20px; }
+.notes li { margin: 4px 0; }
+
+.legend-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; }
+.legend-bar .lg-item { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: #f1efe8; border-radius: 999px; }
+.legend-bar .lg-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="eyebrow">JapanGo · design prototype</div>
+<h1>Index · prototipi e componenti</h1>
+<p class="sub">Mappa di lavoro del prototipo: UI di prodotto (pagine finite o quasi) a sinistra, esplorazioni/wireframe/iterazioni a destra. Le voci hanno tag di stato e metadati pensati per essere ripresi da agenti che sviluppano i componenti React corrispondenti in <code>src/</code>.</p>
+
+<div class="legend-bar">
+  <span class="lg-item"><span class="lg-dot" style="background:#3d6e0e;"></span> Live · pronta per dev</span>
+  <span class="lg-item"><span class="lg-dot" style="background:#7a5e0e;"></span> WIP · in lavorazione</span>
+  <span class="lg-item"><span class="lg-dot" style="background:#5b6b78;"></span> Draft · bozza</span>
+  <span class="lg-item"><span class="lg-dot" style="background:#1d4ed8;"></span> Esplorazione</span>
+  <span class="lg-item"><span class="lg-dot" style="background:#8a98a3;"></span> Archivio</span>
+</div>
+
+<div class="cols">
+
+  <!-- ── COLONNA UI PRODOTTO ─────────────────────────────────────── -->
+  <div class="col">
+    <div class="col-head">
+      <h2>UI di prodotto</h2>
+      <span class="col-tag">stato avanzato</span>
+    </div>
+
+    <div class="cards">
+
+      <!-- DAY-BY-DAY -->
+      <a class="card primary" href="daybyday_responsive.html">
+        <div class="card-icon"><i class="ti ti-calendar-week"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Day-by-Day</span>
+            <span class="card-status live">Live</span>
+          </div>
+          <div class="card-desc">Pagina principale dell'itinerario. Desktop 2 colonne (lista giorni + main), mobile collassa in selettore giorno. Contiene hero, dormi a, day-bar, incipit, sezione attività, next-day.</div>
+          <div class="card-meta">
+            <span>React: <b>src/pages/DayByDay.jsx</b></span>
+            <span>Stile: <b>styles.css</b></span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <!-- nested: componenti che vivono dentro la pagina day-by-day -->
+      <div class="cards nested">
+
+        <a class="card" href="day_view.html">
+          <div class="card-icon"><i class="ti ti-file-text"></i></div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <span class="card-title">Day view (giorno popolato)</span>
+              <span class="card-status live">Live</span>
+            </div>
+            <div class="card-desc">Riferimento del singolo giorno completamente compilato. Usato come fonte di verità per gli stili dei sub-componenti.</div>
+          </div>
+          <i class="ti ti-arrow-up-right card-arrow"></i>
+        </a>
+
+        <a class="card" href="itinerary.html">
+          <div class="card-icon"><i class="ti ti-map-pin"></i></div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <span class="card-title">Sezione itinerario (mappa + lista attività)</span>
+              <span class="card-status live">Live</span>
+            </div>
+            <div class="card-desc">Componente isolato per iterare la sezione attività: mappa, stops-bar, slot orari (mattina/pomeriggio/sera/notte), riga attività con stati view/now/selected.</div>
+            <div class="card-meta">
+              <span>Sotto-componenti: <b>map-canvas</b>, <b>stops-bar</b>, <b>slot-station</b>, <b>activity-row</b></span>
+            </div>
+          </div>
+          <i class="ti ti-arrow-up-right card-arrow"></i>
+        </a>
+
+        <a class="card" href="day_edit.html">
+          <div class="card-icon"><i class="ti ti-edit"></i></div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <span class="card-title">Day edit (modifica giorno)</span>
+              <span class="card-status wip">WIP</span>
+            </div>
+            <div class="card-desc">Modalità edit del giorno. Accordion inline per ogni blocco (hero, alloggio, budget, incipit, attività). Form attività ancorato alla riga con freccia. Stato React-driven con JS interno per drag&drop, picker quando, gestione campi opzionali.</div>
+            <div class="card-meta">
+              <span>Pattern: accordion + edit-pill</span>
+              <span>Interattivo: <b>sì</b></span>
+            </div>
+          </div>
+          <i class="ti ti-arrow-up-right card-arrow"></i>
+        </a>
+
+      </div>
+
+      <!-- TRIP HEADER -->
+      <a class="card" href="trip_header_states.html">
+        <div class="card-icon"><i class="ti ti-route"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Trip header · 3 stati budget</span>
+            <span class="card-status live">Live</span>
+          </div>
+          <div class="card-desc">Intestazione viaggio con pill budget stateful. Tre stati: pre-viaggio (target), in corso (tracking speso vs previsto), completato (riepilogo). Soglie colore documentate.</div>
+          <div class="card-meta">
+            <span>Variabili stato: <b>trip-state-pre</b>, <b>trip-state-during</b>, <b>trip-state-after</b></span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ── COLONNA ESPLORAZIONI / WIREFRAME ────────────────────────── -->
+  <div class="col">
+    <div class="col-head">
+      <h2>Esplorazioni e wireframe</h2>
+      <span class="col-tag">design history</span>
+    </div>
+
+    <div class="cards">
+
+      <a class="card" href="wireframe/index.html">
+        <div class="card-icon"><i class="ti ti-pencil-minus"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Wireframe · flussi di edit</span>
+            <span class="card-status exploration">Esplor.</span>
+          </div>
+          <div class="card-desc">Wireframe a bassa fedeltà (zero grafica) per discutere logica e UX. Edit mode globale, matita per blocco, form inline. Versione affinata: <code>edit_mode_A_v2</code>.</div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <a class="card" href="japango_daybyday_final.html">
+        <div class="card-icon"><i class="ti ti-device-desktop"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Mockup desktop + mobile affiancati</span>
+            <span class="card-status archive">Archivio</span>
+          </div>
+          <div class="card-desc">Versione precedente con i due viewport mostrati come due frame statici. Sostituita dalla responsive.</div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <a class="card" href="japango_daybyday_integration_proposta_g.html">
+        <div class="card-icon">G</div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Proposta G · Integrazione mappa nel Day-by-Day</span>
+            <span class="card-status archive">Archivio</span>
+          </div>
+          <div class="card-desc">Prima versione applicata alla pagina reale: mappa-itinerario tra il lodging banner e gli slot orari. Sidebar destra non ancora presente.</div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <a class="card" href="tmp/japango_daybyday_widgets_h_vs_i.html">
+        <div class="card-icon">H/I</div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Proposte H e I · Dove vivono i widget info-spot</span>
+            <span class="card-status archive">Archivio</span>
+          </div>
+          <div class="card-desc">Due alternative per il posizionamento di meteo/budget/frasi. H tiene "Dormi a" identico con strip stat sotto l'hero; I propone cluster "Info di oggi" a 4 colonne. H ha vinto.</div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <a class="card" href="japango_mobile_widgets_variants.html">
+        <div class="card-icon"><i class="ti ti-device-mobile"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Mobile widgets · varianti</span>
+            <span class="card-status archive">Archivio</span>
+          </div>
+          <div class="card-desc">Esplorazioni di layout dei widget info su mobile.</div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ── NOTE PER GLI AGENTI ────────────────────────────────────── -->
+<div class="notes">
+<h3>Note per gli agenti che svilupperanno i componenti</h3>
+
+<h3>Tassonomia dei file</h3>
+<ul>
+  <li><b>UI di prodotto</b> (colonna sinistra): pagine vicine a quello che sarà il prodotto. Sono la fonte di verità del visual design.</li>
+  <li><b>Esplorazioni / wireframe</b> (colonna destra): solo riferimento di processo. Non implementare da questi.</li>
+  <li><b>Gerarchia visiva</b>: le card annidate (con bordo arancio tratteggiato) sono sub-componenti che vivono dentro la pagina genitore.</li>
+</ul>
+
+<h3>Stile e tokens</h3>
+<ul>
+  <li>Un unico file <code>styles.css</code> contiene tutte le regole condivise (variabili, tipografia, layout, componenti). Da usare in ogni pagina prototipo.</li>
+  <li>Variabili principali: <code>--bg</code> #f1efe8, <code>--surface</code> #ffffff, <code>--ink</code> #0d2c3d, <code>--orange</code> #f47b3a, <code>--orange-deep</code> #a84818.</li>
+  <li>Radius: <code>--radius-sm</code> 8px, <code>--radius-md</code> 12px, <code>--radius-lg</code> 14px, <code>--radius-pill</code> 999px.</li>
+  <li>Icone: Tabler webfont via CDN. Per icone problematiche (pencil, x) usare unicode <code>✎</code> / <code>×</code> o SVG inline.</li>
+</ul>
+
+<h3>Mapping con il codice React</h3>
+<ul>
+  <li><b>Day-by-Day</b> → <code>src/pages/DayByDay.jsx</code></li>
+  <li><b>Day edit / inline forms</b> → <code>src/components/InlineEditDay.jsx</code>, <code>InlineActivityForm.jsx</code>, <code>ActivitySectionEditor.jsx</code></li>
+  <li><b>Address autocomplete</b> → <code>src/components/AddressAutocomplete.jsx</code> + <code>lib/geocoding.js</code></li>
+  <li><b>Budget</b> → <code>src/components/sidebar/BudgetEditor.jsx</code>, <code>BudgetView.jsx</code> + <code>lib/exchange.js</code></li>
+  <li><b>Edit mode globale</b> → <code>src/lib/EditModeProvider.jsx</code></li>
+</ul>
+
+<h3>Pattern stabili da implementare</h3>
+<ul>
+  <li><b>Stato attività</b>: 3 stati visivi della riga — <code>default</code>, <code>now</code> (sfondo bianco + barra arancio sinistra + tag ORA), <code>selected</code> (sfondo bianco senza barra né tag).</li>
+  <li><b>Componente "Quando"</b>: barra segmentata 4 fasce (Mattina/Pomeriggio/Sera/Notte) con range orario inline; click apre picker due colonne (ore della fascia, minuti step 5); l'orario selezionato compare DENTRO la cella attiva al posto del range; "azzera orario" torna a sola fascia.</li>
+  <li><b>Edit form accordion</b>: matita pencil su ogni blocco apre form ancorato (con triangolino di aggancio) che sostituisce/affianca la view. Continuità grafica tra hero + form + lodging quando si apre l'edit intestazione/alloggio.</li>
+  <li><b>Soft input</b>: campo pill (border-radius pill, padding 8/18, background #fafaf6, label ghost in alto-sinistra che compare al focus, focus ring arancio).</li>
+  <li><b>Campi opzionali</b>: indirizzo, budget e link sono nascosti di default e si aprono via link "+ Aggiungi …" che apre il componente sotto. Bottone × esterno al componente per rimuovere.</li>
+  <li><b>Pill budget</b>: input + simbolo valuta prefisso + pill valuta ink scura cliccabile (cycle JPY↔EUR) + conversione live. Una sola riga.</li>
+  <li><b>Pill stato attività</b>: cycle al click tra <code>null</code>, <code>todo</code> (rosso), <code>booked</code> (giallo), <code>paid</code> (verde).</li>
+</ul>
+
+<h3>Cose da NON portare in produzione</h3>
+<ul>
+  <li>I file in <code>tmp/</code> e <code>wireframe/</code> servono solo a leggere la storia delle decisioni.</li>
+  <li>Le matite renderizzate come testo Unicode (<code>✎</code>, <code>×</code>) sono un workaround per il glyph mancante nel webfont — in React usare icone Tabler SVG (<code>lucide-react</code> o <code>@tabler/icons-react</code>) direttamente.</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

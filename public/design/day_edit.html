@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Modifica giorno (D2 · interattivo)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+/* Inline SVG fallback per icone non sempre rese dal font */
+.icon-pencil, .icon-x { display:inline-flex; align-items:center; justify-content:center; width:1em; height:1em; vertical-align:-0.125em; }
+.icon-pencil svg, .icon-x svg { width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+</style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="activity-row.css">
+<style>
+/* TOP edit bar */
+.edit-topbar { display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; margin-bottom:14px; }
+.edit-topbar-left { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); min-width:0; }
+.edit-topbar-left b { color:var(--ink); font-weight:500; }
+.edit-status { font-size:11px; color:var(--ink-faint); padding:3px 10px; background:var(--surface-soft); border-radius:var(--radius-pill); }
+.edit-status.dirty { color:var(--orange-deep); background:var(--surface-warm); }
+.edit-topbar-actions { display:flex; gap:8px; align-items:center; }
+.btn-ghost { background:transparent; border:0.5px solid var(--border-strong); color:var(--ink); padding:6px 12px; border-radius:var(--radius-pill); font-size:11px; cursor:pointer; }
+.edit-toggle { display:inline-flex; align-items:center; gap:8px; background:var(--orange); color:white; padding:7px 14px; border-radius:var(--radius-pill); font-size:12px; font-weight:500; border:0; cursor:pointer; transition:background 0.18s; }
+.edit-toggle .knob { width:9px; height:9px; border-radius:50%; background:white; }
+.edit-toggle.off { background:var(--surface-soft); color:var(--ink); border:0.5px solid var(--border-strong); }
+.edit-toggle.off .knob { background:var(--ink-faint); }
+
+/* When edit mode OFF: hide edit affordances */
+body.view-mode .acc-handle,
+body.view-mode .acc-handle-mini,
+body.view-mode .day-bar-budget .chev-edit,
+body.view-mode .editing-chip,
+body.view-mode .section-actions .add-pill,
+body.view-mode .act-form,
+body.view-mode .map-edit-overlay,
+body.view-mode .activity-row.in-edit::after,
+body.view-mode .acc-form { display:none !important; }
+body.view-mode .timeline.dimmed { opacity:1; }
+body.view-mode .activity-row.in-edit { background:transparent; outline:none; padding:14px 0; margin:4px 0; }
+body.view-mode .activity-pin.dim { background:var(--orange) !important; }
+body.view-mode .activity-pin.active { box-shadow:none !important; }
+
+/* Accordion handle (pencil) */
+/* Eyebrow del banner: "Giorno N" resta bianco, solo la zona in arancione (peso 600 per contrasto sopra la foto) */
+.day-hero .day-hero-eyebrow .hero-zone { color: var(--orange); font-weight: 600; }
+.acc-handle { position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.95); border:0.5px solid var(--border); color:var(--orange); display:inline-flex; align-items:center; justify-content:center; font-size:14px; cursor:pointer; z-index:3; transition:background 0.15s, color 0.15s; }
+.acc-handle:hover, .acc-handle.active { background:var(--orange); color:white; }
+/* Quando .acc-handle è anche .btn-icon.has-label (es. Edit Place sull'hero) non deve essere schiacciato a 32×32 */
+.acc-handle.btn-icon.has-label { width:auto; height:32px; border-radius:var(--radius-pill); padding:0 14px 0 11px; }
+.day-hero .acc-handle.btn-icon.over-media i { color:white; }
+.day-hero .acc-handle.btn-icon.over-media.active { background:var(--orange); border-color:var(--orange); color:white; }
+.acc-handle-mini { width:28px; height:28px; border-radius:50%; background:white; border:0.5px solid var(--border); color:var(--orange); display:inline-flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; }
+.acc-handle-mini:hover, .acc-handle-mini.active { background:var(--orange); color:white; }
+.day-incipit { position:relative; }
+.day-incipit .acc-handle-mini { position:absolute; top:0; right:0; }
+.lodging-banner { position:relative; grid-template-columns:30px 1fr auto auto !important; }
+.lodging-pencil { width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.12); border:0.5px solid rgba(255,255,255,0.18); color:white; display:inline-flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; flex-shrink:0; }
+.lodging-pencil:hover, .lodging-pencil.active { background:var(--orange); border-color:var(--orange); }
+body.view-mode .lodging-pencil { display:none; }
+
+/* Day-bar budget edit affordance */
+.day-bar-budget .chev-edit { opacity:0.55; font-size:13px; margin-left:2px; }
+.day-bar-budget.active { background:var(--orange); }
+
+/* Section actions */
+.section-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.map-toggle { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-soft); }
+.map-toggle input { margin:0; }
+.add-pill { background:var(--orange); color:white; border:0; padding:6px 14px 6px 12px; border-radius:var(--radius-pill); font-size:12px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:5px; }
+.add-pill i { font-size:14px; }
+
+/* Chip "stai modificando" */
+.editing-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; background:var(--surface-warm); border:0.5px solid var(--orange-border); border-radius:var(--radius-pill); font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--orange-deep); font-weight:500; }
+.editing-chip .dot { width:7px; height:7px; border-radius:50%; background:var(--orange); }
+
+/* Mappa-edit overlay */
+.map-edit-overlay { position:absolute; top:10px; left:10px; right:10px; z-index:3; background:rgba(255,255,255,0.98); border:0.5px solid var(--orange); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 12px rgba(13,44,61,0.08); }
+.map-edit-overlay .lbl { display:inline-flex; align-items:center; gap:6px; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--orange); font-weight:500; flex-shrink:0; padding:2px 8px; background:var(--surface-warm); border-radius:var(--radius-pill); }
+.map-edit-overlay input { flex:1; min-width:0; border:0.5px solid var(--border-strong); background:white; padding:6px 10px; border-radius:7px; font-size:12px; font-family:inherit; outline:none; color:var(--ink); }
+.map-edit-overlay input:focus { border-color:var(--orange); }
+.map-edit-overlay .pin-coord { font-size:11px; color:var(--ink-soft); white-space:nowrap; flex-shrink:0; }
+.map-edit-overlay .pin-coord b { color:var(--ink); font-weight:500; }
+.map-edit-overlay .rm-pin { font-size:11px; color:#9a3015; cursor:pointer; padding:3px 8px; border-radius:var(--radius-pill); flex-shrink:0; display:inline-flex; align-items:center; gap:4px; }
+.map-edit-overlay .rm-pin:hover { background:#fcebeb; }
+
+/* Map clickable to move pin */
+.map-canvas.editable-pin { cursor:crosshair; }
+.map-canvas svg .pin-cur { cursor:grab; }
+.map-canvas svg .pin-cur:active { cursor:grabbing; }
+
+/* Form attività ancorato sotto la riga relativa (con freccia di aggancio) */
+.act-form { background:white; border:1px solid var(--border-strong); border-radius:var(--radius-md); padding:16px 18px; margin:10px 0 14px; position:relative; }
+.act-form::before { content:''; position:absolute; top:-7px; left:60px; width:12px; height:12px; background:white; border-top:1px solid var(--border-strong); border-left:1px solid var(--border-strong); transform:rotate(45deg); }
+.act-form-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:10px; border-bottom:1px dashed var(--orange-border); }
+.act-form-head .ttl { display:flex; align-items:center; gap:10px; }
+.act-form-head .eyebrow { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--orange); font-weight:500; }
+.act-form-head .nm { font-size:15px; font-weight:500; color:var(--ink); }
+.act-form-close { width:28px; height:28px; border-radius:50%; background:white; border:0.5px solid var(--border); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; }
+.act-form-close:hover { background:#fcebeb; color:#9a3015; border-color:#f6c8bc; }
+
+/* Componente "Quando" */
+.when-block { margin-bottom:14px; }
+.when-block > label { display:block; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; font-weight:500; }
+.period-bar { display:grid; grid-template-columns:repeat(4, 1fr); background:white; border:0.5px solid var(--border); border-radius:999px; padding:4px; gap:4px; }
+.period-cell { text-align:center; padding:9px 4px; border-radius:999px; cursor:pointer; color:var(--ink); transition:all 0.15s; user-select:none; }
+.period-cell:hover { background:var(--surface-soft); }
+.period-cell.active { background:var(--ink); color:white; }
+.period-cell .name { font-size:11px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; }
+.period-cell .range { font-size:9px; font-variant-numeric:tabular-nums; letter-spacing:0.04em; color:var(--ink-faint); margin-top:2px; }
+.period-cell.active .range { color:rgba(255,255,255,0.55); }
+.period-cell .time-inline { font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; margin-top:4px; line-height:1; }
+.period-cell .time-inline .sep { color:rgba(255,255,255,0.55); margin:0 1px; }
+.period-bar.slim { padding:2px; gap:2px; }
+.period-bar.slim .period-cell { padding:5px 4px; }
+.period-bar.slim .period-cell .name { font-size:10px; }
+.period-bar.slim .period-cell .range { font-size:9px; margin-top:1px; }
+.period-bar.slim .period-cell .time-inline { font-size:13px; margin-top:1px; }
+.when-current { display:flex; align-items:baseline; justify-content:space-between; margin:12px 0 8px; padding-bottom:8px; border-bottom:1px dashed var(--border); }
+.when-current .val { font-size:22px; font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+.when-current .val .sep { color:var(--ink-faint); margin:0 2px; }
+.when-current .val .placeholder { color:var(--ink-faint); font-weight:400; }
+.when-current .clear { font-size:11px; color:var(--ink-soft); cursor:pointer; text-decoration:underline; text-decoration-color:rgba(13,44,61,0.2); }
+.when-current .clear:hover { color:#9a3015; text-decoration-color:#9a3015; }
+.when-picker { display:grid; grid-template-columns:1fr 1fr; gap:10px; background:white; border:0.5px solid var(--border); border-radius:18px; padding:14px; margin-top:10px; }
+.when-clear-row { display:flex; justify-content:flex-end; margin-top:6px; }
+.when-clear-row .clear { font-size:11px; color:var(--ink-soft); cursor:pointer; text-decoration:underline; text-decoration-color:rgba(13,44,61,0.2); }
+.when-clear-row .clear:hover { color:#9a3015; text-decoration-color:#9a3015; }
+.when-picker .col-head { font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-bottom:8px; font-weight:500; }
+.when-picker .num-list { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; }
+.when-picker .num { text-align:center; padding:8px 0; font-size:14px; font-variant-numeric:tabular-nums; border-radius:999px; cursor:pointer; color:var(--ink); user-select:none; }
+.when-picker .num:hover { background:var(--surface-soft); }
+.when-picker .num.selected { background:var(--orange); color:white; font-weight:500; }
+
+/* Fields */
+.field-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.field-row.two { grid-template-columns:1fr 1fr; }
+.field { margin-bottom:10px; }
+.field label { display:block; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:4px; font-weight:500; }
+.field input, .field select, .field textarea { width:100%; border:0.5px solid var(--border-strong); background:white; padding:7px 10px; border-radius:8px; font-size:13px; font-family:inherit; outline:none; color:var(--ink); }
+.field textarea { min-height:60px; resize:vertical; line-height:1.45; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color:var(--orange); }
+.field-foot { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); margin-top:3px; }
+.field-foot b { color:var(--ink-soft); font-weight:500; }
+.hint { font-size:10px; color:var(--ink-faint); margin-top:3px; line-height:1.4; }
+
+/* Budget inline */
+.currency-row { display:flex; gap:6px; align-items:center; }
+.currency-row input { width:100px; }
+.currency-row select { width:90px; }
+.currency-row .conv { font-size:11px; color:var(--ink-faint); white-space:nowrap; }
+
+/* Budget T2 */
+.budget-row { background:#fafaf6; border:0.5px solid var(--border); border-radius:999px; padding:8px 18px; display:flex; align-items:center; gap:6px; max-width:260px; transition:background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.budget-row:hover { border-color:var(--border-strong); }
+.budget-row:focus-within { border-color:var(--orange); background:white; box-shadow:0 0 0 3px rgba(244,123,58,0.12); }
+.budget-row.wide { max-width:520px; }
+.budget-row .budget-conv-inline { white-space:nowrap; }
+.budget-row .symbol { font-size:13px; font-weight:500; color:var(--ink-faint); font-variant-numeric:tabular-nums; flex-shrink:0; }
+.budget-row input { flex:1; min-width:0; border:0 !important; outline:none !important; background:transparent !important; box-shadow:none !important; -webkit-appearance:none; appearance:none; font-size:13px !important; font-weight:500; font-variant-numeric:tabular-nums; color:var(--ink); font-family:inherit; padding:0 !important; }
+.budget-row .cur-pill { display:inline-flex; align-items:center; gap:3px; background:var(--ink); color:white; border:0; border-radius:var(--radius-pill); padding:3px 7px 3px 9px; font-size:10px; font-weight:500; letter-spacing:0.04em; cursor:pointer; flex-shrink:0; font-family:inherit; }
+.budget-row .cur-pill i { font-size:10px; opacity:0.6; }
+.budget-row .budget-rm { width:20px; height:20px; border-radius:50%; background:transparent; border:0.5px solid var(--border); color:var(--ink-faint); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:9px; }
+.budget-row .budget-rm:hover { background:#fcebeb; color:#9a3015; border-color:#f6c8bc; }
+.budget-conv { font-size:10px; color:var(--ink-faint); margin-top:4px; padding:0 4px; }
+.budget-conv b { color:var(--ink-soft); font-weight:500; }
+.add-budget-link { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--orange-deep); text-decoration:underline; text-decoration-color:rgba(168,72,24,0.3); cursor:pointer; padding:2px 0; }
+.add-budget-link:hover { text-decoration-color:var(--orange-deep); }
+
+/* Fascia azioni opzionali (Aggiungi budget, link, nota...) */
+.actions-extra { display:flex; gap:14px; flex-wrap:wrap; padding:10px 0; border-top:1px dashed var(--border); margin-top:6px; }
+.actions-extra .opt-extra { font-size:11px; color:var(--ink-soft); cursor:pointer; display:inline-flex; align-items:center; gap:4px; text-decoration:none; }
+.actions-extra .opt-extra:hover { color:var(--orange-deep); }
+.actions-extra .opt-extra i { font-size:11px; color:var(--ink-faint); }
+.actions-extra .opt-extra:hover i { color:var(--orange); }
+
+/* Riga link "Aggiungi …" (indirizzo + budget) */
+.add-row { display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:4px 2px; }
+/* Hyperlink inline nella colonna */
+.opt-inline { font-size:12px; color:var(--orange-deep); cursor:pointer; text-decoration:underline; text-decoration-color:rgba(168,72,24,0.3); background:transparent; border:0; padding:0; font-family:inherit; }
+.opt-inline:hover { text-decoration-color:var(--orange-deep); }
+
+/* Budget conv inline (dentro la budget-row) */
+.budget-conv-inline { flex:1; font-size:11px; color:var(--ink-faint); }
+.budget-conv-inline b { color:var(--ink-soft); font-weight:500; }
+
+/* Row con componente + bottone rimuovi esterno */
+.row-with-rm { display:flex; align-items:center; gap:6px; }
+.row-with-rm .addr-row, .row-with-rm .budget-row { flex:1; min-width:0; max-width:none; }
+.rm-outside { width:26px; height:26px; border-radius:50%; background:transparent; border:0; color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:18px; line-height:1; padding:0; font-family:inherit; }
+.rm-outside:hover { background:#fcebeb; color:#9a3015; }
+.row-with-rm:has(.budget-row) { max-width:300px; }
+
+/* Img upload */
+.img-up { display:flex; align-items:center; gap:10px; }
+.img-thumb { width:64px; height:64px; border-radius:8px; background-color:var(--surface-soft); background-image:url('imgs/thumb-activity.png'); background-size:cover; background-position:center; flex-shrink:0; }
+.img-up-body { flex:1; min-width:0; }
+.btn-up { background:white; border:0.5px solid var(--border-strong); color:var(--ink); padding:5px 12px; border-radius:var(--radius-pill); font-size:11px; cursor:pointer; }
+
+/* Photo + soft fields row (immagine sx, titolo+stato e descrizione dx) */
+.act-photo-row { display:grid; grid-template-columns:80px 1fr; gap:16px; align-items:flex-start; margin-bottom:14px; }
+.act-photo-row .act-title-grow { display:flex; flex-direction:column; gap:6px; }
+
+/* Hero edit (analogo a act-photo-row, immagine 16:9) */
+.hero-photo-row { display:grid; grid-template-columns:120px 1fr; gap:16px; align-items:flex-start; margin-bottom:6px; }
+.hero-photo { position:relative; width:120px; height:68px; border-radius:10px; background-color:var(--surface-soft); background-size:cover; background-position:center; cursor:pointer; overflow:hidden; flex-shrink:0; }
+.hero-photo .photo-overlay { position:absolute; inset:0; background:rgba(13,44,61,0.55); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:white; font-size:10px; opacity:0; transition:opacity 0.15s; }
+.hero-photo:hover .photo-overlay { opacity:1; }
+.hero-photo .photo-overlay i { font-size:18px; }
+.hero-fields { display:flex; flex-direction:column; gap:6px; }
+
+/* Tipologia chip-row */
+.type-bar { display:flex; flex-wrap:wrap; gap:4px; padding:4px 0; }
+.type-chip { padding:4px 10px; border-radius:var(--radius-pill); font-size:11px; color:var(--ink-soft); background:white; border:0.5px solid var(--border); cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:5px; }
+.type-chip .emo { font-size:13px; line-height:1; }
+.type-chip:hover { border-color:var(--border-strong); }
+.type-chip.active { background:var(--ink); color:white; border-color:var(--ink); font-weight:500; }
+.act-photo { position:relative; width:80px; height:80px; border-radius:10px; background-color:var(--surface-soft); background-image:url('imgs/thumb-activity.png'); background-size:cover; background-position:center; cursor:pointer; overflow:hidden; flex-shrink:0; }
+.act-photo .photo-overlay { position:absolute; inset:0; background:rgba(13,44,61,0.55); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:white; font-size:10px; opacity:0; transition:opacity 0.15s; }
+.act-photo:hover .photo-overlay { opacity:1; }
+.act-photo .photo-overlay i { font-size:18px; }
+
+.act-title-row { display:flex; gap:10px; align-items:flex-start; }
+.act-title-grow { flex:1; min-width:0; }
+
+/* Soft field generico (titolo + descrizione condividono regole) */
+.soft { position:relative; border:0.5px solid var(--border); border-radius:999px; padding:8px 18px; background:#fafaf6; transition:background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.soft:hover { border-color:var(--border-strong); }
+.soft:focus-within { border-color:var(--orange); background:white; box-shadow:0 0 0 3px rgba(244,123,58,0.12); }
+.soft input, .soft textarea {
+  display:block;
+  width:100%;
+  border:0 !important;
+  outline:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  -webkit-appearance:none;
+  appearance:none;
+  font-family:inherit;
+  color:var(--ink);
+  padding:0;
+  margin:0;
+  font-size:15px;
+  line-height:1.45;
+  font-weight:400;
+  letter-spacing:0;
+}
+.soft textarea { resize:none; min-height:54px; }
+.soft:has(textarea) { border-radius:20px; }
+.soft .ghost { position:absolute; top:-8px; left:16px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); background:white; padding:0 6px; opacity:0; pointer-events:none; }
+.soft:focus-within .ghost { opacity:1; }
+.soft-counter { font-size:10px; color:var(--ink-faint); text-align:right; margin-top:4px; opacity:0.6; }
+
+/* Pill stato (uguale a P2) */
+.pill-status { background:var(--ink); color:white; border-radius:var(--radius-pill); padding:6px 12px 6px 10px; display:inline-flex; align-items:center; gap:6px; font-size:11px; cursor:pointer; height:36px; flex-shrink:0; font-family:inherit; border:0; }
+.pill-status .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); }
+.pill-status .dot.todo { background:#e24b4a; }
+.pill-status .dot.booked { background:#ef9f27; }
+.pill-status .dot.paid { background:#97c459; }
+.pill-status .lbl { font-weight:500; font-size:11px; letter-spacing:0.02em; }
+.pill-status i { font-size:12px; opacity:0.6; }
+
+/* Indirizzo + ricerca avanzata */
+.addr-row { position:relative; display:flex; align-items:center; gap:6px; background:#fafaf6; border:0.5px solid var(--border); border-radius:999px; padding:8px 18px; transition:background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.addr-row:hover { border-color:var(--border-strong); }
+.addr-row:focus-within { border-color:var(--orange); background:white; box-shadow:0 0 0 3px rgba(244,123,58,0.12); }
+.addr-row .ghost { position:absolute; top:-8px; left:16px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); background:white; padding:0 6px; opacity:0; pointer-events:none; }
+.addr-row:focus-within .ghost { opacity:1; }
+.addr-row .addr-icon { font-size:14px; color:var(--ink-faint); flex-shrink:0; }
+.addr-row input { flex:1; min-width:0; border:0 !important; outline:none !important; background:transparent !important; box-shadow:none !important; -webkit-appearance:none; appearance:none; font-size:15px; line-height:1.45; font-family:inherit; color:var(--ink); padding:0; }
+.addr-advanced { display:inline-flex; align-items:center; gap:4px; background:var(--surface-soft); border:0.5px solid var(--border); color:var(--ink-soft); border-radius:var(--radius-pill); padding:4px 10px 4px 8px; font-size:11px; cursor:pointer; flex-shrink:0; font-family:inherit; }
+.addr-advanced:hover { background:var(--ink); color:white; border-color:var(--ink); }
+.addr-advanced i { font-size:12px; }
+
+/* Info-box pin */
+.pin-info-box { background:var(--surface-warm); border:0.5px dashed var(--orange-border); border-radius:8px; padding:8px 10px; margin:6px 0 0; font-size:11px; color:var(--ink-soft); line-height:1.5; }
+.pin-info-box i.ti { color:var(--orange); vertical-align:-2px; }
+.pin-info-box b { color:var(--ink); font-weight:500; }
+.pin-info-box .link-rm { color:var(--orange-deep); text-decoration:underline; cursor:pointer; }
+
+/* Form actions · contenitori in styles.css (.form-actions, .form-actions-right) */
+
+/* Accordion form per blocchi superiori (hero, budget, incipit) */
+.acc-form { background:white; border:1px solid var(--border-strong); border-top:0; border-radius:0 0 var(--radius-lg) var(--radius-lg); padding:16px 18px; margin-bottom:6px; position:relative; }
+.acc-form.standalone { border:1px solid var(--border-strong); border-radius:var(--radius-md); margin-top:10px; position:relative; }
+
+/* Continuità grafica hero ↦ form intestazione ↦ banner lodging */
+body.editing-hero .day-hero { margin-bottom:0; }
+body.editing-hero .acc-form { margin-top:0; margin-bottom:0; border-radius:0; border-top:0; }
+body.editing-hero .lodging-banner { border-radius:0 0 var(--radius-lg) var(--radius-lg); margin-top:0; }
+
+/* Continuità grafica hero ↦ form alloggio ↦ banner lodging */
+body.editing-lodging .day-hero { border-radius:var(--radius-lg) var(--radius-lg) 0 0; margin-bottom:0; }
+body.editing-lodging .acc-form.arrow-down { margin-top:0; margin-bottom:0; border-radius:0; border-top:0; position:relative; z-index:10; overflow:visible; }
+body.editing-lodging .lodging-banner { position:relative; z-index:1; border-radius:0 0 var(--radius-lg) var(--radius-lg); margin-top:0; }
+.acc-form.standalone::before { content:''; position:absolute; top:-7px; left:60px; width:12px; height:12px; background:white; border-top:1px solid var(--border-strong); border-left:1px solid var(--border-strong); transform:rotate(45deg); }
+.acc-form.standalone.arrow-down::before { top:auto; bottom:-7px; left:60px; right:auto; border-top:0; border-left:0; border-right:1px solid var(--border-strong); border-bottom:1px solid var(--border-strong); z-index:20; }
+.acc-form.standalone.arrow-down { margin-top:14px; margin-bottom:14px; }
+.acc-form .head-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); font-weight:500; margin-bottom:10px; }
+.act-form-head { border-bottom-color:var(--border) !important; }
+.act-form-head .eyebrow { color:var(--ink-soft) !important; }
+.form-actions { border-top-color:var(--border) !important; }
+
+/* Spacing tra campi nei form accordion */
+.lodging-form .row-with-rm { margin-top:14px !important; }
+.lodging-form > .soft { margin-bottom:14px; }
+
+/* Type picker (pill + dropdown) */
+.type-picker-row { position:relative; margin-bottom:14px; display:inline-block; }
+.type-picker { display:inline-flex; align-items:center; gap:8px; background:white; border:0.5px solid var(--border); border-radius:999px; padding:8px 14px 8px 16px; font-size:13px; color:var(--ink); font-family:inherit; cursor:pointer; }
+.type-picker:hover { border-color:var(--border-strong); }
+.type-picker.open { border-color:var(--orange); }
+.type-picker .emo { font-size:15px; line-height:1; }
+.type-picker .k { font-weight:500; }
+.type-picker .chev { font-size:14px; color:var(--ink-faint); transition:transform 0.15s; }
+.type-picker.open .chev { transform:rotate(180deg); color:var(--orange); }
+
+.type-dropdown { position:absolute; top:calc(100% + 4px); left:0; min-width:200px; background:white; border:0.5px solid var(--border); border-radius:12px; padding:4px; box-shadow:0 8px 24px rgba(13,44,61,0.1); z-index:10; display:flex; flex-direction:column; gap:1px; }
+.type-opt { display:flex; align-items:center; gap:8px; padding:7px 12px; font-size:13px; color:var(--ink); cursor:pointer; border-radius:8px; }
+.type-opt:hover { background:var(--surface-soft); }
+.type-opt.active { background:var(--surface-warm); }
+.type-opt .emo { font-size:15px; line-height:1; }
+.type-opt .check { margin-left:auto; color:var(--orange); font-size:14px; }
+
+/* Timeline dimmed e in-edit */
+.timeline.dimmed { opacity:0.7; transition:opacity 0.18s; }
+.activity-row.in-edit { background:var(--surface-warm); padding:14px; margin:4px -14px; border-radius:var(--radius-md); outline:1px dashed var(--orange-border); position:relative; }
+.activity-row.in-edit::after { content:'⌃ in modifica sopra'; position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--orange); font-weight:500; background:white; padding:3px 10px; border-radius:var(--radius-pill); border:0.5px solid var(--orange-border); }
+.activity-row .activity-pin.dim { background:#b8b3a8; }
+.activity-row .activity-pin.active { box-shadow:0 0 0 2px white, 0 0 0 4px var(--orange); }
+
+/* Drag handle in edit mode (sopra l'activity-row) */
+.activity-row { position:relative; }
+body:not(.view-mode) .activity-row:not(.now):hover { padding:14px 0; margin:4px 0; background:transparent; }
+body:not(.view-mode) .activity-row:not(.now):hover .activity-chev { transform:none; }
+.activity-row .drag-handle { position:absolute; left:-22px; top:50%; transform:translateY(-50%); width:18px; height:32px; display:none; align-items:center; justify-content:center; color:var(--ink-faint); cursor:grab; font-size:14px; user-select:none; }
+body:not(.view-mode) .activity-row .drag-handle { display:inline-flex; }
+.activity-row .drag-handle:active { cursor:grabbing; color:var(--orange); }
+.activity-row.dragging { opacity:0.4; }
+.activity-row.drop-target { background:rgba(244,123,58,0.08); outline:1px dashed var(--orange); }
+body:not(.view-mode) .activity-row .edit-pencil { width:24px; height:24px; border-radius:50%; background:white; border:0.5px solid var(--border); color:var(--orange); display:inline-flex; align-items:center; justify-content:center; font-size:11px; cursor:pointer; flex-shrink:0; }
+body.view-mode .activity-row .edit-pencil { display:none; }
+.activity-row .edit-pencil:hover { background:var(--orange); color:white; }
+
+/* Snackbar toast */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:white; padding:10px 18px; border-radius:var(--radius-pill); font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(13,44,61,0.25); z-index:100; opacity:0; pointer-events:none; transition:opacity 0.2s, transform 0.2s; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.hidden { transform:translateX(-50%) translateY(20px); }
+.toast i { color:var(--orange); }
+
+/* Responsive */
+@media (max-width: 720px) {
+  .field-row { grid-template-columns:1fr; }
+  .field-row.two { grid-template-columns:1fr; }
+  .map-edit-overlay { flex-wrap:wrap; gap:6px; }
+  .map-edit-overlay input { flex-basis:100%; }
+  .activity-row.in-edit::after { position:static; transform:none; display:inline-block; margin-top:8px; }
+  .activity-row .drag-handle { left:-18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="day-edit-wrap" style="max-width: 980px; margin: 0 auto; padding: 24px var(--gap-page) 40px;">
+
+  <div class="edit-topbar">
+    <div class="edit-topbar-left">
+      <span>Giappone 2026 / <b>Giorno 4 · Escursione Monte Fuji</b></span>
+      <span class="edit-status" id="edit-status">salvato</span>
+    </div>
+    <div class="edit-topbar-actions">
+      <button class="btn-ghost" id="btn-undo">Annulla tutto</button>
+      <button class="edit-toggle" id="btn-edit-toggle"><span class="knob"></span> <span id="btn-edit-label">Edit mode: ON</span></button>
+    </div>
+  </div>
+
+  <section class="day-main" id="day-main"><!-- contenuto renderizzato da JS --></section>
+
+</div>
+
+<div class="toast" id="toast"><i class="ti ti-check"></i> <span id="toast-msg">Salvato</span></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   STATO
+───────────────────────────────────────────────────────────────── */
+const PERIODS = [
+  { id:'morning',   name:'MATTINA',    range:'05–12', hours:[5,6,7,8,9,10,11] },
+  { id:'afternoon', name:'POMERIGGIO', range:'12–18', hours:[12,13,14,15,16,17] },
+  { id:'evening',   name:'SERA',       range:'18–22', hours:[18,19,20,21] },
+  { id:'night',     name:'NOTTE',      range:'22–05', hours:[22,23,0,1,2,3,4] },
+];
+const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+const FX_JPY_EUR = 0.0062; // 1 JPY = 0.0062 EUR
+
+const initialState = {
+  editMode: true,
+  dirty: false,
+  showMap: true,
+  openBlock: null, // 'hero' | 'budget' | 'incipit' | null
+  editingActivityId: 5, // id dell'attività in edit, o 'new', o null
+  hero: {
+    type: 'Natura',
+    place: 'Monte Fuji',
+    subtitle: 'Escursione tra i 5 laghi',
+    date: '3 ago 2026',
+    dow: 'Lunedì',
+    dayNum: 4,
+    img: 'imgs/day-banner-nature.png',
+  },
+  lodging: {
+    type: 'Hotel', emoji: '🏨',
+    name: 'Hoshinoya Tōkyō',
+    address: 'Chiyoda-ku, Otemachi 1-9-1',
+    url: 'https://hoshinoya.com/tokyo',
+    budgetAmount: 280,
+    budgetCurrency: 'EUR',
+  },
+  budget: { amount: 8400, currency: 'JPY' },
+  weather: '22 → 28° sereno · UV alto · alba 04:54 · tramonto 18:48',
+  incipit: {
+    lead: "Una giornata di passeggiate dal cuore aristocratico di Edo al porto: dalle boutique di Ginza al mercato del pesce di Tsukiji, fermandoci nei giardini di Hama-Rikyū prima del tramonto.",
+    note: "Si cammina parecchio — scarpe comode e una bottiglia d'acqua.",
+  },
+  activities: [
+    { id:1, periodId:'morning', hour:9,  minute:0,  title:'Visita al Kabukiza', desc:"Il principale teatro di kabuki di Tōkyō. L'esterno con i tendaggi vale già una sosta.", loc:'Higashi-Ginza', lat:35.6692, lng:139.7641, budget:1800, currency:'JPY', status:'paid' },
+    { id:2, periodId:'morning', hour:10, minute:30, title:'Una passeggiata a Ginza', desc:'Dalle architetture storiche alle boutique di lusso. 5 tappe in 2,4 km.', loc:'Ginza, Tōkyō', lat:35.6717, lng:139.7649, budget:0, currency:'JPY', status:null },
+    { id:3, periodId:'morning', hour:12, minute:30, title:'Sushi e kaisen-don a Tsukiji', desc:'Nel mercato esterno di Tsukiji ci si siede al banco di un kaisen-don.', loc:'Tsukiji, Tōkyō', lat:35.6655, lng:139.7706, budget:3200, currency:'JPY', status:'booked' },
+    { id:4, periodId:'afternoon', hour:15, minute:0, title:'Il giardino di Hama-Rikyū', desc:"L'oasi del clan Tokugawa nel cuore della città — stagno con casa-da-tè.", loc:'Shiodome, Tōkyō', lat:35.6597, lng:139.7634, budget:300, currency:'JPY', status:'todo' },
+    { id:5, periodId:'evening', hour:19, minute:30, title:'Cena a Roppongi', desc:'Robatayaki e bar di quartiere — la zona si accende dopo il tramonto, tra izakaya minuscole e cocktail bar discreti sui piani alti.', loc:'', lat:35.6628, lng:139.7314, budget:0, currency:'JPY', status:'booked' },
+  ],
+  nextActivityId: 6,
+};
+let state = structuredClone(initialState);
+
+/* ─────────────────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────────────────── */
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON_PENCIL = '<span class="icon-pencil"><svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></span>';
+const ICON_X = '<span class="icon-x"><svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></span>';
+const fmtTime = (h, m) => h === null || m === null ? '—' : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+const periodOf = id => PERIODS.find(p => p.id === id);
+function autoPeriodFromHour(h) {
+  if (h === null) return null;
+  for (const p of PERIODS) if (p.hours.includes(h)) return p.id;
+  return null;
+}
+function fmtMoney(amount, cur) {
+  if (amount == null) return '—';
+  if (cur === 'JPY') return '¥' + amount.toLocaleString('it-IT');
+  if (cur === 'EUR') return amount.toLocaleString('it-IT', {minimumFractionDigits: amount % 1 ? 2 : 0}) + ' €';
+  return String(amount);
+}
+function convert(amount, cur) {
+  if (cur === 'JPY') return Math.round(amount * FX_JPY_EUR * 100) / 100;
+  if (cur === 'EUR') return Math.round(amount / FX_JPY_EUR);
+  return amount;
+}
+function fmtConv(amount, cur) {
+  const conv = convert(amount, cur);
+  if (cur === 'JPY') return '≈ ' + conv.toLocaleString('it-IT', {minimumFractionDigits: conv % 1 ? 2 : 0}) + ' €';
+  if (cur === 'EUR') return '≈ ¥' + conv.toLocaleString('it-IT');
+  return '';
+}
+
+function setDirty(dirty=true) {
+  state.dirty = dirty;
+  const status = $('#edit-status');
+  status.textContent = dirty ? 'modifiche non salvate' : 'salvato';
+  status.classList.toggle('dirty', dirty);
+}
+function toast(msg, icon='ti-check') {
+  const t = $('#toast');
+  $('#toast-msg').textContent = msg;
+  t.querySelector('i').className = 'ti ' + icon;
+  t.classList.add('show');
+  t.classList.remove('hidden');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => {
+    t.classList.remove('show');
+    t.classList.add('hidden');
+  }, 2400);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RENDER
+───────────────────────────────────────────────────────────────── */
+function render() {
+  document.body.classList.toggle('view-mode', !state.editMode);
+  $('#btn-edit-toggle').classList.toggle('off', !state.editMode);
+  $('#btn-edit-label').textContent = state.editMode ? 'Edit mode: ON' : 'Edit mode: OFF';
+
+  const main = $('#day-main');
+  main.innerHTML = renderHero() + renderLodging() + renderDayBar() + renderIncipit() + renderActivities();
+  bindAll();
+}
+
+function renderHero() {
+  const h = state.hero;
+  const isOpen = state.openBlock === 'hero';
+  document.body.classList.toggle('editing-hero', isOpen);
+  return `
+    <div class="day-hero" style="background-image: url('${esc(h.img)}'); position:relative;${isOpen ? 'border-bottom-left-radius:0; border-bottom-right-radius:0;' : ''}">
+      <button type="button" class="btn-icon btn-md has-label over-media acc-handle ${isOpen ? 'active' : ''}" data-acc="hero" title="Edit place"><i class="ti ti-pencil"></i><span>Edit Place</span></button>
+      <div class="day-hero-content">
+        <div>
+          <div class="day-hero-eyebrow">Giorno ${h.dayNum}${h.place ? ' · <span class="hero-zone">' + esc(h.place).toUpperCase() + '</span>' : ''}</div>
+          <div class="day-hero-title">${esc(h.place ? 'Escursione ' + h.place : 'Giorno senza titolo')}</div>
+          <div class="day-hero-sub">${esc(h.dow)} ${esc(h.date)} · ${state.activities.length} attività</div>
+        </div>
+        <div class="day-hero-nav"><button class="btn-icon btn-md over-media" title="Giorno precedente"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></button><button class="btn-icon btn-md over-media" title="Giorno successivo"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></button></div>
+      </div>
+    </div>
+    ${isOpen ? renderHeroForm() : ''}
+  `;
+}
+function renderHeroForm() {
+  const h = state.hero;
+  return `
+    <div class="acc-form standalone">
+      <div class="head-meta">Modifica intestazione</div>
+      <div class="hero-photo-row">
+        <div class="hero-photo" style="background-image:url('${esc(h.img)}');" title="Cambia immagine">
+          <div class="photo-overlay"><i class="ti ti-upload"></i><span>Cambia</span></div>
+        </div>
+        <div class="hero-fields">
+          <div class="soft">
+            <span class="ghost">Luogo principale</span>
+            <input data-bind="hero.place" value="${esc(h.place)}" placeholder="es. Tokyo, Kyoto, Monte Fuji" />
+          </div>
+          <div class="soft">
+            <span class="ghost">Sottotitolo</span>
+            <input data-bind="hero.subtitle" value="${esc(h.subtitle)}" maxlength="120" placeholder="Poche parole sull'attività del giorno" />
+          </div>
+          <div class="soft-counter"><b>${h.subtitle.length}</b> / 120</div>
+          <div class="type-bar">
+            ${['Città','Natura','Roadtrip','Spiaggia','Borgo','Riposo'].map(t => `<span class="type-chip ${t===h.type?'active':''}" data-set-type="${t}">${t}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <span></span>
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLodging() {
+  const l = state.lodging;
+  const isOpen = state.openBlock === 'lodging';
+  document.body.classList.toggle('editing-lodging', isOpen);
+  return `
+    ${isOpen ? renderLodgingForm() : ''}
+    <div class="lodging-banner">
+      <div class="lodging-icon">${l.emoji}</div>
+      <div class="lodging-body">
+        <span class="lodging-eyebrow">Dormi a</span>
+        <span class="lodging-name">${esc(l.name)}</span>
+        <span class="lodging-addr">· ${esc(l.address)} <i class="ti ti-arrow-up-right" style="font-size:11px; vertical-align:-1px;"></i></span>
+      </div>
+      <a href="${esc(l.url)}" class="lodging-cta">Apri <i class="ti ti-arrow-up-right" style="font-size:12px; vertical-align:-1px;"></i></a>
+      <span class="lodging-pencil ${isOpen?'active':''}" data-acc="lodging" title="Modifica alloggio">${ICON_PENCIL}</span>
+    </div>
+  `;
+}
+
+function renderLodgingForm() {
+  const l = state.lodging;
+  const types = [
+    {k:'Hotel', emoji:'🏨'},
+    {k:'B&B', emoji:'🛏'},
+    {k:'Appartamento', emoji:'🏡'},
+    {k:'Hostel', emoji:'🏠'},
+    {k:'Campground', emoji:'⛺'},
+    {k:'Ryokan', emoji:'🏯'},
+    {k:'Altro', emoji:'📍'},
+  ];
+  const hasAddr = !!l.address;
+  const hasLink = !!l.url;
+  const hasBudget = l.budgetAmount && l.budgetAmount > 0;
+  const cur = types.find(t => t.k === l.type) || types[0];
+  const isDropOpen = !!state._lodgingDropdownOpen;
+  return `
+    <div class="acc-form standalone arrow-down lodging-form">
+      <div class="head-meta">Modifica alloggio</div>
+      <div class="type-picker-row">
+        <button class="type-picker ${isDropOpen?'open':''}" data-toggle-lodging-dropdown>
+          <span class="emo">${cur.emoji}</span>
+          <span class="k">${cur.k}</span>
+          <i class="ti ti-chevron-down chev"></i>
+        </button>
+        ${isDropOpen ? `
+        <div class="type-dropdown">
+          ${types.map(t => `<div class="type-opt ${t.k===l.type?'active':''}" data-set-lodging-type="${t.k}"><span class="emo">${t.emoji}</span> <span class="k">${t.k}</span>${t.k===l.type?'<i class="ti ti-check check"></i>':''}</div>`).join('')}
+        </div>
+        ` : ''}
+      </div>
+      <div class="soft">
+        <span class="ghost">Nome alloggio</span>
+        <input data-bind="lodging.name" value="${esc(l.name)}" maxlength="80" placeholder="Nome dell'alloggio" />
+      </div>
+      ${(!hasAddr || !hasLink || !hasBudget) ? `
+      <div class="add-row" style="margin-top:8px;">
+        ${!hasAddr ? '<a href="#" class="opt-inline" data-act="add-lodging-addr">+ Aggiungi indirizzo</a>' : ''}
+        ${!hasLink ? '<a href="#" class="opt-inline" data-act="add-lodging-link">+ Aggiungi link</a>' : ''}
+        ${!hasBudget ? '<a href="#" class="opt-inline" data-act="add-lodging-budget">+ Aggiungi budget</a>' : ''}
+      </div>
+      ` : ''}
+      ${hasAddr ? `
+      <div class="row-with-rm" style="margin-top:8px;">
+        <div class="addr-row">
+          <span class="ghost">Indirizzo</span>
+          <i class="ti ti-map-pin addr-icon"></i>
+          <input data-bind="lodging.address" value="${esc(l.address)}" placeholder="Via, città" autocomplete="off" />
+          <button class="addr-advanced" data-act="addr-advanced" title="Ricerca avanzata sulla mappa"><i class="ti ti-map-search"></i> mappa</button>
+        </div>
+        <button class="btn-icon btn-sm btn-danger" data-act="rm-lodging-addr" title="Rimuovi indirizzo" aria-label="Rimuovi indirizzo">${ICON_X}</button>
+      </div>
+      ` : ''}
+      ${hasLink ? `
+      <div class="row-with-rm" style="margin-top:8px;">
+        <div class="addr-row">
+          <span class="ghost">Link prenotazione</span>
+          <i class="ti ti-link addr-icon"></i>
+          <input data-bind="lodging.url" value="${esc(l.url)}" placeholder="URL booking, sito alloggio" />
+        </div>
+        <button class="btn-icon btn-sm btn-danger" data-act="rm-lodging-link" title="Rimuovi link" aria-label="Rimuovi link">${ICON_X}</button>
+      </div>
+      ` : ''}
+      ${hasBudget ? `
+      <div class="row-with-rm" style="margin-top:8px;">
+        <div class="budget-row wide">
+          <span class="symbol">${l.budgetCurrency==='JPY'?'¥':'€'}</span>
+          <input data-bind="lodging.budgetAmount" value="${l.budgetAmount}" type="number" min="0" />
+          <span class="budget-conv-inline">≈ <b>${fmtConv(l.budgetAmount, l.budgetCurrency).replace('≈ ','')}</b> · /notte</span>
+          <button class="cur-pill" data-lodging-currency-cycle>${l.budgetCurrency} <i class="ti ti-chevron-down"></i></button>
+        </div>
+        <button class="btn-icon btn-sm btn-danger" data-act="rm-lodging-budget" title="Rimuovi budget" aria-label="Rimuovi budget">${ICON_X}</button>
+      </div>
+      ` : ''}
+      <div class="form-actions">
+        <button class="btn-icon btn-md btn-danger has-label" data-acc-delete="lodging"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Rimuovi alloggio</button>
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDayBar() {
+  const b = state.budget;
+  const isOpen = state.openBlock === 'budget';
+  return `
+    <div class="day-bar">
+      <span class="day-bar-meteo"><i class="ti ti-sun"></i> ${esc(state.weather)}</span>
+      <a href="#" class="day-bar-budget ${isOpen ? 'active' : ''}" data-acc="budget" title="Modifica budget del giorno">
+        <i class="ti ti-coin coin"></i>
+        <b>${fmtMoney(b.amount, b.currency)}</b>
+        <span class="sub">${fmtConv(b.amount, b.currency)}</span>
+        <span class="chev-edit">${ICON_PENCIL}</span>
+      </a>
+    </div>
+    ${isOpen ? renderBudgetForm() : ''}
+  `;
+}
+function renderBudgetForm() {
+  const b = state.budget;
+  return `
+    <div class="acc-form standalone">
+      <div class="head-meta">Budget previsto del giorno</div>
+      <div class="budget-row wide">
+        <span class="symbol">${b.currency==='JPY'?'¥':'€'}</span>
+        <input data-bind="budget.amount" value="${b.amount}" type="number" min="0" />
+        <span class="budget-conv-inline">≈ <b>${fmtConv(b.amount, b.currency).replace('≈ ','')}</b></span>
+        <button class="cur-pill" data-day-budget-currency-cycle>${b.currency} <i class="ti ti-chevron-down"></i></button>
+      </div>
+      <div class="form-actions">
+        <button class="btn-icon btn-md btn-danger has-label" data-acc-delete="budget"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Rimuovi budget</button>
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderIncipit() {
+  const i = state.incipit;
+  const isOpen = state.openBlock === 'incipit';
+  return `
+    <div class="day-incipit">
+      <span class="acc-handle-mini ${isOpen?'active':''}" data-acc="incipit" title="Modifica descrizione">${ICON_PENCIL}</span>
+      <div class="day-incipit-lead">${esc(i.lead)}</div>
+      <div class="day-incipit-note">${esc(i.note)}</div>
+    </div>
+    ${isOpen ? renderIncipitForm() : ''}
+  `;
+}
+function renderIncipitForm() {
+  const i = state.incipit;
+  return `
+    <div class="acc-form standalone">
+      <div class="head-meta">Descrizione giornata</div>
+      <div class="soft">
+        <span class="ghost">Testo principale</span>
+        <textarea data-bind="incipit.lead" maxlength="280" placeholder="Una frase narrativa, sobria">${esc(i.lead)}</textarea>
+      </div>
+      <div class="soft-counter"><b>${i.lead.length}</b> / 280</div>
+      <div style="height:8px;"></div>
+      <div class="soft">
+        <span class="ghost">Nota pratica</span>
+        <input data-bind="incipit.note" value="${esc(i.note)}" maxlength="120" placeholder="Promemoria utile (cosa portare, attenzioni)" />
+      </div>
+      <div class="soft-counter"><b>${i.note.length}</b> / 120</div>
+      <div class="form-actions">
+        <button class="btn-icon btn-md btn-danger has-label" data-acc-delete="incipit"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Rimuovi descrizione</button>
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivities() {
+  const isEditing = state.editingActivityId != null;
+  const editingAct = isEditing && state.editingActivityId !== 'new'
+    ? state.activities.find(a => a.id === state.editingActivityId)
+    : null;
+  const isNew = state.editingActivityId === 'new';
+
+  // Build SVG pins
+  // Map lat/lng to viewBox 720×320. Tokyo area: lat ~35.65-35.68, lng ~139.73-139.77.
+  // Use a synthetic mapping along a path for the demo.
+  const pinPositions = [
+    {x:80, y:260}, {x:210, y:190}, {x:350, y:150}, {x:500, y:105}, {x:650, y:60}
+  ];
+  const acts = state.activities;
+  const editingIdx = editingAct ? acts.findIndex(a => a.id === editingAct.id) : -1;
+
+  const pinSvg = acts.map((a, idx) => {
+    const pos = pinPositions[idx] || {x:100 + idx*120, y:200};
+    return `
+      <circle cx="${pos.x}" cy="${pos.y}" r="11" fill="#fdf5ee" stroke="#b5b3a8" stroke-width="1.5"/>
+      <text x="${pos.x}" y="${pos.y+4}" text-anchor="middle" fill="#5b6b78" font-size="11" font-family="-apple-system,sans-serif">${idx+1}</text>`;
+  }).join('');
+
+  const pathColor = '#f47b3a';
+  const path = acts.map((a, i) => `${i===0?'M':'L'}${pinPositions[i]?.x || 100+i*120} ${pinPositions[i]?.y || 200}`).join(' ');
+
+  const mapBlock = state.showMap ? `
+    <div class="map-canvas" id="map-canvas">
+      <svg viewBox="0 0 720 320" preserveAspectRatio="xMidYMid slice">
+        <g stroke="rgba(13,44,61,0.07)" stroke-width="0.5">
+          <path d="M0 80 L720 80 M0 160 L720 160 M0 240 L720 240"/>
+          <path d="M120 0 L120 320 M260 0 L260 320 M400 0 L400 320 M540 0 L540 320 M660 0 L660 320"/>
+        </g>
+        <path d="${path}" fill="none" stroke="${pathColor}" stroke-width="2.5" stroke-dasharray="7 4" stroke-linecap="round" opacity="0.85"/>
+        ${pinSvg}
+      </svg>
+    </div>
+  ` : '';
+
+  const actForm = (editingAct || isNew) ? renderActForm(editingAct, isNew) : '';
+
+  // Timeline grouped by period
+  const grouped = {};
+  for (const p of PERIODS) grouped[p.id] = acts.filter(a => a.periodId === p.id);
+  const timeline = PERIODS.map(p => {
+    const items = grouped[p.id];
+    if (!items.length) return '';
+    const rows = items.map(a => {
+      const isInEdit = editingAct && a.id === editingAct.id;
+      const row = renderActivityRow(a, isInEdit);
+      const inlineForm = isInEdit ? renderActForm(a, false) : '';
+      return row + inlineForm;
+    }).join('');
+    return `
+      <div class="slot-station">
+        <span class="slot-station-label">${p.name.charAt(0) + p.name.slice(1).toLowerCase()}</span>
+        <span class="slot-station-rule"></span>
+        <span class="slot-station-count">${items.length} att.</span>
+      </div>
+      ${rows}
+    `;
+  }).join('');
+
+  // Form di "Nuova attività" (isNew=true) compare in cima alla timeline
+  const newForm = isNew ? renderActForm(null, true) : '';
+
+  return `
+    <div class="section-block">
+      <div class="section-head">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="section-eyebrow">Itinerario del giorno</div>
+        </div>
+        <div class="section-actions">
+          <label class="map-toggle"><input type="checkbox" id="map-toggle" ${state.showMap?'checked':''} /> Mappa-itinerario</label>
+          <button class="btn-icon btn-md solid has-label" id="btn-add-activity"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Aggiungi attività</button>
+        </div>
+      </div>
+      ${mapBlock}
+      <div class="timeline">
+        ${newForm}
+        ${timeline}
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityRow(a, isInEdit) {
+  const statusBadge = a.status === 'paid' ? '<span class="status-badge status-paid"><i class="ti ti-check"></i> Pagato</span>'
+    : a.status === 'booked' ? '<span class="status-badge status-booked"><i class="ti ti-bookmark"></i> Prenotato</span>'
+    : a.status === 'todo' ? '<span class="status-badge status-todo"><i class="ti ti-alert-triangle"></i> Da prenotare</span>'
+    : '';
+  const time = a.hour != null && a.minute != null ? fmtTime(a.hour, a.minute) : periodOf(a.periodId)?.name || '';
+  const idx = state.activities.indexOf(a) + 1;
+  const budget = a.budget ? `<span class="activity-budget"><i class="ti ti-coin"></i> <b>${fmtMoney(a.budget, a.currency)}</b> · ${fmtConv(a.budget, a.currency)}</span>` : '';
+
+  return `
+    <div class="activity-row" data-activity-id="${a.id}" draggable="true">
+      <span class="drag-handle" title="Trascina per riordinare"><i class="ti ti-grip-vertical"></i></span>
+      <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+        <div class="activity-time-start">${time}</div>
+      </div>
+      <div class="activity-content">
+        <div class="activity-title-row">
+          <div class="activity-title">${esc(a.title)}</div>
+          ${statusBadge}
+          ${!isInEdit ? `<button class="btn-icon btn-sm" data-edit-activity="${a.id}" title="Modifica">${ICON_PENCIL}</button>` : ''}
+        </div>
+        <div class="activity-desc">${esc(a.desc)}</div>
+        <div class="activity-footer">
+          <span class="activity-loc">
+            <span class="activity-pin">${idx}</span>
+            <span class="activity-loc-text">${esc(a.loc)}</span>
+          </span>
+          ${budget}
+        </div>
+      </div>
+      <i class="ti ti-chevron-right activity-chev"></i>
+    </div>
+  `;
+}
+
+function renderActForm(act, isNew) {
+  const a = isNew ? { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null } : act;
+  const periodId = a.periodId;
+  const p = periodOf(periodId);
+
+  const hasTime = a.hour != null && a.minute != null;
+  const periodBar = PERIODS.map(pp => {
+    const isActive = pp.id === periodId;
+    const showTimeHere = isActive && hasTime;
+    const sub = showTimeHere
+      ? `<div class="time-inline">${String(a.hour).padStart(2,'0')}<span class="sep">:</span>${String(a.minute).padStart(2,'0')}</div>`
+      : `<div class="range">${pp.range}</div>`;
+    return `
+      <div class="period-cell ${isActive?'active':''}" data-period="${pp.id}">
+        <div class="name">${pp.name}</div>
+        ${sub}
+      </div>
+    `;
+  }).join('');
+
+  const valDisplay = a.hour != null && a.minute != null
+    ? `<span class="val">${String(a.hour).padStart(2,'0')}<span class="sep">:</span>${String(a.minute).padStart(2,'0')}</span>`
+    : `<span class="val"><span class="placeholder">${p?.name || 'Scegli orario'}</span></span>`;
+
+  const hoursList = (p?.hours || []).map(h => `<div class="num ${h===a.hour?'selected':''}" data-set-hour="${h}">${String(h).padStart(2,'0')}</div>`).join('');
+  const minsList = MINUTES.map(m => `<div class="num ${m===a.minute?'selected':''}" data-set-min="${m}">${String(m).padStart(2,'0')}</div>`).join('');
+
+  return `
+    <div class="act-form" id="act-form">
+      <div class="act-form-head">
+        <div class="ttl">
+          <span class="eyebrow">${isNew ? 'Nuova attività' : 'Modifica attività'}</span>
+        </div>
+        <span class="act-form-close" data-act-close title="Chiudi senza salvare">${ICON_X}</span>
+      </div>
+
+      <div class="act-photo-row">
+        <div class="act-photo" title="Cambia immagine">
+          <div class="photo-overlay"><i class="ti ti-upload"></i><span>Cambia</span></div>
+        </div>
+        <div class="act-title-grow">
+          <div class="act-title-row">
+            <div class="soft" style="flex:1;">
+              <span class="ghost">Titolo</span>
+              <input data-bind="act.title" value="${esc(a.title)}" maxlength="80" placeholder="Titolo dell'attività" />
+            </div>
+            <button class="pill-status" data-status-cycle>
+              <span class="dot ${a.status||''}"></span>
+              <span class="lbl">${a.status==='todo'?'Da prenotare':a.status==='booked'?'Prenotato':a.status==='paid'?'Pagato':'Stato'}</span>
+              <i class="ti ti-chevron-down"></i>
+            </button>
+          </div>
+          <div class="soft">
+            <span class="ghost">Descrizione</span>
+            <textarea data-bind="act.desc" maxlength="240" placeholder="Breve descrizione (opzionale)">${esc(a.desc)}</textarea>
+          </div>
+          <div class="period-bar slim">${periodBar}</div>
+          ${state._pickerOpen ? `
+          <div class="when-picker">
+            <div>
+              <div class="col-head">Ora</div>
+              <div class="num-list">${hoursList}</div>
+            </div>
+            <div>
+              <div class="col-head">Minuti</div>
+              <div class="num-list">${minsList}</div>
+            </div>
+          </div>
+          ${hasTime ? '<div class="when-clear-row"><span class="clear" data-clear-time>azzera orario</span></div>' : ''}
+          ` : ''}
+          ${(!a.loc || !(a.budget && a.budget > 0)) ? `
+          <div class="add-row">
+            ${!a.loc ? '<a href="#" class="opt-inline" data-act="add-addr">+ Aggiungi indirizzo</a>' : ''}
+            ${!(a.budget && a.budget > 0) ? '<a href="#" class="opt-inline" data-act="add-budget">+ Aggiungi budget</a>' : ''}
+          </div>
+          ` : ''}
+          ${a.loc ? `
+          <div class="row-with-rm">
+            <div class="addr-row">
+              <span class="ghost">Indirizzo</span>
+              <i class="ti ti-map-pin addr-icon"></i>
+              <input data-bind="act.loc" value="${esc(a.loc)}" placeholder="Inizia a digitare per suggerimenti…" autocomplete="off" />
+              <button class="btn-icon btn-sm has-label" data-act="addr-advanced" title="Ricerca avanzata sulla mappa"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6 -6"/><path d="M10 17a7 7 0 1 1 0 -14 7 7 0 0 1 0 14z"/></svg> mappa</button>
+            </div>
+            <button class="btn-icon btn-sm btn-danger" data-act="rm-addr" title="Rimuovi indirizzo" aria-label="Rimuovi indirizzo">${ICON_X}</button>
+          </div>
+          ` : ''}
+          ${a.budget && a.budget > 0 ? `
+          <div class="row-with-rm">
+            <div class="budget-row">
+              <span class="symbol">${a.currency==='JPY'?'¥':'€'}</span>
+              <input data-bind="act.budget" value="${a.budget}" type="number" min="0" />
+              <span class="budget-conv-inline">≈ <b>${fmtConv(a.budget, a.currency).replace('≈ ','')}</b></span>
+              <button class="cur-pill" data-currency-cycle>${a.currency} <i class="ti ti-chevron-down"></i></button>
+            </div>
+            <button class="btn-icon btn-sm btn-danger" data-act="rm-budget" title="Rimuovi budget" aria-label="Rimuovi budget">${ICON_X}</button>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        ${!isNew ? `<button class="btn-icon btn-md btn-danger has-label" data-act-delete><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Elimina attività</button>` : '<span></span>'}
+        <div class="form-actions-right">
+          <button class="btn-icon btn-md text-only" data-act-close>Annulla</button>
+          <button class="btn-icon btn-md solid text-only" data-act-save>${isNew?'Crea attività':'Salva attività'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BINDING / EVENTI
+───────────────────────────────────────────────────────────────── */
+function bindAll() {
+  // Accordion open
+  $$('[data-acc]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      const which = el.dataset.acc;
+      state.openBlock = state.openBlock === which ? null : which;
+      render();
+    });
+  });
+  // Accordion cancel/save/delete
+  $$('[data-acc-cancel]').forEach(el => el.addEventListener('click', () => {
+    state.openBlock = null;
+    render();
+  }));
+  $$('[data-acc-save]').forEach(el => el.addEventListener('click', () => {
+    state.openBlock = null;
+    setDirty();
+    toast('Modifiche salvate', 'ti-check');
+    render();
+  }));
+  $$('[data-acc-delete]').forEach(el => el.addEventListener('click', () => {
+    const what = el.dataset.accDelete;
+    if (what === 'budget') state.budget = { amount: 0, currency: 'JPY' };
+    if (what === 'incipit') state.incipit = { lead:'', note:'' };
+    if (what === 'lodging') state.lodging = { type:'', emoji:'🏨', name:'', address:'', url:'', budgetAmount:0, budgetCurrency:'EUR' };
+    state.openBlock = null;
+    setDirty();
+    toast('Rimosso');
+    render();
+  }));
+
+  // Activity edit / add / close / save / delete
+  $$('[data-edit-activity]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = parseInt(el.dataset.editActivity, 10);
+    state.editingActivityId = id;
+    state.openBlock = null;
+    state._pickerOpen = false;
+    render();
+  }));
+  $$('.activity-row[data-activity-id]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.drag-handle') || e.target.closest('[data-edit-activity]') || e.target.closest('[data-delete-activity]')) return;
+      if (!state.editMode) return;
+      const id = parseInt(row.dataset.activityId, 10);
+      if (state.editingActivityId === id) return;
+      state.editingActivityId = id;
+      state.openBlock = null;
+      state._pickerOpen = false;
+      render();
+    });
+  });
+  $('#btn-add-activity')?.addEventListener('click', () => {
+    state.editingActivityId = 'new';
+    state.openBlock = null;
+    state._pickerOpen = false;
+    render();
+  });
+  $$('[data-act-close]').forEach(el => el.addEventListener('click', () => {
+    state.editingActivityId = null;
+    state._pickerOpen = false;
+    render();
+  }));
+  $$('[data-act-save]').forEach(el => el.addEventListener('click', () => {
+    saveActivity();
+  }));
+  $$('[data-act-delete]').forEach(el => el.addEventListener('click', () => {
+    state.activities = state.activities.filter(a => a.id !== state.editingActivityId);
+    state.editingActivityId = null;
+    setDirty();
+    toast('Attività eliminata', 'ti-trash');
+    render();
+  }));
+
+  // When component
+  $$('.period-cell[data-period]').forEach(el => el.addEventListener('click', () => {
+    state._pickerOpen = true;
+    setActField('periodId', el.dataset.period);
+  }));
+  $$('[data-set-hour]').forEach(el => el.addEventListener('click', () => {
+    setActField('hour', parseInt(el.dataset.setHour, 10));
+  }));
+  $$('[data-set-min]').forEach(el => el.addEventListener('click', () => {
+    state._pickerOpen = false;
+    setActField('minute', parseInt(el.dataset.setMin, 10));
+  }));
+  $('[data-clear-time]')?.addEventListener('click', () => {
+    setActField('hour', null);
+    setActField('minute', null);
+  });
+
+  // Map toggle
+  $('#map-toggle')?.addEventListener('change', e => {
+    state.showMap = e.target.checked;
+    setDirty();
+    render();
+  });
+
+  // Map click → move active pin (demo: usa coord casuali in range)
+  const mapCanvas = $('#map-canvas');
+  if (mapCanvas && (state.editingActivityId != null)) {
+    mapCanvas.addEventListener('click', e => {
+      if (e.target.closest('.map-edit-overlay')) return;
+      if (e.target.closest('.map-controls')) return;
+      // Per la demo: solo mostra un toast
+      toast('Pin spostato', 'ti-map-pin');
+      setDirty();
+    });
+  }
+
+  $$('[data-act="rm-pin"]').forEach(el => el.addEventListener('click', () => {
+    toast('Pin rimosso', 'ti-map-pin');
+    setDirty();
+  }));
+
+  $$('[data-act="addr-advanced"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    toast('Ricerca avanzata (modale in arrivo)', 'ti-map-search');
+  }));
+
+  // Tipologia hero
+  $$('[data-set-type]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.hero.type = el.dataset.setType;
+    setDirty();
+    render();
+  }));
+
+  // Tipologia lodging
+  $$('[data-set-lodging-type]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.lodging.type = el.dataset.setLodgingType;
+    state._lodgingDropdownOpen = false;
+    setDirty();
+    render();
+  }));
+  $('[data-toggle-lodging-dropdown]')?.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    state._lodgingDropdownOpen = !state._lodgingDropdownOpen;
+    render();
+  });
+  // chiusura su click fuori
+  if (state._lodgingDropdownOpen) {
+    setTimeout(() => {
+      const onDoc = (ev) => {
+        if (!ev.target.closest('.type-picker-row')) {
+          state._lodgingDropdownOpen = false;
+          document.removeEventListener('click', onDoc);
+          render();
+        }
+      };
+      document.addEventListener('click', onDoc);
+    }, 0);
+  }
+  // Currency cycle lodging
+  $$('[data-lodging-currency-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.lodging.budgetCurrency = state.lodging.budgetCurrency === 'JPY' ? 'EUR' : 'JPY';
+    setDirty();
+    render();
+  }));
+  // Currency cycle day budget
+  $$('[data-day-budget-currency-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    state.budget.currency = state.budget.currency === 'JPY' ? 'EUR' : 'JPY';
+    setDirty();
+    render();
+  }));
+
+  // Status pill cycle
+  $$('[data-status-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    const cycle = [null, 'todo', 'booked', 'paid'];
+    const a = getEditingActivity();
+    if (!a) return;
+    const idx = cycle.indexOf(a.status);
+    const next = cycle[(idx + 1) % cycle.length];
+    setActField('status', next);
+  }));
+
+  // Budget add/remove/currency cycle
+  $$('[data-act="add-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('budget', 1000);
+  }));
+  $$('[data-act="rm-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('budget', 0);
+  }));
+
+  // Indirizzo add/remove
+  $$('[data-act="add-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('loc', ' ');
+    setTimeout(() => $('.addr-row input')?.focus(), 30);
+  }));
+  $$('[data-act="rm-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    setActField('loc', '');
+  }));
+
+  // Lodging optional fields add/remove
+  $$('[data-act="add-lodging-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.address = ' '; setDirty(); render();
+    setTimeout(() => $('.addr-row input')?.focus(), 30);
+  }));
+  $$('[data-act="rm-lodging-addr"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.address = ''; setDirty(); render();
+  }));
+  $$('[data-act="add-lodging-link"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.url = 'https://'; setDirty(); render();
+  }));
+  $$('[data-act="rm-lodging-link"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.url = ''; setDirty(); render();
+  }));
+  $$('[data-act="add-lodging-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.budgetAmount = 100; setDirty(); render();
+  }));
+  $$('[data-act="rm-lodging-budget"]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault(); state.lodging.budgetAmount = 0; setDirty(); render();
+  }));
+  $$('[data-currency-cycle]').forEach(el => el.addEventListener('click', e => {
+    e.preventDefault();
+    const a = getEditingActivity();
+    if (!a) return;
+    setActField('currency', a.currency === 'JPY' ? 'EUR' : 'JPY');
+  }));
+
+  // Data-bind (input listeners) for live state updates
+  $$('[data-bind]').forEach(el => {
+    el.addEventListener('input', () => {
+      const path = el.dataset.bind;
+      const val = el.type === 'number' ? parseFloat(el.value) || 0 : el.value;
+      setByPath(path, val);
+      // For counters and conv, re-render the foot / conv only
+      updateLiveCounters(el);
+    });
+  });
+
+  // Edit mode toggle
+  $('#btn-edit-toggle').addEventListener('click', () => {
+    state.editMode = !state.editMode;
+    if (!state.editMode) {
+      state.openBlock = null;
+      state.editingActivityId = null;
+    }
+    render();
+    toast(state.editMode ? 'Edit mode attivata' : 'Edit mode disattivata', 'ti-edit');
+  });
+  $('#btn-undo').addEventListener('click', () => {
+    if (!state.dirty) { toast('Nessuna modifica da annullare'); return; }
+    state = structuredClone(initialState);
+    setDirty(false);
+    render();
+    toast('Modifiche annullate', 'ti-arrow-back-up');
+  });
+
+  // Drag & drop activities
+  bindDragDrop();
+}
+
+function setByPath(path, val) {
+  // 'hero.place' or 'act.title' or 'budget.amount' or 'incipit.lead'
+  const [scope, key] = path.split('.');
+  if (scope === 'act') {
+    setActField(key, val, false);
+    return;
+  }
+  if (state[scope] && key in state[scope]) {
+    state[scope][key] = val;
+    setDirty();
+  }
+}
+
+function setActField(key, val, doRender=true) {
+  const isNew = state.editingActivityId === 'new';
+  if (isNew) {
+    if (!state._draftNew) state._draftNew = { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null, lat:35.6762, lng:139.6503 };
+    state._draftNew[key] = val;
+  } else {
+    const a = state.activities.find(x => x.id === state.editingActivityId);
+    if (!a) return;
+    a[key] = val;
+  }
+  setDirty();
+  if (doRender) render();
+}
+
+function getEditingActivity() {
+  if (state.editingActivityId === 'new') {
+    if (!state._draftNew) state._draftNew = { id:'new', periodId:'morning', hour:null, minute:null, title:'', desc:'', loc:'', budget:0, currency:'JPY', status:null, lat:35.6762, lng:139.6503 };
+    return state._draftNew;
+  }
+  return state.activities.find(a => a.id === state.editingActivityId);
+}
+
+function saveActivity() {
+  if (state.editingActivityId === 'new') {
+    const d = state._draftNew;
+    if (!d || !d.title.trim()) { toast('Inserisci almeno un titolo', 'ti-alert-triangle'); return; }
+    d.id = state.nextActivityId++;
+    state.activities.push(d);
+    state._draftNew = null;
+    state.editingActivityId = null;
+    setDirty();
+    toast('Attività creata');
+  } else {
+    state.editingActivityId = null;
+    setDirty();
+    toast('Attività salvata');
+  }
+  render();
+}
+
+function updateLiveCounters(el) {
+  // Counter live per il campo modificato
+  const path = el.dataset.bind;
+  const foot = el.closest('.field')?.querySelector('.field-foot b');
+  if (foot && typeof el.value === 'string') foot.textContent = el.value.length;
+  // Conversione live: se è budget amount/currency, ri-renderizzo il form completo per semplicità
+  if (path === 'budget.amount' || path === 'budget.currency' || path === 'act.budget' || path === 'act.currency') {
+    // Aggiorno solo la riga conv
+    const row = el.closest('.currency-row');
+    const conv = row?.querySelector('.conv');
+    if (conv) {
+      if (path.startsWith('act')) {
+        const a = getEditingActivity();
+        conv.textContent = fmtConv(a.budget, a.currency);
+      } else {
+        conv.textContent = fmtConv(state.budget.amount, state.budget.currency);
+      }
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DRAG & DROP attività
+───────────────────────────────────────────────────────────────── */
+let dragSrcId = null;
+function bindDragDrop() {
+  $$('.activity-row[data-activity-id]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      if (!state.editMode) { e.preventDefault(); return; }
+      dragSrcId = parseInt(row.dataset.activityId, 10);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      $$('.activity-row.drop-target').forEach(r => r.classList.remove('drop-target'));
+      dragSrcId = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragSrcId == null) return;
+      if (parseInt(row.dataset.activityId,10) === dragSrcId) return;
+      row.classList.add('drop-target');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const dstId = parseInt(row.dataset.activityId, 10);
+      if (dragSrcId == null || dragSrcId === dstId) return;
+      const src = state.activities.findIndex(a => a.id === dragSrcId);
+      const dst = state.activities.findIndex(a => a.id === dstId);
+      const [moved] = state.activities.splice(src, 1);
+      state.activities.splice(dst, 0, moved);
+      // Sync period of moved with target if useful: keep as is (user can re-set period via "Quando")
+      setDirty();
+      toast('Attività riordinata', 'ti-arrows-sort');
+      render();
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   AVVIO
+───────────────────────────────────────────────────────────────── */
+render();
+</script>
+
+</body>
+</html>

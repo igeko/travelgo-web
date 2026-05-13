@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────
+   DESIGN TOKENS · TravelGo
+   Ogni token definito qui dentro @theme diventa una utility Tailwind:
+   --color-ink         → bg-ink, text-ink, border-ink
+   --radius-md         → rounded-md
+───────────────────────────────────────────────────────────────── */
+@theme {
+  /* Palette neutra */
+  --color-bg: #f1efe8;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f5f3ee;
+  --color-surface-warm: #fdf5ee;
+
+  /* Bordi */
+  --color-border: rgba(13, 44, 61, 0.08);
+  --color-border-strong: rgba(13, 44, 61, 0.18);
+
+  /* Ink (testo) */
+  --color-ink: #0d2c3d;
+  --color-ink-soft: #5b6b78;
+  --color-ink-faint: #8a98a3;
+
+  /* Accent — orange */
+  --color-orange: #f47b3a;
+  --color-orange-soft: #fdecdf;
+  --color-orange-border: #f9d4b6;
+  --color-orange-deep: #a84818;
+
+  /* Accent — lime */
+  --color-lime: #e6f254;
+  --color-lime-text: #5a6206;
+
+  /* Status colors */
+  --color-status-todo-bg: #fde6e1;
+  --color-status-todo-fg: #9a3015;
+  --color-status-booked-bg: #fef5cf;
+  --color-status-booked-fg: #7a5e0e;
+  --color-status-paid-bg: #e4f3da;
+  --color-status-paid-fg: #3d6e0e;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    "Inter", Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}

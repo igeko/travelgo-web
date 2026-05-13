@@ -1,0 +1,150 @@
+/* ─────────────────────────────────────────────────────────────────
+   DESIGN SYSTEM · classi riutilizzabili
+   Contiene: .btn-icon (3 size + varianti)
+───────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────
+   BUTTONS · icon-only e icon+label, 3 size (sm/md/lg)
+───────────────────────────────────────────────────────────────── */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.05s;
+}
+.btn-icon:hover { background: var(--ink); border-color: var(--ink); color: white; }
+.btn-icon:active { transform: scale(0.96); }
+.btn-icon:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn-icon:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-icon:disabled:hover { background: white; border-color: var(--border-strong); color: var(--ink); }
+
+/* Forzature stato per il design-system (showcase) */
+.btn-icon.is-hover { background: var(--ink); border-color: var(--ink); color: white; }
+.btn-icon.is-active { background: var(--ink); border-color: var(--ink); color: white; transform: scale(0.96); }
+.btn-icon.is-focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Varianti semantiche — danger (rosso) */
+.btn-icon.btn-danger { color: #9a3015; }
+.btn-icon.btn-danger:hover,
+.btn-icon.btn-danger.is-hover,
+.btn-icon.btn-danger.is-active { background: #9a3015; border-color: #9a3015; color: white; }
+.btn-icon.btn-danger:focus-visible,
+.btn-icon.btn-danger.is-focus { outline-color: #9a3015; }
+
+/* Varianti semantiche — warning (ambra chiaro) */
+.btn-icon.btn-warning { color: #a37809; border-color: rgba(163, 120, 9, 0.25); }
+.btn-icon.btn-warning:hover,
+.btn-icon.btn-warning.is-hover,
+.btn-icon.btn-warning.is-active { background: #e0a818; border-color: #e0a818; color: white; }
+.btn-icon.btn-warning:focus-visible,
+.btn-icon.btn-warning.is-focus { outline-color: #e0a818; }
+
+/* Variante ghost · border e background trasparenti */
+.btn-icon.ghost { background: transparent; border-color: transparent; color: var(--ink); }
+.btn-icon.ghost:hover,
+.btn-icon.ghost.is-hover,
+.btn-icon.ghost.is-active { background: var(--surface-soft); border-color: transparent; color: var(--ink); }
+.btn-icon.ghost:focus-visible,
+.btn-icon.ghost.is-focus { outline-color: var(--ink); }
+
+.btn-icon.ghost.btn-danger { color: #a32d2d; }
+.btn-icon.ghost.btn-danger:hover,
+.btn-icon.ghost.btn-danger.is-hover,
+.btn-icon.ghost.btn-danger.is-active { background: #fcebeb; color: #a32d2d; border-color: transparent; }
+
+.btn-icon.ghost.btn-warning { color: #a37809; }
+.btn-icon.ghost.btn-warning:hover,
+.btn-icon.ghost.btn-warning.is-hover,
+.btn-icon.ghost.btn-warning.is-active { background: #fef5cf; color: #a37809; border-color: transparent; }
+
+/* Variante text-only (senza icona) */
+.btn-icon.text-only.btn-sm { width: auto; padding: 0 14px; gap: 0; font-size: 11px; height: 24px; }
+.btn-icon.text-only.btn-md { width: auto; padding: 0 16px; gap: 0; font-size: 12px; height: 32px; }
+.btn-icon.text-only.btn-lg { width: auto; padding: 0 22px; gap: 0; font-size: 13px; height: 40px; }
+
+/* Variante solid · fondo pieno con testo bianco; hover inverte in outline */
+.btn-icon.solid { background: var(--ink); border-color: var(--ink); color: white; }
+.btn-icon.solid:hover,
+.btn-icon.solid.is-hover,
+.btn-icon.solid.is-active { background: white; color: var(--ink); border-color: var(--ink); }
+.btn-icon.solid:disabled:hover { background: var(--ink); color: white; border-color: var(--ink); }
+
+.btn-icon.solid.btn-danger { background: #a32d2d; border-color: #a32d2d; color: white; }
+.btn-icon.solid.btn-danger:hover,
+.btn-icon.solid.btn-danger.is-hover,
+.btn-icon.solid.btn-danger.is-active { background: white; color: #a32d2d; border-color: #a32d2d; }
+
+.btn-icon.solid.btn-warning { background: #e0a818; border-color: #e0a818; color: white; }
+.btn-icon.solid.btn-warning:hover,
+.btn-icon.solid.btn-warning.is-hover,
+.btn-icon.solid.btn-warning.is-active { background: white; color: #a37809; border-color: #e0a818; }
+
+/* Variante "over-media": pensata per stare sopra immagini scure (hero, thumb).
+   Fondo semitrasparente con blur, bordo bianco soft, icona bianca. */
+.btn-icon.over-media {
+  background: rgba(255, 255, 255, 0.18);
+  border: 0.5px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.btn-icon.over-media:hover,
+.btn-icon.over-media.is-hover,
+.btn-icon.over-media.is-active {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: white;
+}
+.btn-icon.over-media:focus-visible,
+.btn-icon.over-media.is-focus { outline-color: white; }
+
+/* Over-media · danger (hover rosso trasparente) */
+.btn-icon.over-media.btn-danger:hover,
+.btn-icon.over-media.btn-danger.is-hover,
+.btn-icon.over-media.btn-danger.is-active {
+  background: rgba(163, 45, 45, 0.5);
+  border-color: rgba(163, 45, 45, 0.7);
+  color: white;
+}
+/* Over-media · warning (hover arancio trasparente) */
+.btn-icon.over-media.btn-warning:hover,
+.btn-icon.over-media.btn-warning.is-hover,
+.btn-icon.over-media.btn-warning.is-active {
+  background: rgba(244, 123, 58, 0.5);
+  border-color: rgba(244, 123, 58, 0.7);
+  color: white;
+}
+
+/* SVG dentro al bottone scala con la font-size */
+.btn-icon svg {
+  width: 1em;
+  height: 1em;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Size: small (24×24 icon-only / h24 icon+label) */
+.btn-icon.btn-sm { width: 24px; height: 24px; font-size: 11px; }
+.btn-icon.btn-sm.has-label { width: auto; padding: 0 10px 0 8px; gap: 5px; }
+
+/* Size: medium (32×32) */
+.btn-icon.btn-md { width: 32px; height: 32px; font-size: 14px; }
+.btn-icon.btn-md.has-label { width: auto; padding: 0 14px 0 11px; gap: 6px; font-size: 12px; }
+.btn-icon.btn-md.has-label svg { width: 14px; height: 14px; }
+
+/* Size: large (40×40) */
+.btn-icon.btn-lg { width: 40px; height: 40px; font-size: 16px; }
+.btn-icon.btn-lg.has-label { width: auto; padding: 0 18px 0 14px; gap: 8px; font-size: 13px; }
+.btn-icon.btn-lg.has-label svg { width: 16px; height: 16px; }

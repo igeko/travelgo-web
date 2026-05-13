@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Trip header — 3 stati budget</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+:root {
+  --bg: #f1efe8;
+  --surface: #ffffff;
+  --surface-soft: #f5f3ee;
+  --surface-warm: #fdf5ee;
+  --border: rgba(13, 44, 61, 0.08);
+  --border-strong: rgba(13, 44, 61, 0.18);
+  --ink: #0d2c3d;
+  --ink-soft: #5b6b78;
+  --ink-faint: #8a98a3;
+  --orange: #f47b3a;
+  --orange-soft: #fdecdf;
+  --orange-border: #f9d4b6;
+  --orange-deep: #a84818;
+  --lime: #e6f254;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Inter", Arial, sans-serif;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --gap-page: 16px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+
+.wrap-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 30px var(--gap-page);
+}
+
+/* ── Trip header (stateful budget) ─────────────────────────────── */
+.trip-head {
+  padding: 0 0 8px;
+}
+.trip-head + .trip-head {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 0.5px solid var(--border);
+}
+.trip-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.trip-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trip-title h1 {
+  font-size: 32px;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.05;
+}
+
+@media (max-width: 980px) {
+  .trip-title {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .trip-title h1 { font-size: 24px; }
+  .trip-head-row { gap: 12px; }
+  /* Su mobile il budget si nasconde — accessibile dal menu */
+  .trip-budget { display: none; }
+}
+
+/* Tag stato viaggio */
+.trip-state-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+.trip-state-tag i { font-size: 11px; }
+.trip-state-pre { background: #e8f1ff; color: #1d4ed8; }
+.trip-state-during { background: #fef5cf; color: #7a5e0e; }
+.trip-state-after { background: #e4f3da; color: #3d6e0e; }
+
+/* Budget pill senza container */
+.trip-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  min-width: 240px;
+  cursor: pointer;
+}
+.trip-budget:hover .trip-budget-val { color: var(--orange); }
+.trip-budget:hover .trip-budget-chev {
+  transform: translateX(2px);
+  color: var(--orange);
+}
+.trip-budget-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.trip-budget-row-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.trip-budget-val {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: color 0.18s;
+}
+.trip-budget-of {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.trip-budget-chev {
+  color: var(--ink-faint);
+  font-size: 14px;
+  transition: transform 0.18s, color 0.18s;
+}
+.trip-budget-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(13, 44, 61, 0.08);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  position: relative;
+  margin-top: 4px;
+}
+.trip-budget-bar-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  border-radius: var(--radius-pill);
+}
+.trip-budget-bar-fill.ok { background: #65a30d; }
+.trip-budget-bar-fill.warn { background: var(--orange); }
+.trip-budget-bar-fill.alert { background: #dc2626; }
+.trip-budget-sub {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.trip-budget-sub b { font-weight: 500; }
+.trip-budget-sub.warn b { color: #b45309; }
+.trip-budget-sub.ok b { color: #3d6e0e; }
+.trip-budget-sub.alert b { color: #b91c1c; }
+
+/* Note documentazione */
+.state-note {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+.state-note b { color: var(--ink); font-weight: 500; }
+.state-note code {
+  background: var(--surface-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+}
+
+.intro {
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 0.5px solid var(--border);
+}
+.intro h1 {
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.intro p {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin: 0;
+}
+.intro code {
+  background: var(--surface-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap-page">
+
+<div class="intro">
+<h1>Trip header · 3 stati budget</h1>
+<p>Componente di intestazione viaggio con widget budget stateful. Il widget cambia contenuto e semantica in base alla posizione temporale dell'utente rispetto al viaggio: <b>pre-viaggio</b> (target di risparmio), <b>in corso</b> (tracking speso vs previsto), <b>completato</b> (riepilogo finale). La logica di selezione dello stato è basata sul confronto tra <code>today</code> e le date del viaggio (<code>trip.startDate</code>, <code>trip.endDate</code>).</p>
+</div>
+
+<!-- ─── STATO 1: PRE-VIAGGIO ─────────────────────────────────── -->
+<section class="trip-head">
+<div class="trip-head-row">
+<div class="trip-title">
+<h1>Japan 2026!</h1>
+<span class="trip-state-tag trip-state-pre"><i class="ti ti-piggy-bank"></i> Pre-viaggio · 62 gg</span>
+</div>
+<a href="#" class="trip-budget" title="Vai al budget del viaggio">
+<div class="trip-budget-row">
+<div class="trip-budget-row-left">
+<span class="trip-budget-val">€2.300</span>
+<span class="trip-budget-of">/ €4.820</span>
+</div>
+<i class="ti ti-chevron-right trip-budget-chev"></i>
+</div>
+<div class="trip-budget-bar">
+<div class="trip-budget-bar-fill warn" style="width:48%;"></div>
+</div>
+<div class="trip-budget-sub warn">Mancano <b>€2.520</b> al budget · circa <b>€42/giorno</b></div>
+</a>
+</div>
+
+<div class="state-note">
+<b>Stato: PRE-VIAGGIO</b> · attivo quando <code>today &lt; trip.startDate</code><br>
+<b>Tag:</b> <code>trip-state-pre</code> (icona <code>ti-piggy-bank</code>) + label "Pre-viaggio · {N} gg" dove N = giorni mancanti alla partenza.<br>
+<b>Valore principale (<code>trip-budget-val</code>):</b> totale già accantonato per il viaggio (es. €2.300).<br>
+<b>Denominatore (<code>trip-budget-of</code>):</b> "/ {budgetTotale}" — l'obiettivo di risparmio definito dall'utente.<br>
+<b>Barra:</b> classe <code>warn</code> (arancio). Width = <code>(accantonato / totale) × 100%</code>.<br>
+<b>Sub:</b> classe <code>warn</code>. Format: "Mancano <b>{delta}</b> al budget · circa <b>{delta/giorniRimanenti}/giorno</b>". Calcolato come <code>budgetTotale − accantonato</code> diviso i giorni che restano prima della partenza.
+</div>
+</section>
+
+
+<!-- ─── STATO 2: IN CORSO ──────────────────────────────────── -->
+<section class="trip-head">
+<div class="trip-head-row">
+<div class="trip-title">
+<h1>Japan 2026!</h1>
+<span class="trip-state-tag trip-state-during"><i class="ti ti-plane"></i> In corso · giorno 6 / 21</span>
+</div>
+<a href="#" class="trip-budget" title="Vai al budget del viaggio">
+<div class="trip-budget-row">
+<div class="trip-budget-row-left">
+<span class="trip-budget-val">€1.180</span>
+<span class="trip-budget-of">/ €1.260 previsti</span>
+</div>
+<i class="ti ti-chevron-right trip-budget-chev"></i>
+</div>
+<div class="trip-budget-bar">
+<div class="trip-budget-bar-fill ok" style="width:94%;"></div>
+</div>
+<div class="trip-budget-sub ok">Sotto budget di <b>€80</b> · 15 giorni rimanenti</div>
+</a>
+</div>
+
+<div class="state-note">
+<b>Stato: IN CORSO</b> · attivo quando <code>trip.startDate ≤ today ≤ trip.endDate</code><br>
+<b>Tag:</b> <code>trip-state-during</code> (icona <code>ti-plane</code>) + label "In corso · giorno {n} / {tot}" dove n = giorno corrente del viaggio (1-indexed), tot = giorni totali.<br>
+<b>Valore principale:</b> totale speso fino ad oggi (somma di <code>activity.budgetAmount</code> dei giorni passati + corrente, con <code>budgetPaid = true</code> o tutte se vuoi includere previsti).<br>
+<b>Denominatore:</b> "/ €{previstoAdOggi} previsti" — somma dei <code>day.budget</code> dei giorni 1..n (ovvero quanto avresti dovuto spendere fino ad oggi secondo la pianificazione).<br>
+<b>Barra:</b> width = <code>(speso / previsto) × 100%</code>, classe <code>ok</code> se ≤100%, <code>warn</code> se 100-115%, <code>alert</code> se &gt;115%.<br>
+<b>Sub:</b> messaggio dinamico in base al delta:
+<br>· se speso ≤ previsto → "Sotto budget di <b>€{delta}</b> · {giorniRimanenti} giorni rimanenti" (classe <code>ok</code>)
+<br>· se 0% &lt; eccesso ≤ 15% → "Sopra previsto di <b>€{delta}</b> · attenzione" (classe <code>warn</code>)
+<br>· se eccesso &gt; 15% → "Oltre budget di <b>€{delta}</b>" (classe <code>alert</code>)
+</div>
+</section>
+
+
+<!-- ─── STATO 3: COMPLETATO ────────────────────────────────── -->
+<section class="trip-head">
+<div class="trip-head-row">
+<div class="trip-title">
+<h1>Japan 2026!</h1>
+<span class="trip-state-tag trip-state-after"><i class="ti ti-check"></i> Completato</span>
+</div>
+<a href="#" class="trip-budget" title="Vai al budget del viaggio">
+<div class="trip-budget-row">
+<div class="trip-budget-row-left">
+<span class="trip-budget-val">€4.620</span>
+<span class="trip-budget-of">/ €4.820</span>
+</div>
+<i class="ti ti-chevron-right trip-budget-chev"></i>
+</div>
+<div class="trip-budget-bar">
+<div class="trip-budget-bar-fill ok" style="width:96%;"></div>
+</div>
+<div class="trip-budget-sub ok">Risparmiati <b>€200</b> rispetto al previsto</div>
+</a>
+</div>
+
+<div class="state-note">
+<b>Stato: COMPLETATO</b> · attivo quando <code>today &gt; trip.endDate</code><br>
+<b>Tag:</b> <code>trip-state-after</code> (icona <code>ti-check</code>) + label "Completato".<br>
+<b>Valore principale:</b> totale speso effettivo (somma di tutte le <code>activity.budgetAmount</code> pagate).<br>
+<b>Denominatore:</b> "/ €{budgetTotale}" — il budget complessivo originariamente preventivato.<br>
+<b>Barra:</b> width = <code>(speso / preventivato) × 100%</code>, classe <code>ok</code> se ≤100%, <code>alert</code> se &gt;100%.<br>
+<b>Sub:</b> messaggio dinamico:
+<br>· se speso &lt; preventivato → "Risparmiati <b>€{delta}</b> rispetto al previsto" (classe <code>ok</code>)
+<br>· se speso = preventivato → "Spesa esattamente come previsto" (classe <code>ok</code>)
+<br>· se speso &gt; preventivato → "Sforato il budget di <b>€{delta}</b>" (classe <code>alert</code>)
+</div>
+</section>
+
+
+<!-- ─── DOCUMENTAZIONE FINALE ──────────────────────────────────── -->
+<section class="trip-head">
+<div class="state-note" style="margin-top:0;">
+<b>Note di implementazione per lo sviluppatore</b><br><br>
+
+<b>1. Selezione dello stato.</b> Il componente <code>TripHeader</code> riceve almeno: <code>trip.title</code>, <code>trip.startDate</code>, <code>trip.endDate</code>, <code>trip.budgetTotal</code>, <code>trip.savedAmount</code> (per pre-viaggio), e l'array degli <code>days</code> con i relativi <code>activities</code> contenenti <code>budgetAmount</code> e <code>budgetPaid</code>. La selezione dello stato si fa con:
+<br><code>const today = new Date(); const state = today &lt; startDate ? 'pre' : today &gt; endDate ? 'after' : 'during';</code><br><br>
+
+<b>2. Computazioni per stato.</b>
+<br>· <b>pre</b>: <code>daysLeft = (startDate − today) / 1d</code>; <code>missing = budgetTotal − savedAmount</code>; <code>perDay = missing / daysLeft</code>.
+<br>· <b>during</b>: <code>currentDay = (today − startDate) / 1d + 1</code>; <code>previstoAdOggi = sum(days[0..currentDay-1].budget)</code>; <code>spesoAdOggi = sum(activities con budgetPaid=true e day &lt; today)</code>; <code>delta = previsto − speso</code>.
+<br>· <b>after</b>: <code>spesoTotale = sum(activities.budgetAmount)</code>; <code>delta = budgetTotal − spesoTotale</code>.<br><br>
+
+<b>3. Classi colore della barra e del sub.</b> Sono <b>indipendenti</b>: la barra di progresso si chiama <code>.trip-budget-bar-fill</code> con modificatori <code>.ok</code> (verde), <code>.warn</code> (arancio), <code>.alert</code> (rosso). Il sub usa <code>.trip-budget-sub.{ok|warn|alert}</code> che colora solo il <code>&lt;b&gt;</code> interno. Le soglie dei colori sono indicate negli state-note di ogni stato.<br><br>
+
+<b>4. Behavior link.</b> L'intero <code>.trip-budget</code> è un <code>&lt;a href&gt;</code> che porta alla pagina del budget del viaggio. Hover state: valore principale si colora di arancio, chevron si sposta di 2px a destra e si colora arancio.<br><br>
+
+<b>5. Localizzazione.</b> I testi (<code>Mancano</code>, <code>Sotto budget</code>, <code>Risparmiati</code>, etc.) sono attualmente in italiano. Estrarre in i18n strings se l'app supporta più lingue.<br><br>
+
+<b>6. Formato valute.</b> Gli esempi mostrano €. Il componente deve usare la <code>trip.displayCurrency</code> (verifica in <code>queries.js</code>) ed eventualmente convertire da <code>trip.localCurrency</code> via la funzione <code>convertCurrency</code> di <code>exchange.js</code>.
+</div>
+</section>
+
+</div>
+</body>
+</html>

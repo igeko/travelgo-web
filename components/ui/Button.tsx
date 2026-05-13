@@ -1,0 +1,250 @@
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef } from "react";
+import { cn } from "@/lib/cn";
+
+/* ─────────────────────────────────────────────────────────────────
+   Button · TravelGo button system
+   Reproduces the original design system's .btn-icon with orthogonal
+   variants: size × variant × tone × iconOnly.
+   Icons go as children: <Button><IconSave /> Save</Button>.
+   The direct SVG child auto-scales with the button's font-size.
+───────────────────────────────────────────────────────────────── */
+
+export const buttonVariants = cva(
+  // Base · styles shared across ALL combinations
+  [
+    "inline-flex items-center justify-center gap-1.5 font-medium font-sans select-none",
+    "rounded-pill border transition-[background,color,border-color,transform] duration-150",
+    "active:scale-[0.96]",
+    "focus-visible:outline-2 focus-visible:outline-offset-2",
+    "disabled:opacity-45 disabled:cursor-not-allowed disabled:active:scale-100",
+    // SVG figlio diretto scala con font-size
+    "[&>svg]:size-[1em] [&>svg]:shrink-0",
+  ],
+  {
+    variants: {
+      /* ── Size (icon-only by default) ── */ // unchanged
+      size: {
+        sm: "w-6 h-6 text-[11px]",
+        md: "w-8 h-8 text-sm",
+        lg: "w-10 h-10 text-base",
+      },
+      /* ── Visual variant ── */
+      variant: {
+        outline: "bg-surface border-border-strong",
+        solid: "border-transparent",
+        ghost: "bg-transparent border-transparent",
+        "over-media": [
+          "bg-white/[0.18] border-white/40 text-white",
+          "backdrop-blur-[6px]",
+          "hover:bg-white/30 hover:border-white/60",
+          "focus-visible:outline-white",
+        ],
+        "text-only": "bg-surface border-border-strong",
+      },
+      /* ── Semantic tone ── */
+      tone: {
+        neutral: "",
+        danger: "",
+        warning: "",
+        success: "",
+      },
+      /* ── Shape: icon-only (square) vs with label (auto-width) ── */
+      iconOnly: {
+        true: "",
+        false: "w-auto",
+      },
+      disabled: {
+        true: "",
+        false: "",
+      },
+    },
+
+    /* ── size × iconOnly combinations ── */
+    compoundVariants: [
+      // SIZES with LABEL — auto width + horizontal padding
+      { size: "sm", iconOnly: false, class: "h-6 px-2.5 gap-1 text-[11px]" },
+      { size: "md", iconOnly: false, class: "h-8 px-3.5 gap-1.5 text-xs" },
+      { size: "lg", iconOnly: false, class: "h-10 px-4.5 gap-2 text-[13px]" },
+
+      /* ── Variant: outline · tone neutral (default) ── */
+      {
+        variant: "outline",
+        tone: "neutral",
+        class:
+          "text-ink hover:bg-ink hover:border-ink hover:text-white focus-visible:outline-ink",
+      },
+      {
+        variant: "outline",
+        tone: "danger",
+        class:
+          "text-[#9a3015] border-[rgba(154,48,21,0.25)] hover:bg-[#9a3015] hover:border-[#9a3015] hover:text-white focus-visible:outline-[#9a3015]",
+      },
+      {
+        variant: "outline",
+        tone: "warning",
+        class:
+          "text-[#a37809] border-[rgba(163,120,9,0.25)] hover:bg-[#e0a818] hover:border-[#e0a818] hover:text-white focus-visible:outline-[#e0a818]",
+      },
+      {
+        variant: "outline",
+        tone: "success",
+        class:
+          "text-[#3d6e0e] border-[rgba(61,110,14,0.25)] hover:bg-[#3d6e0e] hover:border-[#3d6e0e] hover:text-white focus-visible:outline-[#3d6e0e]",
+      },
+
+      /* ── Variant: solid (filled, hover inverts) ── */
+      {
+        variant: "solid",
+        tone: "neutral",
+        class:
+          "bg-ink text-white border-ink hover:bg-surface hover:text-ink hover:border-ink focus-visible:outline-ink",
+      },
+      {
+        variant: "solid",
+        tone: "danger",
+        class:
+          "bg-[#a32d2d] text-white border-[#a32d2d] hover:bg-surface hover:text-[#a32d2d] hover:border-[#a32d2d] focus-visible:outline-[#a32d2d]",
+      },
+      {
+        variant: "solid",
+        tone: "warning",
+        class:
+          "bg-[#e0a818] text-white border-[#e0a818] hover:bg-surface hover:text-[#a37809] hover:border-[#e0a818] focus-visible:outline-[#e0a818]",
+      },
+      {
+        variant: "solid",
+        tone: "success",
+        class:
+          "bg-[#3d6e0e] text-white border-[#3d6e0e] hover:bg-surface hover:text-[#3d6e0e] hover:border-[#3d6e0e] focus-visible:outline-[#3d6e0e]",
+      },
+
+      /* ── Variant: ghost (transparent, hover surface-soft) ── */
+      {
+        variant: "ghost",
+        tone: "neutral",
+        class:
+          "text-ink hover:bg-surface-soft focus-visible:outline-ink",
+      },
+      {
+        variant: "ghost",
+        tone: "danger",
+        class:
+          "text-[#a32d2d] hover:bg-[#fcebeb] focus-visible:outline-[#a32d2d]",
+      },
+      {
+        variant: "ghost",
+        tone: "warning",
+        class:
+          "text-[#a37809] hover:bg-[#fef5cf] focus-visible:outline-[#a37809]",
+      },
+      {
+        variant: "ghost",
+        tone: "success",
+        class:
+          "text-[#3d6e0e] hover:bg-status-paid-bg focus-visible:outline-[#3d6e0e]",
+      },
+
+      /* ── Variant: text-only — like outline but spacious padding,
+              icon-less by convention (gap 0) ── */
+      {
+        variant: "text-only",
+        tone: "neutral",
+        class:
+          "text-ink hover:bg-ink hover:border-ink hover:text-white focus-visible:outline-ink gap-0",
+      },
+      {
+        variant: "text-only",
+        tone: "danger",
+        class:
+          "text-[#9a3015] border-[rgba(154,48,21,0.25)] hover:bg-[#9a3015] hover:border-[#9a3015] hover:text-white focus-visible:outline-[#9a3015] gap-0",
+      },
+      {
+        variant: "text-only",
+        tone: "warning",
+        class:
+          "text-[#a37809] border-[rgba(163,120,9,0.25)] hover:bg-[#e0a818] hover:border-[#e0a818] hover:text-white focus-visible:outline-[#e0a818] gap-0",
+      },
+      {
+        variant: "text-only",
+        tone: "success",
+        class:
+          "text-[#3d6e0e] border-[rgba(61,110,14,0.25)] hover:bg-[#3d6e0e] hover:border-[#3d6e0e] hover:text-white focus-visible:outline-[#3d6e0e] gap-0",
+      },
+      // text-only has wider horizontal padding (from original CSS)
+      { variant: "text-only", size: "sm", iconOnly: false, class: "px-3.5" },
+      { variant: "text-only", size: "md", iconOnly: false, class: "px-4" },
+      { variant: "text-only", size: "lg", iconOnly: false, class: "px-5.5" },
+
+      /* ── Variant: over-media · tone-specific hovers ── */
+      {
+        variant: "over-media",
+        tone: "danger",
+        class: "hover:bg-[rgba(163,45,45,0.5)] hover:border-[rgba(163,45,45,0.7)]",
+      },
+      {
+        variant: "over-media",
+        tone: "warning",
+        class: "hover:bg-[rgba(244,123,58,0.5)] hover:border-[rgba(244,123,58,0.7)]",
+      },
+    ],
+    defaultVariants: {
+      variant: "outline",
+      size: "md",
+      tone: "neutral",
+      iconOnly: false,
+    },
+  },
+);
+
+/* ─────────────────────────────────────────────────────────────────
+   Component
+───────────────────────────────────────────────────────────────── */
+
+type ButtonVariants = VariantProps<typeof buttonVariants>;
+
+export type ButtonProps = Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "disabled"
+> &
+  ButtonVariants & {
+    /**
+     * If true, Button forwards its classes/props to its child instead of
+     * rendering a <button>. Use it to turn it into an <a> or <Link>:
+     *   <Button asChild><Link href="/">Go</Link></Button>
+     */
+    asChild?: boolean;
+    disabled?: boolean;
+  };
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      size,
+      variant,
+      tone,
+      iconOnly,
+      asChild = false,
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          buttonVariants({ size, variant, tone, iconOnly }),
+          className,
+        )}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
+        {...props}
+      />
+    );
+  },
+);
+Button.displayName = "Button";
