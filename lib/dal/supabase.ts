@@ -17,13 +17,15 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  );
+function getEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — check your .env.local",
+    );
+  }
+  return { url, key };
 }
 
 /**
@@ -31,7 +33,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
  * Safe to call multiple times — returns the same instance.
  */
 export function getBrowserClient() {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { url, key } = getEnv();
+  return createClient(url, key);
 }
 
 /**
@@ -40,13 +43,14 @@ export function getBrowserClient() {
  * Reads the auth session from cookies so RLS works correctly.
  */
 export async function getServerClient() {
+  const { url, key } = getEnv();
   // Dynamically imported to avoid bundling next/headers in client code.
   const { cookies } = await import("next/headers");
   const { createServerClient } = await import("@supabase/ssr");
 
   const cookieStore = await cookies();
 
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

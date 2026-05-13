@@ -138,17 +138,15 @@ export default function DayHeaderStories() {
           description="Toggle lodging, pencil handle and navigation from the controls panel."
         >
           <DayHeader
-            dayNum={dayNum}
-            dow="Lunedì"
-            date="3 ago 2026"
-            place="Monte Fuji"
+            eyebrow={`Giorno ${dayNum} · Lunedì 3 ago 2026`}
+            title="Monte Fuji"
             subtitle="Escursione tra i 5 laghi"
-            activityCount={activityCount}
+            meta={`${activityCount} attività`}
             imageUrl={imageUrl}
-            onEdit={showEdit ? () => alert("Edit clicked") : undefined}
+            editMode={showEdit}
             onPrev={showNav ? () => alert("Prev") : undefined}
             onNext={showNav ? () => alert("Next") : undefined}
-            lodging={showLodging && lodgingData ? lodgingData : undefined}
+            subBanner={showLodging && lodgingData ? { name: lodgingData.name, detail: lodgingData.address, href: lodgingData.href || undefined } : undefined}
             className="w-full"
           />
         </StoryFrame>
@@ -159,13 +157,11 @@ export default function DayHeaderStories() {
           description="Falls back to solid ink background when imageUrl is omitted."
         >
           <DayHeader
-            dayNum={1}
-            dow="Sabato"
-            date="31 lug 2026"
-            place="Tokyo"
+            eyebrow="Giorno 1 · Sabato 31 lug 2026"
+            title="Tokyo"
             subtitle="Arrivo e orientamento"
-            activityCount={3}
-            onEdit={() => {}}
+            meta="3 attività"
+            editMode
             onPrev={() => {}}
             onNext={() => {}}
             className="w-full"
@@ -178,10 +174,9 @@ export default function DayHeaderStories() {
           description="No place, no subtitle, no nav, no lodging — minimal variant."
         >
           <DayHeader
-            dayNum={7}
-            dow="Venerdì"
-            date="6 ago 2026"
-            activityCount={0}
+            eyebrow="Giorno 7 · Venerdì 6 ago 2026"
+            title=""
+            meta="0 attività"
             className="w-full"
           />
         </StoryFrame>
@@ -192,14 +187,12 @@ export default function DayHeaderStories() {
           description="Lodging banner without href — no 'Apri' button rendered."
         >
           <DayHeader
-            dayNum={2}
-            dow="Domenica"
-            date="1 ago 2026"
-            place="Kyoto"
+            eyebrow="Giorno 2 · Domenica 1 ago 2026"
+            title="Kyoto"
             subtitle="Giornata al tempio"
-            activityCount={4}
+            meta="4 attività"
             imageUrl={imageUrl}
-            lodging={{ emoji: "🏯", name: "Ryokan Arashiyama", address: "Nishikyo-ku, Kyoto" }}
+            subBanner={{ emoji: "🏯", name: "Ryokan Arashiyama", detail: "Nishikyo-ku, Kyoto" }}
             className="w-full"
           />
         </StoryFrame>
