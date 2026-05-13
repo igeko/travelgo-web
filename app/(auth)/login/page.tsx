@@ -7,11 +7,12 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { getBrowserClient } from "@/lib/dal/supabase";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/trips";
   const hasError = searchParams.get("error") === "auth_callback_failed";
@@ -96,6 +97,14 @@ export default function LoginPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
 
