@@ -463,8 +463,9 @@ export function HeroBanner({
                   onChange={setDraftLodgingHref}
                   label="Booking link"
                   placeholder="Booking URL or property website"
-                  prefix={<IconLink size={14} className="text-ink-faint" />}
-                />
+                >
+                  <SoftField.Prefix><IconLink size={14} className="text-ink-faint" /></SoftField.Prefix>
+                </SoftField>
               </div>
               <button type="button" onClick={() => { setDraftLodgingHref(""); setShowLodgingLink(false); }}
                 aria-label="Remove link"
