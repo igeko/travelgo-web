@@ -81,7 +81,7 @@ export function ActivityRow({
   /* ── Row wrapper classes ── */
   const rowBase = cn(
     "group relative flex gap-3 items-start",
-    "rounded-[var(--radius-md)] px-3 py-3",
+    "rounded-[var(--radius-md)] px-4 py-3",
     "transition-all duration-150 cursor-pointer select-none",
     // Past: desaturate + dim
     isPast && "opacity-50 grayscale-[60%]",
@@ -101,7 +101,7 @@ export function ActivityRow({
     <div
       className={cn(
         "relative shrink-0 rounded-[10px] overflow-hidden bg-cover bg-center",
-        "w-[88px] h-[88px]",
+        "w-[88px] h-[68px]",
       )}
       style={{ backgroundImage: `url(${thumb ?? DEFAULT_THUMB})` }}
     >
@@ -113,7 +113,7 @@ export function ActivityRow({
 
       {/* NOW badge */}
       {isNow && (
-        <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-[3px] bg-orange text-white px-1.5 py-[2px] rounded-pill text-[9px] font-semibold tracking-[0.05em] shadow-sm">
+        <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-[3px] bg-orange text-white px-1.5 py-[2px] rounded-pill text-[10px] font-semibold tracking-[0.05em] shadow-sm">
           <IconPlayerPlay className="w-2.5 h-2.5" />
           NOW
         </span>
@@ -166,18 +166,18 @@ export function ActivityRow({
 
       {/* Description */}
       {description && (
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-soft line-clamp-2">
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-soft line-clamp-2">
           {description}
         </p>
       )}
 
       {/* Meta row */}
       {(location || cost) && (
-        <div className="flex items-center gap-3 mt-2 flex-wrap">
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
           {location && (
             <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
               {pin !== undefined ? (
-                <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-orange text-white text-[9px] font-semibold leading-none shrink-0">
+                <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-orange text-white text-[10px] font-semibold leading-none shrink-0">
                   {pin}
                 </span>
               ) : (

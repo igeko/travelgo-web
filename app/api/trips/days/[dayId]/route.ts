@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient } from "@/lib/dal/supabase";
+import { requireDayEditor } from "@/lib/dal/auth";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ dayId: string }> }
 ) {
   const { dayId } = await params;
+
+  const auth = await requireDayEditor(dayId);
+  if (!auth.ok) return auth.response;
+
   const body = await req.json();
 
-  // Only allow whitelisted fields to be patched
   const allowed = [
     "show_map", "city", "label", "day_type", "notes", "summary",
     "accommodation_type", "accommodation_name", "accommodation_address",
@@ -16,6 +20,7 @@ export async function PATCH(
     "accommodation_place_id", "accommodation_lat", "accommodation_lng",
     "accommodation_cost_amount", "accommodation_cost_currency", "accommodation_cost_paid",
   ] as const;
+
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];

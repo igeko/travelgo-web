@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDayActivities } from "@/lib/dal/trips";
 import { getServerClient } from "@/lib/dal/supabase";
+import { requireDayEditor } from "@/lib/dal/auth";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ dayId: string }> }) {
   const { dayId } = await params;
@@ -13,18 +14,21 @@ export async function POST(
   { params }: { params: Promise<{ dayId: string }> }
 ) {
   const { dayId } = await params;
-  const body = await req.json();
 
+  const auth = await requireDayEditor(dayId);
+  if (!auth.ok) return auth.response;
+
+  const body = await req.json();
   const supabase = await getServerClient();
 
-  // Resolve trip_id from day
-  const { data: day, error: dayErr } = await supabase
+  // Resolve trip_id from day (già verificato in requireDayEditor, rileggiamo per l'insert)
+  const { data: day } = await supabase
     .from("days")
     .select("trip_id")
     .eq("id", dayId)
     .single();
 
-  if (dayErr || !day) {
+  if (!day) {
     return NextResponse.json({ error: "Day not found" }, { status: 404 });
   }
 

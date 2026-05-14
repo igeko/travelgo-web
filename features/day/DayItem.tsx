@@ -63,7 +63,7 @@ export function DayItem({
         <div className="text-center">
           <div
             className={cn(
-              "text-[9px] tracking-[0.05em] uppercase",
+              "text-[10px] tracking-[0.05em] uppercase",
               selected ? "text-white/70" : "text-ink-soft",
             )}
           >

@@ -100,6 +100,7 @@ export function ActivityEditForm({
     initialData?.budgetAmount !== undefined && initialData.budgetAmount > 0
   );
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const hasTime = hour !== undefined && minute !== undefined;
   const activeTime = hasTime
@@ -292,10 +293,23 @@ export function ActivityEditForm({
       {/* Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-0.5">
         {!isNew && onDelete ? (
-          <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
-            <IconTrash />
-            Delete activity
-          </Button>
+          confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-[#9a3015]">Sicuro?</span>
+              <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
+                <IconTrash />
+                Elimina
+              </Button>
+              <Button variant="text-only" iconOnly={false} onClick={() => setConfirmDelete(false)}>
+                Annulla
+              </Button>
+            </div>
+          ) : (
+            <Button variant="ghost" tone="danger" iconOnly={false} onClick={() => setConfirmDelete(true)}>
+              <IconTrash />
+              Delete activity
+            </Button>
+          )
         ) : (
           <span />
         )}

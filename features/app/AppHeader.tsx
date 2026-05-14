@@ -23,6 +23,10 @@ export type AppHeaderProps = {
   onTabChange?: (tab: AppHeaderTab) => void;
   editMode?: boolean;
   onToggleEditMode?: () => void;
+  /** When true, shows the debug-mode chip (only if isDev) */
+  isDev?: boolean;
+  debugMode?: boolean;
+  onToggleDebugMode?: () => void;
   onTripActions?: () => void;
   initials?: string;
   /** Google avatar URL */
@@ -56,6 +60,9 @@ export function AppHeader({
   onTabChange,
   editMode = false,
   onToggleEditMode,
+  isDev = false,
+  debugMode = false,
+  onToggleDebugMode,
   onTripActions,
   initials = "",
   avatarUrl,
@@ -124,18 +131,20 @@ export function AppHeader({
                   Ciao, <span className="text-ink font-medium">{fullName.split(" ")[0]}</span>
                 </span>
               )}
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={fullName ?? "Avatar"}
-                  className="w-[30px] h-[30px] rounded-full object-cover shrink-0"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-[11px] font-semibold shrink-0 select-none">
-                  {initials}
-                </div>
-              )}
+              <Link href="/profile" aria-label="Il tuo profilo" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-border transition-all">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={fullName ?? "Avatar"}
+                    className="w-[30px] h-[30px] rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-[11px] font-semibold select-none">
+                    {initials}
+                  </div>
+                )}
+              </Link>
             </div>
           ) : (
             <Link
@@ -252,6 +261,24 @@ export function AppHeader({
 
               {/* Divider — hidden below @sm */}
               <span aria-hidden className="hidden md:block w-px h-[22px] bg-border shrink-0" />
+
+              {/* Debug-mode chip — only for devs */}
+              {isDev && (
+                <button
+                  type="button"
+                  onClick={onToggleDebugMode}
+                  title={debugMode ? "Disable debug mode" : "Enable debug mode"}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans font-mono",
+                    debugMode
+                      ? "bg-[#1a1a2e] border-[#1a1a2e] text-[#7ee8a2] font-medium"
+                      : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft",
+                  )}
+                >
+                  <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
+                  <span>{debugMode ? "Debug" : "Debug"}</span>
+                </button>
+              )}
 
               {/* Edit-state chip — always visible */}
               <button

@@ -1,11 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient } from "@/lib/dal/supabase";
+import { requireActivityEditor } from "@/lib/dal/auth";
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ activityId: string }> }
+) {
+  const { activityId } = await params;
+
+  const auth = await requireActivityEditor(activityId);
+  if (!auth.ok) return auth.response;
+
+  const supabase = await getServerClient();
+  const { error } = await supabase
+    .from("activities")
+    .delete()
+    .eq("id", activityId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ activityId: string }> }
 ) {
   const { activityId } = await params;
+
+  const auth = await requireActivityEditor(activityId);
+  if (!auth.ok) return auth.response;
+
   const body = await req.json();
 
   const allowed = [

@@ -54,9 +54,10 @@ type Props = {
   initialActivities: Activity[];
   initialDayId: string;
   editMode?: boolean;
+  debugMode?: boolean;
 };
 
-export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false }: Props) {
+export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false, debugMode = false }: Props) {
   const router = useRouter();
   const [localDays, setLocalDays] = useState(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(initialDayId);
@@ -165,7 +166,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         {/* .day-list-head */}
         <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0">
           <div className="text-[10px] uppercase tracking-[0.10em] text-ink-soft">Itinerary</div>
-          <div className="text-[15px] font-semibold text-ink mt-0.5">Day by day</div>
+          <div className="text-[16px] font-semibold text-ink mt-0.5">Day by day</div>
           <div className="text-[12px] text-ink-soft mt-0.5">
             {localDays.length} days · {trip.start_date ? formatDate(trip.start_date) : ""} → {trip.end_date ? formatDate(trip.end_date) : ""}
           </div>
@@ -358,9 +359,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 }),
               });
             }}
-            onActivityDelete={(id) =>
-              setActivities((prev) => prev.filter((a) => a.id !== id))
-            }
+            onActivityDelete={async (id) => {
+              setActivities((prev) => prev.filter((a) => a.id !== id));
+              await fetch(`/api/trips/activities/${id}`, { method: "DELETE" });
+            }}
             onCreateActivity={async (data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
                 ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
@@ -391,7 +393,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         </div>
 
         {/* Debug — day + activities JSON */}
-        {process.env.NODE_ENV === "development" && (
+        {debugMode && (
           <div className="mt-8 flex flex-col gap-2">
             <details className="rounded-lg border border-dashed border-border p-3">
               <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">

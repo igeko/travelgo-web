@@ -32,6 +32,7 @@ export default async function TripPage({
   let initials = "";
   let avatarUrl = "";
   let fullName = "";
+  let isDev = false;
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -44,6 +45,14 @@ export default async function TripPage({
         .map((w: string) => w[0]?.toUpperCase() ?? "")
         .slice(0, 2)
         .join("");
+
+      const { data: roleRow } = await supabase
+        .from("user_platform_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "dev")
+        .maybeSingle();
+      isDev = !!roleRow;
     }
   } catch { /* env mancanti */ }
 
@@ -57,6 +66,7 @@ export default async function TripPage({
       initials={initials}
       avatarUrl={avatarUrl}
       fullName={fullName}
+      isDev={isDev}
     />
   );
 }

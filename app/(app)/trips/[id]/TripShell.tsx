@@ -15,6 +15,7 @@ type Props = {
   initials: string;
   avatarUrl: string;
   fullName: string;
+  isDev?: boolean;
 };
 
 export function TripShell({
@@ -26,9 +27,11 @@ export function TripShell({
   initials,
   avatarUrl,
   fullName,
+  isDev = false,
 }: Props) {
   const storageKey = `trip-edit-mode-${trip.id}`;
   const [editMode, setEditMode] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Legge localStorage solo dopo il mount, evitando l'hydration mismatch
   useEffect(() => {
@@ -48,6 +51,9 @@ export function TripShell({
         activeTab="day-by-day"
         editMode={editMode}
         onToggleEditMode={() => setEditMode((v) => !v)}
+        isDev={isDev}
+        debugMode={debugMode}
+        onToggleDebugMode={() => setDebugMode((v) => !v)}
         isLoggedIn={isLoggedIn}
         initials={initials}
         avatarUrl={avatarUrl}
@@ -60,6 +66,7 @@ export function TripShell({
           initialActivities={initialActivities}
           initialDayId={initialDayId}
           editMode={editMode}
+          debugMode={debugMode}
         />
       </div>
     </div>
