@@ -86,7 +86,7 @@ export default function ActivityEditFormStories() {
                 title="Senso-ji Temple visit"
                 description="Early morning visit before the crowds arrive."
                 status="booked"
-                state="in-edit"
+                state="selected"
                 location="Asakusa, Tokyo"
                 pin={2}
               />
@@ -138,7 +138,7 @@ export default function ActivityEditFormStories() {
               title="Senso-ji Temple visit"
               description="Early morning visit before the crowds arrive."
               status="booked"
-              state="in-edit"
+              state="selected"
               location="Asakusa, Tokyo"
               pin={2}
             />

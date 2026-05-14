@@ -110,7 +110,7 @@ export default function AddressFieldStories() {
                   <span className="text-ink-faint">lng: </span>
                   <span className="text-ink">{place.lng}</span>
                 </div>
-                {Object.keys(place.components).length > 0 && (
+                {place.components && Object.keys(place.components).length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border">
                     <div className="text-ink-faint mb-1">components:</div>
                     {Object.entries(place.components).map(([k, v]) => (

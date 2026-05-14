@@ -150,8 +150,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   return (
     /* ── Replica esatta di .daybyday dal design ── */
     <div
-      className="grid gap-[18px] max-w-[1280px] mx-auto px-5 py-5"
-      style={{ gridTemplateColumns: "260px 1fr" }}
+      className="grid gap-[18px] max-w-[1280px] mx-auto px-5 py-5 [grid-template-columns:1fr] md:[grid-template-columns:260px_1fr]"
     >
 
       {/* ══ SIDEBAR — .day-list ══════════════════════════════════ */}
@@ -195,22 +194,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       {/* ══ MAIN — .day-main ════════════════════════════════════ */}
       <section className="min-w-0">
 
-        {/* Shortcut hint bar — visible in edit mode only */}
-        {editMode && <ShortcutBar />}
-
-        {/* Mobile day selector */}
-        <div className="md:hidden flex items-center gap-3 px-4 py-2.5 mb-3 rounded-[var(--radius-lg)] border border-border bg-surface">
-          <div className="flex flex-col items-center w-10 shrink-0">
-            <span className="text-[9px] font-medium tracking-[0.1em] text-ink-soft uppercase">{heroDow}</span>
-            <span className="text-[22px] font-semibold leading-none text-ink">
-              {selectedDay.date ? localDate(selectedDay.date).getDate() : ""}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.08em] text-ink-soft">Day {selectedDay.day_number} of {localDays.length}</div>
-            <div className="text-[14px] font-medium text-ink truncate">{heroTitle}</div>
-          </div>
-        </div>
+        {/* Shortcut hint bar — visible in edit mode, desktop only */}
+        {editMode && <div className="hidden md:block"><ShortcutBar /></div>}
 
         {/* Hero banner */}
         <HeroBanner

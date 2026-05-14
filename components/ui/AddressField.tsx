@@ -30,7 +30,7 @@ export type PlaceResult = {
    * Flat map of address_component types → long_name.
    * Common keys: locality, administrative_area_level_1, country, postal_code.
    */
-  components: Record<string, string>;
+  components?: Record<string, string>;
 };
 
 type Suggestion = {

@@ -7,9 +7,20 @@ import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { ActivityList } from "@/features/activity/ActivityList";
 import type { Activity } from "@/lib/dal/trips";
 
+const STUB: Pick<Activity, "trip_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng"> = {
+  trip_id: "trip-1",
+  position: 0,
+  icon: null,
+  url: null,
+  location_place_id: null,
+  location_lat: null,
+  location_lng: null,
+};
+
 /* ── Sample data ── */
 const SAMPLE_ACTIVITIES: Activity[] = [
   {
+    ...STUB,
     id: "1",
     day_id: "day-1",
     title: "Kabukiza visit",
@@ -21,10 +32,9 @@ const SAMPLE_ACTIVITIES: Activity[] = [
     budget_amount: 1800,
     budget_currency: "JPY",
     budget_paid: true,
-    url: null,
-    sort_order: 1,
   },
   {
+    ...STUB,
     id: "2",
     day_id: "day-1",
     title: "A walk through Ginza",
@@ -36,10 +46,9 @@ const SAMPLE_ACTIVITIES: Activity[] = [
     budget_amount: null,
     budget_currency: null,
     budget_paid: false,
-    url: null,
-    sort_order: 2,
   },
   {
+    ...STUB,
     id: "3",
     day_id: "day-1",
     title: "Sushi and kaisen-don at Tsukiji",
@@ -51,10 +60,9 @@ const SAMPLE_ACTIVITIES: Activity[] = [
     budget_amount: 3200,
     budget_currency: "JPY",
     budget_paid: false,
-    url: null,
-    sort_order: 3,
   },
   {
+    ...STUB,
     id: "4",
     day_id: "day-1",
     title: "Hama-Rikyu garden",
@@ -66,10 +74,9 @@ const SAMPLE_ACTIVITIES: Activity[] = [
     budget_amount: 300,
     budget_currency: "JPY",
     budget_paid: false,
-    url: null,
-    sort_order: 4,
   },
   {
+    ...STUB,
     id: "5",
     day_id: "day-1",
     title: "Dinner in Roppongi",
@@ -81,8 +88,6 @@ const SAMPLE_ACTIVITIES: Activity[] = [
     budget_amount: 6500,
     budget_currency: "JPY",
     budget_paid: false,
-    url: null,
-    sort_order: 5,
   },
 ];
 

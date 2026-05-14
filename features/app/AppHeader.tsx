@@ -67,8 +67,7 @@ export function AppHeader({
   const hasTripContext = !!tripName;
 
   return (
-    /* @container root — all responsive classes use @sm: (520px) */
-    <div className={cn("@container sticky top-0 z-50", className)}>
+    <div className={cn("sticky top-0 z-50", className)}>
       <header className="bg-surface border-b border-border">
 
         {/* ══ ROW 1 · brand + nav + account ════════════════════════ */}
@@ -100,7 +99,7 @@ export function AppHeader({
           </Link>
 
           {/* Main nav — hidden below @sm */}
-          <nav className="hidden @sm:flex items-center gap-[22px] text-[13px] text-ink-soft">
+          <nav className="hidden md:flex items-center gap-[22px] text-[13px] text-ink-soft">
             {ALL_NAV.filter((item) => !item.authRequired || isLoggedIn).map((item) => (
               <Link
                 key={item.id}
@@ -119,7 +118,7 @@ export function AppHeader({
 
           {/* Account — hidden below @sm */}
           {isLoggedIn ? (
-            <div className="hidden @sm:flex ml-auto items-center gap-2.5 shrink-0">
+            <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
               {fullName && (
                 <span className="text-[13px] text-ink-soft">
                   Ciao, <span className="text-ink font-medium">{fullName.split(" ")[0]}</span>
@@ -141,7 +140,7 @@ export function AppHeader({
           ) : (
             <Link
               href="/login"
-              className="hidden @sm:inline-flex ml-auto items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors shrink-0"
+              className="hidden md:inline-flex ml-auto items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors shrink-0"
             >
               Sign in
             </Link>
@@ -153,7 +152,7 @@ export function AppHeader({
             onClick={() => setDrawerOpen((v) => !v)}
             aria-label="Menu"
             aria-expanded={drawerOpen}
-            className="@sm:hidden ml-auto w-8 h-8 flex items-center justify-center text-ink bg-transparent border-0 cursor-pointer"
+            className="md:hidden ml-auto w-8 h-8 flex items-center justify-center text-ink bg-transparent border-0 cursor-pointer"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="w-5 h-5">
               <path d="M4 6h16M4 12h16M4 18h16" />
@@ -163,7 +162,7 @@ export function AppHeader({
 
         {/* ══ MOBILE DRAWER ════════════════════════════════════════ */}
         {drawerOpen && (
-          <div className="@sm:hidden bg-surface border-t border-b border-border px-5 pt-[14px] pb-[18px]">
+          <div className="md:hidden bg-surface border-t border-b border-border px-5 pt-[14px] pb-[18px]">
             {/* Section 1 — main nav */}
             <div>
               <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-orange mb-2">
@@ -233,7 +232,7 @@ export function AppHeader({
               </div>
 
               {/* Section tabs — hidden below @sm */}
-              <nav className="hidden @sm:flex items-center gap-1 ml-auto shrink-0">
+              <nav className="hidden md:flex items-center gap-1 ml-auto shrink-0">
                 {SECTION_TABS.map((tab) => (
                   <button
                     key={tab.id}
@@ -252,7 +251,7 @@ export function AppHeader({
               </nav>
 
               {/* Divider — hidden below @sm */}
-              <span aria-hidden className="hidden @sm:block w-px h-[22px] bg-border shrink-0" />
+              <span aria-hidden className="hidden md:block w-px h-[22px] bg-border shrink-0" />
 
               {/* Edit-state chip — always visible */}
               <button
@@ -260,7 +259,7 @@ export function AppHeader({
                 onClick={onToggleEditMode}
                 title={editMode ? "Switch to view mode" : "Switch to edit mode"}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans @sm:ml-0 ml-auto",
+                  "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans md:ml-0 ml-auto",
                   editMode
                     ? "bg-orange border-orange text-white font-medium"
                     : "bg-transparent border-border text-ink-soft hover:border-border-strong",
