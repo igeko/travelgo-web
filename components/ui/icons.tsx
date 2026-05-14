@@ -7,6 +7,8 @@
  */
 export {
   IconAlertTriangle,
+  IconArrowRightCircle,
+  IconBed,
   IconBookmark,
   IconCheck,
   IconChevronDown,
@@ -18,6 +20,7 @@ export {
   IconMap,
   IconMapPin,
   IconMapSearch,
+  IconGripVertical,
   IconPencil,
   IconPlayerPlay,
   IconPlus,

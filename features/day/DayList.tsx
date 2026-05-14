@@ -113,24 +113,15 @@ export function DayList({
   }, [startDate, endDate, durationDays, dayDetails]);
 
   return (
-    <aside className="bg-surface rounded-lg border border-border overflow-hidden flex flex-col self-start sticky top-[76px] max-h-[calc(100vh-76px-24px)]">
-      <header className="px-[18px] pt-4 pb-3 border-b border-border shrink-0">
-        <div className="text-[10px] uppercase tracking-[0.08em] text-ink-soft">
-          Itinerary
-        </div>
-        <div className="text-base font-medium mt-0.5 text-ink">{title}</div>
-        <div className="text-xs text-ink-soft mt-0.5">{subtitle}</div>
-      </header>
-      <ol className="m-0 py-1.5 flex-1 min-h-0 overflow-y-auto">
-        {days.map((day) => (
-          <DayItem
-            key={day.id}
-            {...day}
-            selected={selectedDayId === day.id}
-            onClick={() => onSelect(day.id)}
-          />
-        ))}
-      </ol>
-    </aside>
+    <ol className="m-0 p-0 py-1.5 list-none">
+      {days.map((day) => (
+        <DayItem
+          key={day.id}
+          {...day}
+          selected={selectedDayId === day.id}
+          onClick={() => onSelect(day.id)}
+        />
+      ))}
+    </ol>
   );
 }

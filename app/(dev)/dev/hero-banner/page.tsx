@@ -90,7 +90,7 @@ export default function HeroBannerStories() {
         {
           kind: "toggle",
           id: "show-lodging",
-          label: "Show sub-banner",
+          label: "Has lodging",
           value: showLodging,
           onChange: setShowLodging,
         },
@@ -125,7 +125,7 @@ export default function HeroBannerStories() {
               onPrev={showNav ? () => {} : undefined}
               onNext={showNav ? () => {} : undefined}
               subBanner={showLodging ? lodging : undefined}
-              onSaveLodging={showLodging ? handleSaveLodging : undefined}
+              onSaveLodging={(data) => { handleSaveLodging(data); setShowLodging(true); }}
               onRemoveLodging={showLodging ? () => setShowLodging(false) : undefined}
               className="w-full"
             />

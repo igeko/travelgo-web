@@ -58,6 +58,17 @@ body.view-mode .activity-pin.active { box-shadow:none !important; }
 .lodging-banner { position:relative; grid-template-columns:30px 1fr auto auto !important; }
 .lodging-pencil { width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.12); border:0.5px solid rgba(255,255,255,0.18); color:white; display:inline-flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; flex-shrink:0; }
 .lodging-pencil:hover, .lodging-pencil.active { background:var(--orange); border-color:var(--orange); }
+/* Variante pill con label (Edit Stay) */
+.lodging-pencil.btn-icon.has-label { width:auto; height:32px; border-radius:var(--radius-pill); padding:0 14px 0 11px; }
+
+/* Stato vuoto della lodging-banner (no stay set) */
+.lodging-banner.empty { display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 16px; grid-template-columns:none; }
+.lodging-banner.empty .lodging-empty-icon { font-size:16px; color:rgba(255,255,255,0.55); }
+.lodging-banner.empty .lodging-empty-text { font-size:13px; color:rgba(255,255,255,0.7); }
+.lodging-banner.empty .lodging-empty-sep { color:rgba(255,255,255,0.3); }
+.lodging-banner.empty .lodging-empty-cta { color:white; border-color:transparent; background:transparent; }
+.lodging-banner.empty .lodging-empty-cta i { color:var(--orange); }
+.lodging-banner.empty .lodging-empty-cta:hover { background:rgba(255,255,255,0.08); border-color:transparent; color:white; }
 body.view-mode .lodging-pencil { display:none; }
 
 /* Day-bar budget edit affordance */
@@ -370,6 +381,7 @@ body.view-mode .activity-row .edit-pencil { display:none; }
       <span class="edit-status" id="edit-status">salvato</span>
     </div>
     <div class="edit-topbar-actions">
+      <button class="btn-ghost" id="btn-toggle-stay" title="Mostra/nasconde lo stay del giorno (debug stato vuoto)">Stay: ON</button>
       <button class="btn-ghost" id="btn-undo">Annulla tutto</button>
       <button class="edit-toggle" id="btn-edit-toggle"><span class="knob"></span> <span id="btn-edit-label">Edit mode: ON</span></button>
     </div>
@@ -505,7 +517,7 @@ function renderHero() {
   document.body.classList.toggle('editing-hero', isOpen);
   return `
     <div class="day-hero" style="background-image: url('${esc(h.img)}'); position:relative;${isOpen ? 'border-bottom-left-radius:0; border-bottom-right-radius:0;' : ''}">
-      <button type="button" class="btn-icon btn-md has-label over-media acc-handle ${isOpen ? 'active' : ''}" data-acc="hero" title="Edit place"><i class="ti ti-pencil"></i><span>Edit Place</span></button>
+      <button type="button" class="btn-icon btn-md has-label over-media acc-handle ${isOpen ? 'active' : ''}" data-acc="hero" title="Edit"><i class="ti ti-pencil"></i><span>Edit</span></button>
       <div class="day-hero-content">
         <div>
           <div class="day-hero-eyebrow">Giorno ${h.dayNum}${h.place ? ' · <span class="hero-zone">' + esc(h.place).toUpperCase() + '</span>' : ''}</div>
@@ -520,23 +532,34 @@ function renderHero() {
 }
 function renderHeroForm() {
   const h = state.hero;
+  const i = state.incipit;
   return `
     <div class="acc-form standalone">
-      <div class="head-meta">Modifica intestazione</div>
+      <div class="head-meta">Day description</div>
       <div class="hero-photo-row">
-        <div class="hero-photo" style="background-image:url('${esc(h.img)}');" title="Cambia immagine">
-          <div class="photo-overlay"><i class="ti ti-upload"></i><span>Cambia</span></div>
+        <div class="hero-photo" style="background-image:url('${esc(h.img)}');" title="Change image">
+          <div class="photo-overlay"><i class="ti ti-upload"></i><span>Change</span></div>
         </div>
         <div class="hero-fields">
           <div class="soft">
-            <span class="ghost">Luogo principale</span>
-            <input data-bind="hero.place" value="${esc(h.place)}" placeholder="es. Tokyo, Kyoto, Monte Fuji" />
+            <span class="ghost">Main place</span>
+            <input data-bind="hero.place" value="${esc(h.place)}" placeholder="e.g. Tokyo, Kyoto, Mt. Fuji" />
           </div>
           <div class="soft">
-            <span class="ghost">Sottotitolo</span>
-            <input data-bind="hero.subtitle" value="${esc(h.subtitle)}" maxlength="120" placeholder="Poche parole sull'attività del giorno" />
+            <span class="ghost">Location / Main activity</span>
+            <input data-bind="hero.subtitle" value="${esc(h.subtitle)}" maxlength="120" placeholder="A few words on the day's activity" />
           </div>
           <div class="soft-counter"><b>${h.subtitle.length}</b> / 120</div>
+          <div class="soft">
+            <span class="ghost">Summary</span>
+            <textarea data-bind="incipit.lead" maxlength="280" placeholder="A short narrative sentence about the day">${esc(i.lead)}</textarea>
+          </div>
+          <div class="soft-counter"><b>${i.lead.length}</b> / 280</div>
+          <div class="soft">
+            <span class="ghost">Practical note</span>
+            <input data-bind="incipit.note" value="${esc(i.note)}" maxlength="120" placeholder="Useful reminder (what to bring, things to watch out for)" />
+          </div>
+          <div class="soft-counter"><b>${i.note.length}</b> / 120</div>
           <div class="type-bar">
             ${['Città','Natura','Roadtrip','Spiaggia','Borgo','Riposo'].map(t => `<span class="type-chip ${t===h.type?'active':''}" data-set-type="${t}">${t}</span>`).join('')}
           </div>
@@ -545,8 +568,8 @@ function renderHeroForm() {
       <div class="form-actions">
         <span></span>
         <div class="form-actions-right">
-          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
-          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
+          <button class="btn-icon btn-md text-only" data-acc-cancel>Cancel</button>
+          <button class="btn-icon btn-md solid text-only" data-acc-save>Save</button>
         </div>
       </div>
     </div>
@@ -557,6 +580,18 @@ function renderLodging() {
   const l = state.lodging;
   const isOpen = state.openBlock === 'lodging';
   document.body.classList.toggle('editing-lodging', isOpen);
+  const isEmpty = !l.name;
+  if (isEmpty) {
+    return `
+      ${isOpen ? renderLodgingForm() : ''}
+      <div class="lodging-banner empty">
+        <i class="ti ti-bed lodging-empty-icon"></i>
+        <span class="lodging-empty-text">No stay set for this night</span>
+        <span class="lodging-empty-sep" aria-hidden="true">·</span>
+        <button type="button" class="btn-icon btn-md has-label ghost lodging-empty-cta" data-acc="lodging" title="Add stay"><i class="ti ti-plus"></i><span>Add stay</span></button>
+      </div>
+    `;
+  }
   return `
     ${isOpen ? renderLodgingForm() : ''}
     <div class="lodging-banner">
@@ -567,7 +602,7 @@ function renderLodging() {
         <span class="lodging-addr">· ${esc(l.address)} <i class="ti ti-arrow-up-right" style="font-size:11px; vertical-align:-1px;"></i></span>
       </div>
       <a href="${esc(l.url)}" class="lodging-cta">Apri <i class="ti ti-arrow-up-right" style="font-size:12px; vertical-align:-1px;"></i></a>
-      <span class="lodging-pencil ${isOpen?'active':''}" data-acc="lodging" title="Modifica alloggio">${ICON_PENCIL}</span>
+      <button type="button" class="btn-icon btn-md has-label lodging-pencil ${isOpen?'active':''}" data-acc="lodging" title="Edit stay"><i class="ti ti-pencil"></i><span>Edit Stay</span></button>
     </div>
   `;
 }
@@ -697,39 +732,10 @@ function renderBudgetForm() {
 
 function renderIncipit() {
   const i = state.incipit;
-  const isOpen = state.openBlock === 'incipit';
   return `
     <div class="day-incipit">
-      <span class="acc-handle-mini ${isOpen?'active':''}" data-acc="incipit" title="Modifica descrizione">${ICON_PENCIL}</span>
       <div class="day-incipit-lead">${esc(i.lead)}</div>
       <div class="day-incipit-note">${esc(i.note)}</div>
-    </div>
-    ${isOpen ? renderIncipitForm() : ''}
-  `;
-}
-function renderIncipitForm() {
-  const i = state.incipit;
-  return `
-    <div class="acc-form standalone">
-      <div class="head-meta">Descrizione giornata</div>
-      <div class="soft">
-        <span class="ghost">Testo principale</span>
-        <textarea data-bind="incipit.lead" maxlength="280" placeholder="Una frase narrativa, sobria">${esc(i.lead)}</textarea>
-      </div>
-      <div class="soft-counter"><b>${i.lead.length}</b> / 280</div>
-      <div style="height:8px;"></div>
-      <div class="soft">
-        <span class="ghost">Nota pratica</span>
-        <input data-bind="incipit.note" value="${esc(i.note)}" maxlength="120" placeholder="Promemoria utile (cosa portare, attenzioni)" />
-      </div>
-      <div class="soft-counter"><b>${i.note.length}</b> / 120</div>
-      <div class="form-actions">
-        <button class="btn-icon btn-md btn-danger has-label" data-acc-delete="incipit"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg> Rimuovi descrizione</button>
-        <div class="form-actions-right">
-          <button class="btn-icon btn-md text-only" data-acc-cancel>Annulla</button>
-          <button class="btn-icon btn-md solid text-only" data-acc-save>Salva</button>
-        </div>
-      </div>
     </div>
   `;
 }
@@ -1229,6 +1235,25 @@ function bindAll() {
     render();
     toast('Modifiche annullate', 'ti-arrow-back-up');
   });
+
+  // Toggle stato Stay (debug · per provare lo stato vuoto)
+  const stayToggleBtn = $('#btn-toggle-stay');
+  if (stayToggleBtn) {
+    const hasStay = !!state.lodging.name;
+    stayToggleBtn.textContent = hasStay ? 'Stay: ON' : 'Stay: OFF';
+    stayToggleBtn.addEventListener('click', () => {
+      if (state.lodging.name) {
+        window.__stayBackup = structuredClone(state.lodging);
+        state.lodging = { type:'', emoji:'🏨', name:'', address:'', url:'', budgetAmount:0, budgetCurrency:'EUR' };
+      } else if (window.__stayBackup) {
+        state.lodging = window.__stayBackup;
+      } else {
+        state.lodging = structuredClone(initialState.lodging);
+      }
+      state.openBlock = null;
+      render();
+    });
+  }
 
   // Drag & drop activities
   bindDragDrop();

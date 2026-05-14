@@ -22,7 +22,13 @@
   --color-ink-soft: #5b6b78;
   --color-ink-faint: #8a98a3;
 
-  /* Accent — orange */
+  /* Primary brand color (alias di orange) */
+  --color-primary: #f47b3a;
+  --color-primary-soft: #fdecdf;
+  --color-primary-border: #f9d4b6;
+  --color-primary-deep: #a84818;
+
+  /* Accent — orange (alias di primary, per retrocompatibilità) */
   --color-orange: #f47b3a;
   --color-orange-soft: #fdecdf;
   --color-orange-border: #f9d4b6;
@@ -50,6 +56,23 @@
   --radius-md: 12px;
   --radius-lg: 14px;
   --radius-pill: 999px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Scrollbar sottile — applicare con classe .scrollbar-thin
+───────────────────────────────────────────────────────────────── */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13,44,61,0.15) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar       { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(13,44,61,0.15);
+  border-radius: 99px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(13,44,61,0.28);
 }
 
 html {

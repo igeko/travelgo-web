@@ -133,7 +133,9 @@ export function ActivityEditForm({
   }
 
   return (
-    <div
+    <form
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onCancel(); } }}
       className={cn(
         "relative bg-surface border border-border-strong rounded-lg",
         "p-4 flex flex-col gap-3",
@@ -163,7 +165,7 @@ export function ActivityEditForm({
       {/* Title + status */}
       <div className="flex gap-2.5 items-start">
         <div className="flex-1 min-w-0">
-          <SoftField value={title} onChange={setTitle} label="Title" placeholder="Activity title" maxLength={80} hideCounter />
+          <SoftField value={title} onChange={setTitle} label="Title" placeholder="Activity title" maxLength={80} hideCounter inputProps={{ autoFocus: true }} />
         </div>
         <CyclePill value={status} onChange={setStatus} options={STATUS_OPTIONS} className="shrink-0 self-start mt-px" />
       </div>
@@ -298,12 +300,13 @@ export function ActivityEditForm({
           <span />
         )}
         <div className="flex items-center gap-2">
+          <span className="text-[10px] text-ink-faint">Press Enter to save</span>
           <Button variant="text-only" iconOnly={false} onClick={onCancel}>Cancel</Button>
-          <Button variant="solid" tone="neutral" iconOnly={false} onClick={handleSave}>
+          <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>
             {isNew ? "Create activity" : "Save activity"}
           </Button>
         </div>
       </div>
-    </div>
+    </form>
   );
 }

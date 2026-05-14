@@ -20,6 +20,12 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Atoms",
     description: "Button system · 3 sizes, 5 variants, 4 tones, icon-only/label",
   },
+  {
+    slug: "quote",
+    title: "Quote",
+    group: "Atoms",
+    description: "Blockquote with orange left border · lead (serif italic) + optional note",
+  },
   // Fields subgroup
   {
     slug: "address-field",
@@ -94,6 +100,20 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Features",
     subgroup: "Activity",
     description: "Activity edit form · title, status, period + time picker, address, budget",
+  },
+  {
+    slug: "activity-list",
+    title: "ActivityList",
+    group: "Features",
+    subgroup: "Activity",
+    description: "Slotted activity list · morning/afternoon/evening/night grouping, edit mode",
+  },
+  {
+    slug: "itinerary",
+    title: "Itinerary",
+    group: "Features",
+    subgroup: "Activity",
+    description: "Day itinerary · map + sorted activity list, show/hide map, edit mode",
   },
   // Day subgroup
   {

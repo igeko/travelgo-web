@@ -192,7 +192,7 @@ const SoftFieldBase = forwardRef<
         className={cn(
           // Named `group/sf` so Prefix/Suffix can react to focus-within and
           // to the multiline state on this wrapper.
-          "group/sf relative flex gap-1.5 px-[18px] py-2",
+          "group/sf relative flex gap-1.5 px-[18px] py-[10px]",
           // Slot alignment: top in multiline (next to the first textarea line),
           // centered in single-line.
           multiline ? "items-start" : "items-center",
@@ -213,7 +213,7 @@ const SoftFieldBase = forwardRef<
               "absolute -top-2 left-4 px-1.5 bg-surface",
               "text-[9px] uppercase tracking-[0.08em] text-ink-faint font-medium",
               "opacity-0 pointer-events-none transition-opacity",
-              "group-focus-within/sf:opacity-100",
+              "group-hover/sf:opacity-100 group-focus-within/sf:opacity-100",
             )}
           >
             {label}

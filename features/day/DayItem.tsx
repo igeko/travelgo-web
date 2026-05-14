@@ -39,7 +39,7 @@ export function DayItem({
   const placeText = place ?? placeFallback;
 
   return (
-    <li className="list-none">
+    <li className="list-none border-b border-dashed border-border last:border-0 pr-1">
       <button
         type="button"
         onClick={onClick}
@@ -47,9 +47,9 @@ export function DayItem({
         className={cn(
           "relative grid w-full items-center text-left",
           "grid-cols-[50px_1fr_14px] gap-2.5",
-          "px-[18px] py-[11px] cursor-pointer transition-colors",
+          "px-[10px] py-[8px] cursor-pointer transition-colors",
           !selected && "hover:bg-surface-soft",
-          selected && "bg-ink text-white rounded-md my-0.5 py-3",
+          selected && "bg-ink text-white rounded-md my-0.5 py-[10px]",
         )}
       >
         {selected && (

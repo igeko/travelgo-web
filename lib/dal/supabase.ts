@@ -15,7 +15,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 function getEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,12 +29,13 @@ function getEnv() {
 }
 
 /**
- * Browser-side Supabase client (singleton).
- * Safe to call multiple times — returns the same instance.
+ * Browser-side Supabase client — uses @supabase/ssr so the PKCE
+ * code verifier is stored in cookies (not localStorage), making it
+ * accessible to the server-side callback handler.
  */
 export function getBrowserClient() {
   const { url, key } = getEnv();
-  return createClient(url, key);
+  return createBrowserClient(url, key);
 }
 
 /**

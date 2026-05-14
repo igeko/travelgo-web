@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { StoryPage, StoryFrame } from "../_components/StoryFrame";
+import { StoryPage, StoryFrame, DocsFrame, PropsTable, CodeBlock } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
@@ -167,6 +167,65 @@ export default function AddressFieldStories() {
             />
           </div>
         </StoryFrame>
+        {/* Developer reference */}
+        <DocsFrame>
+          {/* AddressFieldProps */}
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint mb-3">AddressFieldProps</p>
+            <PropsTable rows={[
+              { prop: "value",         type: "PlaceResult | null",  required: true,  description: "Currently selected place. Pass null when nothing is selected." },
+              { prop: "onChange",      type: "(place: PlaceResult | null) => void", required: true, description: "Called with the full PlaceResult after the user selects a suggestion, or null when the field is cleared." },
+              { prop: "placeholder",   type: "string",              defaultValue: '"Search address…"', description: "Input placeholder text." },
+              { prop: "label",         type: "string",              description: "Floating label shown on hover/focus (passed through to SoftField)." },
+              { prop: "disabled",      type: "boolean",             description: "Disables the input and suppresses autocomplete." },
+              { prop: "showMapButton", type: "boolean",             defaultValue: "false", description: "Shows a 'map' button in the suffix slot. Visual only — wire onClick via SoftField.Suffix if needed." },
+              { prop: "className",     type: "string",              description: "Extra classes on the outer wrapper div." },
+            ]} />
+          </div>
+
+          {/* PlaceResult */}
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint mb-3">PlaceResult — returned by onChange</p>
+            <PropsTable rows={[
+              { prop: "formatted",   type: "string",              description: 'Human-readable full address from Google (e.g. "Shinjuku, Tokyo, Japan").' },
+              { prop: "name",        type: "string",              description: 'Place name for establishments (e.g. "Shinjuku Gyoen"). Falls back to the first part of the formatted address.' },
+              { prop: "placeId",     type: "string",              description: "Google place_id — stable identifier, safe to store in the DB." },
+              { prop: "lat",         type: "number",              description: "Latitude (WGS 84)." },
+              { prop: "lng",         type: "number",              description: "Longitude (WGS 84)." },
+              { prop: "components",  type: "Record<string, string>", description: "Flat map of address_component types → long_name. Common keys: locality, administrative_area_level_1, country, postal_code." },
+            ]} />
+          </div>
+
+          <CodeBlock code={`
+import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
+
+// Controlled — parent owns the PlaceResult
+const [place, setPlace] = useState<PlaceResult | null>(null);
+
+<AddressField
+  value={place}
+  onChange={setPlace}
+  label="Location"
+  placeholder="Search a place…"
+/>
+
+// With map button
+<AddressField
+  value={place}
+  onChange={setPlace}
+  label="Address"
+  showMapButton
+/>
+
+// Reading the result
+if (place) {
+  console.log(place.placeId);       // "ChIJ51cu8IcbXWARiRtXIothbyY"
+  console.log(place.lat, place.lng); // 35.6762, 139.6503
+  console.log(place.components.country);   // "Japan"
+  console.log(place.components.locality);  // "Tokyo"
+}
+          `} />
+        </DocsFrame>
       </StoryPage>
     </>
   );

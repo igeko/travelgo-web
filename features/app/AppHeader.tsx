@@ -25,14 +25,20 @@ export type AppHeaderProps = {
   onToggleEditMode?: () => void;
   onTripActions?: () => void;
   initials?: string;
+  /** Google avatar URL */
+  avatarUrl?: string;
+  /** Full name for the welcome message */
+  fullName?: string;
+  /** When true shows the avatar, when false shows the Sign in button */
+  isLoggedIn?: boolean;
   className?: string;
 };
 
-const MAIN_NAV: { id: AppHeaderProps["activeNav"]; label: string }[] = [
-  { id: "trips",   label: "My trips" },
-  { id: "explore", label: "Explore" },
-  { id: "guides",  label: "Guides" },
-  { id: "budget",  label: "Budget" },
+const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
+  { id: "trips",   label: "My trips", href: "/trips",   authRequired: true },
+  { id: "explore", label: "Explore",  href: "/explore", authRequired: false },
+  { id: "guides",  label: "Guides",   href: "/guides",  authRequired: false },
+  { id: "budget",  label: "Budget",   href: "/budget",  authRequired: false },
 ];
 
 const SECTION_TABS: { id: AppHeaderTab; label: string }[] = [
@@ -51,7 +57,10 @@ export function AppHeader({
   editMode = false,
   onToggleEditMode,
   onTripActions,
-  initials = "ED",
+  initials = "",
+  avatarUrl,
+  fullName,
+  isLoggedIn = false,
   className,
 }: AppHeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -92,25 +101,51 @@ export function AppHeader({
 
           {/* Main nav — hidden below @sm */}
           <nav className="hidden @sm:flex items-center gap-[22px] text-[13px] text-ink-soft">
-            {MAIN_NAV.map((item) => (
-              <span
+            {ALL_NAV.filter((item) => !item.authRequired || isLoggedIn).map((item) => (
+              <Link
                 key={item.id}
+                href={item.href}
                 className={cn(
-                  "cursor-pointer transition-colors whitespace-nowrap",
+                  "no-underline transition-colors whitespace-nowrap",
                   item.id === activeNav
                     ? "text-ink font-medium border-b-2 border-orange pb-0.5"
                     : "hover:text-ink",
                 )}
               >
                 {item.label}
-              </span>
+              </Link>
             ))}
           </nav>
 
-          {/* Account avatar — hidden below @sm */}
-          <div className="hidden @sm:flex ml-auto w-[30px] h-[30px] rounded-full bg-ink items-center justify-center text-white text-[11px] font-semibold shrink-0 select-none">
-            {initials}
-          </div>
+          {/* Account — hidden below @sm */}
+          {isLoggedIn ? (
+            <div className="hidden @sm:flex ml-auto items-center gap-2.5 shrink-0">
+              {fullName && (
+                <span className="text-[13px] text-ink-soft">
+                  Ciao, <span className="text-ink font-medium">{fullName.split(" ")[0]}</span>
+                </span>
+              )}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={fullName ?? "Avatar"}
+                  className="w-[30px] h-[30px] rounded-full object-cover shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-[11px] font-semibold shrink-0 select-none">
+                  {initials}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden @sm:inline-flex ml-auto items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors shrink-0"
+            >
+              Sign in
+            </Link>
+          )}
 
           {/* Hamburger — visible only below @sm */}
           <button
@@ -135,18 +170,19 @@ export function AppHeader({
                 TravelGo
               </div>
               <nav className="flex flex-col">
-                {MAIN_NAV.map((item) => (
-                  <span
+                {ALL_NAV.filter((item) => !item.authRequired || isLoggedIn).map((item) => (
+                  <Link
                     key={item.id}
+                    href={item.href}
                     className={cn(
-                      "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] cursor-pointer transition-colors",
+                      "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] no-underline transition-colors",
                       item.id === activeNav
                         ? "text-ink font-medium bg-surface-soft"
                         : "text-ink-soft",
                     )}
                   >
                     {item.label}
-                  </span>
+                  </Link>
                 ))}
               </nav>
             </div>

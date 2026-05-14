@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ActivityRow } from "@/features/activity/ActivityRow";
-import { SlotStation } from "@/features/activity/SlotStation";
 import { StoryFrame, StoryPage } from "../_components/StoryFrame";
 import {
   ControlsPanel,
@@ -21,6 +20,7 @@ export default function ActivityRowStories() {
   const [showDescription, setShowDescription] = useState(true);
   const [showLocation, setShowLocation] = useState(true);
   const [showCost, setShowCost] = useState(true);
+  const [editMode, setEditMode] = useState(false);
 
   const groups: ControlGroup[] = [
     {
@@ -56,6 +56,18 @@ export default function ActivityRowStories() {
             { value: "booked", label: "Booked" },
             { value: "paid", label: "Paid" },
           ],
+        },
+      ],
+    },
+    {
+      title: "Edit mode",
+      controls: [
+        {
+          kind: "toggle",
+          id: "editMode",
+          label: "Edit mode",
+          value: editMode,
+          onChange: setEditMode,
         },
       ],
     },
@@ -115,67 +127,20 @@ export default function ActivityRowStories() {
             costApprox={showCost ? "≈ €20" : undefined}
             status={status === "none" ? undefined : status}
             state={state}
+            editMode={editMode}
+            initialData={{
+              title: "Sushi and kaisen-don at Tsukiji",
+              description: "At Tsukiji outer market you sit at the counter of a kaisen-don — rice and the day's raw fish.",
+              period: "morning",
+              budgetAmount: 3200,
+              budgetCurrency: "JPY",
+              status: status === "none" ? null : status ?? null,
+            }}
+            onSave={(data) => console.log("save", data)}
+            onDelete={() => console.log("delete")}
           />
         </StoryFrame>
 
-        <StoryFrame
-          name="Composition · sample timeline"
-          description="Multiple rows in sequence with SlotStation as separators — faithful design reproduction. Static, independent from the controls."
-        >
-          <div className="flex flex-col">
-            <SlotStation label="Morning" count={3} />
-            <ActivityRow
-              time="09:00"
-              title="Kabukiza visit"
-              description="Tokyo's main kabuki theater. The exterior with its curtains is already worth a stop; anyone wanting in can buy a single-act ticket at the side box office."
-              pin={1}
-              location="Higashi-Ginza"
-              cost="¥1,800"
-              costApprox="≈ €11"
-              status="paid"
-            />
-            <ActivityRow
-              time="10:30"
-              title="A walk through Ginza"
-              description="From historic architecture to luxury boutiques. 5 stops in 2.4 km — from the Wako clock to the jellyfish-facade Louis Vuitton."
-              pin={2}
-              location="Ginza, Tokyo"
-            />
-            <ActivityRow
-              time="12:30"
-              title="Sushi and kaisen-don at Tsukiji"
-              description="At Tsukiji outer market you sit at the counter of a kaisen-don — rice and the day's raw fish."
-              pin={3}
-              location="Tsukiji, Tokyo"
-              cost="¥3,200"
-              costApprox="≈ €20"
-              status="booked"
-              state="now"
-            />
-            <SlotStation label="Afternoon" count={1} />
-            <ActivityRow
-              time="15:00"
-              title="Hama-Rikyu garden"
-              description="The Tokugawa clan's oasis in the heart of the city — a pond with a floating tea house, peonies, and a harbor view few tourists discover."
-              pin={4}
-              location="Shiodome, Tokyo"
-              cost="¥300"
-              costApprox="≈ €2"
-              status="todo"
-            />
-            <SlotStation label="Evening" count={1} />
-            <ActivityRow
-              time="19:30"
-              title="Dinner in Roppongi"
-              description="Robatayaki and neighborhood bars — the area lights up after sunset, between tiny izakayas and discreet upper-floor cocktail bars."
-              pin={5}
-              location="Roppongi, Tokyo"
-              cost="¥6,500"
-              costApprox="≈ €40"
-              status="booked"
-            />
-          </div>
-        </StoryFrame>
       </StoryPage>
     </>
   );

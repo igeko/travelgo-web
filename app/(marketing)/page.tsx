@@ -1,34 +1,12 @@
+import { AppHeaderServer } from "@/features/app/AppHeaderServer";
+
 export default function MarketingHome() {
   return (
     <main className="flex flex-1 flex-col">
-      {/* Nav */}
-      <header className="w-full border-b border-zinc-200/60 dark:border-white/10">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <a
-            href="/"
-            className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-          >
-            Travel<span className="text-sky-600 dark:text-sky-400">Go</span>
-          </a>
-          <nav className="hidden gap-8 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
-            <a href="#features" className="hover:text-zinc-900 dark:hover:text-zinc-50">
-              Features
-            </a>
-            <a href="#how" className="hover:text-zinc-900 dark:hover:text-zinc-50">
-              How it works
-            </a>
-          </nav>
-          <a
-            href="#cta"
-            className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Get started
-          </a>
-        </div>
-      </header>
+      <AppHeaderServer activeNav="trips" />
 
       {/* Hero */}
-      <section className="relative flex flex-1 items-center justify-center overflow-hidden bg-gradient-to-b from-sky-50 via-white to-white px-6 py-24 dark:from-sky-950/30 dark:via-black dark:to-black">
+      <section className="relative flex flex-1 items-center justify-center overflow-hidden bg-gradient-to-b from-sky-50/60 via-white to-white px-6 py-24">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/60 px-3 py-1 text-xs font-medium text-zinc-600 backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-zinc-400">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -46,7 +24,7 @@ export default function MarketingHome() {
           </p>
           <div id="cta" className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a
-              href="#"
+              href="/trips"
               className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 px-6 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               Join the waitlist
@@ -64,7 +42,7 @@ export default function MarketingHome() {
       {/* Features placeholder */}
       <section
         id="features"
-        className="border-t border-zinc-200/60 bg-white px-6 py-20 dark:border-white/10 dark:bg-black"
+        className="border-t border-zinc-200/60 bg-zinc-50/50 px-6 py-20"
       >
         <div className="mx-auto grid max-w-5xl gap-10 sm:grid-cols-3">
           {[
@@ -94,7 +72,7 @@ export default function MarketingHome() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200/60 px-6 py-8 text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-500">
+      <footer className="border-t border-zinc-200/60 px-6 py-8 text-xs text-zinc-500">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <span>© {new Date().getFullYear()} TravelGo</span>
           <span>Made with Next.js</span>

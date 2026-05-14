@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { cn } from "@/lib/cn";
 import {
+  IconBed,
   IconChevronLeft,
   IconChevronRight,
   IconChevronDown,
   IconCheck,
   IconPencil,
+  IconPlus,
   IconUpload,
   IconX,
   IconTrash,
@@ -79,7 +81,7 @@ export type HeroBannerSubBanner = {
   place?: PlaceResult | null;
   /** External booking URL */
   href?: string;
-  /** CTA label. Defaults to "Apri ↗" */
+  /** CTA label. Defaults to "Open ↗" */
   ctaLabel?: string;
   /** Budget */
   budgetAmount?: number;
@@ -92,18 +94,28 @@ export type HeroBannerData = {
   subtitle: string;
   imageUrl: string;
   type?: HeroBannerType;
+  /** Short narrative sentence about the day */
+  summary?: string;
+  /** Practical reminder (what to bring, watch out for) */
+  practicalNote?: string;
 };
 
 export type HeroBannerSubBannerData = HeroBannerSubBanner;
 
 /* ── Props ───────────────────────────────────────────────────────── */
 export type HeroBannerProps = {
+  /** When this value changes, all draft state is reset to the current props. Use to signal a context switch (e.g. different day selected). */
+  resetKey?: string | number;
   eyebrow?: string;
   title: string;
   /** Zone/area — shown uppercase in orange after the eyebrow */
   subtitle?: string;
   /** Secondary line below the title, e.g. "August 3, 2026 · 5 activities" */
   meta?: string;
+  /** Short narrative sentence about the day */
+  summary?: string;
+  /** Practical reminder (what to bring, watch out for) */
+  practicalNote?: string;
   /** Day type — drives the default background image when imageUrl is not set */
   type?: HeroBannerType;
   imageUrl?: string;
@@ -119,6 +131,8 @@ export type HeroBannerProps = {
   onSaveLodging?: (data: HeroBannerSubBannerData) => void;
   /** Called when the user removes the lodging */
   onRemoveLodging?: () => void;
+  /** Called when the user clicks "Add stay" in the empty lodging state */
+  onAddLodging?: () => void;
   className?: string;
 };
 
@@ -198,11 +212,19 @@ function LodgingTypePicker({
 /* ─────────────────────────────────────────────────────────────────
    HeroBanner
 ───────────────────────────────────────────────────────────────── */
-export function HeroBanner({
+export type HeroBannerHandle = {
+  openEdit: () => void;
+  openLodging: () => void;
+};
+
+export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function HeroBanner({
+  resetKey,
   eyebrow,
   title,
   subtitle,
   meta,
+  summary,
+  practicalNote,
   type,
   imageUrl,
   editMode = false,
@@ -212,14 +234,27 @@ export function HeroBanner({
   subBanner,
   onSaveLodging,
   onRemoveLodging,
+  onAddLodging,
   className,
-}: HeroBannerProps) {
+}, ref) {
   /* ── Hero edit state ── */
   const [heroOpen, setHeroOpen] = useState(false);
-  const [draftPlace,    setDraftPlace]    = useState(title);
-  const [draftZone,     setDraftZone]     = useState(subtitle ?? "");
-  const [draftImageUrl, setDraftImageUrl] = useState(imageUrl ?? "");
-  const [draftHeroType, setDraftHeroType] = useState<HeroBannerType | undefined>(type);
+  const [draftPlace,         setDraftPlace]         = useState(title);
+  const [draftZone,          setDraftZone]          = useState(subtitle ?? "");
+  const [draftSummary,       setDraftSummary]       = useState(summary ?? "");
+  const [draftPracticalNote, setDraftPracticalNote] = useState(practicalNote ?? "");
+  const [draftImageUrl,      setDraftImageUrl]      = useState(imageUrl ?? "");
+  const [draftHeroType,      setDraftHeroType]      = useState<HeroBannerType | undefined>(type);
+
+  /* ── Reset drafts when resetKey changes (e.g. day switch) ── */
+  useEffect(() => {
+    setDraftPlace(title);
+    setDraftZone(subtitle ?? "");
+    setDraftSummary(summary ?? "");
+    setDraftPracticalNote(practicalNote ?? "");
+    setDraftImageUrl(imageUrl ?? "");
+    setDraftHeroType(type);
+  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Lodging edit state ── */
   const [lodgingOpen, setLodgingOpen] = useState(false);
@@ -241,6 +276,8 @@ export function HeroBanner({
   function openHeroEdit() {
     setDraftPlace(title);
     setDraftZone(subtitle ?? "");
+    setDraftSummary(summary ?? "");
+    setDraftPracticalNote(practicalNote ?? "");
     setDraftImageUrl(imageUrl ?? "");
     setDraftHeroType(type);
     setHeroOpen(true);
@@ -248,7 +285,14 @@ export function HeroBanner({
   }
 
   function saveHero() {
-    onSave?.({ title: draftPlace, subtitle: draftZone, imageUrl: draftImageUrl, type: draftHeroType });
+    onSave?.({
+      title: draftPlace,
+      subtitle: draftZone,
+      imageUrl: draftImageUrl,
+      type: draftHeroType,
+      summary: draftSummary || undefined,
+      practicalNote: draftPracticalNote || undefined,
+    });
     setHeroOpen(false);
   }
 
@@ -282,9 +326,16 @@ export function HeroBanner({
     setLodgingOpen(false);
   }
 
+  /* ─── Imperative handle (shortcut trigger from parent) ──────── */
+  useImperativeHandle(ref, () => ({
+    openEdit:   () => { if (!heroOpen) openHeroEdit(); },
+    openLodging: () => { if (!lodgingOpen) openLodgingEdit(); },
+  }), [heroOpen, lodgingOpen]);
+
   /* ─── Layout flags ───────────────────────────────────────────── */
-  // Hero bottom radius: flat when either form is open OR sub-banner present
-  const heroFlat = heroOpen || lodgingOpen || hasSubBanner;
+  const showEmptyLodging = !hasSubBanner;
+  // Hero bottom radius: flat when either form is open OR sub-banner present OR empty lodging strip
+  const heroFlat = heroOpen || lodgingOpen || hasSubBanner || showEmptyLodging;
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -308,7 +359,7 @@ export function HeroBanner({
         {editMode && (
           <button
             onClick={openHeroEdit}
-            title="Edit place"
+            title="Edit day"
             className={cn(
               "absolute top-3 right-3 z-10 h-8 rounded-pill px-3",
               "inline-flex items-center gap-1.5 cursor-pointer transition-colors duration-150 text-[12px] font-medium",
@@ -318,7 +369,7 @@ export function HeroBanner({
             )}
           >
             <IconPencil size={13} />
-            <span>Edit Place</span>
+            <span>Edit Day</span>
           </button>
         )}
 
@@ -336,8 +387,8 @@ export function HeroBanner({
                 )}
               </div>
             )}
-            <div className="text-[26px] font-semibold leading-[1.05] mb-1 truncate">{title}</div>
-            {meta && <div className="text-[12px] opacity-75">{meta}</div>}
+            <div className="text-[26px] font-semibold leading-[1.25] mb-1 truncate">{title}</div>
+            {meta && <div className="text-[12px] opacity-75 uppercase tracking-[0.06em]">{meta}</div>}
           </div>
           {(onPrev || onNext) && (
             <div className="flex gap-1.5 shrink-0">
@@ -360,12 +411,16 @@ export function HeroBanner({
 
       {/* ══ HERO EDIT FORM ══════════════════════════════════════════ */}
       {heroOpen && (
-        <div className={cn(
-          "bg-surface border border-border-strong border-t-0 px-4 pt-4 pb-4 flex flex-col gap-3",
-          !hasSubBanner ? "rounded-b-[var(--radius-lg)]" : "",
-        )}>
+        <form
+          onSubmit={(e) => { e.preventDefault(); saveHero(); }}
+          onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); setHeroOpen(false); } }}
+          className={cn(
+            "bg-surface border border-border-strong border-t-0 px-4 pt-4 pb-4 flex flex-col gap-3",
+            !hasSubBanner ? "rounded-b-[var(--radius-lg)]" : "",
+          )}
+        >
           <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
-            Edit place
+            Day description
           </div>
 
           {/* Thumbnail + fields */}
@@ -381,36 +436,69 @@ export function HeroBanner({
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <SoftField value={draftZone} onChange={setDraftZone} label="Zone" placeholder="e.g. Monte Fuji" maxLength={120} />
-              <SoftField value={draftPlace} onChange={setDraftPlace} label="Place" placeholder="e.g. Escursione al Monte Fuji" />
+              <SoftField value={draftZone} onChange={setDraftZone} label="Zone" placeholder="e.g. Monte Fuji" maxLength={120} hideCounter inputProps={{ autoFocus: true }} />
+              <SoftField value={draftPlace} onChange={setDraftPlace} label="Location / Main activity" placeholder="A few words on the day's activity" maxLength={120} hideCounter />
             </div>
           </div>
 
-          {/* Type chips */}
-          <div className="flex flex-wrap gap-1.5">
-            {HERO_TYPE_CHIPS.map((t) => (
-              <button key={t} type="button" onClick={() => setDraftHeroType(t)}
-                className={cn(
-                  "px-2.5 py-1 rounded-pill text-[11px] border cursor-pointer transition-colors font-sans",
-                  draftHeroType === t
-                    ? "bg-ink text-white border-ink font-medium"
-                    : "bg-surface text-ink-soft border-border hover:border-border-strong",
-                )}>
-                {t}
-              </button>
-            ))}
+          {/* Summary + Practical note — same column width as the fields above */}
+          <div className="grid gap-2" style={{ gridTemplateColumns: "120px 1fr" }}>
+            <div /> {/* spacer to align with the thumbnail column */}
+            <div className="flex flex-col gap-2">
+              <SoftField
+                value={draftSummary}
+                onChange={setDraftSummary}
+                label="Summary"
+                placeholder="A short narrative sentence about the day"
+                multiline
+                rows={2}
+                maxLength={280}
+              />
+              <SoftField
+                value={draftPracticalNote}
+                onChange={setDraftPracticalNote}
+                label="Practical note"
+                placeholder="Useful reminder (what to bring, things to watch out for)"
+                maxLength={120}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="text-only" iconOnly={false} onClick={() => setHeroOpen(false)}>Cancel</Button>
-            <Button variant="solid" tone="neutral" iconOnly={false} onClick={saveHero}>Save</Button>
+          {/* Type chips — same column alignment */}
+          <div className="grid gap-2" style={{ gridTemplateColumns: "120px 1fr" }}>
+            <div />
+            <div className="flex flex-wrap gap-1.5">
+              {HERO_TYPE_CHIPS.map((t) => (
+                <button key={t} type="button" onClick={() => setDraftHeroType(t)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-pill text-[11px] border cursor-pointer transition-colors font-sans",
+                    draftHeroType === t
+                      ? "bg-ink text-white border-ink font-medium"
+                      : "bg-surface text-ink-soft border-border hover:border-border-strong",
+                  )}>
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="text-[10px] text-ink-faint">Press Enter to save</span>
+            <div className="flex items-center gap-2">
+              <Button variant="text-only" iconOnly={false} onClick={() => setHeroOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>Save</Button>
+            </div>
+          </div>
+        </form>
       )}
 
       {/* ══ LODGING EDIT FORM (opens between hero and sub-banner) ═══ */}
       {lodgingOpen && (
-        <div className="relative bg-surface border border-border-strong border-t-0 px-4 pt-4 pb-4 flex flex-col gap-3">
+        <form
+          onSubmit={(e) => { e.preventDefault(); saveLodging(); }}
+          onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); setLodgingOpen(false); } }}
+          className="relative bg-surface border border-border-strong border-t-0 px-4 pt-4 pb-4 flex flex-col gap-3"
+        >
           {/* Arrow-down pointing at the sub-banner below */}
           <div
             aria-hidden
@@ -432,6 +520,7 @@ export function HeroBanner({
             placeholder="Accommodation name"
             maxLength={80}
             hideCounter
+            inputProps={{ autoFocus: true }}
           />
 
           {/* Optional: address */}
@@ -529,10 +618,35 @@ export function HeroBanner({
               </Button>
             ) : <span />}
             <div className="flex items-center gap-2">
+              <span className="text-[10px] text-ink-faint">Press Enter to save</span>
               <Button variant="text-only" iconOnly={false} onClick={() => setLodgingOpen(false)}>Cancel</Button>
-              <Button variant="solid" tone="neutral" iconOnly={false} onClick={saveLodging}>Save</Button>
+              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>Save</Button>
             </div>
           </div>
+        </form>
+      )}
+
+      {/* ══ EMPTY LODGING STATE (editMode, no subBanner) ═══════════ */}
+      {showEmptyLodging && (
+        <div
+          className="rounded-b-[var(--radius-lg)] -mt-px flex items-center justify-center gap-2.5 px-4 py-2.5 border-t border-white/[0.08]"
+          style={{ background: "#1a3a4f", color: "white" }}
+        >
+          <IconBed size={16} className="text-white/55 shrink-0" />
+          <span className="text-[13px] text-white/70">No stay set for this night</span>
+          {editMode && (
+            <>
+              <span aria-hidden className="text-white/30 text-[13px]">·</span>
+              <button
+                type="button"
+                onClick={onAddLodging ?? openLodgingEdit}
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-white/80 hover:text-white bg-white/[0.10] hover:bg-white/[0.18] border border-white/[0.18] rounded-pill px-3 py-1 transition-colors cursor-pointer"
+              >
+                <IconPlus size={13} className="text-orange" />
+                Add stay
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -570,7 +684,7 @@ export function HeroBanner({
           {subBanner.href && (
             <a href={subBanner.href} target="_blank" rel="noopener noreferrer"
               className="shrink-0 text-[11px] font-medium text-white px-3 py-1.5 rounded-pill bg-white/[0.12] border border-white/[0.18] hover:bg-white/20 transition-colors whitespace-nowrap">
-              {subBanner.ctaLabel ?? "Apri ↗"}
+              {subBanner.ctaLabel ?? "Open ↗"}
             </a>
           )}
 
@@ -593,4 +707,5 @@ export function HeroBanner({
       )}
     </div>
   );
-}
+});
+HeroBanner.displayName = "HeroBanner";
