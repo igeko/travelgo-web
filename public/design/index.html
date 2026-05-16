@@ -154,6 +154,55 @@ h1 { font-size: 28px; font-weight: 500; margin: 6px 0 8px; }
 
     <div class="cards">
 
+      <!-- TRIP PAGE -->
+      <a class="card primary" href="trip.html">
+        <div class="card-icon"><i class="ti ti-route"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Trip page</span>
+            <span class="card-status wip">WIP</span>
+          </div>
+          <div class="card-desc">Landing del viaggio (tab "Trip" del sub-header). Hero full-width + 2 colonne: sx Trip details (spine icon-circle) + Country info (4 widget: Language / Driving / Money / Documents), dx trigger Go collassato + Wishlist preview.</div>
+          <div class="card-meta">
+            <span>Pattern: 2-col scheda + workspace</span>
+            <span>Country info: REST Countries API + Go per frasi</span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <!-- GO CHAT · spec stati -->
+      <a class="card" href="go_chat_states.html">
+        <div class="card-icon"><i class="ti ti-message-circle-cog"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Go chat · spec stati (per dev)</span>
+            <span class="card-status wip">WIP</span>
+          </div>
+          <div class="card-desc">File spec di tutti gli stati della chat Go floating: closed (mini-card resume), opening (streaming + wobble), idle "ti ascolto", user reply, results inline, selezione card, espansione blog, affinamento con chip-riferimento. Annotazioni CSS, animazioni, interazione.</div>
+          <div class="card-meta">
+            <span>Da girare al developer</span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
+      <!-- DAY-BY-DAY · 3 col (Go) -->
+      <a class="card primary" href="daybyday_3col.html">
+        <div class="card-icon"><i class="ti ti-layout-columns"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Day-by-Day · 3 col (con Go)</span>
+            <span class="card-status wip">WIP</span>
+          </div>
+          <div class="card-desc">Variante 3 colonne: a sinistra lista giorni, al centro contenuto del giorno, a destra pannello Go (chat + risultati + checkbox + input). La 3a colonna compare al click di "Ask me" e si chiude con la X. Layout sticky, aurora arancia di fondo nel pannello.</div>
+          <div class="card-meta">
+            <span>Pattern: 3-col toggleable</span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
+
       <!-- DAY-BY-DAY -->
       <a class="card primary" href="daybyday_responsive.html">
         <div class="card-icon"><i class="ti ti-calendar-week"></i></div>
@@ -217,7 +266,56 @@ h1 { font-size: 28px; font-weight: 500; margin: 6px 0 8px; }
           <i class="ti ti-arrow-up-right card-arrow"></i>
         </a>
 
+        <a class="card" href="place_search.html">
+          <div class="card-icon"><i class="ti ti-map-search"></i></div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <span class="card-title">Place search (mappa + drawer)</span>
+              <span class="card-status wip">WIP</span>
+            </div>
+            <div class="card-desc">Esperienza di ricerca posti con mappa fullscreen e drawer flottante a sinistra. Filtri categoria, card risultato con foto + categoria + distanza, action bar finale (aggiungi al giorno, wishlist, stay). Entry contestuale dal "+ Add activity" / "+ Add stay" e dalla tab Mappa del viaggio.</div>
+            <div class="card-meta">
+              <span>Pattern: fullscreen map + floating drawer</span>
+              <span>Source: <b>Google Places (futuro)</b></span>
+            </div>
+          </div>
+          <i class="ti ti-arrow-up-right card-arrow"></i>
+        </a>
+
+        <a class="card" href="ai_suggest.html">
+          <div class="card-icon"><i class="ti ti-sparkles"></i></div>
+          <div class="card-body">
+            <div class="card-title-row">
+              <span class="card-title">AI Suggest (sezione del giorno)</span>
+              <span class="card-status wip">WIP</span>
+            </div>
+            <div class="card-desc">Sezione "Suggested by AI" dentro la pagina del giorno. Questionario veloce (mood chip + note libere, con drawer espandibili per affinare e vincoli avanzati) e lista risultati: ogni item si espande inline in stile blog (paragrafo motivazionale AI, bullet, fact-strip, galleria). Action: aggiungi al giorno · wishlist · mappa · chiedi alternative simili con commento.</div>
+            <div class="card-meta">
+              <span>Pattern: questionario + lista accordion blog-style</span>
+              <span>Source: <b>OpenAI (futuro)</b></span>
+            </div>
+          </div>
+          <i class="ti ti-arrow-up-right card-arrow"></i>
+        </a>
+
       </div>
+
+      <!-- CREATE TRIP -->
+      <a class="card" href="create_trip.html">
+        <div class="card-icon"><i class="ti ti-plus"></i></div>
+        <div class="card-body">
+          <div class="card-title-row">
+            <span class="card-title">Create trip · modal</span>
+            <span class="card-status wip">WIP</span>
+          </div>
+          <div class="card-desc">Modal di creazione viaggio. Solo il luogo è obbligatorio (autocomplete città/regione/paese). Dopo la scelta compaiono 3 mini-card opzionali ancorate (Dates · Travelers · Theme) con form a tendina sotto. Bottone "Create trip" si abilita quando il luogo è selezionato.</div>
+          <div class="card-meta">
+            <span>Pattern: place autocomplete + opt-cards ancorate</span>
+            <span>Output: Trip <b>id + name (luogo)</b></span>
+          </div>
+        </div>
+        <i class="ti ti-arrow-up-right card-arrow"></i>
+      </a>
 
       <!-- TRIP HEADER -->
       <a class="card" href="trip_header_states.html">

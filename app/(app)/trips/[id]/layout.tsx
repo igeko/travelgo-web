@@ -1,4 +1,10 @@
-// Layout vuoto — TripShell nel page.tsx gestisce header + contenuto
-export default function TripLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+import { TripGoProvider } from "@/features/go/TripGoContext";
+import type { ReactNode } from "react";
+
+export default function TripLayout({ children }: { children: ReactNode }) {
+  return (
+    <TripGoProvider>
+      {children}
+    </TripGoProvider>
+  );
 }

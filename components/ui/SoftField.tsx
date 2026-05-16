@@ -179,7 +179,7 @@ const SoftFieldBase = forwardRef<
   const { prefix, suffix } = extractSlots(children);
 
   const sharedInputClasses = cn(
-    "block w-full bg-transparent border-0 outline-0 shadow-none p-0 m-0 appearance-none",
+    "block w-full min-w-0 bg-transparent border-0 outline-0 shadow-none p-0 m-0 appearance-none",
     "font-sans text-[15px] leading-[1.45] font-normal text-ink",
     "placeholder:text-ink-faint",
     "disabled:cursor-not-allowed",
@@ -251,8 +251,8 @@ const SoftFieldBase = forwardRef<
             autoComplete={autoComplete}
             name={name}
             id={id}
-            className={sharedInputClasses}
             {...(inputProps as React.InputHTMLAttributes<HTMLInputElement>)}
+            className={cn(sharedInputClasses, (inputProps as React.InputHTMLAttributes<HTMLInputElement>)?.className)}
           />
         )}
 

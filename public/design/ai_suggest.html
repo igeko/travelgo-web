@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Go (AI conversation)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<style>
+/* ── Go · sezione conversazionale dentro la pagina del giorno ─── */
+.ai-section {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px var(--gap-page) 60px;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Aurora orange-soft animato di fondo (lento, sotto la conversation) */
+@keyframes goAurora {
+  0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+  50% { background-position: 100% 50%, 0% 50%, 30% 70%; }
+}
+.go-aurora {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(244, 123, 58, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(253, 236, 223, 0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(244, 123, 58, 0.08) 0%, transparent 70%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: goAurora 14s ease-in-out infinite;
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .go-aurora { animation: none; } }
+
+/* Avatar Go · tondo ink + halo arancione che pulsa */
+@keyframes goPulseHalo { 0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(244, 123, 58, 0); } }
+.go-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--ink); color: white;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 18px; font-weight: 500; line-height: 1;
+  animation: goPulseHalo 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.go-avatar.sm { width: 28px; height: 28px; font-size: 14px; }
+.go-avatar.xs { width: 24px; height: 24px; font-size: 12px; }
+
+/* Bubble Go (assistente) */
+.go-bubble {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+  max-width: 540px;
+}
+.go-bubble .who {
+  font-family: var(--font);
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 2px;
+}
+.go-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+
+/* Bubble utente */
+.user-row { display: flex; justify-content: flex-end; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+.user-bubble {
+  background: var(--ink);
+  color: white;
+  border-radius: 16px 16px 4px 16px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 540px;
+}
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Quick replies (chip rapidi sotto una bubble Go) */
+.quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 46px; }
+.quick-reply {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+}
+.quick-reply:hover { background: var(--surface-warm); border-color: var(--orange-border); }
+
+/* Input bar di Go · pill bianca, icona sparkles, freccia su ink */
+.go-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.go-input:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(244, 123, 58, 0.12); }
+.go-input i.ti-sparkles { font-size: 15px; color: var(--orange); flex-shrink: 0; }
+.go-input input {
+  flex: 1; min-width: 0;
+  border: 0; outline: none; background: transparent;
+  font-family: inherit; font-size: 13px;
+  color: var(--ink);
+  padding: 6px 0;
+}
+.go-input input::placeholder { color: var(--ink-faint); }
+.go-input .send {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  border: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.go-input .send i { font-size: 14px; }
+.go-input .send:hover { background: #1a3d52; }
+
+/* ── TRIGGER · banner naked con sweep + sparkle ───────────────── */
+@keyframes goSweep { 0% { transform: translateX(-120%); } 60%, 100% { transform: translateX(220%); } }
+@keyframes goSpark { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
+.ai-trigger {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 30px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.ai-trigger .shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 0%, rgba(244, 123, 58, 0.15) 50%, transparent 100%);
+  animation: goSweep 4.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+.ai-trigger > * { position: relative; z-index: 2; }
+.ai-trigger-body { flex: 1; }
+.ai-trigger-eyebrow { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; }
+.ai-trigger-title { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.ai-trigger-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-family: var(--font-serif); font-style: italic; }
+.ai-trigger-btn {
+  background: var(--orange);
+  color: white;
+  border: 0;
+  padding: 7px 14px 7px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.ai-trigger-btn i { font-size: 13px; }
+.ai-trigger-btn:hover { background: var(--orange-deep); }
+
+/* ── Sezione conversazione aperta · nuda, niente container ──── */
+.ai-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin-bottom: 28px;
+}
+.ai-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: transparent;
+  margin-bottom: 14px;
+}
+.ai-card-head .meta { flex: 1; }
+.ai-card-head .meta .eye { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; }
+.ai-card-head .meta .ttl { font-size: 14px; font-weight: 500; margin-top: 1px; }
+.ai-card-head .online {
+  font-size: 11px;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-card-head .online .dot { width: 7px; height: 7px; border-radius: 50%; background: #3d6e0e; }
+.ai-card-head .close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.ai-card-head .close:hover { background: var(--surface-soft); color: var(--ink); }
+
+.ai-card-body { padding: 0 4px; }
+.ai-card-foot {
+  padding: 14px 4px 4px;
+  border-top: 0;
+  background: transparent;
+  margin-top: 6px;
+}
+
+/* ── Risultati a tutta larghezza (no container) ──────────────── */
+.ai-results-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin-bottom: 14px;
+}
+.ai-results-head {
+  padding: 4px 4px 10px;
+  border-bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-results-head .sel-counter {
+  font-size: 10px;
+  color: var(--orange-deep);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.ai-results-head .left { display: flex; align-items: baseline; gap: 8px; }
+.ai-results-head .left i { font-size: 14px; color: var(--orange); align-self: center; }
+.ai-results-head .left .lbl {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+.ai-results-head .left .meta { font-size: 12px; color: var(--ink-faint); }
+.ai-results-head .hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+
+/* Lista risultati (item collapsed / expanded) */
+.ai-results { display: flex; flex-direction: column; gap: 6px; }
+.ai-item-wrap {
+  transition: opacity 0.18s;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(4px);
+}
+.ai-item-wrap.cool { opacity: 0.45; pointer-events: none; }
+.ai-item {
+  display: grid;
+  grid-template-columns: 24px 56px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 0;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.15s;
+}
+.ai-item:hover { background: rgba(13, 44, 61, 0.04); }
+.ai-item .cb {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; line-height: 1; color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ai-item .cb.on { background: var(--orange); border-color: var(--orange); }
+.ai-item .thumb { width: 56px; height: 56px; border-radius: 8px; background-color: var(--surface-soft); background-size: cover; background-position: center; }
+.ai-item .body { min-width: 0; }
+.ai-item .body .top { display: flex; align-items: center; gap: 8px; }
+.ai-item .cat { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); }
+.ai-item .meta { font-size: 10px; color: var(--ink-faint); }
+.ai-item .name { font-size: 14px; font-weight: 500; margin-top: 1px; }
+.ai-item .desc { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.ai-item .dist { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+.ai-item .dist i { font-size: 11px; color: var(--orange); }
+.ai-item .chev { font-size: 16px; color: var(--ink-faint); transition: transform 0.18s; }
+
+/* Stato SELECTED · bordo + fondo arancio (indipendente da open) */
+.ai-item-wrap.selected {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+  box-shadow: 0 0 0 1px rgba(244, 123, 58, 0.18);
+}
+.ai-item-wrap.selected .ai-item:hover { background: rgba(244, 123, 58, 0.08); }
+
+/* Stato OPEN · chevron ruota */
+.ai-item-wrap.open .ai-item .chev { transform: rotate(180deg); color: var(--orange); }
+.ai-item-wrap.open .ai-item { border-bottom: 0.5px solid var(--border); }
+.ai-item-wrap.open.selected .ai-item { border-bottom-color: var(--orange-border); }
+
+/* Pannello dettaglio expanded (blog-style) */
+.ai-detail { display: none; padding: 0 18px 18px; background: transparent; border-bottom: 0; }
+.ai-item-wrap.open .ai-detail { display: block; }
+.ai-detail-grid { display: grid; grid-template-columns: 1fr 220px; gap: 18px; align-items: start; padding-top: 14px; }
+.ai-detail-section-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 6px;
+}
+.ai-detail-prose { font-family: var(--font-serif); font-size: 14px; line-height: 1.55; color: var(--ink); margin: 0 0 12px; font-style: italic; }
+.ai-detail-bullets-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; }
+.ai-detail ul { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--ink); }
+.ai-detail-facts {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.ai-detail-facts span i { font-size: 13px; color: var(--orange); margin-right: 3px; vertical-align: -1px; }
+.ai-detail-gallery { display: flex; flex-direction: column; gap: 10px; }
+.ai-detail-gallery .hero { width: 100%; aspect-ratio: 4/3; border-radius: var(--radius-md); background-size: cover; background-position: center; }
+.ai-detail-gallery .thumbs { display: flex; gap: 8px; }
+.ai-detail-gallery .thumbs > div { flex: 1; aspect-ratio: 1; border-radius: 8px; background-size: cover; background-position: center; }
+
+.ai-detail-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.ai-detail-foot .ask-toggle {
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-soft);
+  padding: 0;
+}
+.ai-detail-foot .ask-toggle i.ti-sparkles { font-size: 13px; color: var(--orange); }
+.ai-detail-foot .ask-toggle.open { color: var(--orange-deep); font-weight: 500; }
+.ai-detail-foot .right { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Pannello "Chiedi a Go" inline dentro item espanso */
+.ask-panel { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.ask-panel.open { display: block; }
+.ask-panel .indent { margin-left: 34px; margin-top: 10px; }
+
+/* Footer post-lista · "Nessuna ti convince?" */
+.ai-results-foot { margin-bottom: 18px; }
+.ai-results-foot .indent { margin-left: 46px; margin-top: 10px; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .ai-section { padding: 18px var(--gap-page) 40px; }
+  .ai-card-body { padding: 14px; }
+  .ai-card-foot { padding: 12px 14px; }
+  .ai-item { grid-template-columns: 48px 1fr auto; gap: 10px; padding: 10px 14px; }
+  .ai-item .dist { display: none; }
+  .ai-detail { padding: 0 14px 14px; }
+  .ai-detail-grid { grid-template-columns: 1fr; }
+  .ai-detail-gallery { order: -1; }
+  .quick-replies { margin-left: 38px; }
+  .ai-results-foot .indent { margin-left: 38px; }
+  .ask-panel .indent { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<section class="ai-section">
+  <div class="go-aurora" aria-hidden="true"></div>
+
+
+  <!-- ── TRIGGER ─────────────────────────────────────────────── -->
+  <a href="#go-section" class="ai-trigger" aria-label="Apri Go">
+    <span class="shine" aria-hidden="true"></span>
+    <span class="go-avatar">五</span>
+    <div class="ai-trigger-body">
+      <div class="ai-trigger-eyebrow">Ciao</div>
+      <div class="ai-trigger-title">Posso aiutarti a riempire questa giornata</div>
+      <div class="ai-trigger-sub">Due chip, una nota — e ti propongo qualche idea.</div>
+    </div>
+    <button class="ai-trigger-btn" type="button"><i class="ti ti-sparkles"></i> Chiedi a Go</button>
+  </a>
+
+  <!-- ── SEZIONE CONVERSAZIONE APERTA ────────────────────────── -->
+  <div class="ai-card" id="go-section">
+
+    <div class="ai-card-head">
+      <span class="go-avatar">五</span>
+      <div class="meta">
+        <div class="eye">Go · assistente di viaggio</div>
+        <div class="ttl">Giorno 4 · Monte Fuji</div>
+      </div>
+      <span class="online"><span class="dot"></span> online</span>
+      <button class="close" aria-label="Chiudi"><i class="ti ti-x" style="font-size:14px;"></i></button>
+    </div>
+
+    <div class="ai-card-body">
+
+      <!-- Bubble 1: saluto + lettura contesto -->
+      <div class="go-row">
+        <span class="go-avatar sm">五</span>
+        <div class="go-bubble">
+          <span class="who">Go</span>
+          Ciao Enrico! Sto guardando come hai impostato la giornata: una passeggiata che parte da Ginza, passa dal mercato di Tsukiji e finisce nei giardini di Hama-Rikyū. Mi piace come fila.
+        </div>
+      </div>
+
+      <!-- Bubble 2: osservazione + proposta -->
+      <div class="go-row">
+        <span class="go-avatar sm">五</span>
+        <div class="go-bubble">
+          <span class="who">Go</span>
+          Ho notato due cose: tra Tsukiji (12:30) e Hama-Rikyū (15:00) hai un buco di un paio d'ore — e il tuo incipit dice "tanto camminare". Posso suggerirti qualcosa di tranquillo lì in mezzo?
+        </div>
+      </div>
+
+      <!-- Quick replies -->
+      <div class="quick-replies">
+        <button class="quick-reply">Sì, qualcosa di tranquillo</button>
+        <button class="quick-reply">Una pausa caffè</button>
+        <button class="quick-reply">Cerca tu</button>
+        <button class="quick-reply">No, ho già un piano</button>
+      </div>
+
+      <!-- User reply -->
+      <div class="user-row">
+        <div class="user-bubble">Sì dai, qualcosa di tranquillo. Magari un caffè di quartiere o una libreria.</div>
+        <span class="user-avatar">ED</span>
+      </div>
+
+      <!-- Bubble 3: presenta i risultati -->
+      <div class="go-row">
+        <span class="go-avatar sm">五</span>
+        <div class="go-bubble">
+          <span class="who">Go</span>
+          Ti ho cercato un paio di posti a piedi tra Tsukiji e Hama-Rikyū. Te li mostro qui sotto — sono nella stessa direzione del tuo percorso, così non ti devi spostare.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ai-card-foot">
+      <div class="go-input">
+        <i class="ti ti-sparkles"></i>
+        <input type="text" placeholder="Scrivi a Go… (es. &quot;preferisco una libreria con dolci&quot;)" />
+        <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RISULTATI A TUTTA LARGHEZZA ─────────────────────────── -->
+  <div class="ai-results-card">
+
+    <div class="ai-results-head">
+      <div class="left">
+        <i class="ti ti-sparkles"></i>
+        <span class="lbl">3 idee da Go</span>
+        <span class="meta">pausa tranquilla tra Tsukiji e Hama-Rikyū</span>
+      </div>
+      <span class="sel-counter" id="sel-counter" hidden>0 selected</span>
+      <span class="hint">Spunta quelle che ti piacciono · Go ne terrà conto nella prossima domanda</span>
+    </div>
+
+    <div class="ai-results">
+
+      <!-- ITEM 1 (collapsed) -->
+      <div class="ai-item-wrap">
+        <div class="ai-item" data-toggle-item>
+          <button class="cb" type="button" data-toggle-select aria-label="Seleziona" aria-pressed="false"></button>
+          <div class="thumb" style="background-image:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+          <div class="body">
+            <div class="top"><span class="cat">Caffè · Libreria</span><span class="meta">· 1h · ¥1500</span></div>
+            <div class="name">BUNKITSU Books & Coffee</div>
+            <div class="desc">Libreria-caffè con fee d'ingresso, silenzio totale</div>
+          </div>
+          <span class="dist"><i class="ti ti-route"></i> 480 m</span>
+          <i class="ti ti-chevron-down chev"></i>
+        </div>
+        <div class="ai-detail">
+          <div class="ai-detail-grid">
+            <div>
+              <div class="ai-detail-section-label">
+                <span class="go-avatar xs">五</span>
+                Go ti spiega perché
+              </div>
+              <p class="ai-detail-prose">Una libreria-caffè dove paghi un fee d'ingresso e leggi quanto vuoi. Pochi posti, silenzio totale — perfetta per due ore di pausa tra il pranzo a Tsukiji e i giardini del pomeriggio.</p>
+              <div class="ai-detail-bullets-label">Cosa aspettarsi</div>
+              <ul>
+                <li>Fee ingresso ¥1500 (illimitato)</li>
+                <li>Caffè e dolci serviti al tavolo</li>
+                <li>Libri da sfogliare in giapponese e inglese</li>
+              </ul>
+              <div class="ai-detail-facts">
+                <span><i class="ti ti-clock"></i> 11:00–20:00</span>
+                <span><i class="ti ti-coin"></i> ¥1500</span>
+                <span><i class="ti ti-walk"></i> Bassa fatica</span>
+                <span><i class="ti ti-map-pin"></i> Higashi-Ginza</span>
+              </div>
+            </div>
+            <div class="ai-detail-gallery">
+              <div class="hero" style="background-image:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+              <div class="thumbs">
+                <div style="background-image:linear-gradient(135deg,#c5d5b5,#8a9d75);"></div>
+                <div style="background-image:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+                <div style="background-image:linear-gradient(135deg,#d5c5a8,#a08a65);"></div>
+              </div>
+            </div>
+          </div>
+          <div class="ai-detail-foot">
+            <button class="ask-toggle" data-ask-toggle>
+              <i class="ti ti-sparkles"></i> Chiedi a Go alternative simili
+            </button>
+            <div class="right">
+              <button class="btn-icon btn-md has-label"><i class="ti ti-map-2"></i><span>Mappa</span></button>
+              <button class="btn-icon btn-md has-label"><i class="ti ti-bookmark"></i><span>Wishlist</span></button>
+              <button class="btn-icon btn-md has-label solid"><i class="ti ti-plus"></i><span>Aggiungi al giorno 4</span></button>
+            </div>
+          </div>
+          <div class="ask-panel">
+            <div class="go-row">
+              <span class="go-avatar xs">五</span>
+              <div class="go-bubble" style="font-size:13px;">
+                <span class="who">Go</span>
+                Vuoi qualcosa di simile? Dimmi cosa migliorare — userò BUNKITSU come riferimento.
+              </div>
+            </div>
+            <div class="indent">
+              <div class="go-input">
+                <i class="ti ti-sparkles"></i>
+                <input type="text" placeholder="Scrivi a Go… (es. &quot;preferisco una libreria con dolci&quot;)" />
+                <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITEM 2 (collapsed) -->
+      <div class="ai-item-wrap">
+        <div class="ai-item" data-toggle-item>
+          <button class="cb" type="button" data-toggle-select aria-label="Seleziona" aria-pressed="false"></button>
+          <div class="thumb" style="background-image:linear-gradient(135deg,#c5b5a0,#9a8c75);"></div>
+          <div class="body">
+            <div class="top"><span class="cat">Caffè</span><span class="meta">· 30min · ¥500</span></div>
+            <div class="name">Tully's Tsukiji-Higashi</div>
+            <div class="desc">Caffetteria di quartiere all'angolo del mercato</div>
+          </div>
+          <span class="dist"><i class="ti ti-route"></i> 320 m</span>
+          <i class="ti ti-chevron-down chev"></i>
+        </div>
+        <div class="ai-detail">
+          <div class="ai-detail-grid">
+            <div>
+              <div class="ai-detail-section-label">
+                <span class="go-avatar xs">五</span>
+                Go ti spiega perché
+              </div>
+              <p class="ai-detail-prose">Un caffè di catena ma con un'enclave di tavolini al primo piano sempre vuota a quell'ora. Buona soluzione per una pausa veloce a costo basso, e a soli 5 minuti da Tsukiji.</p>
+              <div class="ai-detail-facts">
+                <span><i class="ti ti-clock"></i> 07:00–22:00</span>
+                <span><i class="ti ti-coin"></i> ¥500</span>
+                <span><i class="ti ti-walk"></i> Bassa fatica</span>
+              </div>
+            </div>
+            <div class="ai-detail-gallery">
+              <div class="hero" style="background-image:linear-gradient(135deg,#c5b5a0,#7a6548);"></div>
+              <div class="thumbs">
+                <div style="background-image:linear-gradient(135deg,#a8b8a0,#7d9176);"></div>
+                <div style="background-image:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+                <div style="background-image:linear-gradient(135deg,#d5c5a8,#a08a65);"></div>
+              </div>
+            </div>
+          </div>
+          <div class="ai-detail-foot">
+            <button class="ask-toggle" data-ask-toggle>
+              <i class="ti ti-sparkles"></i> Chiedi a Go alternative simili
+            </button>
+            <div class="right">
+              <button class="btn-icon btn-md has-label"><i class="ti ti-map-2"></i><span>Mappa</span></button>
+              <button class="btn-icon btn-md has-label"><i class="ti ti-bookmark"></i><span>Wishlist</span></button>
+              <button class="btn-icon btn-md has-label solid"><i class="ti ti-plus"></i><span>Aggiungi al giorno 4</span></button>
+            </div>
+          </div>
+          <div class="ask-panel">
+            <div class="go-row">
+              <span class="go-avatar xs">五</span>
+              <div class="go-bubble" style="font-size:13px;">
+                <span class="who">Go</span>
+                Vuoi qualcosa di simile? Dimmi cosa migliorare — userò Tully's come riferimento.
+              </div>
+            </div>
+            <div class="indent">
+              <div class="go-input">
+                <i class="ti ti-sparkles"></i>
+                <input type="text" placeholder="Scrivi a Go… (es. &quot;preferisco una libreria con dolci&quot;)" />
+                <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITEM 3 (collapsed) -->
+      <div class="ai-item-wrap">
+        <div class="ai-item" data-toggle-item>
+          <button class="cb" type="button" data-toggle-select aria-label="Seleziona" aria-pressed="false"></button>
+          <div class="thumb" style="background-image:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+          <div class="body">
+            <div class="top"><span class="cat">Libreria</span><span class="meta">· 1h · gratis</span></div>
+            <div class="name">HIBIYA Central Market</div>
+            <div class="desc">Hub di librerie indipendenti e botteghe</div>
+          </div>
+          <span class="dist"><i class="ti ti-route"></i> 610 m</span>
+          <i class="ti ti-chevron-down chev"></i>
+        </div>
+        <div class="ai-detail">
+          <div class="ai-detail-grid">
+            <div>
+              <div class="ai-detail-section-label">
+                <span class="go-avatar xs">五</span>
+                Go ti spiega perché
+              </div>
+              <p class="ai-detail-prose">Una galleria di librerie e piccole botteghe artigianali al primo piano dell'Hibiya Chanter. Si entra liberamente, si sfoglia, si esce — perfetto per una passeggiata lenta senza obblighi.</p>
+              <div class="ai-detail-facts">
+                <span><i class="ti ti-clock"></i> 11:00–21:00</span>
+                <span><i class="ti ti-coin"></i> Gratis</span>
+                <span><i class="ti ti-walk"></i> Bassa fatica</span>
+              </div>
+            </div>
+            <div class="ai-detail-gallery">
+              <div class="hero" style="background-image:linear-gradient(135deg,#b5c5d5,#5a6e80);"></div>
+              <div class="thumbs">
+                <div style="background-image:linear-gradient(135deg,#a8b8a0,#7d9176);"></div>
+                <div style="background-image:linear-gradient(135deg,#c5b5a0,#9a8c75);"></div>
+                <div style="background-image:linear-gradient(135deg,#d5c5a8,#a08a65);"></div>
+              </div>
+            </div>
+          </div>
+          <div class="ai-detail-foot">
+            <button class="ask-toggle" data-ask-toggle>
+              <i class="ti ti-sparkles"></i> Chiedi a Go alternative simili
+            </button>
+            <div class="right">
+              <button class="btn-icon btn-md has-label"><i class="ti ti-map-2"></i><span>Mappa</span></button>
+              <button class="btn-icon btn-md has-label"><i class="ti ti-bookmark"></i><span>Wishlist</span></button>
+              <button class="btn-icon btn-md has-label solid"><i class="ti ti-plus"></i><span>Aggiungi al giorno 4</span></button>
+            </div>
+          </div>
+          <div class="ask-panel">
+            <div class="go-row">
+              <span class="go-avatar xs">五</span>
+              <div class="go-bubble" style="font-size:13px;">
+                <span class="who">Go</span>
+                Vuoi qualcosa di simile? Dimmi cosa migliorare — userò HIBIYA come riferimento.
+              </div>
+            </div>
+            <div class="indent">
+              <div class="go-input">
+                <i class="ti ti-sparkles"></i>
+                <input type="text" placeholder="Scrivi a Go… (es. &quot;preferisco una libreria con dolci&quot;)" />
+                <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer post-lista · Go riprende la parola -->
+  <div class="ai-results-foot">
+    <div class="go-row" style="margin-bottom:10px;">
+      <span class="go-avatar sm">五</span>
+      <div class="go-bubble">
+        <span class="who">Go</span>
+        Nessuna ti convince? Posso cercare qualcos'altro — basta che mi dici cosa cambiare.
+      </div>
+    </div>
+    <div class="indent">
+      <div class="go-input">
+        <i class="ti ti-sparkles"></i>
+        <input type="text" placeholder="Scrivi a Go… (es. &quot;preferisco una libreria con dolci&quot;)" />
+        <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<script>
+(function(){
+  // Quick reply: scrivono nella user-row e disabilitano i chip
+  document.querySelectorAll('.quick-reply').forEach(function(c){
+    c.addEventListener('click', function(){ c.classList.add('active'); });
+  });
+
+  // Toggle item (expand/collapse)
+  document.querySelectorAll('[data-toggle-item]').forEach(function(item){
+    item.addEventListener('click', function(e){
+      // Se il click parte dalla checkbox, non espandiamo
+      if (e.target.closest('[data-toggle-select]')) return;
+      var wrap = item.closest('.ai-item-wrap');
+      var willOpen = !wrap.classList.contains('open');
+      wrap.classList.toggle('open', willOpen);
+      // raffredda gli altri item della lista quando uno è aperto
+      if (willOpen) {
+        wrap.parentElement.querySelectorAll('.ai-item-wrap').forEach(function(other){
+          if (other !== wrap) other.classList.add('cool');
+        });
+      } else {
+        wrap.parentElement.querySelectorAll('.ai-item-wrap').forEach(function(other){
+          other.classList.remove('cool');
+        });
+      }
+    });
+  });
+
+  // Toggle SELECT (checkbox · indipendente da expand)
+  function refreshSelCounter(scope) {
+    var selected = scope.querySelectorAll('.ai-item-wrap.selected').length;
+    var counter = document.getElementById('sel-counter');
+    if (!counter) return;
+    if (selected > 0) {
+      counter.hidden = false;
+      counter.textContent = selected + ' selected';
+    } else {
+      counter.hidden = true;
+    }
+  }
+  document.querySelectorAll('[data-toggle-select]').forEach(function(cb){
+    cb.addEventListener('click', function(e){
+      e.stopPropagation();
+      var wrap = cb.closest('.ai-item-wrap');
+      var willSelect = !wrap.classList.contains('selected');
+      wrap.classList.toggle('selected', willSelect);
+      cb.classList.toggle('on', willSelect);
+      cb.setAttribute('aria-pressed', willSelect ? 'true' : 'false');
+      cb.innerHTML = willSelect ? '✓' : '';
+      refreshSelCounter(wrap.parentElement);
+    });
+  });
+
+  // Ask panel toggle (Chiedi a Go alternative simili)
+  document.querySelectorAll('[data-ask-toggle]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var wrap = btn.closest('.ai-item-wrap');
+      var panel = wrap.querySelector('.ask-panel');
+      if (!panel) return;
+      var willOpen = !panel.classList.contains('open');
+      panel.classList.toggle('open', willOpen);
+      btn.classList.toggle('open', willOpen);
+    });
+  });
+
+  // Stop propagation dentro il detail (per non chiudere)
+  document.querySelectorAll('.ai-detail').forEach(function(d){
+    d.addEventListener('click', function(e){ e.stopPropagation(); });
+  });
+
+  // Tasto Invio sulle input bar (segnale visivo, no logica reale qui)
+  document.querySelectorAll('.go-input input').forEach(function(inp){
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inp.value = '';
+        inp.blur();
+      }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

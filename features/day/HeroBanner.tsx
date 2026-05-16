@@ -388,7 +388,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </div>
             )}
             <div className="text-[26px] font-semibold leading-[1.25] mb-1 truncate">{title}</div>
-            {meta && <div className="text-[12px] opacity-75 uppercase tracking-[0.06em]">{meta}</div>}
+            {meta && <div className="text-[10px] opacity-75 uppercase tracking-[0.06em]">{meta}</div>}
           </div>
           {(onPrev || onNext) && (
             <div className="flex gap-1.5 shrink-0">

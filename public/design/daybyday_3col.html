@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Day-by-Day · 3 col (con Go)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="activity-row.css">
+<style>
+/* ── Go panel flottante (sopra la pagina, non occupa il layout) ── */
+.go-panel {
+  display: none;
+  flex-direction: column;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 380px;
+  max-width: calc(100vw - 36px);
+  max-height: calc(100vh - 100px);
+  background: var(--bg);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(13, 44, 61, 0.18), 0 2px 8px rgba(13, 44, 61, 0.08);
+  z-index: 80;
+  isolation: isolate;
+  overflow: hidden;
+  animation: goPanelEnter 0.22s ease-out;
+}
+@keyframes goPanelEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+body.go-open .go-panel { display: flex; }
+
+.go-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  scrollbar-width: thin;
+  position: relative;
+}
+
+/* Aurora orange-soft di fondo */
+@keyframes goAuroraDay {
+  0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+  50% { background-position: 100% 50%, 0% 50%, 30% 70%; }
+}
+.go-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(244, 123, 58, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(253, 236, 223, 0.6) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(244, 123, 58, 0.08) 0%, transparent 70%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: goAuroraDay 14s ease-in-out infinite;
+  z-index: 0;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+.go-panel > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .go-panel::before { animation: none; } }
+
+/* ── Go avatar animations ── */
+@keyframes goPulseHalo3col { 0%,100% { box-shadow: 0 0 0 0 rgba(244,123,58,0.5); } 50% { box-shadow: 0 0 0 6px rgba(244,123,58,0); } }
+@keyframes goPulseHaloIdle3col { 0%,100% { box-shadow: 0 0 0 0 rgba(244,123,58,0.3); } 50% { box-shadow: 0 0 0 4px rgba(244,123,58,0); } }
+@keyframes goWobble3col {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-3deg); }
+  75% { transform: translateY(-2px) rotate(3deg); }
+}
+@keyframes goEnter3col {
+  0% { opacity: 0; transform: translateY(6px) scale(0.85); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes goTyping3col { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+@keyframes goCaret3col { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+
+/* Header minimal · avatar Go + scritta "Go" + X close */
+.go-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: transparent;
+  border-bottom: 0.5px solid rgba(13, 44, 61, 0.06);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.go-panel-head .head-av {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
+  animation: goPulseHalo3col 2.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.go-panel-head .head-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--orange);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.go-panel-head .close {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+}
+.go-panel-head .close:hover { background: var(--surface-soft); color: var(--ink); }
+.go-panel-head .close i { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  .go-panel-head .head-av { animation: none; }
+}
+
+/* AI messages · serif italico, sx · no avatar accanto al messaggio (eccetto durante live) */
+.ai-msg {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 92%;
+  margin: 0 0 14px;
+}
+.ai-msg strong { font-style: normal; font-family: -apple-system, sans-serif; font-weight: 500; color: var(--ink); background: rgba(244,123,58,0.18); padding: 0 4px; border-radius: 3px; }
+.ai-msg.past { color: var(--ink-soft); font-size: 13px; opacity: 0.85; }
+
+/* AI live · turno in corso: avatar wobble + border-left arancio + caret */
+.ai-live {
+  position: relative;
+  padding-left: 38px;
+  margin: 0 0 14px;
+}
+.ai-live .av {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1;
+  animation: goEnter3col 0.25s ease-out, goWobble3col 1.6s ease-in-out 0.25s infinite, goPulseHalo3col 2s ease-in-out infinite;
+}
+.ai-live .ai-msg {
+  border-left: 2px solid var(--orange);
+  padding-left: 12px;
+  margin: 0;
+}
+.typing-line { display: inline-flex; align-items: center; gap: 2px; margin-bottom: 5px; }
+.typing-line span { width: 4px; height: 4px; border-radius: 50%; background: var(--orange); animation: goTyping3col 1.4s ease-in-out infinite; }
+.typing-line span:nth-child(2) { animation-delay: 0.2s; }
+.typing-line span:nth-child(3) { animation-delay: 0.4s; }
+.caret { display: inline-block; width: 2px; height: 16px; background: var(--orange); vertical-align: -3px; margin-left: 1px; animation: goCaret3col 1s steps(1) infinite; }
+
+/* Go IDLE · ricompare dopo aver finito · "ti ascolto…" */
+.go-idle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+}
+.go-idle .av {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1;
+  animation: goEnter3col 0.3s ease-out, goPulseHaloIdle3col 2.6s ease-in-out 0.3s infinite;
+}
+.go-idle .hint {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+
+/* User · destra, ink leggera */
+.user-row { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.user-msg {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-width: 80%;
+  padding: 7px 12px;
+  background: rgba(13,44,61,0.07);
+  border-radius: 14px 14px 4px 14px;
+}
+.user-msg .ref { font-size: 10px; padding: 1px 6px; background: rgba(244,123,58,0.2); color: var(--orange-deep); border-radius: 99px; margin-right: 5px; font-weight: 500; display: inline-block; }
+
+/* Quick replies · allineati al rientro del messaggio */
+.quick-replies { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 14px 38px; }
+.quick-reply { font-size: 11px; padding: 5px 11px; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border: 0.5px solid var(--border-strong); color: var(--ink); border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+.quick-reply:hover { background: var(--surface-warm); border-color: var(--orange-border); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-live .av, .go-idle .av, .typing-line span, .caret { animation: none; }
+}
+
+/* Risultati nella chat */
+.go-results { margin: 0 0 12px 0; }
+.go-results-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 2px; }
+.go-results-head .lbl-small { font-size: 9px; color: var(--orange-deep); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.go-results-head .sel-counter { font-size: 9px; color: var(--orange-deep); font-weight: 500; }
+
+.go-card-wrap { margin-bottom: 5px; border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.75); backdrop-filter: blur(4px); }
+.go-card-row { display: grid; grid-template-columns: 22px 36px 1fr 14px; gap: 8px; padding: 8px 10px; align-items: center; cursor: pointer; }
+.go-card-row:hover { background: rgba(13,44,61,0.04); }
+.go-card-row .cb { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; color: #fff; cursor: pointer; }
+.go-card-row .cb.on { background: var(--orange); border-color: var(--orange); }
+.go-card-row .thumb { width: 36px; height: 36px; border-radius: 6px; background-color: var(--surface-soft); }
+.go-card-row .info { min-width: 0; }
+.go-card-row .info .top { display: flex; gap: 6px; align-items: baseline; font-size: 9px; color: var(--orange); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+.go-card-row .info .top .meta { color: var(--ink-faint); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.go-card-row .info .name { font-size: 12px; font-weight: 500; margin-top: 1px; }
+.go-card-row .info .desc { font-size: 10px; color: var(--ink-soft); margin-top: 1px; }
+.go-card-row .chev { font-size: 13px; color: var(--ink-faint); transition: transform 0.18s; }
+
+.go-card-wrap.selected { border-color: var(--orange); background: var(--orange-soft); box-shadow: 0 0 0 1px rgba(244,123,58,0.18); }
+.go-card-wrap.open .go-card-row .chev { transform: rotate(180deg); color: var(--orange); }
+.go-card-wrap.open .go-card-row { border-bottom: 0.5px solid var(--border); }
+
+.go-card-detail { display: none; padding: 10px 12px 12px; }
+.go-card-wrap.open .go-card-detail { display: block; }
+.detail-head { display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; margin-bottom: 4px; }
+.detail-prose { font-family: var(--font-serif); font-style: italic; font-size: 12px; line-height: 1.5; color: var(--ink); margin: 0 0 8px; }
+.detail-facts { display: flex; gap: 8px; flex-wrap: wrap; font-size: 10px; color: var(--ink-soft); padding: 6px 9px; background: rgba(255,255,255,0.5); border: 0.5px solid rgba(13,44,61,0.06); border-radius: 6px; }
+.detail-foot { display: flex; flex-direction: column; gap: 5px; padding-top: 8px; margin-top: 8px; border-top: 1px dashed rgba(13,44,61,0.08); }
+.detail-foot button { font-size: 10px; padding: 5px 10px; border: 0.5px solid var(--border-strong); background: rgba(255,255,255,0.8); color: var(--ink); border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+.detail-foot button.primary { background: var(--orange); color: #fff; border-color: var(--orange); font-weight: 500; }
+.detail-foot .ask-go { background: transparent; border: 0; color: var(--ink-soft); padding: 4px 0; display: inline-flex; align-items: center; gap: 5px; font-weight: 500; text-align: left; }
+.detail-foot .ask-go i { color: var(--orange); font-size: 11px; }
+
+/* Input bar · sticky in fondo al panel */
+.go-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 12px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(6px);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  margin: 10px 14px 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.go-input-bar i.ti-sparkles { font-size: 14px; color: var(--orange); flex-shrink: 0; }
+.go-input-bar input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 12px; color: var(--ink); padding: 5px 0; }
+.go-input-bar input::placeholder { color: var(--ink-faint); font-style: italic; font-family: var(--font-serif); }
+.go-input-bar .send { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.go-input-bar .send i { font-size: 12px; }
+
+/* ── Trigger Go in day-main (visibile quando Go è chiuso) ──── */
+@keyframes goSweepDay {
+  0% { transform: translateX(-120%); }
+  45%, 50% { transform: translateX(220%); }
+  95%, 100% { transform: translateX(-120%); }
+}
+.go-day-trigger {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  margin: 14px 0;
+}
+.go-day-trigger .shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(244,123,58,0.18) 50%, transparent 70%);
+  animation: goSweepDay 7s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+.go-day-trigger > * { position: relative; z-index: 2; }
+.go-day-trigger .body { flex: 1; min-width: 0; }
+.go-day-trigger .ey { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; }
+.go-day-trigger .ttl { font-size: 14px; font-weight: 500; margin-top: 1px; }
+.go-day-trigger .s { font-size: 11px; color: var(--ink-soft); font-family: var(--font-serif); font-style: italic; margin-top: 2px; }
+.go-day-trigger .btn {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  padding: 7px 14px 7px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.go-day-trigger .btn i { font-size: 13px; color: var(--orange); }
+.go-day-trigger .btn:hover { background: #1a3d52; }
+body.go-open .go-day-trigger { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .go-day-trigger .shine { animation: none; } }
+
+/* Responsive · mobile: il floating panel diventa quasi full-width */
+@media (max-width: 720px) {
+  .go-panel {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 80vh;
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="#" class="brand brand-kanji" aria-label="TravelGo · home">
+      <span class="brand-mark" aria-hidden="true">五</span>
+      <span class="brand-word">Travel<b>Go</b></span>
+    </a>
+    <nav class="nav">
+      <span class="active">I miei viaggi</span>
+      <span>Esplora</span>
+      <span>Guide</span>
+      <span>Budget</span>
+    </nav>
+    <div class="topbar-account" aria-label="Account">ED</div>
+    <button class="nav-mobile-btn" aria-label="Menu" aria-expanded="false" aria-controls="mobile-drawer" id="nav-mobile-btn"><i class="ti ti-menu-2"></i></button>
+  </div>
+  <div class="mobile-drawer" id="mobile-drawer" hidden>
+    <div class="mobile-drawer-section">
+      <div class="mobile-drawer-eyebrow">TravelGo</div>
+      <nav class="mobile-drawer-nav">
+        <a href="#" class="active">I miei viaggi</a>
+        <a href="#">Esplora</a>
+        <a href="#">Guide</a>
+        <a href="#">Budget</a>
+      </nav>
+    </div>
+    <div class="mobile-drawer-section">
+      <div class="mobile-drawer-eyebrow">Viaggio · Japan 2026</div>
+      <nav class="mobile-drawer-nav">
+        <a href="#" class="active">Day-by-day</a>
+        <a href="#">Mappa</a>
+        <a href="#">Budget</a>
+        <a href="#">Note</a>
+      </nav>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="topbar-sub-inner">
+      <div class="topbar-sub-context">
+        <span class="topbar-sub-eyebrow">Japan 2026</span>
+        <span class="topbar-sub-dot" aria-hidden="true">·</span>
+        <span class="topbar-sub-meta">Giorno 4 di 21</span>
+      </div>
+      <div class="topbar-sub-actions">
+        <nav class="topbar-sub-tabs">
+          <span class="active">Day-by-day</span>
+          <span>Mappa</span>
+          <span>Budget</span>
+          <span>Note</span>
+        </nav>
+        <span class="topbar-sub-divider" aria-hidden="true"></span>
+        <span class="edit-state-chip" data-state="view" id="edit-state-chip" title="Modalità di sola lettura">
+          <span class="edit-state-dot"></span>
+          <span class="edit-state-label">View</span>
+        </span>
+        <button class="btn-icon btn-md ghost" id="trip-actions-btn" aria-label="Azioni viaggio" title="Azioni viaggio">
+          <i class="ti ti-dots-vertical"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="daybyday">
+
+  <aside class="day-list">
+    <div class="day-list-head">
+      <div class="day-list-eyebrow">Itinerario</div>
+      <div class="day-list-title">Giorno per giorno</div>
+      <div class="day-list-sub">21 giorni · 31 lug → 20 ago</div>
+    </div>
+    <ol class="day-items">
+      <li class="day-item"><div class="day-num"><div class="day-dow">VEN</div><div class="day-num-big">31</div></div><div class="day-info"><div class="day-zone">TOKYO</div><div class="day-name">Arrivo a Tokyo</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">SAB</div><div class="day-num-big">1</div></div><div class="day-info"><div class="day-zone">TOKYO</div><div class="day-name">Quartiere Asakusa e Sumida Gardens</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">DOM</div><div class="day-num-big">2</div></div><div class="day-info"><div class="day-zone">TOKYO</div><div class="day-name">Palazzo Imperiale e Giardini Orientali</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item selected"><div class="day-num"><div class="day-dow">LUN</div><div class="day-num-big">3</div></div><div class="day-info"><div class="day-zone">TOKYO / MONTE FUJI</div><div class="day-name">Escursione Monte Fuji (laghi)</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">MAR</div><div class="day-num-big">4</div></div><div class="day-info"><div class="day-zone">TOKYO</div><div class="day-name">Ueno e Yanesen — Yanaka</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">MER</div><div class="day-num-big">5</div></div><div class="day-info"><div class="day-zone">TOKYO → NIKKO</div><div class="day-name">Ritiro camper</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">GIO</div><div class="day-num-big">6</div></div><div class="day-info"><div class="day-zone">NIKKO</div><div class="day-name">Santuario Toshogu e Rinno-ji</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">VEN</div><div class="day-num-big">7</div></div><div class="day-info"><div class="day-zone">NIKKO</div><div class="day-name">Irohazaka e Cascate di Kegon</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">SAB</div><div class="day-num-big">8</div></div><div class="day-info"><div class="day-zone">NUMATA → MATSUMOTO</div><div class="day-name">Jigokudani Snow Monkey Park</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">DOM</div><div class="day-num-big">9</div></div><div class="day-info"><div class="day-zone">TEST</div><div class="day-name">Magome</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">LUN</div><div class="day-num-big">10</div></div><div class="day-info"><div class="day-zone">KAMIKOCHI</div><div class="day-name">Kamikochi — Taisho-ike e Kappa-bashi</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">MAR</div><div class="day-num-big">11</div></div><div class="day-info"><div class="day-zone">TAKAYAMA → SHIRAKAWA-GO</div><div class="day-name">Takayama</div></div><span class="day-arrow">›</span></li>
+      <li class="day-item"><div class="day-num"><div class="day-dow">MER</div><div class="day-num-big">12</div></div><div class="day-info"><div class="day-zone">KANAZAWA → COSTA</div><div class="day-name">Kanazawa — Giardino Kenrokuen</div></div><span class="day-arrow">›</span></li>
+    </ol>
+  </aside>
+
+  <section class="day-main">
+
+    <div class="day-mobile-selector">
+      <button class="day-mobile-selector-btn">
+        <div class="day-mobile-num">
+          <div class="day-mobile-dow">LUN</div>
+          <div class="day-mobile-numbig">3</div>
+        </div>
+        <div class="day-mobile-info">
+          <div class="day-mobile-eyebrow">GIORNO 4 DI 21</div>
+          <div class="day-mobile-name">Escursione Monte Fuji (laghi)</div>
+        </div>
+        <i class="ti ti-chevron-down" style="font-size:16px; color:var(--ink-soft);"></i>
+      </button>
+    </div>
+
+    <div class="day-hero" style="background-image: url('imgs/day-banner-nature.png');">
+      <div class="day-hero-badges">
+        <span class="badge-warn"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> Da prenotare</span>
+      </div>
+      <div class="day-hero-content">
+        <div>
+          <div class="day-hero-eyebrow">Giorno 4 · Lunedì</div>
+          <div class="day-hero-title">Escursione Monte Fuji</div>
+          <div class="day-hero-sub">3 ago 2026 · 5 attività</div>
+        </div>
+        <div class="day-hero-nav">
+          <button class="btn-icon btn-md over-media" title="Giorno precedente"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></button>
+          <button class="btn-icon btn-md over-media" title="Giorno successivo"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lodging-banner">
+      <div class="lodging-icon">🏨</div>
+      <div class="lodging-body">
+        <span class="lodging-eyebrow">Dormi a</span>
+        <span class="lodging-name">Hoshinoya Tōkyō</span>
+        <span class="lodging-addr">· Chiyoda-ku, Otemachi 1-9-1 <i class="ti ti-arrow-up-right" style="font-size:11px; vertical-align:-1px;"></i></span>
+      </div>
+      <a href="#" class="lodging-cta">Apri <i class="ti ti-arrow-up-right" style="font-size:12px; vertical-align:-1px;"></i></a>
+    </div>
+
+    <div class="day-bar">
+      <span class="day-bar-meteo">
+        <i class="ti ti-sun"></i> <b>22 → 28°</b> sereno · UV alto · alba 04:54 · tramonto 18:48
+      </span>
+      <a href="#" class="day-bar-budget" title="Vai al budget del giorno">
+        <i class="ti ti-coin coin"></i>
+        <b>¥8.400</b>
+        <span class="sub">≈ 52 €</span>
+        <i class="ti ti-chevron-right chev"></i>
+      </a>
+    </div>
+
+    <div class="day-incipit">
+      <div class="day-incipit-lead">Una giornata di passeggiate dal cuore aristocratico di Edo al porto: dalle boutique di Ginza al mercato del pesce di Tsukiji, fermandoci nei giardini di Hama-Rikyū prima del tramonto.</div>
+      <div class="day-incipit-note">Si cammina parecchio — scarpe comode e una bottiglia d'acqua.</div>
+    </div>
+
+    <!-- ── Trigger Go (visibile quando Go è chiuso) ──────────── -->
+    <button class="go-day-trigger" type="button" id="go-day-trigger" aria-label="Apri Go">
+      <span class="shine" aria-hidden="true"></span>
+      <span class="go-avatar" aria-hidden="true">五</span>
+      <div class="body">
+        <div class="ey">Hi from Go</div>
+        <div class="ttl">Need a hand with this day?</div>
+        <div class="s">I'll suggest places, save them or fit them into the day.</div>
+      </div>
+      <span class="btn"><i class="ti ti-sparkles"></i> Ask me</span>
+    </button>
+
+    <div class="section-block">
+      <div class="section-head">
+        <div class="section-eyebrow">Itinerario del giorno</div>
+        <div class="section-meta">12,4 km · 5 tappe</div>
+      </div>
+      <div class="map-canvas">
+        <svg viewBox="0 0 720 280" preserveAspectRatio="xMidYMid slice">
+          <g stroke="rgba(13,44,61,0.07)" stroke-width="0.5">
+            <path d="M0 70 L720 70 M0 140 L720 140 M0 210 L720 210"/>
+            <path d="M120 0 L120 280 M260 0 L260 280 M400 0 L400 280 M540 0 L540 280 M660 0 L660 280"/>
+          </g>
+          <g stroke="rgba(13,44,61,0.06)" stroke-width="9" stroke-linecap="round" fill="none">
+            <path d="M80 230 L210 168 L350 130 L500 88 L650 48"/>
+          </g>
+          <path d="M80 230 L210 168 L350 130 L500 88 L650 48" fill="none" stroke="#f47b3a" stroke-width="2.5" stroke-dasharray="7 4" stroke-linecap="round"/>
+          <g>
+            <circle cx="80" cy="230" r="11" fill="#fdf5ee" stroke="#b5b3a8" stroke-width="1.5"/>
+            <text x="80" y="234" text-anchor="middle" fill="#5b6b78" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">1</text>
+            <circle cx="210" cy="168" r="11" fill="#fdf5ee" stroke="#b5b3a8" stroke-width="1.5"/>
+            <text x="210" y="172" text-anchor="middle" fill="#5b6b78" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">2</text>
+            <circle cx="350" cy="130" r="18" fill="#f47b3a"/>
+            <text x="350" y="135" text-anchor="middle" fill="#fff" font-size="14" font-weight="500" font-family="-apple-system,sans-serif">3</text>
+            <circle cx="500" cy="88" r="13" fill="#fff" stroke="#f47b3a" stroke-width="2"/>
+            <text x="500" y="92" text-anchor="middle" fill="#0d2c3d" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">4</text>
+            <circle cx="650" cy="48" r="13" fill="#fff" stroke="#f47b3a" stroke-width="2"/>
+            <text x="650" y="52" text-anchor="middle" fill="#0d2c3d" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">5</text>
+          </g>
+          <g>
+            <rect x="372" y="100" width="156" height="26" rx="4" fill="#0d2c3d"/>
+            <polygon points="368,116 378,108 378,124" fill="#0d2c3d"/>
+            <text x="450" y="117" text-anchor="middle" fill="#fff" font-size="11" font-weight="500" font-family="-apple-system,sans-serif">Mercato di Tsukiji · 12:30</text>
+          </g>
+        </svg>
+        <div class="map-controls">
+          <button class="map-btn"><i class="ti ti-walk" style="font-size:13px;"></i> A piedi</button>
+          <button class="map-btn" aria-label="Espandi mappa"><i class="ti ti-arrows-maximize" style="font-size:13px;"></i></button>
+        </div>
+      </div>
+
+      <div class="stops-bar">
+        <button class="stop-pill">1 · 09:00 · Kabukiza</button>
+        <button class="stop-pill">2 · 10:30 · Ginza</button>
+        <button class="stop-pill active">3 · 12:30 · Tsukiji</button>
+        <button class="stop-pill future">4 · 15:00 · Hama-Rikyū</button>
+        <button class="stop-pill future">5 · 19:30 · Cena Roppongi</button>
+      </div>
+    </div>
+
+    <div class="timeline">
+
+      <div class="slot-station">
+        <span class="slot-station-label">Mattina</span>
+        <span class="slot-station-rule"></span>
+        <span class="slot-station-count">3 att.</span>
+      </div>
+
+      <a href="#" class="activity-row">
+        <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+          <div class="activity-time-start">09:00</div>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <div class="activity-title">Visita al Kabukiza</div>
+            <span class="status-badge status-paid"><i class="ti ti-check"></i> Pagato</span>
+          </div>
+          <div class="activity-desc">Il principale teatro di kabuki di Tōkyō. L'esterno con i tendaggi vale già una sosta; chi vuole entrare può comprare un biglietto per un singolo atto al box-office laterale.</div>
+          <div class="activity-footer">
+            <span class="activity-loc" role="button" tabindex="0" title="Vai al pin 1 sulla mappa">
+              <span class="activity-pin">1</span>
+              <span class="activity-loc-text">Higashi-Ginza</span>
+              <span class="activity-loc-arrow">↗</span>
+            </span>
+            <span class="activity-budget"><i class="ti ti-coin"></i> <b>¥1.800</b> · ≈ 11 €</span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-right activity-chev"></i>
+      </a>
+
+      <a href="#" class="activity-row">
+        <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+          <div class="activity-time-start">10:30</div>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <div class="activity-title">Una passeggiata a Ginza</div>
+          </div>
+          <div class="activity-desc">Dalle architetture storiche alle boutique di lusso. 5 tappe in 2,4 km — dal grande orologio di Wako alla facciata-medusa di Louis Vuitton.</div>
+          <div class="activity-footer">
+            <span class="activity-loc" role="button" tabindex="0" title="Vai al pin 2 sulla mappa">
+              <span class="activity-pin">2</span>
+              <span class="activity-loc-text">Ginza, Tōkyō</span>
+              <span class="activity-loc-arrow">↗</span>
+            </span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-right activity-chev"></i>
+      </a>
+
+      <a href="#" class="activity-row now">
+        <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+          <span class="tag-now"><i class="ti ti-player-play"></i> ORA</span>
+          <div class="activity-time-start">12:30</div>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <div class="activity-title">Sushi e kaisen-don a Tsukiji</div>
+            <span class="status-badge status-booked"><i class="ti ti-bookmark"></i> Prenotato</span>
+          </div>
+          <div class="activity-desc">Nel mercato esterno di Tsukiji ci si siede al banco di un kaisen-don — riso e pesce crudo del giorno. La famiglia di Sushi Dai serve la stessa colazione dal 1970.</div>
+          <div class="activity-footer">
+            <span class="activity-loc" role="button" tabindex="0" title="Vai al pin 3 sulla mappa">
+              <span class="activity-pin">3</span>
+              <span class="activity-loc-text">Tsukiji, Tōkyō</span>
+              <span class="activity-loc-arrow">↗</span>
+            </span>
+            <span class="activity-budget"><i class="ti ti-coin"></i> <b>¥3.200</b> · ≈ 20 €</span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-right activity-chev"></i>
+      </a>
+
+      <div class="slot-station">
+        <span class="slot-station-label">Pomeriggio</span>
+        <span class="slot-station-rule"></span>
+        <span class="slot-station-count">1 att.</span>
+      </div>
+
+      <a href="#" class="activity-row">
+        <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+          <div class="activity-time-start">15:00</div>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <div class="activity-title">Il giardino di Hama-Rikyū</div>
+            <span class="status-badge status-todo"><i class="ti ti-alert-triangle"></i> Da prenotare</span>
+          </div>
+          <div class="activity-desc">L'oasi del clan Tokugawa nel cuore della città — stagno con casa-da-tè galleggiante, peonie e una vista sul porto che pochi turisti scoprono.</div>
+          <div class="activity-footer">
+            <span class="activity-loc" role="button" tabindex="0" title="Vai al pin 4 sulla mappa">
+              <span class="activity-pin">4</span>
+              <span class="activity-loc-text">Shiodome, Tōkyō</span>
+              <span class="activity-loc-arrow">↗</span>
+            </span>
+            <span class="activity-budget"><i class="ti ti-coin"></i> <b>¥300</b> · ≈ 2 €</span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-right activity-chev"></i>
+      </a>
+
+      <div class="slot-station">
+        <span class="slot-station-label">Sera</span>
+        <span class="slot-station-rule"></span>
+        <span class="slot-station-count">1 att.</span>
+      </div>
+
+      <a href="#" class="activity-row">
+        <div class="activity-thumb" style="background-image:url('imgs/thumb-activity.png');">
+          <div class="activity-time-start">19:30</div>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title-row">
+            <div class="activity-title">Cena a Roppongi</div>
+            <span class="status-badge status-booked"><i class="ti ti-bookmark"></i> Prenotato</span>
+          </div>
+          <div class="activity-desc">Robatayaki e bar di quartiere — la zona si accende dopo il tramonto, tra izakaya minuscole e cocktail bar discreti sui piani alti.</div>
+          <div class="activity-footer">
+            <span class="activity-loc" role="button" tabindex="0" title="Vai al pin 5 sulla mappa">
+              <span class="activity-pin">5</span>
+              <span class="activity-loc-text">Roppongi, Tōkyō</span>
+              <span class="activity-loc-arrow">↗</span>
+            </span>
+            <span class="activity-budget"><i class="ti ti-coin"></i> <b>¥6.500</b> · ≈ 40 €</span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-right activity-chev"></i>
+      </a>
+
+    </div>
+
+    <a href="#" class="next-day">
+      <i class="ti ti-arrow-right-circle next-day-icon"></i>
+      <div class="next-day-body">
+        <div class="next-day-eyebrow">Domani · Giorno 7 · Sabato</div>
+        <div class="next-day-title">Asakusa e il fiume Sumida</div>
+      </div>
+      <i class="ti ti-chevron-right next-day-arrow"></i>
+    </a>
+
+  </section>
+
+  <!-- ── Floating chat panel (sopra la pagina, fixed bottom-right) ── -->
+  <aside class="go-panel" id="go-panel" aria-label="Go assistant">
+
+    <div class="go-panel-head">
+      <span class="head-av" aria-hidden="true">五</span>
+      <span class="head-name">Go</span>
+      <button class="close" id="go-close" aria-label="Close Go">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="go-panel-scroll">
+
+      <!-- Turno 1 · passato -->
+      <p class="ai-msg past">Sto guardando il tuo giorno: c'è un buco tra <strong>Tsukiji</strong> (12:30) e <strong>Hama-Rikyū</strong> (15:00). Posso suggerirti qualcosa di tranquillo in mezzo?</p>
+
+      <!-- User -->
+      <div class="user-row">
+        <div class="user-msg">Sì dai, qualcosa di tranquillo</div>
+      </div>
+
+      <!-- Turno 2 · attuale (fermo, ha finito) -->
+      <p class="ai-msg">Ho tre idee a piedi tra i due posti. Spuntale e ne terrò conto per la prossima domanda.</p>
+
+      <!-- Results inline · 3 card con checkbox + espansione blog -->
+      <div class="go-results">
+        <div class="go-results-head">
+          <span class="lbl-small">3 idee · pausa</span>
+          <span class="sel-counter" id="go-sel-counter" hidden>0 selected</span>
+        </div>
+
+        <div class="go-card-wrap" data-card>
+          <div class="go-card-row">
+            <button class="cb" type="button" data-cb aria-label="Seleziona" aria-pressed="false"></button>
+            <div class="thumb" style="background:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+            <div class="info">
+              <div class="top">Caffè · Libreria <span class="meta">· 1h · ¥1500</span></div>
+              <div class="name">BUNKITSU Books & Coffee</div>
+              <div class="desc">Fee ingresso, leggi quanto vuoi</div>
+            </div>
+            <i class="ti ti-chevron-down chev"></i>
+          </div>
+          <div class="go-card-detail">
+            <div class="detail-head">Go ti spiega perché</div>
+            <p class="detail-prose">Una libreria-caffè dove paghi un fee e leggi quanto vuoi. Pochi posti, silenzio totale — perfetta per due ore tra Tsukiji e i giardini.</p>
+            <div class="detail-facts">
+              <span>🕘 11:00–20:00</span><span>💴 ¥1.500</span><span>🚶 Bassa</span>
+            </div>
+            <div class="detail-foot">
+              <button class="ask-go" type="button"><i class="ti ti-sparkles"></i> Chiedi a Go alternative simili</button>
+              <div style="display:flex;gap:5px;">
+                <button>Mappa</button>
+                <button>Wishlist</button>
+                <button class="primary" style="flex:1;">+ Aggiungi al giorno</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="go-card-wrap" data-card>
+          <div class="go-card-row">
+            <button class="cb" type="button" data-cb aria-label="Seleziona" aria-pressed="false"></button>
+            <div class="thumb" style="background:linear-gradient(135deg,#c5b5a0,#9a8c75);"></div>
+            <div class="info">
+              <div class="top">Caffè <span class="meta">· 30min · ¥500</span></div>
+              <div class="name">Tully's Tsukiji-Higashi</div>
+              <div class="desc">Pausa veloce a 5 min da Tsukiji</div>
+            </div>
+            <i class="ti ti-chevron-down chev"></i>
+          </div>
+        </div>
+
+        <div class="go-card-wrap" data-card>
+          <div class="go-card-row">
+            <button class="cb" type="button" data-cb aria-label="Seleziona" aria-pressed="false"></button>
+            <div class="thumb" style="background:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+            <div class="info">
+              <div class="top">Libreria <span class="meta">· 1h · gratis</span></div>
+              <div class="name">HIBIYA Central Market</div>
+              <div class="desc">Hub librerie indipendenti</div>
+            </div>
+            <i class="ti ti-chevron-down chev"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Idle · Go in attesa, ti ascolto -->
+      <div class="go-idle">
+        <span class="av">五</span>
+        Go <span class="hint">· ti ascolto…</span>
+      </div>
+
+    </div><!-- /.go-panel-scroll -->
+
+    <div class="go-input-bar">
+      <i class="ti ti-sparkles"></i>
+      <input type="text" placeholder="Scrivi a Go…" />
+      <button class="send" aria-label="Invia"><i class="ti ti-arrow-up"></i></button>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  // Mobile drawer
+  var btn = document.getElementById('nav-mobile-btn');
+  var drawer = document.getElementById('mobile-drawer');
+  if (btn && drawer) {
+    btn.addEventListener('click', function(){
+      var open = document.body.classList.toggle('menu-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      drawer.hidden = !open;
+    });
+  }
+
+  // Go open/close
+  var goTrigger = document.getElementById('go-day-trigger');
+  var goClose = document.getElementById('go-close');
+  if (goTrigger) goTrigger.addEventListener('click', function(){
+    document.body.classList.add('go-open');
+  });
+  if (goClose) goClose.addEventListener('click', function(){
+    document.body.classList.remove('go-open');
+  });
+
+  // Toggle expand on result cards (escluso click su checkbox)
+  document.querySelectorAll('[data-card] .go-card-row').forEach(function(row){
+    row.addEventListener('click', function(e){
+      if (e.target.closest('[data-cb]')) return;
+      row.closest('[data-card]').classList.toggle('open');
+    });
+  });
+
+  // Checkbox toggle (indipendente da expand)
+  function refreshGoCounter() {
+    var n = document.querySelectorAll('.go-card-wrap.selected').length;
+    var c = document.getElementById('go-sel-counter');
+    if (!c) return;
+    if (n > 0) { c.hidden = false; c.textContent = n + ' selected'; }
+    else { c.hidden = true; }
+  }
+  document.querySelectorAll('[data-cb]').forEach(function(cb){
+    cb.addEventListener('click', function(e){
+      e.stopPropagation();
+      var wrap = cb.closest('[data-card]');
+      var on = !wrap.classList.contains('selected');
+      wrap.classList.toggle('selected', on);
+      cb.classList.toggle('on', on);
+      cb.setAttribute('aria-pressed', on ? 'true' : 'false');
+      cb.innerHTML = on ? '✓' : '';
+      refreshGoCounter();
+    });
+  });
+
+  // Quick replies
+  document.querySelectorAll('.quick-reply').forEach(function(c){
+    c.addEventListener('click', function(){ c.classList.add('active'); });
+  });
+})();
+</script>
+
+</body>
+</html>

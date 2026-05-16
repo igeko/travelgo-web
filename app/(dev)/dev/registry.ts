@@ -6,7 +6,7 @@
 export type SandboxEntry = {
   slug: string;
   title: string;
-  group: "Atoms" | "Features";
+  group: "Atoms" | "Features" | "Admin";
   /** Optional subgroup label within a group (e.g. "Activity" inside Features) */
   subgroup?: string;
   description?: string;
@@ -33,6 +33,20 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Atoms",
     subgroup: "Fields",
     description: "Google Places autocomplete · returns structured PlaceResult",
+  },
+  {
+    slug: "destination-field",
+    title: "DestinationField",
+    group: "Atoms",
+    subgroup: "Fields",
+    description: "Destination autocomplete · single or multiple selection with chip UI",
+  },
+  {
+    slug: "date-picker",
+    title: "DatePickerField",
+    group: "Atoms",
+    subgroup: "Fields",
+    description: "Date picker · SoftField pill trigger + calendar dropdown via react-day-picker",
   },
   {
     slug: "budget-input",
@@ -115,19 +129,62 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Activity",
     description: "Day itinerary · map + sorted activity list, show/hide map, edit mode",
   },
-  // Day subgroup
+  // Trips subgroup
+  {
+    slug: "create-trip",
+    title: "CreateTripForm",
+    group: "Features",
+    subgroup: "Trips",
+    description: "Form creazione viaggio · destinazione, date range, travelers, theme · standalone (no modal wrapper)",
+  },
   {
     slug: "day-list",
     title: "DayList",
     group: "Features",
-    subgroup: "Day",
+    subgroup: "Trips",
     description: "Trip days aside · clickable selection",
   },
   {
     slug: "hero-banner",
     title: "HeroBanner",
     group: "Features",
-    subgroup: "Day",
+    subgroup: "Trips",
     description: "Full-bleed hero image with text overlay + optional sub-banner",
+  },
+  // AI subgroup
+  {
+    slug: "ai-suggest",
+    title: "GoAvatar",
+    group: "Features",
+    subgroup: "AI",
+    description: "Avatar Go · cerchio ink con kanji 五, halo arancione pulsante · xs/sm/md",
+  },
+  {
+    slug: "go-panel",
+    title: "GoPanel",
+    group: "Features",
+    subgroup: "AI",
+    description: "Orchestratore widget Go · trigger → API → widget. Controls + Debug panel.",
+  },
+  {
+    slug: "go-chat",
+    title: "GoChat",
+    group: "Features",
+    subgroup: "AI",
+    description: "Trigger conversazionale Go · banner naked con sweep, rotating words, bottone Ask me.",
+  },
+  {
+    slug: "go-chat-float",
+    title: "GoChatFloat",
+    group: "Features",
+    subgroup: "AI",
+    description: "Chat Go floating · panel fixed bottom-right, suggestions inline, card espansa con foto lazy.",
+  },
+  // ── Admin ─────────────────────────────────────────────────────────
+  {
+    slug: "tester-notes",
+    title: "Tester Notes",
+    group: "Admin",
+    description: "Feedback e segnalazioni bug dai tester · lista filtrata per tipo",
   },
 ];

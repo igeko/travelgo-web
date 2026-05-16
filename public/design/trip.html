@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Trip page</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<style>
+@keyframes goPulseHalo { 0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(244, 123, 58, 0); } }
+@keyframes goSweep {
+  0% { transform: translateX(-120%); }
+  45%, 50% { transform: translateX(220%); }
+  95%, 100% { transform: translateX(-120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .go-avatar, .go-sweep { animation: none !important; }
+}
+
+/* ── Page shell ───────────────────────────────────────────────── */
+.trip-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px var(--gap-page) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Two-column layout ───────────────────────────────────────── */
+.trip-cols {
+  display: grid;
+  grid-template-columns: 0.85fr 1.55fr;
+  gap: 16px;
+}
+
+/* ── Trip details (spine) ─────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.panel-h {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.spine-row {
+  display: flex;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+  align-items: flex-start;
+}
+.spine-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.spine-row:first-child { padding-top: 0; }
+.spine-row .ic {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--orange-soft);
+  color: var(--orange-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.spine-row .ic i { font-size: 14px; }
+.spine-row .info { flex: 1; min-width: 0; }
+.spine-row .k {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.spine-row .v {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  margin-top: 1px;
+  line-height: 1.3;
+}
+.spine-row .s {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: var(--font-serif);
+  font-style: italic;
+  margin-top: 1px;
+}
+.spine-row .pencil {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  visibility: hidden;
+  font-family: inherit;
+}
+.spine-row:hover .pencil { visibility: visible; }
+.spine-row .pencil:hover { background: var(--surface-soft); color: var(--ink); }
+
+/* ── Country info card (4 widgets · tab-strip pattern) ────────── */
+.country-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+/* Widget attivo (naked, no inner container) · respiro + min-height */
+.cw-body { padding: 22px 20px 14px; }
+.cw-pane {
+  display: none;
+  min-height: 190px;
+  flex-direction: column;
+}
+.cw-pane.on { display: flex; }
+.cw-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.cw-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+}
+.cw-title i { font-size: 15px; color: var(--orange); }
+.cw-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* Hero · morbido, serif 24px */
+.cw-big {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  font-family: var(--font-serif);
+}
+.cw-big .sym { color: var(--orange); font-weight: 500; }
+.cw-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.cw-sub b { color: var(--ink); font-weight: 500; }
+
+/* Meta-row · scivola in fondo grazie al min-height + flex */
+.cw-meta-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.cw-pill {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1;
+}
+.cw-pill i { font-size: 12px; color: var(--ink-faint); }
+.cw-pill b { color: var(--ink); font-weight: 500; }
+.cw-pill i.ok { color: #6bb86b; }
+
+/* Direction switch (pill ink) */
+.cw-switch {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.cw-switch button {
+  border: 0;
+  background: transparent;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+}
+.cw-switch button.on { background: var(--ink); color: #fff; }
+
+/* Converter (currency) */
+.cw-conv {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 0.5px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cw-presets { display: flex; gap: 5px; flex-wrap: wrap; }
+.cw-preset {
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+}
+.cw-preset.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.cw-pill-in {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+}
+.cw-pill-in .sym { font-size: 12px; color: var(--ink-faint); font-weight: 500; }
+.cw-pill-in input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  min-width: 0;
+  width: 30px;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+.cw-pill-in input::-webkit-outer-spin-button,
+.cw-pill-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cw-pill-in .out { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+
+/* STRIP in fondo: 4 tab navigatori
+   Active = stesso linguaggio del giorno selezionato su daybyday:
+   fondo --ink, testo bianco, accent strip --orange SOTTO. */
+.cw-strip {
+  display: flex;
+  gap: 5px;
+  padding: 10px 10px 14px;
+}
+.cw-tab {
+  flex: 1;
+  position: relative;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease;
+}
+.cw-tab i { font-size: 17px; color: var(--ink-faint); }
+.cw-tab span { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em; }
+.cw-tab:hover { background: var(--surface-soft); }
+
+.cw-tab.on { background: var(--ink); }
+.cw-tab.on i { color: #fff; }
+.cw-tab.on span { color: #fff; font-weight: 500; }
+.cw-tab.on::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 15%;
+  right: 15%;
+  height: 5px;
+  background: var(--orange);
+  border-radius: 3px;
+}
+
+/* ── Go avatar + trigger ──────────────────────────────────────── */
+.go-avatar {
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-weight: 500;
+  line-height: 1;
+  animation: goPulseHalo 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.go-avatar.lg { width: 40px; height: 40px; font-size: 20px; }
+.go-avatar.md { width: 32px; height: 32px; font-size: 16px; }
+.go-avatar.sm { width: 28px; height: 28px; font-size: 14px; }
+
+.go-trigger {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.go-trigger .shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(244, 123, 58, 0.18) 50%, transparent 70%);
+  animation: goSweep 7s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+.go-trigger > * { position: relative; z-index: 2; }
+.go-trigger .body { flex: 1; min-width: 0; }
+.go-trigger .body .ey {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+}
+.go-trigger .body .ttl { font-size: 14px; font-weight: 500; margin-top: 1px; }
+.go-trigger .body .s {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-style: italic;
+  margin-top: 2px;
+}
+.go-trigger .btn {
+  background: var(--ink);
+  color: white;
+  border: 0;
+  padding: 8px 16px 8px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.go-trigger .btn i { font-size: 13px; color: var(--orange); }
+.go-trigger .btn:hover { background: #1a3d52; }
+
+/* Rotating word inside .ttl */
+@keyframes wordsRotate {
+  0%, 22% { transform: translateY(0); }
+  25%, 47% { transform: translateY(-20px); }
+  50%, 72% { transform: translateY(-40px); }
+  75%, 97% { transform: translateY(-60px); }
+  100% { transform: translateY(-80px); }
+}
+.go-trigger .roll {
+  display: inline-block;
+  height: 20px;
+  overflow: hidden;
+  vertical-align: -4px;
+  min-width: 145px;
+}
+.go-trigger .roll ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  animation: wordsRotate 12s ease-in-out infinite;
+}
+.go-trigger .roll li {
+  height: 20px;
+  line-height: 20px;
+  font-style: italic;
+  font-family: var(--font-serif);
+  color: var(--ink);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .go-trigger .shine, .go-trigger .roll ul { animation: none; }
+}
+
+/* ── Wishlist preview ─────────────────────────────────────────── */
+.wish { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.wish-h {
+  padding: 11px 14px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wish-h .ey {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.wish-h .ey i { font-size: 11px; }
+.wish-h a {
+  font-size: 11px;
+  color: var(--orange-deep);
+  text-decoration: underline;
+  text-decoration-color: rgba(168, 72, 24, 0.3);
+}
+.wish-item {
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.wish-item:last-child { border-bottom: 0; }
+.wish-item .thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+}
+.wish-item .info .t { font-size: 12px; font-weight: 500; }
+.wish-item .info .s { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.02em; }
+.wish-item .assign {
+  font-size: 10px;
+  color: var(--ink-soft);
+  padding: 4px 11px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.wish-item .assign:hover { background: var(--ink); color: white; border-color: var(--ink); }
+.wish-item.empty .assign { color: var(--orange-deep); border-color: var(--orange-border); }
+.wish-item.empty .assign:hover { background: var(--orange); color: white; border-color: var(--orange); }
+
+/* ── Acc-handle (Edit pill over hero) ────────────────────────── */
+.acc-handle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  cursor: pointer;
+}
+.acc-handle.active {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: white;
+}
+
+/* In view-mode: hide Edit affordances */
+body.view-mode .acc-handle { display: none !important; }
+
+/* ── Trip edit form (extends styles already in styles.css) ───── */
+
+/* Range picker btn (compact, ink-styled) */
+.range-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.range-btn:hover { border-color: var(--ink-soft); }
+.range-btn.open {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(13, 44, 61, 0.08);
+}
+.range-btn > i.ti-calendar { font-size: 14px; color: var(--ink); flex-shrink: 0; }
+.range-btn .range-chev { font-size: 13px; color: var(--ink-faint); margin-left: auto; transition: transform 0.18s; }
+.range-btn.open .range-chev { transform: rotate(180deg); color: var(--ink); }
+.range-val { flex: 1; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.range-val .arrow { color: var(--ink-faint); margin: 0 6px; }
+.range-val strong { font-weight: 500; }
+.range-val .nights { margin-left: 8px; font-size: 11px; color: var(--ink-soft); }
+
+/* Travelers (counter rows) */
+.travelers-row {
+  background: white;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  max-width: 320px;
+}
+.t-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.t-row:last-child { border-bottom: 0; }
+.t-row .k { display: flex; flex-direction: column; }
+.t-row .k .t { font-size: 13px; font-weight: 500; }
+.t-row .k .s {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+.count-stepper { display: inline-flex; align-items: center; gap: 10px; }
+.count-stepper button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.count-stepper button:hover { border-color: var(--ink); color: var(--ink); }
+.count-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+.count-stepper .v {
+  min-width: 24px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Theme chips */
+.theme-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.theme-chip {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: white;
+  border: 0.5px solid var(--border);
+  color: var(--ink-soft);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+}
+.theme-chip:hover { border-color: var(--border-strong); }
+.theme-chip.on {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+  font-weight: 500;
+}
+
+/* ── .acc-form.standalone · contenitore attaccato all'hero ──── */
+.acc-form.standalone {
+  background: white;
+  border: 1px solid var(--border-strong);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: 18px 18px 16px;
+  margin-top: 0;
+  position: relative;
+}
+/* Freccetta · triangolo CSS che esce dall'alto del form, punta in alto verso l'hero.
+   Bordi visibili creano l'outline; un secondo triangolo bianco interno copre il bordo. */
+.acc-form.standalone::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 60px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 10px solid var(--border-strong);
+  z-index: 2;
+}
+.acc-form.standalone::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 61px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 9px solid white;
+  z-index: 3;
+}
+
+/* Hero attaccato al form quando editing: niente gap, niente radius tra i due */
+body.editing-hero #trip-hero {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: -16px; /* compensa il gap di .trip-page */
+}
+body.editing-hero #trip-edit-form {
+  margin-top: 0;
+}
+.acc-form .head-meta {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+/* Hero photo row (foto sx + colonna campi dx) */
+.hero-photo-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items: flex-start;
+}
+.hero-photo {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 4/3;
+  border-radius: var(--radius-md);
+  background-color: var(--surface-soft);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+.hero-photo .photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 44, 61, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: white;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.hero-photo:hover .photo-overlay { opacity: 1; }
+.hero-photo .photo-overlay i { font-size: 18px; }
+
+.hero-fields { display: flex; flex-direction: column; gap: 10px; }
+.soft-counter {
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-align: right;
+  margin-top: -6px;
+  padding-right: 8px;
+}
+
+/* Read-only row (Destination locked) */
+.readonly-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.readonly-row > i.ti-map-pin { font-size: 14px; color: var(--ink-faint); flex-shrink: 0; }
+.ro-info { flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ro-info .ro-k {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+.ro-info .ro-v { font-size: 13px; color: var(--ink); font-weight: 500; }
+.ro-lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+}
+.ro-lock i { font-size: 12px; }
+
+/* Sub-label di sezione dentro la colonna form */
+.form-sub-lbl {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 500;
+  padding-left: 4px;
+  margin-top: 8px;
+  margin-bottom: -2px;
+}
+
+@media (max-width: 720px) {
+  .form-row-2col { grid-template-columns: 1fr; }
+}
+
+/* Form actions footer */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.form-actions-right { display: flex; gap: 6px; }
+
+/* In editing-hero: nascondi incipit (le info sono ora nel form) */
+body.editing-hero #trip-incipit { display: none; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+/* Sotto 840px: tutta la pagina collassa a 1 colonna */
+@media (max-width: 840px) {
+  .trip-cols { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="view-mode">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="#" class="brand brand-kanji" aria-label="TravelGo · home">
+      <span class="brand-mark" aria-hidden="true">五</span>
+      <span class="brand-word">Travel<b>Go</b></span>
+    </a>
+    <nav class="nav">
+      <span class="active">My trips</span>
+      <span>Explore</span>
+      <span>Guides</span>
+      <span>Budget</span>
+    </nav>
+    <div class="topbar-account" aria-label="Account">ED</div>
+    <button class="nav-mobile-btn" aria-label="Menu" aria-expanded="false" aria-controls="mobile-drawer" id="nav-mobile-btn"><i class="ti ti-menu-2"></i></button>
+  </div>
+  <div class="mobile-drawer" id="mobile-drawer" hidden>
+    <div class="mobile-drawer-section">
+      <div class="mobile-drawer-eyebrow">TravelGo</div>
+      <nav class="mobile-drawer-nav">
+        <a href="#" class="active">My trips</a>
+        <a href="#">Explore</a>
+        <a href="#">Guides</a>
+        <a href="#">Budget</a>
+      </nav>
+    </div>
+    <div class="mobile-drawer-section">
+      <div class="mobile-drawer-eyebrow">Trip · Japan 2026</div>
+      <nav class="mobile-drawer-nav">
+        <a href="#" class="active">Trip</a>
+        <a href="#">Day-by-day</a>
+        <a href="#">Map</a>
+        <a href="#">Budget</a>
+        <a href="#">Notes</a>
+      </nav>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="topbar-sub-inner">
+      <div class="topbar-sub-context">
+        <span class="topbar-sub-eyebrow">Japan 2026</span>
+      </div>
+      <div class="topbar-sub-actions">
+        <nav class="topbar-sub-tabs">
+          <span class="active">Trip</span>
+          <span>Day-by-day</span>
+          <span>Map</span>
+          <span>Budget</span>
+          <span>Notes</span>
+        </nav>
+        <span class="topbar-sub-divider" aria-hidden="true"></span>
+        <span class="edit-state-chip" data-state="view" id="edit-state-chip" title="Read-only mode">
+          <span class="edit-state-dot"></span>
+          <span class="edit-state-label">View</span>
+        </span>
+        <button class="btn-icon btn-md ghost" id="trip-actions-btn" aria-label="Trip actions" title="Trip actions">
+          <i class="ti ti-dots-vertical"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="trip-page">
+
+  <!-- ── Hero full-width (uses .day-hero from styles.css) ─────── -->
+  <div class="day-hero" id="trip-hero" style="background-image: url('imgs/day-banner-nature.png');">
+    <div class="day-hero-badges">
+      <span class="trip-state-tag trip-state-during"><i class="ti ti-plane"></i> During · day 6 / 21</span>
+    </div>
+    <button type="button" class="btn-icon btn-md has-label over-media acc-handle" id="trip-edit-btn" data-acc="hero" title="Edit">
+      <i class="ti ti-pencil"></i><span>Edit</span>
+    </button>
+    <div class="day-hero-content">
+      <div>
+        <div class="day-hero-eyebrow">Summer 2026 · 21 days</div>
+        <div class="day-hero-title">Japan 2026</div>
+        <div class="day-hero-sub">31 Jul → 20 Aug · Tokyo → Kyoto → Hokkaido</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trip edit form (appears below hero when Edit is clicked) ── -->
+  <div class="acc-form standalone" id="trip-edit-form" hidden>
+    <div class="head-meta">Trip details</div>
+
+    <div class="hero-photo-row">
+      <!-- Photo (left) -->
+      <div class="hero-photo" style="background-image: url('imgs/day-banner-nature.png');" title="Change cover">
+        <div class="photo-overlay"><i class="ti ti-upload"></i><span>Change</span></div>
+      </div>
+
+      <!-- Fields (right) -->
+      <div class="hero-fields">
+        <!-- Destination (read-only) -->
+        <div class="readonly-row">
+          <i class="ti ti-map-pin"></i>
+          <div class="ro-info">
+            <span class="ro-k">Destination</span>
+            <span class="ro-v">Japan</span>
+          </div>
+          <span class="ro-lock" title="Destination cannot be changed">
+            <i class="ti ti-lock"></i>
+          </span>
+        </div>
+
+        <!-- Summary -->
+        <div class="soft">
+          <span class="ghost">Summary</span>
+          <textarea maxlength="280" placeholder="A short narrative sentence about your trip">Three weeks across Tokyo, Kyoto and Hokkaido, alternating cities and nature with a few quiet days in the temples of Kyoto.</textarea>
+        </div>
+        <div class="soft-counter"><b>158</b> / 280</div>
+
+        <!-- Practical note -->
+        <div class="soft">
+          <span class="ghost">Practical note</span>
+          <input maxlength="120" placeholder="Useful reminder (visas, packing, contacts…)" value="Rail pass to activate from 31 Jul. Visa-free for IT passport." />
+        </div>
+        <div class="soft-counter"><b>59</b> / 120</div>
+
+        <!-- Dates -->
+        <div class="form-sub-lbl">Dates</div>
+        <button type="button" class="range-btn" id="trip-range-btn">
+          <i class="ti ti-calendar"></i>
+          <span class="range-val">
+            <strong>31 Jul</strong> <span class="arrow">→</span> <strong>20 Aug</strong>
+            <span class="nights">· 21 nights</span>
+          </span>
+          <i class="ti ti-chevron-down range-chev"></i>
+        </button>
+
+        <!-- Travelers (max-width) -->
+        <div class="form-sub-lbl">Travelers</div>
+        <div class="travelers-row">
+          <div class="t-row">
+            <div class="k">
+              <span class="t">Adults</span>
+              <span class="s">From 18 years</span>
+            </div>
+            <div class="count-stepper">
+              <button type="button" data-step="adults" data-delta="-1" aria-label="Decrease adults">−</button>
+              <span class="v" data-count="adults">2</span>
+              <button type="button" data-step="adults" data-delta="1" aria-label="Increase adults">+</button>
+            </div>
+          </div>
+          <div class="t-row">
+            <div class="k">
+              <span class="t">Children</span>
+              <span class="s">From 0 to 17</span>
+            </div>
+            <div class="count-stepper">
+              <button type="button" data-step="children" data-delta="-1" aria-label="Decrease children" disabled>−</button>
+              <span class="v" data-count="children">0</span>
+              <button type="button" data-step="children" data-delta="1" aria-label="Increase children">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Theme & mood -->
+        <div class="form-sub-lbl">Theme &amp; mood</div>
+        <div class="theme-chips" role="group" aria-label="Theme tags">
+          <button type="button" class="theme-chip on" data-theme="Nature">Nature</button>
+          <button type="button" class="theme-chip on" data-theme="Food">Food</button>
+          <button type="button" class="theme-chip on" data-theme="Culture">Culture</button>
+          <button type="button" class="theme-chip" data-theme="Sport">Sport</button>
+          <button type="button" class="theme-chip" data-theme="Relax">Relax</button>
+          <button type="button" class="theme-chip" data-theme="Family">Family</button>
+          <button type="button" class="theme-chip on" data-theme="Spiritual">Spiritual</button>
+          <button type="button" class="theme-chip on" data-theme="Off-the-beaten">Off-the-beaten</button>
+        </div>
+        <div class="soft">
+          <span class="ghost">Tell Go more (optional)</span>
+          <textarea placeholder="Describe your ideal trip — anything Go should know…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <span></span>
+      <div class="form-actions-right">
+        <button class="btn-icon btn-md text-only" id="trip-edit-cancel" type="button">Cancel</button>
+        <button class="btn-icon btn-md solid text-only" id="trip-edit-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Summary + Practical note (visible always, like .day-incipit) ── -->
+  <div class="day-incipit" id="trip-incipit">
+    <div class="day-incipit-lead">Three weeks across Tokyo, Kyoto and Hokkaido, alternating cities and nature with a few quiet days in the temples of Kyoto.</div>
+    <div class="day-incipit-note">Rail pass to activate from 31 Jul. Visa-free for IT passport.</div>
+  </div>
+
+  <!-- ── Two columns ──────────────────────────────────────────── -->
+  <div class="trip-cols">
+
+    <!-- ── Col SX · About this trip ──────────────────────────── -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <!-- Trip details · spine -->
+      <div class="panel">
+        <div class="spine-row">
+          <span class="ic"><i class="ti ti-map-pin"></i></span>
+          <div class="info">
+            <div class="k">Destination</div>
+            <div class="v">Japan</div>
+            <div class="s">3 countries · 4 main stops</div>
+          </div>
+          <button class="pencil" aria-label="Edit destination"><i class="ti ti-pencil"></i></button>
+        </div>
+
+        <div class="spine-row">
+          <span class="ic"><i class="ti ti-calendar"></i></span>
+          <div class="info">
+            <div class="k">When</div>
+            <div class="v">31 Jul → 20 Aug 2026</div>
+            <div class="s">21 nights · 22 days</div>
+          </div>
+          <button class="pencil" aria-label="Edit dates"><i class="ti ti-pencil"></i></button>
+        </div>
+
+        <div class="spine-row">
+          <span class="ic"><i class="ti ti-users"></i></span>
+          <div class="info">
+            <div class="k">Who</div>
+            <div class="v">2 adults</div>
+            <div class="s">No children, no extras</div>
+          </div>
+          <button class="pencil" aria-label="Edit travelers"><i class="ti ti-pencil"></i></button>
+        </div>
+
+        <div class="spine-row">
+          <span class="ic"><i class="ti ti-mood-smile"></i></span>
+          <div class="info">
+            <div class="k">Theme</div>
+            <div class="v">Nature · Food · Culture</div>
+            <div class="s">+ Spiritual, Off-the-beaten</div>
+          </div>
+          <button class="pencil" aria-label="Edit theme"><i class="ti ti-pencil"></i></button>
+        </div>
+      </div>
+
+      <!-- Country info card · 4 widgets, tab-strip pattern -->
+      <div class="country-card" id="country-card">
+        <div class="cw-body">
+
+          <!-- ── Pane · Currency ───────────────────────────── -->
+          <div class="cw-pane on" data-pane="currency">
+            <div class="cw-head">
+              <span class="cw-title"><i class="ti ti-coin"></i> Currency</span>
+              <div class="cw-switch" data-switch="currency">
+                <button type="button" class="on" data-dir="eur-jpy">€ → ¥</button>
+                <button type="button" data-dir="jpy-eur">¥ → €</button>
+              </div>
+            </div>
+
+            <div class="cw-big" id="cw-rate">1 € = <span class="sym">¥</span>162</div>
+            <div class="cw-sub">Updated 3h ago · cards widely accepted, cash needed for small shops.</div>
+
+            <div class="cw-conv">
+              <div class="cw-presets" data-presets>
+                <button type="button" class="cw-preset" data-amount="5">€5</button>
+                <button type="button" class="cw-preset on" data-amount="10">€10</button>
+                <button type="button" class="cw-preset" data-amount="50">€50</button>
+                <button type="button" class="cw-preset" data-amount="100">€100</button>
+              </div>
+              <div class="cw-pill-in">
+                <span class="sym" id="cw-pill-sym">€</span>
+                <input type="number" id="cw-amount" value="10" min="0" />
+                <span class="out" id="cw-out">≈ ¥1,620</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Pane · Visa ──────────────────────────────── -->
+          <div class="cw-pane" data-pane="visa">
+            <div class="cw-head">
+              <span class="cw-title"><i class="ti ti-id"></i> Visa</span>
+              <span class="cw-meta">IT passport</span>
+            </div>
+            <div class="cw-big">No visa needed</div>
+            <div class="cw-sub">Stay up to <b>90 days</b> · passport valid 6+ months from your entry date.</div>
+            <div class="cw-meta-row">
+              <span class="cw-pill"><i class="ti ti-check ok"></i> Vaccines none</span>
+              <span class="cw-pill"><i class="ti ti-ticket"></i> Return ticket rec.</span>
+            </div>
+          </div>
+
+          <!-- ── Pane · Driving ───────────────────────────── -->
+          <div class="cw-pane" data-pane="driving">
+            <div class="cw-head">
+              <span class="cw-title"><i class="ti ti-steering-wheel"></i> Driving</span>
+              <span class="cw-meta">IDP required</span>
+            </div>
+            <div class="cw-big">Left-hand drive</div>
+            <div class="cw-sub">Wheel on the right · International Driving Permit needed for non-Japanese licences.</div>
+            <div class="cw-meta-row">
+              <span class="cw-pill">Urban <b>40</b></span>
+              <span class="cw-pill">Country <b>60</b></span>
+              <span class="cw-pill">Highway <b>100</b></span>
+            </div>
+          </div>
+
+          <!-- ── Pane · Power ─────────────────────────────── -->
+          <div class="cw-pane" data-pane="power">
+            <div class="cw-head">
+              <span class="cw-title"><i class="ti ti-plug"></i> Power</span>
+              <span class="cw-meta">adapter needed</span>
+            </div>
+            <div class="cw-big">Type <span class="sym">A / B</span></div>
+            <div class="cw-sub">100 V · 50/60 Hz · most EU electronics need an adapter only, not a voltage converter.</div>
+            <div class="cw-meta-row">
+              <span class="cw-pill"><i class="ti ti-bolt"></i> 100 V</span>
+              <span class="cw-pill"><i class="ti ti-wave-sine"></i> 50/60 Hz</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Strip nav -->
+        <div class="cw-strip" role="tablist">
+          <button type="button" class="cw-tab on" data-target="currency" role="tab" aria-selected="true">
+            <i class="ti ti-coin"></i><span>Currency</span>
+          </button>
+          <button type="button" class="cw-tab" data-target="visa" role="tab" aria-selected="false">
+            <i class="ti ti-id"></i><span>Visa</span>
+          </button>
+          <button type="button" class="cw-tab" data-target="driving" role="tab" aria-selected="false">
+            <i class="ti ti-steering-wheel"></i><span>Driving</span>
+          </button>
+          <button type="button" class="cw-tab" data-target="power" role="tab" aria-selected="false">
+            <i class="ti ti-plug"></i><span>Power</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Col DX · Work on this trip ────────────────────────── -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <!-- Go trigger (collapsed · naked + sweep + rotating word) -->
+      <a href="ai_suggest.html" class="go-trigger" aria-label="Ask Go for trip suggestions">
+        <span class="shine" aria-hidden="true"></span>
+        <span class="go-avatar lg" aria-hidden="true">五</span>
+        <div class="body">
+          <div class="ey">Hi from Go</div>
+          <div class="ttl">Want to find <span class="roll" aria-hidden="true"><ul>
+            <li>a place to visit?</li>
+            <li>a stay for tonight?</li>
+            <li>a food spot?</li>
+            <li>an idea?</li>
+          </ul></span></div>
+          <div class="s">Two words from you, a handful of ideas from me.</div>
+        </div>
+        <button class="btn" type="button"><i class="ti ti-sparkles"></i> Ask me</button>
+      </a>
+
+      <!-- Wishlist preview -->
+      <div class="wish">
+        <div class="wish-h">
+          <span class="ey"><i class="ti ti-bookmark"></i> Wishlist · 3 recent</span>
+          <a href="#">View all 12 →</a>
+        </div>
+
+        <div class="wish-item">
+          <div class="thumb" style="background-image: linear-gradient(135deg, #a8b8a0, #5e7558);"></div>
+          <div class="info">
+            <div class="t">Sentiero 5 laghi di Fuji</div>
+            <div class="s">Nature · Day 4</div>
+          </div>
+          <button class="assign">Assigned</button>
+        </div>
+
+        <div class="wish-item empty">
+          <div class="thumb" style="background-image: linear-gradient(135deg, #c5b5a0, #9a8c75);"></div>
+          <div class="info">
+            <div class="t">Onsen Fuji-Chobo-no-Yu</div>
+            <div class="s">Relax · unassigned</div>
+          </div>
+          <button class="assign">Assign</button>
+        </div>
+
+        <div class="wish-item empty">
+          <div class="thumb" style="background-image: linear-gradient(135deg, #b5c5d5, #7a8c9d);"></div>
+          <div class="info">
+            <div class="t">Hibiya Central Market</div>
+            <div class="s">Shopping · unassigned</div>
+          </div>
+          <button class="assign">Assign</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // Mobile drawer
+  var btn = document.getElementById('nav-mobile-btn');
+  var drawer = document.getElementById('mobile-drawer');
+  if (btn && drawer) {
+    btn.addEventListener('click', function(){
+      var open = document.body.classList.toggle('menu-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      drawer.hidden = !open;
+    });
+  }
+
+  // View/Edit mode toggle (chip in sub-header)
+  var modeChip = document.getElementById('edit-state-chip');
+  if (modeChip) {
+    modeChip.style.cursor = 'pointer';
+    modeChip.addEventListener('click', function(){
+      var isView = document.body.classList.contains('view-mode');
+      if (isView) {
+        document.body.classList.remove('view-mode');
+        modeChip.setAttribute('data-state', 'edit');
+        var lbl = modeChip.querySelector('.edit-state-label');
+        if (lbl) lbl.textContent = 'Editing';
+      } else {
+        document.body.classList.add('view-mode');
+        modeChip.setAttribute('data-state', 'view');
+        var lbl2 = modeChip.querySelector('.edit-state-label');
+        if (lbl2) lbl2.textContent = 'View';
+        // se chiudo l'edit globale, chiudo anche eventuali form hero aperti
+        document.body.classList.remove('editing-hero');
+        var f = document.getElementById('trip-edit-form');
+        if (f) f.hidden = true;
+        var b = document.getElementById('trip-edit-btn');
+        if (b) b.classList.remove('active');
+      }
+    });
+  }
+
+  // Trip hero edit toggle
+  var editBtn = document.getElementById('trip-edit-btn');
+  var editForm = document.getElementById('trip-edit-form');
+  var cancelBtn = document.getElementById('trip-edit-cancel');
+  var saveBtn = document.getElementById('trip-edit-save');
+
+  function openEdit() {
+    document.body.classList.add('editing-hero');
+    editForm.hidden = false;
+    if (editBtn) editBtn.classList.add('active');
+  }
+  function closeEdit() {
+    document.body.classList.remove('editing-hero');
+    editForm.hidden = true;
+    if (editBtn) editBtn.classList.remove('active');
+  }
+
+  if (editBtn) editBtn.addEventListener('click', function(){
+    if (document.body.classList.contains('editing-hero')) closeEdit();
+    else openEdit();
+  });
+  if (cancelBtn) cancelBtn.addEventListener('click', closeEdit);
+  if (saveBtn) saveBtn.addEventListener('click', closeEdit);
+
+  // Theme chips toggle
+  document.querySelectorAll('.theme-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){ chip.classList.toggle('on'); });
+  });
+
+  // Travelers counter
+  var counts = { adults: 2, children: 0 };
+  function refreshCounts() {
+    Object.keys(counts).forEach(function(k){
+      var el = document.querySelector('[data-count="' + k + '"]');
+      if (el) el.textContent = counts[k];
+      var minus = document.querySelector('[data-step="' + k + '"][data-delta="-1"]');
+      if (minus) minus.disabled = counts[k] <= (k === 'adults' ? 1 : 0);
+    });
+  }
+  document.querySelectorAll('[data-step]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.dataset.step;
+      var delta = parseInt(btn.dataset.delta, 10);
+      var next = counts[key] + delta;
+      var min = key === 'adults' ? 1 : 0;
+      if (next < min) return;
+      counts[key] = next;
+      refreshCounts();
+    });
+  });
+  refreshCounts();
+})();
+
+/* ── Country card · tab strip + currency converter ─────────────── */
+(function () {
+  var card = document.getElementById('country-card');
+  if (!card) return;
+
+  /* Tabs */
+  var tabs  = card.querySelectorAll('.cw-tab');
+  var panes = card.querySelectorAll('.cw-pane');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var target = tab.dataset.target;
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.classList.toggle('on', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      panes.forEach(function (p) {
+        p.classList.toggle('on', p.dataset.pane === target);
+      });
+    });
+  });
+
+  /* Currency converter */
+  var RATE = 162;                  /* 1 € = 162 ¥ */
+  var dir = 'eur-jpy';             /* or 'jpy-eur' */
+  var amount = 10;
+
+  var rateEl   = document.getElementById('cw-rate');
+  var pillSym  = document.getElementById('cw-pill-sym');
+  var input    = document.getElementById('cw-amount');
+  var out      = document.getElementById('cw-out');
+  var switchEl = card.querySelector('[data-switch="currency"]');
+  var presets  = card.querySelectorAll('.cw-preset');
+
+  function fmt(n, sign) {
+    var rounded = sign === '¥' ? Math.round(n) : Math.round(n * 100) / 100;
+    var str = rounded.toLocaleString('en-US', sign === '¥' ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return sign + str;
+  }
+
+  function render() {
+    if (dir === 'eur-jpy') {
+      rateEl.innerHTML  = '1 € = <span class="sym">¥</span>' + RATE;
+      pillSym.textContent = '€';
+      out.textContent  = '≈ ' + fmt(amount * RATE, '¥');
+      presets.forEach(function (p) {
+        p.textContent = '€' + p.dataset.amount;
+      });
+    } else {
+      rateEl.innerHTML  = '100 ¥ = <span class="sym">€</span>' + (100 / RATE).toFixed(2);
+      pillSym.textContent = '¥';
+      out.textContent  = '≈ ' + fmt(amount / RATE, '€');
+      presets.forEach(function (p) {
+        /* show jpy presets that map to the same eur amounts roughly */
+        var eur = parseFloat(p.dataset.amount);
+        var jpy = Math.round(eur * RATE / 100) * 100; /* 5→800, 10→1600, 50→8100, 100→16200 */
+        p.textContent = '¥' + jpy.toLocaleString('en-US');
+      });
+    }
+  }
+
+  switchEl.querySelectorAll('button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      switchEl.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      dir = b.dataset.dir;
+      /* keep input value but reinterpret in new currency */
+      amount = parseFloat(input.value) || 0;
+      render();
+    });
+  });
+
+  presets.forEach(function (p) {
+    p.addEventListener('click', function () {
+      presets.forEach(function (x) { x.classList.remove('on'); });
+      p.classList.add('on');
+      if (dir === 'eur-jpy') {
+        amount = parseFloat(p.dataset.amount);
+      } else {
+        var eur = parseFloat(p.dataset.amount);
+        amount = Math.round(eur * RATE / 100) * 100;
+      }
+      input.value = amount;
+      render();
+    });
+  });
+
+  input.addEventListener('input', function () {
+    presets.forEach(function (x) { x.classList.remove('on'); });
+    amount = parseFloat(input.value) || 0;
+    render();
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAltLabel } from "@/lib/hooks/useOS";
 import { useShortcuts } from "@/lib/hooks/useShortcut";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
 import { IconArrowRightCircle, IconChevronRight } from "@/components/ui/icons";
+import { IconSparkles } from "@tabler/icons-react";
+import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { Quote } from "@/components/ui/Quote";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { DayItem } from "@/features/day/DayItem";
+import { useTripContext } from "@/features/go/useTripContext";
+import { useTripGo } from "@/features/go/TripGoContext";
 import { cn } from "@/lib/cn";
 import type { Trip, Day, Activity } from "@/lib/dal/trips";
 
@@ -24,6 +28,132 @@ function formatDate(iso: string) {
 function localDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+/* ─── GoLaunchTrigger ─── */
+
+type LaunchPhase = "idle" | "collapsing" | "launching" | "gone";
+
+const ROTATING_WORDS = ["a place to visit?", "a stay for tonight?", "a food spot?", "an idea?"];
+
+function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
+  const [phase, setPhase] = useState<LaunchPhase>("idle");
+
+  function handleClick() {
+    if (phase !== "idle") return;
+    setPhase("collapsing");
+    setTimeout(() => {
+      setPhase("launching");
+      setTimeout(() => {
+        setPhase("gone");
+        setTimeout(() => {
+          onLaunch();
+        }, 420);
+      }, 1200);
+    }, 320);
+  }
+
+  const isFlying = phase === "gone";
+  const isLaunching = phase === "launching" || phase === "gone";
+  const isCollapsing = phase !== "idle";
+
+  return (
+    <div
+      className="relative rounded-xl w-full mt-6 overflow-hidden"
+      style={{
+        height: 60,
+        cursor: phase === "idle" ? "pointer" : "default",
+        /* Whole row flies right during "gone" */
+        transition: isFlying ? "transform 420ms cubic-bezier(0.4,0,1,1), opacity 420ms ease" : "none",
+        transform: isFlying ? "translateX(110%)" : "translateX(0)",
+        opacity: isFlying ? 0 : 1,
+      }}
+      onClick={handleClick}
+      role="button"
+      aria-label="Ask Go for trip suggestions"
+    >
+      {/* Sweep background */}
+      <span
+        aria-hidden="true"
+        className="go-sweep absolute inset-0 rounded-xl pointer-events-none"
+        style={{ background: "linear-gradient(100deg, transparent 30%, rgba(244,123,58,0.18) 50%, transparent 70%)" }}
+      />
+
+      {/* Text block — fades out + slides up on collapsing */}
+      <div
+        className="absolute left-[58px] right-[110px] top-0 bottom-0 flex flex-col justify-center"
+        style={{
+          transition: "opacity 280ms ease, transform 280ms ease",
+          opacity: isCollapsing ? 0 : 1,
+          transform: isCollapsing ? "translateY(-8px)" : "translateY(0)",
+          pointerEvents: "none",
+        }}
+      >
+        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">Hi from Go</div>
+        <div className="text-[14px] font-medium text-ink mt-0.5 overflow-hidden">
+          Want to find{" "}
+          <span className="inline-block h-[20px] overflow-hidden align-[-4px] min-w-[145px]">
+            <ul className="go-words-rotate list-none m-0 p-0 flex flex-col">
+              {ROTATING_WORDS.map((w) => (
+                <li key={w} className="h-[20px] leading-[20px] font-serif italic text-ink whitespace-nowrap">{w}</li>
+              ))}
+              <li className="h-[20px] leading-[20px] font-serif italic text-ink whitespace-nowrap">{ROTATING_WORDS[0]}</li>
+            </ul>
+          </span>
+        </div>
+        <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">
+          Two words from you, a handful of ideas from me.
+        </div>
+      </div>
+
+      {/* "Ask me" button — fades + slides right on collapsing */}
+      <div
+        className="absolute right-3.5 top-0 bottom-0 flex items-center"
+        style={{
+          transition: "opacity 280ms ease, transform 280ms ease",
+          opacity: isCollapsing ? 0 : 1,
+          transform: isCollapsing ? "translateX(12px)" : "translateX(0)",
+          pointerEvents: "none",
+        }}
+      >
+        <span className="inline-flex items-center gap-1.5 bg-ink text-white rounded-pill text-[12px] font-medium pl-3 pr-4 py-2">
+          <IconSparkles size={13} className="text-orange" />
+          Ask me
+        </span>
+      </div>
+
+      {/* Avatar — si sposta al centro durante launching */}
+      <div
+        className="absolute top-0 bottom-0 flex items-center"
+        style={{
+          left: isLaunching ? "50%" : "14px",
+          transform: isLaunching ? "translateX(-50%)" : "translateX(0)",
+          transition: "left 420ms cubic-bezier(0.34,1.56,0.64,1), transform 420ms cubic-bezier(0.34,1.56,0.64,1)",
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <GoAvatar size="lg" pulse />
+        {/* "Let's go…" appare solo in launching */}
+        <span
+          style={{
+            transition: "opacity 300ms ease, transform 300ms ease",
+            opacity: isLaunching && !isFlying ? 1 : 0,
+            transform: isLaunching && !isFlying ? "translateX(0)" : "translateX(-6px)",
+            fontSize: 14,
+            fontStyle: "italic",
+            fontFamily: "var(--font-serif)",
+            color: "var(--color-ink)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Let's go…
+        </span>
+      </div>
+    </div>
+  );
 }
 
 /* ─── ShortcutBar ─── */
@@ -86,6 +216,20 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   }
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
+
+  const { setTripContext, openGo, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened } = useTripGo();
+
+  const goFocus = useMemo(
+    () => selectedDay ? { type: "day" as const, dayNumber: selectedDay.day_number } : undefined,
+    [selectedDay?.day_number],
+  );
+
+  const { context: tripContext } = useTripContext(trip.id, goFocus);
+
+  // Aggiorna il contesto Go quando cambia giorno o quando il context è pronto
+  useEffect(() => {
+    if (tripContext) setTripContext(tripContext);
+  }, [tripContext, setTripContext]);
   const selectedIndex = localDays.findIndex((d) => d.id === selectedDayId);
   const prevDay = selectedIndex > 0 ? localDays[selectedIndex - 1] : null;
   const nextDay = selectedIndex < localDays.length - 1 ? localDays[selectedIndex + 1] : null;
@@ -299,6 +443,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             className="mt-7"
           />
         )}
+
+        {/* Go — trigger visibile solo se Go non è mai stato aperto */}
+        {!goHasBeenOpened && <GoLaunchTrigger onLaunch={openGo} />}
 
         {/* Itinerary */}
         <div className={cn("mt-8 transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>

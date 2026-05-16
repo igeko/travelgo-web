@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Go chat · spec stati</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ── Page · spec sheet ──────────────────────────────────────── */
+body { background: var(--bg); margin: 0; padding: 30px var(--gap-page) 80px; }
+.spec-wrap { max-width: 1180px; margin: 0 auto; }
+.spec-h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+.spec-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 28px; line-height: 1.6; max-width: 720px; }
+.spec-sub a { color: var(--orange-deep); text-decoration: underline; text-decoration-color: rgba(168,72,24,0.3); }
+
+.toc {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 32px;
+  font-size: 13px;
+}
+.toc-h { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange); font-weight: 500; margin-bottom: 8px; }
+.toc ol { margin: 0; padding-left: 22px; line-height: 1.8; color: var(--ink); }
+.toc ol a { color: inherit; text-decoration: none; }
+.toc ol a:hover { color: var(--orange-deep); text-decoration: underline; text-decoration-color: rgba(168,72,24,0.3); }
+.toc .toc-meta { font-size: 11px; color: var(--ink-faint); margin-left: 6px; }
+
+.state-block {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 22px;
+  scroll-margin-top: 20px;
+}
+.state-h {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.state-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  background: var(--ink); color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 500;
+}
+.state-title { font-size: 16px; font-weight: 500; color: var(--ink); }
+.state-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; line-height: 1.55; max-width: 720px; }
+
+.state-grid { display: grid; grid-template-columns: 460px 1fr; gap: 24px; align-items: start; }
+
+.preview-wrap {
+  position: relative;
+  background: var(--bg);
+  border: 0.5px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  min-height: 200px;
+  padding: 20px;
+  overflow: hidden;
+}
+.preview-wrap.tall { min-height: 360px; }
+
+.notes-list { font-size: 12px; color: var(--ink); }
+.notes-list .nh {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.notes-list ul { margin: 0 0 14px; padding-left: 18px; line-height: 1.6; }
+.notes-list ul li b { font-weight: 500; }
+.notes-list ul li code { font-family: "SF Mono", Menlo, monospace; background: var(--surface-soft); padding: 1px 5px; border-radius: 3px; font-size: 11px; color: var(--orange-deep); }
+
+/* ── COMMON · Floating chat panel + animations ──────────────── */
+@keyframes goPulseHalo { 0%,100% { box-shadow: 0 0 0 0 rgba(244,123,58,0.5); } 50% { box-shadow: 0 0 0 6px rgba(244,123,58,0); } }
+@keyframes goPulseHaloIdle { 0%,100% { box-shadow: 0 0 0 0 rgba(244,123,58,0.3); } 50% { box-shadow: 0 0 0 4px rgba(244,123,58,0); } }
+@keyframes goWobble {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-3deg); }
+  75% { transform: translateY(-2px) rotate(3deg); }
+}
+@keyframes goEnter {
+  0% { opacity: 0; transform: translateY(6px) scale(0.85); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes goTyping { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+@keyframes goCaret { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+@keyframes goAurora {
+  0%, 100% { background-position: 0% 0%, 100% 100%; }
+  50% { background-position: 100% 50%, 0% 50%; }
+}
+
+/* Panel · dimensione fissa per i preview (in pagina è position:fixed) */
+.gp {
+  position: relative;
+  width: 380px;
+  background: var(--bg);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(13,44,61,0.18), 0 2px 8px rgba(13,44,61,0.08);
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+}
+.gp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(244,123,58,0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(253,236,223,0.55) 0%, transparent 65%);
+  background-size: 200% 200%, 200% 200%;
+  animation: goAurora 14s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.gp > * { position: relative; z-index: 1; }
+
+/* Header */
+.gp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid rgba(13, 44, 61, 0.06);
+  background: transparent;
+  flex-shrink: 0;
+}
+.gp-head .head-av { width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;font-weight:500;font-size:15px;line-height:1;animation:goPulseHalo 2.6s ease-in-out infinite;flex-shrink:0; }
+.gp-head .head-name { font-size:14px;font-weight:500;color:var(--orange);letter-spacing:0.12em;text-transform:uppercase;flex:1; }
+.gp-head .close { width:24px;height:24px;border-radius:50%;background:transparent;border:0.5px solid var(--border-strong);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px; }
+
+.gp-body { padding: 6px 16px 6px; flex: 1; overflow: visible; }
+
+/* AI msg · serif italic, no avatar inline */
+.ai-msg {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 92%;
+  margin: 8px 0 14px;
+}
+.ai-msg strong { font-style: normal; font-family: -apple-system, sans-serif; font-weight: 500; color: var(--ink); background: rgba(244,123,58,0.18); padding: 0 4px; border-radius: 3px; }
+.ai-msg.past { color: var(--ink-soft); font-size: 13px; opacity: 0.85; }
+
+/* AI live · in streaming · avatar wobble */
+.ai-live { position: relative; padding-left: 38px; margin: 8px 0 14px; }
+.ai-live .av {
+  position: absolute; left: 0; bottom: 0;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-weight: 500; font-size: 12px; line-height: 1;
+  animation: goEnter 0.25s ease-out, goWobble 1.6s ease-in-out 0.25s infinite, goPulseHalo 2s ease-in-out infinite;
+}
+.ai-live .ai-msg { border-left: 2px solid var(--orange); padding-left: 12px; margin: 0; }
+.typing-line { display: inline-flex; align-items: center; gap: 2px; margin-bottom: 5px; }
+.typing-line span { width: 4px; height: 4px; border-radius: 50%; background: var(--orange); animation: goTyping 1.4s ease-in-out infinite; }
+.typing-line span:nth-child(2) { animation-delay: 0.2s; }
+.typing-line span:nth-child(3) { animation-delay: 0.4s; }
+.caret { display: inline-block; width: 2px; height: 16px; background: var(--orange); vertical-align: -3px; margin-left: 1px; animation: goCaret 1s steps(1) infinite; }
+
+/* Idle · "ti ascolto" */
+.go-idle {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 14px;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange); font-weight: 500;
+}
+.go-idle .av {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-weight: 500; font-size: 12px; line-height: 1;
+  animation: goEnter 0.3s ease-out, goPulseHaloIdle 2.6s ease-in-out 0.3s infinite;
+}
+.go-idle .hint { font-family: var(--font-serif); font-style: italic; font-size: 11px; color: var(--ink-faint); letter-spacing: 0; text-transform: none; font-weight: 400; }
+
+/* User msg */
+.user-row { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.user-msg { font-size: 13px; line-height: 1.5; color: var(--ink); max-width: 80%; padding: 7px 12px; background: rgba(13,44,61,0.07); border-radius: 14px 14px 4px 14px; }
+.user-msg .ref { font-size: 10px; padding: 1px 6px; background: rgba(244,123,58,0.2); color: var(--orange-deep); border-radius: 99px; margin-right: 5px; font-weight: 500; display: inline-block; }
+
+/* Quick replies */
+.qr { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 14px 38px; }
+.qr .chip { font-size: 11px; padding: 5px 11px; background: rgba(255,255,255,0.8); border: 0.5px solid var(--border-strong); color: var(--ink); border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+
+/* Results · card list */
+.go-results { margin: 0 0 14px; }
+.go-results-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 2px; }
+.go-results-head .lbl-small { font-size: 9px; color: var(--orange-deep); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.go-results-head .sel-counter { font-size: 9px; color: var(--orange-deep); font-weight: 500; }
+
+.gc-wrap { margin-bottom: 5px; border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.78); backdrop-filter: blur(4px); }
+.gc-row { display: grid; grid-template-columns: 22px 36px 1fr 14px; gap: 8px; padding: 8px 10px; align-items: center; cursor: pointer; }
+.gc-row .cb { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; color: #fff; }
+.gc-row .cb.on { background: var(--orange); border-color: var(--orange); }
+.gc-row .thumb { width: 36px; height: 36px; border-radius: 6px; }
+.gc-row .info .top { display: flex; gap: 6px; align-items: baseline; font-size: 9px; color: var(--orange); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+.gc-row .info .top .m { color: var(--ink-faint); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.gc-row .info .name { font-size: 12px; font-weight: 500; margin-top: 1px; }
+.gc-row .info .desc { font-size: 10px; color: var(--ink-soft); margin-top: 1px; }
+.gc-row .chev { font-size: 13px; color: var(--ink-faint); transition: transform 0.18s; }
+
+.gc-wrap.selected { border-color: var(--orange); background: var(--orange-soft); box-shadow: 0 0 0 1px rgba(244,123,58,0.18); }
+.gc-wrap.open .gc-row .chev { transform: rotate(180deg); color: var(--orange); }
+.gc-wrap.open .gc-row { border-bottom: 0.5px solid var(--border); }
+
+.gc-detail { display: none; padding: 10px 12px 12px; }
+.gc-wrap.open .gc-detail { display: block; }
+.gc-detail .dh { display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; margin-bottom: 4px; }
+.gc-detail .prose { font-family: var(--font-serif); font-style: italic; font-size: 12px; line-height: 1.5; color: var(--ink); margin: 0 0 8px; }
+.gc-detail .facts { display: flex; gap: 8px; flex-wrap: wrap; font-size: 10px; color: var(--ink-soft); padding: 6px 9px; background: rgba(255,255,255,0.5); border: 0.5px solid rgba(13,44,61,0.06); border-radius: 6px; }
+.gc-detail .foot { display: flex; flex-direction: column; gap: 5px; padding-top: 8px; margin-top: 8px; border-top: 1px dashed rgba(13,44,61,0.08); }
+.gc-detail .foot button { font-size: 10px; padding: 5px 10px; border: 0.5px solid var(--border-strong); background: rgba(255,255,255,0.8); color: var(--ink); border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+.gc-detail .foot button.primary { background: var(--orange); color: #fff; border-color: var(--orange); font-weight: 500; }
+.gc-detail .foot .ask-go { background: transparent; border: 0; color: var(--ink-soft); padding: 4px 0; display: inline-flex; align-items: center; gap: 5px; font-weight: 500; text-align: left; }
+.gc-detail .foot .ask-go i { color: var(--orange); font-size: 11px; }
+
+/* Input bar */
+.gp-input {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 5px 5px 12px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(6px);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  margin: 4px 14px 14px;
+  flex-shrink: 0;
+}
+.gp-input i { font-size: 13px; color: var(--orange); }
+.gp-input input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 12px; color: var(--ink); padding: 5px 0; }
+.gp-input input::placeholder { color: var(--ink-faint); font-style: italic; font-family: var(--font-serif); }
+.gp-input .send { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
+
+/* ── Closed state · mini-card resume ────────────────────────── */
+.closed-card {
+  width: 240px;
+  background: var(--bg);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(13,44,61,0.16);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.closed-card .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  font-size: 16px; font-weight: 500;
+  animation: goPulseHalo 2.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.closed-card .body { flex: 1; min-width: 0; }
+.closed-card .ey { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); font-weight: 500; }
+.closed-card .last { font-size: 12px; color: var(--ink); font-family: var(--font-serif); font-style: italic; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gp::before, .ai-live .av, .go-idle .av, .typing-line span, .caret, .gp-head .head-av, .closed-card .av { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .state-grid { grid-template-columns: 1fr; }
+  .gp { width: 100%; max-width: 380px; }
+}
+</style>
+</head>
+<body>
+
+<div class="spec-wrap">
+
+  <h1 class="spec-h1">Go · chat · spec degli stati</h1>
+  <p class="spec-sub">
+    Riferimento per il dev. Tutti gli stati della <b>chat Go floating</b> usata in <a href="daybyday_3col.html">daybyday_3col.html</a>.
+    Animazioni, classi CSS, transizioni e markup minimo. Stessa estetica usata anche in <a href="ai_suggest.html">ai_suggest.html</a>.
+  </p>
+
+  <div class="toc">
+    <div class="toc-h">Indice</div>
+    <ol>
+      <li><a href="#s1">Closed · mini-card resume</a> <span class="toc-meta">— stato chiuso</span></li>
+      <li><a href="#s2">Opening · primo turno · Go sta scrivendo</a> <span class="toc-meta">— streaming live</span></li>
+      <li><a href="#s3">Messaggio completato · idle "ti ascolto"</a></li>
+      <li><a href="#s4">User reply · Go riprende a scrivere</a></li>
+      <li><a href="#s5">Risultati inline + idle sotto</a></li>
+      <li><a href="#s6">Selezione · card con checkbox + counter</a></li>
+      <li><a href="#s7">Card espansa · dettaglio blog-style</a></li>
+      <li><a href="#s8">Affinamento · user con chip-riferimento</a></li>
+    </ol>
+  </div>
+
+  <!-- ============ STATO 1 · CLOSED ============ -->
+  <section class="state-block" id="s1">
+    <div class="state-h"><span class="state-num">1</span><span class="state-title">Closed · mini-card resume</span></div>
+    <p class="state-desc">Quando la chat è chiusa e c'è già stata almeno una conversazione, mostra un mini-card flottante in basso a destra con l'ultima cosa detta da Go. Click → riapre il panel.</p>
+    <div class="state-grid">
+      <div class="preview-wrap">
+        <div class="closed-card" style="position:absolute;bottom:18px;right:18px;">
+          <span class="av">五</span>
+          <div class="body">
+            <div class="ey">Go · resume</div>
+            <div class="last">Ho tre idee a piedi tra i due…</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Markup</div>
+        <ul>
+          <li><code>.closed-card</code> · position fixed, bottom-right, width 240px</li>
+          <li>Avatar 32px <code>.av</code> con halo arancione (<code>goPulseHalo 2.6s</code>)</li>
+          <li>Eyebrow <code>.ey</code> "GO · RESUME"</li>
+          <li>Ultima frase Go troncata · serif italic</li>
+        </ul>
+        <div class="nh">Comportamento</div>
+        <ul>
+          <li>Visibile solo se <code>hasHistory && !isOpen</code></li>
+          <li>Se nessuna conversazione mai aperta → mostra il <b>trigger naked "Ask me"</b> in pagina invece</li>
+          <li>Click → <code>body.go-open</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 2 · OPENING / STREAMING ============ -->
+  <section class="state-block" id="s2">
+    <div class="state-h"><span class="state-num">2</span><span class="state-title">Opening · primo turno · Go sta scrivendo</span></div>
+    <p class="state-desc">Al click di "Ask me" il panel si apre e Go fa un saluto proattivo. La frase si compone token-by-token (streaming). Avatar piccolo in basso a sinistra del messaggio anima (wobble + halo + entrata fade-scale). Sopra il messaggio puntini pulsanti. Caret arancione a fine frase.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body">
+            <div class="ai-live">
+              <span class="av">五</span>
+              <div class="typing-line"><span></span><span></span><span></span></div>
+              <p class="ai-msg">Vedo che hai un buco tra <strong>Tsukiji</strong> e <strong>Hama-Rikyū</strong>. Potrebbe esserci una sosta tranquilla in mezzo<span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" disabled />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Animazioni</div>
+        <ul>
+          <li><code>goEnter</code> 0.25s · fade + scale 0.85→1 (avatar appare)</li>
+          <li><code>goWobble</code> 1.6s infinite · oscillazione ±3deg / ±2px</li>
+          <li><code>goPulseHalo</code> 2s infinite · halo arancione</li>
+          <li><code>goTyping</code> 1.4s infinite · 3 puntini (delay 0.2s, 0.4s)</li>
+          <li><code>goCaret</code> 1s steps(1) · cursore blink</li>
+        </ul>
+        <div class="nh">Markup chiave</div>
+        <ul>
+          <li><code>.ai-live</code> wrapper con padding-left 38px (spazio avatar)</li>
+          <li><code>.ai-live .av</code> position absolute bottom-left</li>
+          <li><code>.ai-live .ai-msg</code> border-left 2px arancione, padding-left 12px</li>
+          <li>Token chiave evidenziati con <code>&lt;strong&gt;</code> · bg arancio-light + padding 4px + radius 3px (font sans, niente più italic)</li>
+        </ul>
+        <div class="nh">Input</div>
+        <ul>
+          <li>Durante streaming l'input è <code>disabled</code> (l'utente non può rispondere finché Go non finisce)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 3 · IDLE ============ -->
+  <section class="state-block" id="s3">
+    <div class="state-h"><span class="state-num">3</span><span class="state-title">Messaggio completato · idle "ti ascolto"</span></div>
+    <p class="state-desc">Quando Go ha finito il turno: avatar e caret accanto al messaggio scompaiono, border-left arancione idem. Subito sotto appare l'idle "ti ascolto…": avatar fermo + halo lento + eyebrow Go + hint serif. Quick-replies sotto. Input attivo.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body">
+            <p class="ai-msg">Vedo che hai un buco tra <strong>Tsukiji</strong> e <strong>Hama-Rikyū</strong>. Potrebbe esserci una sosta tranquilla in mezzo — vuoi che cerchi qualcosa?</p>
+            <div class="go-idle">
+              <span class="av">五</span>
+              Go <span class="hint">· ti ascolto…</span>
+            </div>
+            <div class="qr">
+              <span class="chip">Sì, qualcosa di tranquillo</span>
+              <span class="chip">Solo caffè</span>
+              <span class="chip">Cerca tu</span>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Transizione streaming → idle</div>
+        <ul>
+          <li>Rimuovi classe <code>.ai-live</code> dal wrapper (border-left e padding-left vanno via)</li>
+          <li>Avatar live svanisce con fade-out 0.18s</li>
+          <li>Inserisci dopo il messaggio: <code>&lt;.go-idle&gt;</code></li>
+        </ul>
+        <div class="nh">Idle markup</div>
+        <ul>
+          <li><code>.go-idle</code> con <code>.av</code> + label "Go" + <code>.hint</code> serif "ti ascolto…"</li>
+          <li>Animazioni: <code>goEnter</code> 0.3s + <code>goPulseHaloIdle</code> 2.6s (halo più lento + spread minore)</li>
+        </ul>
+        <div class="nh">Quick replies</div>
+        <ul>
+          <li>Opzionali, mostra solo se Go ha proposto chip nel turno</li>
+          <li>Click su un chip → invia come user message (vedi stato 4)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 4 · USER REPLY ============ -->
+  <section class="state-block" id="s4">
+    <div class="state-h"><span class="state-num">4</span><span class="state-title">User reply · Go riprende a scrivere</span></div>
+    <p class="state-desc">L'utente manda. La sua bubble appare a destra (rgba ink 7%). Il messaggio Go precedente diventa <code>.past</code> (opacizzato 85%, font 13px). L'idle scompare. Si apre un nuovo <code>.ai-live</code> con avatar wobble per il nuovo turno.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body">
+            <p class="ai-msg past">Vedo che hai un buco tra Tsukiji e Hama-Rikyū. Potrebbe esserci una sosta tranquilla in mezzo — vuoi che cerchi qualcosa?</p>
+            <div class="user-row">
+              <div class="user-msg">Sì, qualcosa di tranquillo. Magari un caffè o una libreria.</div>
+            </div>
+            <div class="ai-live">
+              <span class="av">五</span>
+              <div class="typing-line"><span></span><span></span><span></span></div>
+              <p class="ai-msg">Ecco tre idee a piedi tra i due posti<span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" disabled />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Classi messaggi</div>
+        <ul>
+          <li><code>.ai-msg</code> · turno corrente (chiuso ma più recente)</li>
+          <li><code>.ai-msg.past</code> · turno superato · color ink-soft 0.85, font 13px</li>
+        </ul>
+        <div class="nh">User msg</div>
+        <ul>
+          <li><code>.user-row</code> · justify-content flex-end</li>
+          <li><code>.user-msg</code> · bg <code>rgba(13,44,61,0.07)</code>, sans, 13px, max-width 80%</li>
+          <li>radius asimmetrica <code>14px 14px 4px 14px</code></li>
+        </ul>
+        <div class="nh">Stack messaggi</div>
+        <ul>
+          <li>Cronologia in ordine naturale (più vecchio in alto, più nuovo in basso)</li>
+          <li>Auto-scroll al bottom dopo ogni nuovo messaggio o aggiornamento streaming</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 5 · RESULTS + IDLE ============ -->
+  <section class="state-block" id="s5">
+    <div class="state-h"><span class="state-num">5</span><span class="state-title">Risultati inline + idle sotto</span></div>
+    <p class="state-desc">Go ha finito il turno proponendo dei posti. I risultati appaiono dopo il messaggio come lista compatta di card (no container globale). Sotto i risultati, l'idle Go riappare in attesa.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp" style="max-height:600px;">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body" style="overflow-y:auto;">
+            <p class="ai-msg past">Vedo che hai un buco tra Tsukiji e Hama-Rikyū…</p>
+            <div class="user-row"><div class="user-msg">Sì, qualcosa di tranquillo.</div></div>
+            <p class="ai-msg">Ho tre idee a piedi tra i due posti. Spuntale e ne terrò conto per la prossima domanda.</p>
+            <div class="go-results">
+              <div class="go-results-head">
+                <span class="lbl-small">3 idee · pausa</span>
+                <span class="sel-counter" hidden>0 selected</span>
+              </div>
+              <div class="gc-wrap">
+                <div class="gc-row">
+                  <div class="cb"></div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+                  <div class="info">
+                    <div class="top">Caffè · Libreria <span class="m">· 1h · ¥1500</span></div>
+                    <div class="name">BUNKITSU Books & Coffee</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+              <div class="gc-wrap">
+                <div class="gc-row">
+                  <div class="cb"></div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#c5b5a0,#9a8c75);"></div>
+                  <div class="info">
+                    <div class="top">Caffè <span class="m">· 30min · ¥500</span></div>
+                    <div class="name">Tully's Tsukiji-Higashi</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+              <div class="gc-wrap">
+                <div class="gc-row">
+                  <div class="cb"></div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+                  <div class="info">
+                    <div class="top">Libreria <span class="m">· 1h · gratis</span></div>
+                    <div class="name">HIBIYA Central Market</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+            </div>
+            <div class="go-idle">
+              <span class="av">五</span>
+              Go <span class="hint">· ti ascolto…</span>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Lista risultati</div>
+        <ul>
+          <li><code>.go-results</code> · niente container card globale</li>
+          <li><code>.go-results-head</code> · "3 idee · pausa" eyebrow + counter (hidden se 0)</li>
+          <li>Ogni card è un <code>.gc-wrap</code> con <code>.gc-row</code> + <code>.gc-detail</code> (hidden)</li>
+        </ul>
+        <div class="nh">Card row · grid 22 / 36 / 1fr / 14</div>
+        <ul>
+          <li>Checkbox 16px (clickabile indipendentemente)</li>
+          <li>Thumb 36px</li>
+          <li>Info: eyebrow categoria · meta · nome · desc</li>
+          <li>Chevron a destra (ruota a -180° quando open)</li>
+        </ul>
+        <div class="nh">Scroll</div>
+        <ul>
+          <li>Body del panel ha <code>overflow-y: auto</code></li>
+          <li>Header e input bar restano fissi (flex-shrink:0)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 6 · SELEZIONE ============ -->
+  <section class="state-block" id="s6">
+    <div class="state-h"><span class="state-num">6</span><span class="state-title">Selezione · card con checkbox + counter</span></div>
+    <p class="state-desc">Click sulla checkbox di una card → la card prende stato <code>.selected</code> (bordo arancio + bg <code>--orange-soft</code> + ring). Il counter "N selected" diventa visibile.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body">
+            <p class="ai-msg">Ho tre idee a piedi tra i due posti. Spuntale e ne terrò conto per la prossima domanda.</p>
+            <div class="go-results">
+              <div class="go-results-head">
+                <span class="lbl-small">3 idee · pausa</span>
+                <span class="sel-counter">2 selected</span>
+              </div>
+              <div class="gc-wrap selected">
+                <div class="gc-row">
+                  <div class="cb on">✓</div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+                  <div class="info">
+                    <div class="top">Caffè · Libreria <span class="m">· 1h · ¥1500</span></div>
+                    <div class="name">BUNKITSU Books & Coffee</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+              <div class="gc-wrap">
+                <div class="gc-row">
+                  <div class="cb"></div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#c5b5a0,#9a8c75);"></div>
+                  <div class="info">
+                    <div class="top">Caffè <span class="m">· 30min · ¥500</span></div>
+                    <div class="name">Tully's Tsukiji-Higashi</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+              <div class="gc-wrap selected">
+                <div class="gc-row">
+                  <div class="cb on">✓</div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#b5c5d5,#7a8c9d);"></div>
+                  <div class="info">
+                    <div class="top">Libreria <span class="m">· 1h · gratis</span></div>
+                    <div class="name">HIBIYA Central Market</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Stato selected</div>
+        <ul>
+          <li><code>.gc-wrap.selected</code> · border arancio + bg <code>--orange-soft</code> + box-shadow ring 1px arancia 18%</li>
+          <li><code>.cb.on</code> · bg arancio, checkmark bianco</li>
+        </ul>
+        <div class="nh">Interazione</div>
+        <ul>
+          <li>Click sulla <b>checkbox</b> → toggla solo selezione</li>
+          <li>Click <b>ovunque altrove</b> sulla riga → toggla expand (vedi stato 7)</li>
+          <li>I 2 stati sono indipendenti: selected+open, selected+closed, unselected+open</li>
+        </ul>
+        <div class="nh">Counter</div>
+        <ul>
+          <li><code>.sel-counter</code> · <code>hidden</code> quando 0 selezioni</li>
+          <li>Aggiorna live al click checkbox</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 7 · CARD ESPANSA ============ -->
+  <section class="state-block" id="s7">
+    <div class="state-h"><span class="state-num">7</span><span class="state-title">Card espansa · dettaglio blog-style</span></div>
+    <p class="state-desc">Click sulla riga (non checkbox) → la card prende stato <code>.open</code>. Compare il dettaglio: header "Go ti spiega perché", paragrafo serif, fact-strip, footer azioni. Stato selezione ortogonale all'espansione.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp" style="max-height:600px;">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body" style="overflow-y:auto;">
+            <div class="go-results">
+              <div class="gc-wrap selected open">
+                <div class="gc-row">
+                  <div class="cb on">✓</div>
+                  <div class="thumb" style="background:linear-gradient(135deg,#a8b8a0,#5e7558);"></div>
+                  <div class="info">
+                    <div class="top">Caffè · Libreria <span class="m">· 1h · ¥1500</span></div>
+                    <div class="name">BUNKITSU Books & Coffee</div>
+                  </div>
+                  <i class="ti ti-chevron-down chev"></i>
+                </div>
+                <div class="gc-detail">
+                  <div class="dh">Go ti spiega perché</div>
+                  <p class="prose">Una libreria-caffè dove paghi un fee e leggi quanto vuoi. Pochi posti, silenzio totale — perfetta per due ore tra Tsukiji e i giardini.</p>
+                  <div class="facts">
+                    <span>🕘 11:00–20:00</span><span>💴 ¥1.500</span><span>🚶 Bassa</span>
+                  </div>
+                  <div class="foot">
+                    <button class="ask-go" type="button"><i class="ti ti-sparkles"></i> Chiedi a Go alternative simili</button>
+                    <div style="display:flex;gap:5px;">
+                      <button>Mappa</button>
+                      <button>Wishlist</button>
+                      <button class="primary" style="flex:1;">+ Aggiungi al giorno</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Stato open</div>
+        <ul>
+          <li><code>.gc-wrap.open</code> · chevron ruota a 180°, mostra <code>.gc-detail</code></li>
+          <li>Se anche <code>.selected</code> · entrambi i bordi arancio coesistono</li>
+        </ul>
+        <div class="nh">Contenuto dettaglio</div>
+        <ul>
+          <li><code>.dh</code> · header eyebrow "Go ti spiega perché"</li>
+          <li><code>.prose</code> · paragrafo serif italic generato da AI</li>
+          <li><code>.facts</code> · strip orizzontale con info pratiche (orari, prezzo, fatica, ecc.)</li>
+          <li><code>.foot</code> · "Chiedi a Go alternative simili" (ghost) + Mappa/Wishlist (ghost) + "+ Aggiungi al giorno" (primary)</li>
+        </ul>
+        <div class="nh">Una alla volta?</div>
+        <ul>
+          <li>Decisione: <b>una sola</b> card può essere espansa, alla apertura di una nuova le altre si chiudono</li>
+          <li>(Alternativa: multiple aperte. Da decidere col PM)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATO 8 · AFFINAMENTO ============ -->
+  <section class="state-block" id="s8">
+    <div class="state-h"><span class="state-num">8</span><span class="state-title">Affinamento · user con chip-riferimento</span></div>
+    <p class="state-desc">L'utente ha 2 card selezionate e scrive un nuovo messaggio. La sua bubble include i chip-riferimento (nomi dei posti selezionati) prima del testo libero. Go riceve i riferimenti come seeds per la prossima ricerca.</p>
+    <div class="state-grid">
+      <div class="preview-wrap tall">
+        <div class="gp">
+          <div class="gp-head">
+            <span class="head-av">五</span>
+            <span class="head-name">Go</span>
+            <button class="close">×</button>
+          </div>
+          <div class="gp-body">
+            <p class="ai-msg past">Ho tre idee a piedi tra i due posti.</p>
+            <div class="user-row">
+              <div class="user-msg">
+                <span class="ref">BUNKITSU</span><span class="ref">HIBIYA</span>
+                ma più vicino a Hama-Rikyū
+              </div>
+            </div>
+            <div class="ai-live">
+              <span class="av">五</span>
+              <div class="typing-line"><span></span><span></span><span></span></div>
+              <p class="ai-msg">Ho tenuto <strong>BUNKITSU</strong> e <strong>HIBIYA</strong> come riferimenti. Sto cercando vicino a Hama-Rikyū<span class="caret"></span></p>
+            </div>
+          </div>
+          <div class="gp-input">
+            <i class="ti ti-sparkles"></i>
+            <input placeholder="Scrivi a Go…" disabled />
+            <button class="send">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="notes-list">
+        <div class="nh">Chip-riferimento nella user bubble</div>
+        <ul>
+          <li><code>.user-msg .ref</code> · pill 10px, bg arancio 20%, color <code>--orange-deep</code></li>
+          <li>Inseriti automaticamente dal frontend dalle card selezionate</li>
+          <li>Inviati a OpenAI come parte del prompt + conservati per il tool-call</li>
+        </ul>
+        <div class="nh">Pulizia selezione</div>
+        <ul>
+          <li>Dopo l'invio, le selezioni si <b>azzerano</b> (counter torna a 0, card tornano normali)</li>
+          <li>I nuovi risultati arrivano senza selezione preimpostata</li>
+        </ul>
+        <div class="nh">Riferimento nel messaggio Go</div>
+        <ul>
+          <li>Go cita i riferimenti con <code>&lt;strong&gt;</code> nel suo messaggio successivo</li>
+          <li>Pattern: "Ho tenuto X come riferimento. [azione]…"</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

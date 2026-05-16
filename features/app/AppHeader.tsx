@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { FeedbackModal } from "./FeedbackModal";
+import { IconMessageReport, IconNotes } from "@/components/ui/icons";
 
 /* ─────────────────────────────────────────────────────────────────
    AppHeader · two-row sticky header
@@ -11,7 +13,7 @@ import { cn } from "@/lib/cn";
    This lets the sandbox mobile-frame work correctly at 390px.
 ───────────────────────────────────────────────────────────────── */
 
-export type AppHeaderTab = "day-by-day" | "map" | "budget" | "notes";
+export type AppHeaderTab = "trip" | "day-by-day" | "map" | "budget" | "notes";
 
 export type AppHeaderProps = {
   activeNav?: "trips" | "explore" | "guides" | "budget";
@@ -28,6 +30,10 @@ export type AppHeaderProps = {
   debugMode?: boolean;
   onToggleDebugMode?: () => void;
   onTripActions?: () => void;
+  /** Trip ID — used to build sub-tab hrefs */
+  tripId?: string;
+  /** When true shows the feedback action in the kebab menu */
+  isTester?: boolean;
   initials?: string;
   /** Google avatar URL */
   avatarUrl?: string;
@@ -45,11 +51,12 @@ const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; a
   { id: "budget",  label: "Budget",   href: "/budget",  authRequired: false },
 ];
 
-const SECTION_TABS: { id: AppHeaderTab; label: string }[] = [
-  { id: "day-by-day", label: "Day by day" },
-  { id: "map",        label: "Map" },
-  { id: "budget",     label: "Budget" },
-  { id: "notes",      label: "Notes" },
+const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
+  { id: "trip",      label: "Trip",       href: (id) => `/trips/${id}/overview` },
+  { id: "day-by-day", label: "Day by day", href: (id) => `/trips/${id}` },
+  { id: "map",        label: "Map",        href: (id) => `/trips/${id}?tab=map` },
+  { id: "budget",     label: "Budget",     href: (id) => `/trips/${id}?tab=budget` },
+  { id: "notes",      label: "Notes",      href: (id) => `/trips/${id}?tab=notes` },
 ];
 
 export function AppHeader({
@@ -64,6 +71,8 @@ export function AppHeader({
   debugMode = false,
   onToggleDebugMode,
   onTripActions,
+  tripId,
+  isTester = false,
   initials = "",
   avatarUrl,
   fullName,
@@ -71,6 +80,9 @@ export function AppHeader({
   className,
 }: AppHeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [kebabOpen, setKebabOpen] = useState(false);
+  const kebabRef = useRef<HTMLDivElement>(null);
   const hasTripContext = !!tripName;
 
   return (
@@ -203,18 +215,34 @@ export function AppHeader({
                 </div>
                 <nav className="flex flex-col">
                   {SECTION_TABS.map((tab) => (
-                    <span
-                      key={tab.id}
-                      onClick={() => { onTabChange?.(tab.id); setDrawerOpen(false); }}
-                      className={cn(
-                        "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] cursor-pointer transition-colors",
-                        tab.id === activeTab
-                          ? "text-ink font-medium bg-surface-soft"
-                          : "text-ink-soft",
-                      )}
-                    >
-                      {tab.label}
-                    </span>
+                    tripId ? (
+                      <Link
+                        key={tab.id}
+                        href={tab.href(tripId)}
+                        onClick={() => setDrawerOpen(false)}
+                        className={cn(
+                          "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] no-underline transition-colors",
+                          tab.id === activeTab
+                            ? "text-ink font-medium bg-surface-soft"
+                            : "text-ink-soft",
+                        )}
+                      >
+                        {tab.label}
+                      </Link>
+                    ) : (
+                      <span
+                        key={tab.id}
+                        onClick={() => { onTabChange?.(tab.id); setDrawerOpen(false); }}
+                        className={cn(
+                          "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] cursor-pointer transition-colors",
+                          tab.id === activeTab
+                            ? "text-ink font-medium bg-surface-soft"
+                            : "text-ink-soft",
+                        )}
+                      >
+                        {tab.label}
+                      </span>
+                    )
                   ))}
                 </nav>
               </div>
@@ -243,19 +271,34 @@ export function AppHeader({
               {/* Section tabs — hidden below @sm */}
               <nav className="hidden md:flex items-center gap-1 ml-auto shrink-0">
                 {SECTION_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => onTabChange?.(tab.id)}
-                    className={cn(
-                      "px-3 py-[5px] rounded-pill text-[12px] font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
-                      tab.id === activeTab
-                        ? "bg-ink text-white font-medium"
-                        : "bg-transparent text-ink-soft hover:text-ink",
-                    )}
-                  >
-                    {tab.label}
-                  </button>
+                  tripId ? (
+                    <Link
+                      key={tab.id}
+                      href={tab.href(tripId)}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-[12px] font-sans cursor-pointer transition-colors whitespace-nowrap no-underline",
+                        tab.id === activeTab
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink",
+                      )}
+                    >
+                      {tab.label}
+                    </Link>
+                  ) : (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => onTabChange?.(tab.id)}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-[12px] font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
+                        tab.id === activeTab
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink",
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  )
                 ))}
               </nav>
 
@@ -296,26 +339,67 @@ export function AppHeader({
                 <span>{editMode ? "Editing" : "View"}</span>
               </button>
 
-              {/* Kebab — always visible */}
-              <button
-                type="button"
-                onClick={onTripActions}
-                aria-label="Trip actions"
-                title="Trip actions"
-                className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent shrink-0"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                  <circle cx="12" cy="5"  r="1.5" />
-                  <circle cx="12" cy="12" r="1.5" />
-                  <circle cx="12" cy="19" r="1.5" />
-                </svg>
-              </button>
+              {/* Feedback — solo per tester */}
+              {isTester && (
+                <button
+                  type="button"
+                  onClick={() => setFeedbackOpen(true)}
+                  title="Lascia un feedback"
+                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
+                >
+                  <IconMessageReport size={13} />
+                  Feedback
+                </button>
+              )}
+
+              {/* Kebab — solo per dev/admin */}
+              {isDev && (
+                <div ref={kebabRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setKebabOpen((v) => !v)}
+                    aria-label="Trip actions"
+                    title="Trip actions"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <circle cx="12" cy="5"  r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                  </button>
+
+                  {kebabOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+                        <Link
+                          href="/admin/tester-notes"
+                          onClick={() => setKebabOpen(false)}
+                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
+                        >
+                          <IconNotes size={15} className="shrink-0" />
+                          Vedi tutti i feedback
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
             </div>
           </div>
         )}
 
       </header>
+
+      {/* Feedback modal — portato fuori dall'header per evitare z-index issues */}
+      {feedbackOpen && (
+        <FeedbackModal
+          tripId={tripId}
+          onClose={() => setFeedbackOpen(false)}
+        />
+      )}
     </div>
   );
 }

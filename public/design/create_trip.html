@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Create trip</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<style>
+/* ── Create trip · modal ─────────────────────────────────────── */
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 60px;
+}
+
+/* Faux page sotto la modal (solo per dare un riferimento visivo, è statico) */
+.faux-page {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 44, 61, 0.35);
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes goPulseHalo { 0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(244, 123, 58, 0); } }
+
+.go-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  animation: goPulseHalo 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.modal {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 580px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 26px 28px 22px;
+  box-shadow: 0 10px 40px rgba(13, 44, 61, 0.12);
+}
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modal-close:hover { background: var(--surface-soft); color: var(--ink); }
+.modal-close i { font-size: 13px; }
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.modal h1 {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.15;
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.modal .go-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  animation: goPulseHalo 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes goPulseHalo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(244, 123, 58, 0); }
+}
+.modal-sub {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-left: 38px;
+  margin-bottom: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal .go-avatar { animation: none; }
+}
+
+/* ── Place autocomplete · pill input ───────────────────────────── */
+.place-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fafaf6;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.place-input:focus-within {
+  border-color: var(--orange);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(244, 123, 58, 0.12);
+}
+.place-input > i { font-size: 16px; color: var(--ink-faint); flex-shrink: 0; }
+.place-input .chip {
+  background: var(--ink);
+  color: white;
+  border-radius: var(--radius-pill);
+  padding: 4px 8px 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.place-input .chip[hidden] { display: none; }
+.place-input .chip i { font-size: 11px; color: white; }
+.place-input .chip button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.65);
+  padding: 0;
+  margin-left: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+}
+.place-input .chip button:hover { color: white; }
+.place-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+.place-input input::placeholder { color: var(--ink-faint); }
+
+/* Suggestions (Google Places-like) */
+.place-suggestions {
+  margin: 8px 4px 0;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  display: none;
+}
+.place-input:focus-within ~ .place-suggestions { display: block; }
+.place-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink);
+}
+.place-suggestion:hover { background: var(--surface-soft); }
+.place-suggestion i { font-size: 14px; color: var(--orange-deep); }
+.place-suggestion .country { font-size: 11px; color: var(--ink-faint); margin-left: auto; }
+
+/* ── Reveal: Go suggests + cards ───────────────────────────────── */
+.reveal {
+  padding-top: 16px;
+  border-top: 1px dashed var(--orange-border);
+  margin-top: 14px;
+}
+.go-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.reveal-prose {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+/* Card row */
+.opt-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.opt-card {
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 11px 12px;
+  cursor: pointer;
+  background: var(--surface);
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.opt-card:hover { background: var(--surface-soft); border-color: var(--ink-soft); }
+.opt-card.active {
+  background: rgba(13, 44, 61, 0.05);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(13, 44, 61, 0.08);
+}
+.opt-card .icon { display: block; font-size: 18px; color: var(--ink-soft); margin-bottom: 5px; }
+.opt-card.active .icon { color: var(--ink); }
+.opt-card .ttl { font-size: 12px; font-weight: 500; color: var(--ink); }
+.opt-card.active .ttl { color: var(--ink); }
+.opt-card .sub {
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-family: var(--font-serif);
+  font-style: italic;
+  margin-top: 1px;
+}
+.opt-card.active .sub { color: var(--ink-soft); }
+.opt-card .summary {
+  display: none;
+  font-size: 11px;
+  color: var(--ink);
+  font-family: -apple-system, sans-serif;
+  font-style: normal;
+  margin-top: 1px;
+  font-weight: 500;
+}
+.opt-card.filled .summary { display: block; }
+.opt-card.filled .sub { display: none; }
+
+/* Form anchored under the row */
+.opt-form {
+  background: rgba(13, 44, 61, 0.04);
+  border: 0.5px solid rgba(13, 44, 61, 0.22);
+  border-radius: var(--radius-md);
+  padding: 16px 18px 14px;
+  position: relative;
+  display: none;
+}
+.opt-form.open { display: block; }
+.opt-form::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  width: 12px;
+  height: 12px;
+  background: #f4f2eb;
+  border-top: 0.5px solid rgba(13, 44, 61, 0.22);
+  border-left: 0.5px solid rgba(13, 44, 61, 0.22);
+  transform: rotate(45deg);
+  transition: left 0.18s ease;
+}
+.opt-form[data-anchor="dates"]::before { left: calc((100% - 16px) * 0.166); }
+.opt-form[data-anchor="travelers"]::before { left: calc((100% - 16px) * 0.5); }
+.opt-form[data-anchor="theme"]::before { left: calc((100% - 16px) * 0.833); }
+
+.opt-form-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.opt-form-head i { font-size: 15px; color: var(--ink); }
+.opt-form-head .t { font-size: 13px; font-weight: 500; color: var(--ink); }
+.opt-form-head .skip {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(13, 44, 61, 0.2);
+}
+.opt-form-head .skip:hover { color: var(--ink); }
+
+/* Soft fields dentro la form ink-trasparente */
+.opt-form .soft { background: white; }
+.opt-form .soft:hover { border-color: var(--border-strong); }
+.opt-form .soft:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(13, 44, 61, 0.08); background: white; }
+.opt-form .soft .ghost { background: #f4f2eb; color: var(--ink-soft); }
+.opt-form .soft input { font-size: 14px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── Range picker (Dates) ────────────────────────────────────── */
+.range-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.range-btn:hover { border-color: var(--ink-soft); }
+.range-btn.open {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(13, 44, 61, 0.08);
+}
+.range-btn > i.ti-calendar { font-size: 15px; color: var(--ink); flex-shrink: 0; }
+.range-btn .range-chev {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-left: auto;
+  transition: transform 0.18s;
+}
+.range-btn.open .range-chev { transform: rotate(180deg); color: var(--ink); }
+.range-val {
+  flex: 1;
+  font-size: 14px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.range-val.placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+.range-val .arrow { color: var(--ink-faint); margin: 0 6px; }
+.range-val .nights {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-style: normal;
+  font-family: inherit;
+  font-variant-numeric: normal;
+}
+
+.range-panel {
+  display: none;
+  margin-top: 10px;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  max-width: 300px;
+}
+.range-panel.open { display: block; }
+
+/* Shortcut chips */
+.range-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.range-shortcut {
+  font-size: 10px;
+  padding: 3px 9px;
+  background: var(--surface-soft);
+  border: 0.5px solid var(--border);
+  color: var(--ink-soft);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+}
+.range-shortcut:hover { border-color: var(--ink-soft); color: var(--ink); }
+.range-shortcut.active {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+  font-weight: 500;
+}
+
+/* Calendar */
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cal-nav {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cal-nav i { font-size: 12px; }
+.cal-nav:hover { background: var(--surface-soft); }
+.cal-label-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 0;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: background 0.15s;
+}
+.cal-label-btn:hover { background: var(--surface-soft); }
+.cal-label-btn.open i { transform: rotate(180deg); }
+.cal-label-btn i { transition: transform 0.18s; }
+
+/* Month/Year picker overlay */
+.my-picker {
+  display: block;
+  margin-top: 4px;
+}
+.my-picker[hidden] { display: none; }
+.my-year-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+}
+.my-year {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.my-months {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.my-month {
+  background: transparent;
+  border: 0.5px solid transparent;
+  padding: 8px 6px;
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 8px;
+  font-family: inherit;
+  text-align: center;
+}
+.my-month:hover { background: var(--surface-soft); }
+.my-month.current { border-color: var(--ink-soft); }
+.my-month.selected {
+  background: var(--ink);
+  color: white;
+  font-weight: 500;
+}
+.my-month.disabled {
+  color: rgba(13, 44, 61, 0.18);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  margin-bottom: 2px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.cal-dow span { text-align: center; padding: 2px 0; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 50%;
+  font-variant-numeric: tabular-nums;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+}
+.cal-cell:hover { background: var(--surface-soft); }
+.cal-cell.muted { color: var(--ink-faint); }
+.cal-cell.today { border: 0.5px solid var(--ink-soft); color: var(--ink); font-weight: 500; }
+.cal-cell.selected { background: var(--ink); color: white; font-weight: 500; }
+.cal-cell.in-range {
+  background: rgba(13, 44, 61, 0.07);
+  border-radius: 0;
+}
+.cal-cell.in-range:hover { background: rgba(13, 44, 61, 0.12); }
+.cal-cell.range-start { background: var(--ink); color: white; font-weight: 500; border-radius: 50% 0 0 50%; }
+.cal-cell.range-end { background: var(--ink); color: white; font-weight: 500; border-radius: 0 50% 50% 0; }
+.cal-cell.range-single { background: var(--ink); color: white; font-weight: 500; border-radius: 50%; }
+.cal-cell.disabled {
+  color: rgba(13, 44, 61, 0.18);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 0.5px solid var(--border);
+}
+.cal-clear {
+  font-size: 11px;
+  color: #9a3015;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cal-clear:hover { text-decoration: underline; }
+.cal-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+
+/* Counter row · Travelers */
+.count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+  border-bottom: 0.5px solid var(--border);
+}
+.count-row:last-child { border-bottom: 0; }
+.count-row .k { display: flex; flex-direction: column; }
+.count-row .k .t { font-size: 13px; font-weight: 500; }
+.count-row .k .s {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+.count-stepper { display: inline-flex; align-items: center; gap: 10px; }
+.count-stepper button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 0.5px solid var(--border-strong);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.count-stepper button:hover { border-color: var(--ink); color: var(--ink); }
+.count-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+.count-stepper button:disabled:hover { border-color: var(--border-strong); color: var(--ink); }
+.count-stepper .v {
+  min-width: 24px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Theme chips */
+.theme-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.theme-chip {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: white;
+  border: 0.5px solid var(--border);
+  color: var(--ink-soft);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-family: inherit;
+}
+.theme-chip:hover { border-color: var(--border-strong); }
+.theme-chip.on {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+  font-weight: 500;
+}
+
+/* Footer */
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+}
+.btn-skip {
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(13, 44, 61, 0.2);
+  padding: 6px 10px;
+}
+.btn-skip:hover { color: var(--ink); }
+.btn-create {
+  background: var(--orange);
+  color: white;
+  border: 0;
+  padding: 10px 18px 10px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-create:hover { background: var(--orange-deep); }
+.btn-create:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-create:disabled:hover { background: var(--orange); }
+.btn-create i { font-size: 14px; }
+
+@media (max-width: 520px) {
+  body { padding: 14px; }
+  .modal { padding: 20px 18px 16px; }
+  .opt-cards { grid-template-columns: 1fr; }
+  .opt-form[data-anchor]::before { left: 32px; }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="faux-page" aria-hidden="true"></div>
+
+<div class="modal" role="dialog" aria-labelledby="create-trip-title">
+  <button class="modal-close" aria-label="Close"><i class="ti ti-x"></i></button>
+
+  <div class="modal-title-row">
+    <span class="go-avatar" aria-hidden="true">五</span>
+    <h1 id="create-trip-title">Alright, let's go!</h1>
+  </div>
+  <div class="modal-sub">A new trip starts with a place.</div>
+
+  <!-- Place autocomplete · destination only (cities/regions/countries) -->
+  <div class="place-input" id="place-input">
+    <i class="ti ti-map-pin"></i>
+    <span class="chip" id="place-chip" hidden>
+      <i class="ti ti-check"></i>
+      <span id="place-chip-label"></span>
+      <button type="button" aria-label="Remove destination" id="place-chip-remove"><i class="ti ti-x" style="font-size:11px;"></i></button>
+    </span>
+    <input
+      type="text"
+      id="place-search"
+      placeholder="Where would you like to go?"
+      autocomplete="off"
+      aria-label="Destination"
+    />
+  </div>
+  <div class="place-suggestions" id="place-suggestions" role="listbox">
+    <div class="place-suggestion" data-place="Japan" data-country="Asia"><i class="ti ti-map-pin"></i> Japan <span class="country">Country · Asia</span></div>
+    <div class="place-suggestion" data-place="Tokyo" data-country="Japan"><i class="ti ti-map-pin"></i> Tokyo <span class="country">City · Japan</span></div>
+    <div class="place-suggestion" data-place="Kyoto" data-country="Japan"><i class="ti ti-map-pin"></i> Kyoto <span class="country">City · Japan</span></div>
+    <div class="place-suggestion" data-place="Hokkaido" data-country="Japan"><i class="ti ti-map-pin"></i> Hokkaido <span class="country">Region · Japan</span></div>
+  </div>
+
+  <!-- Reveal: appare solo dopo aver scelto la destinazione -->
+  <div class="reveal" id="reveal" hidden>
+    <div class="go-line"><span class="go-avatar" aria-hidden="true">五</span> Go suggests</div>
+    <div class="reveal-prose">
+      Great choice. Want to add anything else, or shall we start like this?
+    </div>
+
+    <!-- Cards row · 3 opzioni -->
+    <div class="opt-cards" role="tablist" aria-label="Optional trip details">
+      <button class="opt-card" type="button" data-card="dates" role="tab" aria-selected="false">
+        <i class="ti ti-calendar icon" aria-hidden="true"></i>
+        <div class="ttl">Dates</div>
+        <div class="sub">Pick start & end</div>
+        <div class="summary" data-summary="dates"></div>
+      </button>
+      <button class="opt-card" type="button" data-card="travelers" role="tab" aria-selected="false">
+        <i class="ti ti-users icon" aria-hidden="true"></i>
+        <div class="ttl">Travelers</div>
+        <div class="sub">Solo? With family?</div>
+        <div class="summary" data-summary="travelers"></div>
+      </button>
+      <button class="opt-card" type="button" data-card="theme" role="tab" aria-selected="false">
+        <i class="ti ti-mood-smile icon" aria-hidden="true"></i>
+        <div class="ttl">Theme</div>
+        <div class="sub">Nature, food, culture…</div>
+        <div class="summary" data-summary="theme"></div>
+      </button>
+    </div>
+
+    <!-- Form ancorate (una alla volta) -->
+    <div class="opt-form" data-anchor="dates" data-form="dates">
+      <div class="opt-form-head">
+        <i class="ti ti-calendar"></i>
+        <span class="t">Dates</span>
+        <button type="button" class="skip" data-skip="dates">Skip</button>
+      </div>
+
+      <!-- Range picker · unified button + inline calendar -->
+      <button type="button" class="range-btn" id="range-btn">
+        <i class="ti ti-calendar"></i>
+        <span class="range-val placeholder" id="range-val">Pick your dates</span>
+        <i class="ti ti-chevron-down range-chev"></i>
+      </button>
+
+      <div class="range-panel" id="range-panel">
+        <div class="range-shortcuts">
+          <button type="button" class="range-shortcut" data-shortcut="weekend">This weekend</button>
+          <button type="button" class="range-shortcut" data-shortcut="1w">1 week</button>
+          <button type="button" class="range-shortcut" data-shortcut="2w">2 weeks</button>
+          <button type="button" class="range-shortcut" data-shortcut="custom">Custom</button>
+        </div>
+
+        <div class="cal-head">
+          <button type="button" class="cal-nav" id="cal-prev" aria-label="Previous month">
+            <i class="ti ti-chevron-left"></i>
+          </button>
+          <button type="button" class="cal-label-btn" id="cal-label-btn" aria-label="Pick month and year">
+            <span id="cal-label">March 2026</span>
+            <i class="ti ti-chevron-down" style="font-size:11px;color:var(--ink-faint);"></i>
+          </button>
+          <button type="button" class="cal-nav" id="cal-next" aria-label="Next month">
+            <i class="ti ti-chevron-right"></i>
+          </button>
+        </div>
+        <div class="cal-dow" id="cal-dow">
+          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+        </div>
+        <div class="cal-grid" id="cal-grid">
+          <!-- Cells rendered via JS -->
+        </div>
+
+        <!-- Month/Year picker overlay (mostrato al click del label) -->
+        <div class="my-picker" id="my-picker" hidden>
+          <div class="my-year-row">
+            <button type="button" class="cal-nav" id="my-year-prev" aria-label="Previous year"><i class="ti ti-chevron-left"></i></button>
+            <span class="my-year" id="my-year">2026</span>
+            <button type="button" class="cal-nav" id="my-year-next" aria-label="Next year"><i class="ti ti-chevron-right"></i></button>
+          </div>
+          <div class="my-months" id="my-months"></div>
+        </div>
+
+        <div class="cal-foot">
+          <button type="button" class="cal-clear" id="cal-clear">Clear</button>
+          <span class="cal-hint" id="cal-hint">Pick start date</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt-form" data-anchor="travelers" data-form="travelers">
+      <div class="opt-form-head">
+        <i class="ti ti-users"></i>
+        <span class="t">Travelers</span>
+        <button type="button" class="skip" data-skip="travelers">Skip</button>
+      </div>
+      <div class="count-row">
+        <div class="k">
+          <span class="t">Adults</span>
+          <span class="s">From 18 years</span>
+        </div>
+        <div class="count-stepper">
+          <button type="button" data-step="adults" data-delta="-1" aria-label="Decrease adults">−</button>
+          <span class="v" data-count="adults">2</span>
+          <button type="button" data-step="adults" data-delta="1" aria-label="Increase adults">+</button>
+        </div>
+      </div>
+      <div class="count-row">
+        <div class="k">
+          <span class="t">Children</span>
+          <span class="s">From 0 to 17</span>
+        </div>
+        <div class="count-stepper">
+          <button type="button" data-step="children" data-delta="-1" aria-label="Decrease children" disabled>−</button>
+          <span class="v" data-count="children">0</span>
+          <button type="button" data-step="children" data-delta="1" aria-label="Increase children">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt-form" data-anchor="theme" data-form="theme">
+      <div class="opt-form-head">
+        <i class="ti ti-mood-smile"></i>
+        <span class="t">Theme</span>
+        <button type="button" class="skip" data-skip="theme">Skip</button>
+      </div>
+      <div class="theme-chips" role="group" aria-label="Theme tags">
+        <button type="button" class="theme-chip" data-theme="Nature">Nature</button>
+        <button type="button" class="theme-chip" data-theme="Food">Food</button>
+        <button type="button" class="theme-chip" data-theme="Culture">Culture</button>
+        <button type="button" class="theme-chip" data-theme="Sport">Sport</button>
+        <button type="button" class="theme-chip" data-theme="Relax">Relax</button>
+        <button type="button" class="theme-chip" data-theme="Family">Family</button>
+        <button type="button" class="theme-chip" data-theme="Spiritual">Spiritual</button>
+        <button type="button" class="theme-chip" data-theme="Off-the-beaten">Off-the-beaten</button>
+      </div>
+      <div class="soft">
+        <span class="ghost">Tell Go more (optional)</span>
+        <textarea
+          rows="2"
+          placeholder="Describe your ideal trip — anything Go should know…"
+          data-field="theme-note"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-foot">
+    <button type="button" class="btn-skip">Cancel</button>
+    <button type="button" class="btn-create" id="btn-create" disabled>
+      Create trip
+    </button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const input = document.getElementById('place-search');
+  const chip = document.getElementById('place-chip');
+  const chipLabel = document.getElementById('place-chip-label');
+  const chipRemove = document.getElementById('place-chip-remove');
+  const suggestions = document.getElementById('place-suggestions');
+  const reveal = document.getElementById('reveal');
+  const btnCreate = document.getElementById('btn-create');
+
+  function setDestination(name) {
+    chipLabel.textContent = name;
+    chip.hidden = false;
+    input.placeholder = 'Add another stop…';
+    input.value = '';
+    reveal.hidden = false;
+    btnCreate.disabled = false;
+    suggestions.style.display = 'none';
+    setTimeout(() => { suggestions.style.display = ''; }, 200);
+  }
+  function clearDestination() {
+    chip.hidden = true;
+    input.placeholder = 'Where would you like to go?';
+    reveal.hidden = true;
+    btnCreate.disabled = true;
+    closeAllForms();
+  }
+  chipRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearDestination();
+    input.focus();
+  });
+
+  document.querySelectorAll('.place-suggestion').forEach((el) => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      setDestination(el.dataset.place);
+    });
+  });
+
+  // ── Cards ─ una alla volta ─────────────────────────────────
+  const cards = document.querySelectorAll('.opt-card');
+  const forms = document.querySelectorAll('.opt-form');
+
+  function closeAllForms() {
+    cards.forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-selected', 'false'); });
+    forms.forEach((f) => f.classList.remove('open'));
+  }
+
+  cards.forEach((card) => {
+    card.addEventListener('click', () => {
+      const target = card.dataset.card;
+      const wasOpen = card.classList.contains('active');
+      closeAllForms();
+      if (!wasOpen) {
+        card.classList.add('active');
+        card.setAttribute('aria-selected', 'true');
+        const f = document.querySelector(`.opt-form[data-form="${target}"]`);
+        if (f) f.classList.add('open');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-skip]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllForms();
+    });
+  });
+
+  // ── Travelers · counter ────────────────────────────────────
+  const counts = { adults: 2, children: 0 };
+  function refreshCounts() {
+    Object.keys(counts).forEach((k) => {
+      const el = document.querySelector(`[data-count="${k}"]`);
+      if (el) el.textContent = counts[k];
+      const minus = document.querySelector(`[data-step="${k}"][data-delta="-1"]`);
+      if (minus) minus.disabled = counts[k] <= (k === 'adults' ? 1 : 0);
+    });
+    const sum = document.querySelector('[data-summary="travelers"]');
+    if (sum) {
+      const parts = [];
+      parts.push(`${counts.adults} adult${counts.adults === 1 ? '' : 's'}`);
+      if (counts.children) parts.push(`${counts.children} child${counts.children === 1 ? '' : 'ren'}`);
+      sum.textContent = parts.join(' · ');
+      const card = document.querySelector('.opt-card[data-card="travelers"]');
+      const filled = counts.adults !== 2 || counts.children !== 0;
+      card.classList.toggle('filled', filled);
+    }
+  }
+  document.querySelectorAll('[data-step]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.step;
+      const delta = parseInt(btn.dataset.delta, 10);
+      const next = counts[key] + delta;
+      const min = key === 'adults' ? 1 : 0;
+      if (next < min) return;
+      counts[key] = next;
+      refreshCounts();
+    });
+  });
+
+  // ── Theme · chip multi-select ──────────────────────────────
+  const themeChips = document.querySelectorAll('.theme-chip');
+  function refreshTheme() {
+    const selected = [...themeChips].filter((c) => c.classList.contains('on')).map((c) => c.dataset.theme);
+    const sum = document.querySelector('[data-summary="theme"]');
+    if (sum) sum.textContent = selected.length ? selected.slice(0, 3).join(' · ') + (selected.length > 3 ? ` +${selected.length - 3}` : '') : '';
+    document.querySelector('.opt-card[data-card="theme"]').classList.toggle('filled', selected.length > 0);
+  }
+  themeChips.forEach((chip) => {
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      chip.classList.toggle('on');
+      refreshTheme();
+    });
+  });
+
+  // ── Dates · range picker ───────────────────────────────────
+  const rangeBtn = document.getElementById('range-btn');
+  const rangePanel = document.getElementById('range-panel');
+  const rangeVal = document.getElementById('range-val');
+  const calLabel = document.getElementById('cal-label');
+  const calLabelBtn = document.getElementById('cal-label-btn');
+  const calDow = document.getElementById('cal-dow');
+  const calGrid = document.getElementById('cal-grid');
+  const calHint = document.getElementById('cal-hint');
+  const calPrev = document.getElementById('cal-prev');
+  const calNext = document.getElementById('cal-next');
+  const calClear = document.getElementById('cal-clear');
+  const myPicker = document.getElementById('my-picker');
+  const myYear = document.getElementById('my-year');
+  const myYearPrev = document.getElementById('my-year-prev');
+  const myYearNext = document.getElementById('my-year-next');
+  const myMonths = document.getElementById('my-months');
+  let myView = null;
+
+  /** State del range */
+  const today = new Date(); today.setHours(0,0,0,0);
+  let viewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  let startDate = null;
+  let endDate = null;
+
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function ymd(d) { return d ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : null; }
+  function sameDay(a, b) { return a && b && ymd(a) === ymd(b); }
+  function fmtShort(d) { return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`; }
+  function nightsBetween(a, b) {
+    if (!a || !b) return 0;
+    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  }
+
+  function updateRangeButton() {
+    if (!startDate && !endDate) {
+      rangeVal.className = 'range-val placeholder';
+      rangeVal.textContent = 'Pick your dates';
+    } else if (startDate && !endDate) {
+      rangeVal.className = 'range-val';
+      rangeVal.innerHTML = `<strong style="font-weight:500;">${fmtShort(startDate)}</strong><span class="arrow">→</span><em style="font-style:italic;color:var(--ink-faint);font-family:var(--font-serif);">end…</em>`;
+    } else {
+      const n = nightsBetween(startDate, endDate);
+      rangeVal.className = 'range-val';
+      rangeVal.innerHTML = `<strong style="font-weight:500;">${fmtShort(startDate)}</strong><span class="arrow">→</span><strong style="font-weight:500;">${fmtShort(endDate)}</strong><span class="nights">· ${n} night${n === 1 ? '' : 's'}</span>`;
+    }
+
+    // Card summary
+    const sum = document.querySelector('[data-summary="dates"]');
+    const card = document.querySelector('.opt-card[data-card="dates"]');
+    if (startDate && endDate) {
+      const n = nightsBetween(startDate, endDate);
+      if (sum) sum.textContent = `${fmtShort(startDate)} → ${fmtShort(endDate)} · ${n}n`;
+      if (card) card.classList.add('filled');
+    } else if (startDate) {
+      if (sum) sum.textContent = `From ${fmtShort(startDate)}`;
+      if (card) card.classList.add('filled');
+    } else {
+      if (sum) sum.textContent = '';
+      if (card) card.classList.remove('filled');
+    }
+
+    // Hint
+    if (calHint) {
+      if (!startDate) calHint.textContent = 'Pick start date';
+      else if (!endDate) calHint.textContent = 'Pick end date';
+      else calHint.textContent = `${nightsBetween(startDate, endDate)} night${nightsBetween(startDate, endDate) === 1 ? '' : 's'} selected`;
+    }
+  }
+
+  function renderCal() {
+    calLabel.textContent = `${MONTHS[viewMonth.getMonth()]} ${viewMonth.getFullYear()}`;
+    calGrid.innerHTML = '';
+
+    const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+    const lastDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0);
+    // Lunedì come primo: 0=domenica → 6, 1=lunedi → 0
+    const startWeekday = (firstDay.getDay() + 6) % 7;
+
+    // Cells dei giorni del mese precedente per riempire la prima riga
+    const prevLast = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 0).getDate();
+    for (let i = startWeekday - 1; i >= 0; i--) {
+      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, prevLast - i);
+      calGrid.appendChild(makeCell(d, true));
+    }
+    // Mese corrente
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+      calGrid.appendChild(makeCell(d, false));
+    }
+    // Riempi fino a 42 celle (6 settimane) con il mese successivo
+    const remaining = 42 - (startWeekday + lastDay.getDate());
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, i);
+      calGrid.appendChild(makeCell(d, true));
+    }
+  }
+
+  function makeCell(d, muted) {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-cell';
+    cell.textContent = d.getDate();
+    if (muted) cell.classList.add('muted');
+
+    if (d < today) {
+      cell.classList.add('disabled');
+    }
+    if (sameDay(d, today)) cell.classList.add('today');
+
+    if (startDate && endDate) {
+      if (sameDay(d, startDate)) cell.classList.add('range-start');
+      else if (sameDay(d, endDate)) cell.classList.add('range-end');
+      else if (d > startDate && d < endDate) cell.classList.add('in-range');
+    } else if (startDate && sameDay(d, startDate)) {
+      cell.classList.add('range-single');
+    }
+
+    cell.addEventListener('click', () => onPickDay(d));
+    return cell;
+  }
+
+  function onPickDay(d) {
+    if (d < today) return;
+
+    // Casi:
+    // 1. Niente selezionato → set start
+    // 2. Start selezionato, niente end → set end (se >start, altrimenti reset start)
+    // 3. Range completo → ricominciare con nuovo start
+    if (!startDate || (startDate && endDate)) {
+      startDate = d;
+      endDate = null;
+    } else if (startDate && !endDate) {
+      if (d <= startDate) {
+        // Click su giorno prima dello start o uguale → ricomincia
+        startDate = d;
+        endDate = null;
+      } else {
+        endDate = d;
+      }
+    }
+
+    // Disattiva eventuale shortcut attivo
+    document.querySelectorAll('.range-shortcut.active').forEach((s) => s.classList.remove('active'));
+
+    renderCal();
+    updateRangeButton();
+  }
+
+  // Toggle pannello
+  rangeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !rangePanel.classList.contains('open');
+    rangePanel.classList.toggle('open', open);
+    rangeBtn.classList.toggle('open', open);
+    if (open) renderCal();
+  });
+
+  // Nav mese
+  calPrev.addEventListener('click', () => {
+    if (!myPicker.hidden) closeMyPicker();
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    renderCal();
+  });
+  calNext.addEventListener('click', () => {
+    if (!myPicker.hidden) closeMyPicker();
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    renderCal();
+  });
+
+  // Clear
+  calClear.addEventListener('click', () => {
+    startDate = null;
+    endDate = null;
+    document.querySelectorAll('.range-shortcut.active').forEach((s) => s.classList.remove('active'));
+    renderCal();
+    updateRangeButton();
+  });
+
+  // ── Month/Year picker ─────────────────────────────────────
+  function openMyPicker() {
+    myView = viewMonth.getFullYear();
+    renderMyPicker();
+    myPicker.hidden = false;
+    calDow.style.display = 'none';
+    calGrid.style.display = 'none';
+    calLabelBtn.classList.add('open');
+  }
+  function closeMyPicker() {
+    myPicker.hidden = true;
+    calDow.style.display = '';
+    calGrid.style.display = '';
+    calLabelBtn.classList.remove('open');
+  }
+  function renderMyPicker() {
+    myYear.textContent = myView;
+    myMonths.innerHTML = '';
+    const todayYM = today.getFullYear() * 12 + today.getMonth();
+    const currentYM = viewMonth.getFullYear() * 12 + viewMonth.getMonth();
+    for (let m = 0; m < 12; m++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'my-month';
+      btn.textContent = SHORT_MONTHS[m];
+      const cellYM = myView * 12 + m;
+      if (cellYM < todayYM) btn.classList.add('disabled');
+      if (cellYM === currentYM) btn.classList.add('selected');
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('disabled')) return;
+        viewMonth = new Date(myView, m, 1);
+        closeMyPicker();
+        renderCal();
+      });
+      myMonths.appendChild(btn);
+    }
+  }
+  calLabelBtn.addEventListener('click', () => {
+    if (myPicker.hidden) openMyPicker();
+    else closeMyPicker();
+  });
+  myYearPrev.addEventListener('click', () => {
+    myView -= 1;
+    renderMyPicker();
+  });
+  myYearNext.addEventListener('click', () => {
+    myView += 1;
+    renderMyPicker();
+  });
+
+  // Shortcuts
+  document.querySelectorAll('.range-shortcut').forEach((sc) => {
+    sc.addEventListener('click', () => {
+      const id = sc.dataset.shortcut;
+      document.querySelectorAll('.range-shortcut').forEach((s) => s.classList.remove('active'));
+
+      if (id === 'custom') {
+        sc.classList.add('active');
+        return;
+      }
+
+      const base = new Date(today);
+      if (id === 'weekend') {
+        // Prossimo sabato → domenica
+        const dow = base.getDay();
+        const daysToSat = (6 - dow + 7) % 7 || 7;
+        startDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + daysToSat);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
+      } else if (id === '1w') {
+        startDate = base;
+        endDate = new Date(base);
+        endDate.setDate(base.getDate() + 7);
+      } else if (id === '2w') {
+        startDate = base;
+        endDate = new Date(base);
+        endDate.setDate(base.getDate() + 14);
+      }
+
+      sc.classList.add('active');
+      viewMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      renderCal();
+      updateRangeButton();
+    });
+  });
+
+  // Init
+  updateRangeButton();
+  refreshCounts();
+})();
+</script>
+
+</body>
+</html>

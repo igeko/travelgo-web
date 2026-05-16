@@ -50,12 +50,32 @@ export type DateControl = {
   onChange: (v: string) => void;
 };
 
+export type MultiSelectControl<T extends string = string> = {
+  kind: "multiselect";
+  id: string;
+  label: string;
+  options: { value: T; label: string }[];
+  value: T[];
+  /** Minimum number of selected items (default: 1) */
+  min?: number;
+  onChange: (v: T[]) => void;
+};
+
+export type CustomControl = {
+  kind: "custom";
+  id: string;
+  label: string;
+  render: () => React.ReactNode;
+};
+
 export type Control =
   | RadioControl
   | ToggleControl
   | TextControl
   | NumberControl
-  | DateControl;
+  | DateControl
+  | MultiSelectControl
+  | CustomControl;
 
 export type ControlGroup = {
   title: string;
@@ -82,6 +102,8 @@ export function ControlsPanel({ groups }: { groups: ControlGroup[] }) {
               switch (c.kind) {
                 case "radio":
                   return <RadioField key={c.id} control={c} />;
+                case "multiselect":
+                  return <MultiSelectField key={c.id} control={c} />;
                 case "toggle":
                   return <ToggleField key={c.id} control={c} />;
                 case "text":
@@ -90,6 +112,8 @@ export function ControlsPanel({ groups }: { groups: ControlGroup[] }) {
                   return <NumberField key={c.id} control={c} />;
                 case "date":
                   return <DateField key={c.id} control={c} />;
+                case "custom":
+                  return <CustomField key={c.id} control={c} />;
               }
             })}
           </div>
@@ -213,6 +237,57 @@ function DateField({ control }: { control: DateControl }) {
         onChange={(e) => control.onChange(e.target.value)}
         className={inputClass}
       />
+    </div>
+  );
+}
+
+function CustomField({ control }: { control: CustomControl }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <FieldLabel>{control.label}</FieldLabel>
+      {control.render()}
+    </div>
+  );
+}
+
+function MultiSelectField({ control }: { control: MultiSelectControl }) {
+  const min = control.min ?? 1;
+
+  function toggle(value: string) {
+    const current = control.value as string[];
+    if (current.includes(value)) {
+      if (current.length <= min) return; // respect minimum
+      control.onChange(current.filter((v) => v !== value) as typeof control.value);
+    } else {
+      control.onChange([...current, value] as typeof control.value);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldLabel>{control.label}</FieldLabel>
+      <div className="flex flex-wrap gap-1">
+        {control.options.map((opt) => {
+          const active = (control.value as string[]).includes(opt.value);
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => toggle(opt.value)}
+              className={`
+                px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border
+                ${
+                  active
+                    ? "bg-ink text-white border-ink"
+                    : "bg-surface text-ink border-border hover:border-border-strong"
+                }
+              `}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

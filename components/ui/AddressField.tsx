@@ -1,16 +1,11 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useId, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "./Button";
 import { SoftField } from "./SoftField";
 import { IconMap, IconMapPin } from "./icons";
+import { usePlaceAutocomplete } from "@/lib/hooks/usePlaceAutocomplete";
 
 /* ─────────────────────────────────────────────────────────────────
    Types
@@ -33,31 +28,10 @@ export type PlaceResult = {
   components?: Record<string, string>;
 };
 
-type Suggestion = {
-  placeId: string;
-  description: string;
-  mainText: string;
-  secondaryText: string;
-};
-
 /* ─────────────────────────────────────────────────────────────────
    AddressField
    A SoftField wired to /api/places/autocomplete + /api/places/details.
-
-   Usage:
-     <AddressField
-       value={place}
-       onChange={setPlace}
-       placeholder="Search a place…"
-       label="Location"
-     />
-
-   - Controlled-only: parent owns `value` (PlaceResult | null) + onChange.
-   - Debounce 300 ms on the autocomplete call.
-   - Escape or click-outside closes the dropdown.
-   - Selecting a suggestion fetches full details (lat/lng, components)
-     then calls onChange with the PlaceResult.
-   - Clearing the text field calls onChange(null).
+   Autocomplete logic is shared via usePlaceAutocomplete().
 ───────────────────────────────────────────────────────────────── */
 
 export type AddressFieldProps = {
@@ -82,120 +56,28 @@ export function AddressField({
   className,
   showMapButton = false,
 }: AddressFieldProps) {
-  // The text the user is typing — decoupled from the selected PlaceResult
-  const [inputText, setInputText] = useState(value?.formatted ?? "");
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+  const {
+    inputText,
+    setInputText,
+    suggestions,
+    isOpen,
+    setIsOpen,
+    activeIndex,
+    setActiveIndex,
+    isLoading,
+    isLoadingDetails,
+    handleInputChange,
+    selectSuggestion,
+    handleKeyDown,
+  } = usePlaceAutocomplete();
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
   // Keep inputText in sync if the parent resets value externally
   useEffect(() => {
     setInputText(value?.formatted ?? "");
-  }, [value]);
-
-  /* ── Autocomplete fetch (debounced) ── */
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      setIsOpen(false);
-      return;
-    }
-
-    setIsLoadingSuggestions(true);
-    try {
-      const res = await fetch(
-        `/api/places/autocomplete?input=${encodeURIComponent(query)}`,
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setSuggestions(data.suggestions ?? []);
-      setIsOpen((data.suggestions ?? []).length > 0);
-      setActiveIndex(-1);
-    } catch {
-      // Network error — silently ignore, user can keep typing
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, []);
-
-  const handleInputChange = useCallback(
-    (text: string) => {
-      setInputText(text);
-
-      // If the user clears the field, notify parent immediately
-      if (!text.trim()) {
-        onChange(null);
-        setSuggestions([]);
-        setIsOpen(false);
-        return;
-      }
-
-      // Debounce the API call
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => fetchSuggestions(text), 300);
-    },
-    [fetchSuggestions, onChange],
-  );
-
-  /* ── Place details fetch on selection ── */
-  const selectSuggestion = useCallback(
-    async (suggestion: Suggestion) => {
-      setIsOpen(false);
-      setInputText(suggestion.description);
-      setSuggestions([]);
-
-      setIsLoadingDetails(true);
-      try {
-        const res = await fetch(
-          `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`,
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.place) onChange(data.place as PlaceResult);
-      } catch {
-        // If details fail, at least surface the formatted text
-        onChange({
-          formatted: suggestion.description,
-          name: suggestion.mainText,
-          placeId: suggestion.placeId,
-          lat: 0,
-          lng: 0,
-          components: {},
-        });
-      } finally {
-        setIsLoadingDetails(false);
-      }
-    },
-    [onChange],
-  );
-
-  /* ── Keyboard navigation ── */
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!isOpen || suggestions.length === 0) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIndex((i) => Math.max(i - 1, -1));
-      } else if (e.key === "Enter" && activeIndex >= 0) {
-        e.preventDefault();
-        selectSuggestion(suggestions[activeIndex]);
-      } else if (e.key === "Escape") {
-        setIsOpen(false);
-        setActiveIndex(-1);
-      }
-    },
-    [isOpen, suggestions, activeIndex, selectSuggestion],
-  );
+  }, [value, setInputText]);
 
   /* ── Click outside closes the dropdown ── */
   useEffect(() => {
@@ -206,29 +88,19 @@ export function AddressField({
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  /* ── Cleanup debounce on unmount ── */
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
-
-  const isLoading = isLoadingSuggestions || isLoadingDetails;
+  }, [setIsOpen]);
 
   return (
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
-      {/* Input — reuses SoftField visuals */}
       <SoftField
         value={inputText}
-        onChange={handleInputChange}
+        onChange={(text) => handleInputChange(text, () => onChange(null))}
         placeholder={placeholder}
         label={label}
         disabled={disabled || isLoadingDetails}
         autoComplete="off"
         inputProps={{
-          onKeyDown: handleKeyDown,
+          onKeyDown: (e) => handleKeyDown(e, (place) => onChange(place)),
           role: "combobox",
           "aria-autocomplete": "list",
           "aria-controls": isOpen ? listboxId : undefined,
@@ -271,25 +143,19 @@ export function AddressField({
               role="option"
               aria-selected={i === activeIndex}
               onMouseDown={(e) => {
-                // Prevent the SoftField from losing focus before we register the click
                 e.preventDefault();
-                selectSuggestion(s);
+                selectSuggestion(s, (place) => onChange(place));
               }}
               onMouseEnter={() => setActiveIndex(i)}
               className={cn(
                 "flex items-start gap-2.5 px-4 py-2.5 cursor-pointer",
                 "transition-colors duration-75",
-                i === activeIndex
-                  ? "bg-surface-soft"
-                  : "hover:bg-surface-soft",
+                i === activeIndex ? "bg-surface-soft" : "hover:bg-surface-soft",
               )}
             >
-              {/* Pin icon column */}
               <span className="shrink-0 mt-0.5 text-ink-faint [&>svg]:size-3.5">
                 <IconMapPin />
               </span>
-
-              {/* Text column */}
               <span className="flex flex-col min-w-0">
                 <span className="text-[13px] font-medium text-ink leading-snug truncate">
                   {s.mainText}

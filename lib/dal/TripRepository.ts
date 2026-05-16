@@ -20,6 +20,10 @@ export type CreateTripInput = {
   currency?: string;
   local_currency?: string;
   display_currency?: string;
+  adults_count?: number;
+  children_count?: number;
+  theme_tags?: string[];
+  theme_description?: string;
 };
 
 export type UpdateTripInput = Partial<CreateTripInput>;

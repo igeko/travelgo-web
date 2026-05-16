@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(req: NextRequest) {
   const input = req.nextUrl.searchParams.get("input")?.trim();
+  const types = req.nextUrl.searchParams.get("types")?.trim();
 
   if (!input || input.length < 2) {
     return NextResponse.json({ suggestions: [] });
@@ -27,8 +28,8 @@ export async function GET(req: NextRequest) {
   );
   url.searchParams.set("input", input);
   url.searchParams.set("key", apiKey);
-  // Return both addresses and establishments (restaurants, hotels, …)
-  url.searchParams.set("types", "geocode|establishment");
+  // Use caller-specified types if provided, otherwise default to geocode|establishment
+  url.searchParams.set("types", types ?? "geocode|establishment");
   url.searchParams.set("language", "en");
 
   const res = await fetch(url.toString(), { cache: "no-store" });

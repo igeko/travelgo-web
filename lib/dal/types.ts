@@ -46,6 +46,10 @@ export type DbTrip = {
   currency: string;
   local_currency: string;
   display_currency: string;
+  adults_count: number | null;
+  children_count: number | null;
+  theme_tags: string[] | null;
+  theme_description: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

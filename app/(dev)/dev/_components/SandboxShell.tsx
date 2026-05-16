@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { sandboxRegistry, type SandboxEntry } from "../registry";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -40,19 +41,24 @@ export function SandboxRightPanel({ children }: { children: ReactNode }) {
 
 const LS_LEFT = "sandbox:left-open";
 const LS_RIGHT = "sandbox:right-open";
+const LS_COLLAPSED = "sandbox:collapsed-subgroups";
 
 export function SandboxShell({ children }: { children: ReactNode }) {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [rightContent, setRightContent] = useState<ReactNode>(null);
+  const [collapsedSubgroups, setCollapsedSubgroups] = useState<Set<string>>(new Set());
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   // Load state from localStorage on mount
   useEffect(() => {
     const left = localStorage.getItem(LS_LEFT);
     const right = localStorage.getItem(LS_RIGHT);
+    const collapsed = localStorage.getItem(LS_COLLAPSED);
     if (left !== null) setLeftOpen(left === "1");
     if (right !== null) setRightOpen(right === "1");
+    if (collapsed) setCollapsedSubgroups(new Set(JSON.parse(collapsed)));
     setMounted(true);
   }, []);
 
@@ -63,6 +69,18 @@ export function SandboxShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (mounted) localStorage.setItem(LS_RIGHT, rightOpen ? "1" : "0");
   }, [rightOpen, mounted]);
+  useEffect(() => {
+    if (mounted) localStorage.setItem(LS_COLLAPSED, JSON.stringify([...collapsedSubgroups]));
+  }, [collapsedSubgroups, mounted]);
+
+  function toggleSubgroup(key: string) {
+    setCollapsedSubgroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const groups = sandboxRegistry.reduce<Record<string, SandboxEntry[]>>(
     (acc, entry) => {
@@ -72,9 +90,8 @@ export function SandboxShell({ children }: { children: ReactNode }) {
     {},
   );
 
-  /** Render a flat list of entries, optionally grouped by subgroup. */
-  function renderEntries(entries: SandboxEntry[]) {
-    // Split into: entries without subgroup, then grouped by subgroup (in order)
+  /** Render a flat list of entries, optionally grouped by subgroup with accordion. */
+  function renderEntries(group: string, entries: SandboxEntry[]) {
     const noSub = entries.filter((e) => !e.subgroup);
     const subMap = entries
       .filter((e) => e.subgroup)
@@ -87,33 +104,45 @@ export function SandboxShell({ children }: { children: ReactNode }) {
       <>
         {noSub.map((entry) => (
           <li key={entry.slug}>
-            <Link
-              href={`/dev/${entry.slug}`}
-              className="block rounded-md px-2 py-1.5 text-sm text-ink hover:bg-surface-soft transition-colors"
-            >
+            <NavLink href={`/dev/${entry.slug}`} active={pathname === `/dev/${entry.slug}`}>
               {entry.title}
-            </Link>
+            </NavLink>
           </li>
         ))}
-        {Object.entries(subMap).map(([subgroup, subEntries]) => (
-          <li key={subgroup}>
-            <div className="px-2 pt-3 pb-1 text-[9px] font-medium tracking-[0.10em] uppercase text-ink-faint/70">
-              {subgroup}
-            </div>
-            <ul className="flex flex-col pl-2 border-l border-border ml-2">
-              {subEntries.map((entry) => (
-                <li key={entry.slug}>
-                  <Link
-                    href={`/dev/${entry.slug}`}
-                    className="block rounded-md px-2 py-1.5 text-sm text-ink hover:bg-surface-soft transition-colors"
-                  >
-                    {entry.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+        {Object.entries(subMap).map(([subgroup, subEntries]) => {
+          const key = `${group}:${subgroup}`;
+          const isCollapsed = collapsedSubgroups.has(key);
+          return (
+            <li key={subgroup}>
+              <button
+                type="button"
+                onClick={() => toggleSubgroup(key)}
+                className="w-full flex items-center justify-between px-2 pt-3 pb-1 text-[9px] font-medium tracking-[0.10em] uppercase text-ink-faint hover:text-ink-soft transition-colors cursor-pointer bg-transparent border-0"
+              >
+                {subgroup}
+                <svg
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"
+                  className={`w-3 h-3 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              <ul
+                className={`flex flex-col pl-2 border-l border-border ml-2 overflow-hidden transition-all duration-200 ${
+                  isCollapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                }`}
+              >
+                {subEntries.map((entry) => (
+                  <li key={entry.slug}>
+                    <NavLink href={`/dev/${entry.slug}`} active={pathname === `/dev/${entry.slug}`}>
+                      {entry.title}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </>
     );
   }
@@ -147,20 +176,19 @@ export function SandboxShell({ children }: { children: ReactNode }) {
             </div>
             <nav className="px-3 py-4 flex flex-col gap-5 overflow-y-auto">
               {Object.entries(groups).map(([group, entries], i) => {
-                const isFeatures = group === "Features";
+                const isHighlighted = group === "Features" || group === "Admin";
                 const prevGroup = Object.keys(groups)[i - 1];
-                const needsDivider = isFeatures && prevGroup;
+                const needsDivider = isHighlighted && prevGroup;
                 return (
                   <div key={group}>
-                    {/* Divider before Features — signals transition from design system to app layer */}
                     {needsDivider && (
                       <div className="mx-2 mb-5 -mt-1 h-px bg-border" />
                     )}
-                    <div className={`px-2 pb-2 text-[10px] font-medium tracking-[0.12em] uppercase ${isFeatures ? "text-orange" : "text-ink-faint"}`}>
+                    <div className={`px-2 pb-2 text-[10px] font-medium tracking-[0.12em] uppercase ${isHighlighted ? "text-orange" : "text-ink-faint"}`}>
                       {group}
                     </div>
                     <ul className="flex flex-col">
-                      {renderEntries(entries)}
+                      {renderEntries(group, entries)}
                     </ul>
                   </div>
                 );
@@ -209,6 +237,21 @@ export function SandboxShell({ children }: { children: ReactNode }) {
 /* ─────────────────────────────────────────────────────────────────
    UI helpers
 ───────────────────────────────────────────────────────────────── */
+
+function NavLink({ href, active, children }: { href: string; active: boolean; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`block rounded-md px-2 py-1.5 text-sm transition-colors ${
+        active
+          ? "bg-surface-soft text-ink font-medium"
+          : "text-ink-soft hover:bg-surface-soft hover:text-ink"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
 
 function CollapseButton({
   side,
