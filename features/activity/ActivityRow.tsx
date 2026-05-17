@@ -186,15 +186,16 @@ export function ActivityRow({
       {(location || cost) && (
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {location && (
-            <a
-              href={
-                placeId
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const url = placeId
                   ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
-                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
               title={location}
               className={cn(
                 "inline-flex items-center gap-1 text-[11px] font-medium transition-colors",
@@ -210,7 +211,7 @@ export function ActivityRow({
                 <IconMapPin className="w-3 h-3 shrink-0" />
               )}
               Map
-            </a>
+            </button>
           )}
           {cost && (
             <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
