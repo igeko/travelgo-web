@@ -968,10 +968,15 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                 <Av size={24} className="go-wobble" style={{ position: "absolute", left: 0, bottom: 0, top: "auto" }} />
                 {!msg.content && <TypingDots />}
                 {msg.content && (
-                  <p className="font-serif italic m-0" style={{ fontSize: 14, lineHeight: 1.6, color: "var(--color-ink)", borderLeft: "2px solid var(--color-orange)", paddingLeft: 12 }}>
-                    {msg.content}
+                  <div style={{ borderLeft: "2px solid var(--color-orange)", paddingLeft: 12 }}>
+                    <RichText
+                      text={msg.content}
+                      streaming
+                      className="font-serif italic"
+                      style={{ fontSize: 14, lineHeight: 1.6, color: "var(--color-ink)" }}
+                    />
                     <span className="inline-block align-[-3px] ml-[1px]" style={{ width: 2, height: 16, background: "var(--color-orange)", animation: "goCaret 1s steps(1) infinite" }} />
-                  </p>
+                  </div>
                 )}
               </div>
             );
@@ -981,12 +986,11 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
           return (
             <div key={msg.id} style={{ marginBottom: 14 }}>
               {msg.content && (
-                <p
-                  className={cn("font-serif italic m-0", isPast ? "text-ink-soft opacity-85" : "text-ink")}
+                <RichText
+                  text={msg.content}
+                  className={cn("font-serif italic", isPast ? "text-ink-soft opacity-85" : "text-ink")}
                   style={{ fontSize: 14, lineHeight: 1.6, marginBottom: msg.suggestions ? 10 : 0 }}
-                >
-                  {msg.content}
-                </p>
+                />
               )}
               {msg.suggestions && msg.suggestions.length > 0 && (
                 <SuggestionsBlock
