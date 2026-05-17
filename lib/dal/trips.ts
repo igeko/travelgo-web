@@ -49,6 +49,7 @@ export type Activity = {
   budget_amount: number | null;
   budget_currency: string | null;
   budget_paid: boolean;
+  booking: string | null;
   place_enriched: unknown | null;
 };
 
@@ -76,7 +77,7 @@ export async function getDayActivities(dayId: string): Promise<Activity[]> {
   const supabase = await getServerClient();
   const { data } = await supabase
     .from("activities")
-    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, place_enriched")
+    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, booking, place_enriched")
     .eq("day_id", dayId)
     .order("position", { ascending: true });
   return data ?? [];

@@ -23,6 +23,16 @@ export type GoApplyData = {
   description: string;
 };
 
+export type AddToDayPayload = {
+  title: string;
+  description: string;
+  slot: string;
+  location?: string;
+  locationPlaceId?: string;
+  locationLat?: number;
+  locationLng?: number;
+};
+
 type TripGoContextValue = {
   openGo: () => void;
   /** Apre il panel e invia subito un messaggio (sopprime il greeting). */
@@ -38,6 +48,9 @@ type TripGoContextValue = {
    */
   registerActiveEdit: (id: string, cb: (data: GoApplyData) => void) => void;
   unregisterActiveEdit: () => void;
+  /** Registra il handler per "Add to day" dal componente pagina corrente. */
+  registerAddToDay: (cb: (payload: AddToDayPayload) => void) => void;
+  unregisterAddToDay: () => void;
 };
 
 const TripGoContext = createContext<TripGoContextValue | null>(null);
@@ -63,6 +76,7 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
   /** ID dell'editor attualmente aperto + callback per riempire i campi */
   const [activeEditId, setActiveEditId]         = useState<string | null>(null);
   const activeEditCallbackRef                   = useRef<((data: GoApplyData) => void) | null>(null);
+  const addToDayCallbackRef                     = useRef<((payload: AddToDayPayload) => void) | null>(null);
 
   const openGo = useCallback(() => {
     setOpen(true);
@@ -100,10 +114,23 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
     activeEditCallbackRef.current?.(data);
   }, []);
 
+  const registerAddToDay = useCallback((cb: (payload: AddToDayPayload) => void) => {
+    addToDayCallbackRef.current = cb;
+  }, []);
+
+  const unregisterAddToDay = useCallback(() => {
+    addToDayCallbackRef.current = null;
+  }, []);
+
+  const handleAddToDay = useCallback((payload: AddToDayPayload) => {
+    addToDayCallbackRef.current?.(payload);
+  }, []);
+
   return (
     <TripGoContext.Provider value={{
       openGo, openGoWith, closeGo, setTripContext, isOpen: open, hasBeenOpened,
       registerActiveEdit, unregisterActiveEdit,
+      registerAddToDay, unregisterAddToDay,
     }}>
       {children}
       <GoChatFloat
@@ -114,6 +141,7 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
         onPendingMessageConsumed={() => setPendingMessage(undefined)}
         activeEditMatch={activeEditMatch}
         onApplyToActivity={handleApplyToActivity}
+        onAddToDay={handleAddToDay}
       />
     </TripGoContext.Provider>
   );

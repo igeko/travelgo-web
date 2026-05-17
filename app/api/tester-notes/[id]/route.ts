@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // note: solo l'autore della nota
+  // note: autore oppure admin/dev
   if (note !== undefined) {
     if (!note?.trim()) return NextResponse.json({ error: "Note cannot be empty" }, { status: 400 });
 
@@ -59,8 +59,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq("id", id)
       .single();
 
-    if (!noteData || noteData.user_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!noteData) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isAuthor = noteData.user_id === user.id;
+    if (!isAuthor) {
+      const { data: adminRoles } = await db
+        .from("user_platform_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ADMIN_ROLES);
+      if (!adminRoles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     updates.note = note.trim();

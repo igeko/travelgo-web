@@ -453,14 +453,14 @@ export default function TesterNotesPage() {
                     ) : (
                       <div className="group/note flex items-start gap-1.5">
                         <p className="text-[15px] text-ink leading-snug flex-1">{note.note}</p>
-                        {isAuthor && !editing && (
+                        {(isAuthor || canManage) && !editing && (
                           <button
                             type="button"
-                            title="Edit your note"
+                            title="Edit note"
                             onClick={() => startEdit(note.id, "note", note.note)}
-                            className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity p-0.5 rounded text-ink-faint hover:text-ink cursor-pointer mt-0.5"
+                            className="shrink-0 opacity-30 hover:opacity-100 focus:opacity-100 transition-opacity p-1.5 rounded text-ink-faint hover:text-ink cursor-pointer mt-0.5"
                           >
-                            <IconPencil size={12} />
+                            <IconPencil size={14} />
                           </button>
                         )}
                       </div>
@@ -509,7 +509,7 @@ export default function TesterNotesPage() {
                           <button
                             type="button"
                             onClick={() => { setExpandedFix((p) => { const n = new Set(p); n.add(note.id); return n; }); }}
-                            className="inline-flex items-center gap-1 text-[11px] text-ink-faint hover:text-ink-soft transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                            className="inline-flex items-center gap-1 text-[11px] text-ink-faint hover:text-ink-soft focus:text-ink-soft transition-colors cursor-pointer opacity-30 hover:opacity-100 focus:opacity-100 py-1 px-1"
                           >
                             <IconTools size={11} />
                             + Dev note
@@ -546,9 +546,9 @@ export default function TesterNotesPage() {
                             type="button"
                             title="Edit dev note"
                             onClick={() => startEdit(note.id, "fix_notes", note.fix_notes ?? "")}
-                            className="shrink-0 opacity-0 group-hover/fix:opacity-100 transition-opacity p-0.5 rounded text-ink-faint hover:text-ink cursor-pointer"
+                            className="shrink-0 opacity-30 hover:opacity-100 focus:opacity-100 transition-opacity p-1.5 rounded text-ink-faint hover:text-ink cursor-pointer"
                           >
-                            <IconPencil size={12} />
+                            <IconPencil size={14} />
                           </button>
                         )}
                       </div>

@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 import { imageSearch } from "@/features/media/imageSearch";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
 import type { GoChatDebugFn } from "./GoChat";
+import type { AddToDayPayload } from "./TripGoContext";
 
 /* ─────────────────────────────────────────────────────────────────
    Tipi
@@ -107,6 +108,12 @@ const NOISE_TYPES = new Set([
   "postal_code", "postal_code_suffix", "neighborhood", "intersection",
 ]);
 
+function categoryToSlot(category: GoSuggestion["category"]): string {
+  if (category === "stay") return "night";
+  if (category === "food") return "evening";
+  return "morning";
+}
+
 function filterTypes(types?: string[]): string[] {
   if (!types) return [];
   return types
@@ -174,6 +181,7 @@ function SuggestionCard({
   tripContext,
   activeEditMatch,
   onApplyToActivity,
+  onAddToDay,
 }: {
   suggestion: GoSuggestion;
   selected: boolean;
@@ -182,6 +190,7 @@ function SuggestionCard({
   tripContext?: string;
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
+  onAddToDay?: (payload: AddToDayPayload) => void;
 }) {
   const [open, setOpen] = useState(suggestion.autoExpand ?? false);
 
@@ -289,8 +298,8 @@ function SuggestionCard({
               · {suggestion.duration} · {suggestion.price}
             </span>
           </div>
-          <div className="font-medium truncate" style={{ fontSize: 13, marginTop: 1 }}>{suggestion.title}</div>
-          <div className="truncate" style={{ fontSize: 11, color: "var(--color-ink-soft)", marginTop: 1 }}>{suggestion.location}</div>
+          <div className="font-medium truncate" style={{ fontSize: 14, marginTop: 1 }}>{suggestion.title}</div>
+          <div className="truncate" style={{ fontSize: 12, color: "var(--color-ink-soft)", marginTop: 1 }}>{suggestion.location}</div>
         </div>
 
         {/* Chevron */}
@@ -380,7 +389,7 @@ function SuggestionCard({
 
           {/* Rating + price + type chips (no open/closed — inutile in pianificazione) */}
           {place && (place.rating != null || place.priceLevel != null || typeChips.length > 0) && (
-            <div className="flex items-center gap-2 mb-2.5 flex-wrap" style={{ fontSize: 12 }}>
+            <div className="flex items-center gap-2 mb-2.5 flex-wrap" style={{ fontSize: 13 }}>
               {place.rating != null && (
                 <span className="flex items-center gap-0.5">
                   <IconStar size={12} style={{ fill: "#f4a800", color: "#f4a800" }} />
@@ -510,7 +519,7 @@ function SuggestionCard({
 
           {/* Facts */}
           <div className="flex flex-wrap gap-2 mb-2" style={{
-            fontSize: 12, color: "var(--color-ink-soft)",
+            fontSize: 13, color: "var(--color-ink-soft)",
             padding: "6px 9px",
             background: "rgba(255,255,255,0.5)",
             border: "0.5px solid rgba(13,44,61,0.06)",
@@ -533,7 +542,25 @@ function SuggestionCard({
             <Button variant="outline" size="sm" iconOnly tone="neutral" aria-label="Wishlist">
               <IconBookmark size={12} />
             </Button>
-            <Button variant="solid" size="sm" iconOnly={false} tone="neutral" className="flex-1">
+            <Button
+              variant="solid"
+              size="sm"
+              iconOnly={false}
+              tone="neutral"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToDay?.({
+                  title: suggestion.title,
+                  description: place?.editorialSummary ?? suggestion.why,
+                  slot: categoryToSlot(suggestion.category),
+                  location: place?.address ?? suggestion.location,
+                  locationPlaceId: place?.placeId,
+                  locationLat: place?.lat,
+                  locationLng: place?.lng,
+                });
+              }}
+            >
               <IconPlus size={12} /> Add to day
             </Button>
             {activeEditMatch && onApplyToActivity && (
@@ -573,6 +600,7 @@ function SuggestionsBlock({
   onSelectionChange,
   activeEditMatch,
   onApplyToActivity,
+  onAddToDay,
 }: {
   suggestions: GoSuggestion[];
   sizeMode: SizeMode;
@@ -580,6 +608,7 @@ function SuggestionsBlock({
   onSelectionChange?: (s: GoSuggestion | null) => void;
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
+  onAddToDay?: (payload: AddToDayPayload) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -622,6 +651,7 @@ function SuggestionsBlock({
           tripContext={tripContext}
           activeEditMatch={activeEditMatch}
           onApplyToActivity={onApplyToActivity}
+          onAddToDay={onAddToDay}
         />
       ))}
     </div>
@@ -667,7 +697,7 @@ function ClosedCard({ lastMessage, onClick }: { lastMessage: string; onClick: ()
       <Av size={32} className="go-halo shrink-0" />
       <div className="flex-1 min-w-0">
         <div style={{ fontSize: 9, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--color-orange)" }}>Go · resume</div>
-        <div className="font-serif italic leading-[1.3] mt-0.5 truncate" style={{ fontSize: 12, color: "var(--color-ink)" }}>
+        <div className="font-serif italic leading-[1.3] mt-0.5 truncate" style={{ fontSize: 13, color: "var(--color-ink)" }}>
           {lastMessage}
         </div>
       </div>
@@ -694,9 +724,10 @@ type FloatPanelProps = {
   tripContext?: string;
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
+  onAddToDay?: (payload: AddToDayPayload) => void;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity, onAddToDay }: FloatPanelProps) {
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -762,7 +793,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
         style={{ position: "relative", zIndex: 1, padding: "12px 14px", borderBottom: "0.5px solid rgba(13,44,61,0.06)" }}
       >
         <Av size={30} className="go-halo" />
-        <span className="flex-1" style={{ fontSize: 14, fontWeight: 500, color: "var(--color-orange)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Go</span>
+        <span className="flex-1" style={{ fontSize: 15, fontWeight: 600, color: "var(--color-orange)", letterSpacing: "0.10em", textTransform: "uppercase" }}>Go</span>
 
         {/* Resize button — solo desktop */}
         {!isMobile && (
@@ -808,7 +839,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                 <div
                   className="text-ink"
                   style={{
-                    maxWidth: "80%", fontSize: 13, lineHeight: 1.5,
+                    maxWidth: "80%", fontSize: 14, lineHeight: 1.5,
                     padding: "7px 12px",
                     background: "rgba(13,44,61,0.07)",
                     borderRadius: "14px 14px 4px 14px",
@@ -842,7 +873,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
               {msg.content && (
                 <p
                   className={cn("font-serif italic m-0", isPast ? "text-ink-soft opacity-85" : "text-ink")}
-                  style={{ fontSize: isPast ? 13 : 14, lineHeight: 1.6, marginBottom: msg.suggestions ? 10 : 0 }}
+                  style={{ fontSize: 14, lineHeight: 1.6, marginBottom: msg.suggestions ? 10 : 0 }}
                 >
                   {msg.content}
                 </p>
@@ -855,6 +886,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                   onSelectionChange={onSelectionChange}
                   activeEditMatch={activeEditMatch}
                   onApplyToActivity={onApplyToActivity}
+                  onAddToDay={onAddToDay}
                 />
               )}
             </div>
@@ -912,13 +944,13 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                   }
                 }
               }}
-              placeholder="Write to Go…"
+              placeholder="Scrivi a Go…"
               disabled={loading}
               className="flex-1 min-w-0 border-0 outline-none bg-transparent text-ink disabled:opacity-50 resize-none overflow-hidden"
               style={{
                 fontFamily: "var(--font-sans)",
                 fontStyle: "normal",
-                fontSize: 12,
+                fontSize: 14,
                 lineHeight: "1.5",
                 padding: "5px 0",
                 maxHeight: 120,
@@ -963,9 +995,10 @@ export type GoChatFloatProps = {
   activeEditMatch?: boolean;
   /** Callback per applicare i dati della suggestion alla form attiva. */
   onApplyToActivity?: (data: { title: string; description: string }) => void;
+  onAddToDay?: (payload: AddToDayPayload) => void;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity }: GoChatFloatProps) {
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity, onAddToDay }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -1179,6 +1212,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
           tripContext={tripContext}
           activeEditMatch={activeEditMatch}
           onApplyToActivity={onApplyToActivity}
+          onAddToDay={onAddToDay}
         />
       )}
     </div>,

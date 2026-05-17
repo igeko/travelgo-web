@@ -179,6 +179,34 @@ export function ActivityEditForm({
   /* ── AI describe state ── */
   const [descLoading, setDescLoading] = useState(false);
 
+  /* ── Photo import from enrichment panel ── */
+  const [photoImportLoading, setPhotoImportLoading] = useState(false);
+
+  async function handleImportPhoto() {
+    if (!activityId || !tripId || !enriched?.photoRefs[0] || photoImportLoading) return;
+    setPhotoImportLoading(true);
+    try {
+      const res = await fetch("/api/media/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoRef: enriched.photoRefs[0],
+          bucket: "trip-media",
+          storagePath: `trips/${tripId}/activities/${activityId}/hero.webp`,
+          tripId,
+        }),
+      });
+      if (res.ok) {
+        const { publicUrl } = await res.json();
+        setHeroImage(`${publicUrl}?t=${Date.now()}`);
+      }
+    } catch {
+      // silent fail — user can upload manually via ImagePicker
+    } finally {
+      setPhotoImportLoading(false);
+    }
+  }
+
   /* ── Photo-search triggered on title blur ── */
   async function handleTitleBlur() {
     const trimmed = title.trim();
@@ -237,11 +265,13 @@ export function ActivityEditForm({
   /* ── Derived ── */
   const showEnrichment = enriched !== null && title.trim() !== dismissedTitle;
 
-  // Image shown in the left column: uploaded hero > enriched photo > placeholder
+  // Left column shows only the saved hero image or the placeholder — never the
+  // Google-sourced photo (that lives inside the enrichment panel on the right).
+  const displayImageUrl = heroImage || DEFAULT_THUMB;
+  // Google photo URL used exclusively inside the enrichment card
   const enrichedPhotoUrl = showEnrichment && enriched?.photoRefs[0]
     ? `/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=400`
     : undefined;
-  const displayImageUrl = heroImage || enrichedPhotoUrl || DEFAULT_THUMB;
 
   const hasTime = hour !== undefined && minute !== undefined;
   const activeTime = hasTime
@@ -384,7 +414,21 @@ export function ActivityEditForm({
                   <div className="h-2 w-1/2 rounded bg-border/40 animate-pulse" />
                 </div>
               ) : showEnrichment && enriched ? (
-                <div className="p-2.5">
+                <div className="p-2.5 flex gap-2.5">
+                  {/* Google photo thumbnail */}
+                  {enrichedPhotoUrl && (
+                    <div className="shrink-0 w-[52px] h-[52px] rounded-[8px] overflow-hidden bg-surface-soft">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={enrichedPhotoUrl}
+                        alt={enriched.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {/* Text info */}
+                  <div className="flex-1 min-w-0">
                   {/* Name + dismiss */}
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-semibold text-ink leading-snug truncate">
@@ -443,16 +487,32 @@ export function ActivityEditForm({
                     </ul>
                   )}
 
-                  {/* Use this address */}
-                  {!place && (
-                    <button
-                      type="button"
-                      onClick={handleApplyPlace}
-                      className="mt-1.5 text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
-                    >
-                      {t("useThisAddress")}
-                    </button>
-                  )}
+                  {/* Action row: use address + save photo */}
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    {!place && (
+                      <button
+                        type="button"
+                        onClick={handleApplyPlace}
+                        className="text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
+                      >
+                        {t("useThisAddress")}
+                      </button>
+                    )}
+                    {activityId && tripId && enriched.photoRefs[0] && !heroImage && (
+                      <button
+                        type="button"
+                        onClick={handleImportPhoto}
+                        disabled={photoImportLoading}
+                        className={cn(
+                          "text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans",
+                          photoImportLoading && "opacity-50 cursor-wait",
+                        )}
+                      >
+                        {photoImportLoading ? "Saving photo…" : "Use as photo"}
+                      </button>
+                    )}
+                  </div>
+                  </div> {/* end text info */}
                 </div>
               ) : null}
             </div>

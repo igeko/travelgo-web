@@ -28,6 +28,16 @@ export function ActivityList({
   const t = useTranslations("ActivityList");
 
   function renderRow(a: Activity) {
+    // Determine status based on activity state
+    let status: "paid" | "booked" | "todo" | undefined;
+    if (a.budget_paid) {
+      status = "paid";
+    } else if (a.booking) {
+      status = "booked";
+    } else if (a.budget_amount) {
+      status = "todo";
+    }
+
     return (
       <ActivityRow
         key={a.id}
@@ -37,7 +47,7 @@ export function ActivityList({
         location={a.location ?? undefined}
         thumb={a.hero_image ?? undefined}
         cost={a.budget_amount ? `¥${a.budget_amount.toLocaleString()}` : undefined}
-        status={a.budget_paid ? "paid" : undefined}
+        status={status}
         href={a.url ?? "#"}
         editMode={editMode}
         activityId={a.id}
@@ -59,7 +69,7 @@ export function ActivityList({
             : null,
           budgetAmount: a.budget_amount ?? undefined,
           budgetCurrency: a.budget_currency ?? "EUR",
-          status: a.budget_paid ? "paid" : null,
+          status: status ?? null,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           enrichedPlace: (a.place_enriched as any) ?? null,
           heroImage: a.hero_image ?? null,

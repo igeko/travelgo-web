@@ -26,6 +26,8 @@ export type ActivityRowProps = {
   title: string;
   description?: string;
   location?: string;
+  /** Google place_id — when present the location badge links to the exact place on Maps */
+  placeId?: string;
   /** Map pin number shown on the location badge */
   pin?: number;
   /** Cost in local currency (e.g. "¥3,200") */
@@ -63,6 +65,7 @@ export function ActivityRow({
   title,
   description,
   location,
+  placeId,
   pin,
   cost,
   costApprox,
@@ -183,18 +186,31 @@ export function ActivityRow({
       {(location || cost) && (
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {location && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+            <a
+              href={
+                placeId
+                  ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={location}
+              className={cn(
+                "inline-flex items-center gap-1 text-[11px] font-medium transition-colors",
+                "px-2 py-[3px] rounded-pill border border-border",
+                "text-ink-soft bg-surface hover:bg-surface-soft hover:text-ink hover:border-border-strong",
+              )}
+            >
               {pin !== undefined ? (
-                <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full bg-orange text-white text-[10px] font-semibold leading-none shrink-0">
+                <span className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-orange text-white text-[9px] font-semibold leading-none shrink-0">
                   {pin}
                 </span>
               ) : (
-                <IconMapPin className="w-3 h-3 shrink-0 text-ink-faint" />
+                <IconMapPin className="w-3 h-3 shrink-0" />
               )}
-              <span className="font-medium text-ink underline underline-offset-2 decoration-orange/30">
-                {location}
-              </span>
-            </span>
+              Map
+            </a>
           )}
           {cost && (
             <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">

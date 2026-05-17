@@ -222,7 +222,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
 
-  const { setTripContext, openGo, openGoWith, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened } = useTripGo();
+  const { setTripContext, openGo, openGoWith, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened, registerAddToDay, unregisterAddToDay } = useTripGo();
 
   const goFocus = useMemo(
     () => selectedDay ? { type: "day" as const, dayNumber: selectedDay.day_number } : undefined,
@@ -249,6 +249,35 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       setLoading(false);
     }
   }, []);
+
+  // Ref che mantiene sempre l'ID del giorno corrente anche nelle closure Go
+  const selectedDayIdRef = useRef(selectedDayId);
+  useEffect(() => { selectedDayIdRef.current = selectedDayId; }, [selectedDayId]);
+
+  // Registra il callback "Add to day" in Go
+  useEffect(() => {
+    registerAddToDay(async (payload) => {
+      const dayId = selectedDayIdRef.current;
+      const res = await fetch(`/api/trips/days/${dayId}/activities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: payload.title,
+          short_desc: payload.description,
+          slot: payload.slot,
+          location: payload.location ?? null,
+          location_place_id: payload.locationPlaceId ?? null,
+          location_lat: payload.locationLat ?? null,
+          location_lng: payload.locationLng ?? null,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setActivities((prev) => [...prev, created]);
+      }
+    });
+    return () => unregisterAddToDay();
+  }, [registerAddToDay, unregisterAddToDay]);
 
   // Reload activities when a remote change arrives (realtime)
   const prevReloadTick = useRef(reloadTick);
@@ -500,6 +529,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const hero_image = data.heroImage
                 ? data.heroImage.split("?")[0] || null
                 : null;
+              // Determine booking status based on status value
+              const booking = data.status === "booked" ? "yes" : null;
               // Optimistic update
               setActivities((prev) =>
                 prev.map((a) =>
@@ -517,6 +548,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                         budget_amount: data.budgetAmount ?? null,
                         budget_currency: data.budgetCurrency,
                         budget_paid: data.status === "paid",
+                        booking,
                         hero_image,
                       }
                     : a
@@ -537,6 +569,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
                   budget_paid: data.status === "paid",
+                  booking,
                   place_enriched: data.enrichedPlace ?? null,
                   hero_image,
                 }),
@@ -550,6 +583,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const time = (data.hour !== undefined && data.minute !== undefined)
                 ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
                 : null;
+              const booking = data.status === "booked" ? "yes" : null;
               const res = await fetch(`/api/trips/days/${selectedDayId}/activities`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -565,6 +599,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
                   budget_paid: data.status === "paid",
+                  booking,
                   place_enriched: data.enrichedPlace ?? null,
                 }),
               });
