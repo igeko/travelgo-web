@@ -353,6 +353,26 @@ h1 { font-size: 26px; font-weight: 500; margin: 6px 0 8px; }
       </div>
     </details>
 
+    <details class="row">
+      <summary>
+        <i class="ti ti-chevron-right row-chev"></i>
+        <span class="row-icon"><i class="ti ti-book-2"></i></span>
+        <span class="row-title">Day magazine · racconto del giorno</span>
+        <span class="row-status draft">Draft</span>
+        <a class="row-link" href="day-magazine.html" onclick="event.stopPropagation()" aria-label="Open Day magazine"><i class="ti ti-arrow-up-right"></i></a>
+      </summary>
+      <div class="row-body">
+        <p class="desc">Vista editoriale del giorno alternativa alla lista verticale di attività — convivono dietro un toggle <b>Lista ↔ Racconto</b>. Nel Racconto: layout magazine con deck italico, foto floated destra/sinistra, sezioni Morning/Afternoon/Evening separate da intermezzi AI e pull quote ripreso letteralmente da una nota utente. Le note delle attività restano <b>verbatim</b>: l'AI scrive solo deck + 3 intermezzi (~50 parole totali). <b>Trigger AI esplicito</b>: niente fetch automatico, l'utente clicca una CTA "Crea il racconto" la prima volta. 7 stati: pre-creation CTA, loaded, hover edit, loading skeleton, AI failed, empty day, mobile.</p>
+        <div class="meta">
+          <span>Pattern: toggle vista + AI on-demand</span>
+          <span>API: <b>POST /api/ai/describe-day</b> → <code>{deck, intermezzi, pullQuote}</code></span>
+          <span>Cache: <b>dayId + day.updatedAt</b></span>
+          <span>Toggle: <b>localStorage("day-view-mode")</b></span>
+          <span>Model: <b>gpt-4o-mini</b></span>
+        </div>
+      </div>
+    </details>
+
   </div>
 
   <!-- Create trip -->

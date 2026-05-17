@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Day magazine · racconto del giorno</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Day magazine · racconto editoriale del giorno
+   AI scrive solo deck + intermezzi · le note attività sono verbatim
+───────────────────────────────────────────────────────────────── */
+body { padding: 36px 24px 80px; }
+.wrap { max-width: 880px; margin: 0 auto; }
+.intro-eyebrow { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.intro h1 { font-size: 26px; font-weight: 500; margin: 6px 0 8px; }
+.intro p.sub { font-size: 13px; color: var(--ink-soft); line-height: 1.6; max-width: 720px; }
+
+/* Step header */
+.section { margin-top: 48px; }
+.step-h { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: white; font-size: 11px; font-weight: 500; }
+.step-h h3 { font-size: 14px; font-weight: 500; margin: 0; }
+.step-h .ds { font-size: 13px; color: var(--ink-soft); }
+
+.frame { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow: hidden; }
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPONENT: view toggle · Lista ↔ Racconto (segmented control)
+───────────────────────────────────────────────────────────────── */
+.view-toggle-row {
+  display: flex; justify-content: flex-end;
+  padding: 14px 22px 0; background: var(--bg);
+}
+.view-toggle {
+  display: inline-flex; background: rgba(13,44,61,0.06);
+  border-radius: var(--radius-pill); padding: 3px; gap: 2px;
+}
+.view-toggle button {
+  border: 0; background: transparent; padding: 6px 14px;
+  font-size: 12px; color: var(--ink-soft); cursor: pointer;
+  border-radius: var(--radius-pill); font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px; line-height: 1;
+  transition: color 0.12s;
+}
+.view-toggle button:hover { color: var(--ink); }
+.view-toggle button.on {
+  background: white; color: var(--ink); font-weight: 500;
+  box-shadow: 0 0 0 0.5px rgba(13,44,61,0.08);
+}
+.view-toggle button i { font-size: 13px; }
+.view-toggle button .ai-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--orange); display: inline-block; margin-left: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPONENT: list view sketch · compact reference of standard mode
+───────────────────────────────────────────────────────────────── */
+.list-sketch { padding: 4px 22px 22px; background: var(--bg); }
+.list-sect-h {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0 10px;
+}
+.list-sect-h .lbl {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--orange); font-weight: 500;
+}
+.list-sect-h .line { flex: 1; height: 0.5px; background: var(--border-strong); }
+.list-sect-h .acts { font-size: 10px; color: var(--ink-faint); letter-spacing: .08em; text-transform: uppercase; }
+
+.list-row {
+  display: grid; grid-template-columns: 110px 1fr auto;
+  gap: 14px; align-items: start;
+  background: var(--surface-soft); border-radius: var(--radius-md);
+  padding: 10px 14px; margin-bottom: 6px;
+}
+.list-row .thumb {
+  width: 86px; height: 64px; border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, #d4a674, #8b6d4f 60%, #4c3a2a);
+  position: relative; flex-shrink: 0;
+}
+.list-row .thumb.tokyo { background: linear-gradient(160deg, #d4a674, #8b6d4f 60%, #4c3a2a); }
+.list-row .thumb.sensoji { background: linear-gradient(160deg, #c4744a, #8a3c1c 60%, #4c1f0a); }
+.list-row .thumb.sumida { background: linear-gradient(160deg, #ddc3c8, #a8b5c4 50%, #5b6b78); }
+.list-row .thumb .tm-overlay {
+  position: absolute; bottom: 6px; left: 6px;
+  background: rgba(13,44,61,0.78); color: #fff;
+  padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-family: ui-monospace, monospace; font-weight: 500;
+}
+.list-row .info { min-width: 0; }
+.list-row .info .nm { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.list-row .info .ds {
+  font-size: 12.5px; color: var(--ink-soft); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.list-row .chev { color: var(--ink-faint); font-size: 18px; align-self: center; }
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPONENT: pre-creation CTA · before AI is called the first time
+───────────────────────────────────────────────────────────────── */
+.precre {
+  margin: 16px 22px 22px; padding: 36px 28px 30px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); text-align: center; position: relative;
+  overflow: hidden;
+}
+.precre::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 0%, var(--orange) 50%, transparent 100%);
+  opacity: 0.5;
+}
+.precre .spark {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(244,123,58,0.10);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--orange); font-size: 26px; margin-bottom: 16px;
+}
+.precre h4 {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 400;
+  margin: 0 0 8px; font-style: italic; color: var(--ink); line-height: 1.25;
+}
+.precre p {
+  font-size: 13px; color: var(--ink-soft); max-width: 420px;
+  margin: 0 auto 18px; line-height: 1.6;
+}
+.precre .cta {
+  background: var(--orange); color: white;
+  border: 0; border-radius: var(--radius-pill);
+  padding: 10px 22px; font-size: 13.5px; font-weight: 500;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+  font-family: inherit; transition: background 0.15s;
+}
+.precre .cta:hover { background: var(--orange-deep); }
+.precre .cta i { font-size: 14px; }
+.precre .alt {
+  display: block; margin-top: 14px; font-size: 12px;
+  color: var(--ink-faint); text-decoration: none;
+}
+.precre .alt:hover { color: var(--ink); text-decoration: underline; }
+.precre .meta-row {
+  display: flex; justify-content: center; gap: 14px;
+  margin-top: 22px; padding-top: 16px;
+  border-top: 0.5px solid var(--border);
+  font-size: 11px; color: var(--ink-faint);
+}
+.precre .meta-row span { display: inline-flex; align-items: center; gap: 4px; }
+.precre .meta-row i { font-size: 12px; color: var(--orange); }
+.precre.compact { padding: 22px 24px; }
+.precre.compact h4 { font-size: 17px; margin-bottom: 4px; }
+.precre.compact p { font-size: 12.5px; margin-bottom: 14px; }
+.precre.compact .spark { width: 40px; height: 40px; font-size: 20px; margin-bottom: 10px; }
+
+/* Sticky nav */
+.sticky-nav { position: sticky; top: 0; background: rgba(241,239,232,.92); backdrop-filter: blur(8px); z-index: 50; border-bottom: 0.5px solid var(--border); margin: -36px -24px 0; padding: 12px 24px; }
+.sticky-nav-inner { max-width: 880px; margin: 0 auto; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+.sticky-nav .title { font-size: 13px; font-weight: 500; color: var(--ink); margin-right: 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.sticky-nav .title i { font-size: 14px; color: var(--orange); }
+.nav-link { font-size: 12px; color: var(--ink-soft); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+.nav-link:hover { background: rgba(0,0,0,.04); color: var(--ink); }
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPONENT: day banner mini · esistente, mostrato per contesto
+───────────────────────────────────────────────────────────────── */
+.banner-mini {
+  height: 160px; position: relative; overflow: hidden;
+  background: linear-gradient(160deg, #dfa97e 0%, #c88b65 22%, #9a7d80 45%, #566677 70%, #3d4a64 100%);
+  display: flex; align-items: flex-end; padding: 22px 28px;
+}
+.banner-mini .meta { color: white; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.banner-mini .meta .k { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.banner-mini .meta .k .zone { color: var(--orange); font-weight: 500; }
+.banner-mini .meta h2 { font-size: 26px; font-weight: 500; margin: 4px 0 2px; line-height: 1.1; }
+.banner-mini .meta .sub { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPONENT: magazine article
+───────────────────────────────────────────────────────────────── */
+.mag {
+  padding: 34px 40px 32px; position: relative; background: var(--bg);
+}
+.mag-stamp {
+  position: absolute; top: 18px; right: 22px;
+  font-size: 11px; color: var(--ink-faint);
+  display: inline-flex; align-items: center; gap: 5px; font-style: italic;
+}
+.mag-stamp i { font-size: 13px; color: var(--orange); }
+.mag-stamp b { color: var(--ink-soft); font-weight: 500; font-style: normal; }
+
+/* Deck (AI standfirst) */
+.mag-deck {
+  font-family: var(--font-serif); font-size: 20px; font-style: italic;
+  color: var(--ink-soft); line-height: 1.5; max-width: 560px;
+  margin: 0 0 22px; font-weight: 400; position: relative;
+}
+.mag-deck::first-letter { color: var(--ink); }
+.ai-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  color: var(--orange); font-style: normal; font-size: 11px;
+  font-family: var(--font); font-weight: 500; letter-spacing: .04em;
+  background: rgba(244,123,58,.10); padding: 1px 7px; border-radius: var(--radius-pill);
+  margin-right: 6px; vertical-align: 3px;
+}
+.ai-tag i { font-size: 11px; }
+
+/* Body container · clearfix for floated photos */
+.mag-body { overflow: hidden; }
+
+/* Section divider · Morning/Afternoon/Evening with AI intermezzo */
+.mag-sect {
+  display: flex; align-items: center; gap: 12px;
+  margin: 8px 0 14px; clear: both;
+}
+.mag-sect .lbl {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--orange); font-weight: 500; flex-shrink: 0;
+}
+.mag-sect .ai {
+  font-family: var(--font-serif); font-style: italic; font-size: 13px;
+  color: var(--ink-faint); flex: 1; min-width: 0; position: relative;
+}
+.mag-sect .ai .spk {
+  color: var(--orange); font-style: normal; font-size: 11px; margin-right: 3px;
+}
+.mag-sect .acts {
+  font-size: 10px; color: var(--ink-faint);
+  letter-spacing: .08em; text-transform: uppercase; flex-shrink: 0;
+}
+
+/* Editable affordance for AI bits */
+.editable { position: relative; cursor: pointer; }
+.editable .pencil {
+  position: absolute; right: -28px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 50%;
+  background: white; border: 0.5px solid var(--border-strong);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--orange); font-size: 13px;
+  opacity: 0; transition: opacity .15s;
+}
+.editable:hover .pencil, .editable.is-hover .pencil { opacity: 1; }
+.mag-deck .pencil { right: 0; top: 4px; transform: none; }
+
+/* Vignette · single activity */
+.mag-v { margin: 0 0 18px; }
+.mag-v-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+  font-family: var(--font);
+}
+.mag-v-head .num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--ink); color: white;
+  font-size: 11px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-decoration: none;
+}
+.mag-v-head .num:hover { background: var(--orange); }
+.mag-v-head .nm { font-size: 14px; font-weight: 500; color: var(--ink); }
+.mag-v-head .booked, .mag-v-head .paid, .mag-v-head .todo {
+  font-size: 10px; padding: 2px 7px; border-radius: var(--radius-pill);
+  font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.mag-v-head .booked { background: #fef5cf; color: #7a5e0e; }
+.mag-v-head .paid { background: #e4f3da; color: #3d6e0e; }
+.mag-v-head .todo { background: #fcebeb; color: #a32d2d; }
+.mag-v-head .booked i, .mag-v-head .paid i, .mag-v-head .todo i { font-size: 10px; }
+.mag-v-head .tm {
+  color: var(--ink-faint); font-size: 11px; letter-spacing: .06em;
+  font-variant-numeric: tabular-nums; margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.mag-v-body {
+  font-family: var(--font-serif); font-size: 15.5px; line-height: 1.72;
+  color: var(--ink); margin: 0;
+  white-space: pre-wrap; /* preserva eventuali a-capo dell'utente */
+}
+
+/* Floated photos */
+.mag-fig { width: 200px; margin: 4px 0 12px; }
+.mag-fig.right { float: right; margin-left: 22px; clear: right; }
+.mag-fig.left { float: left; margin-right: 22px; clear: left; }
+.mag-fig .img { height: 140px; border-radius: 8px; background-size: cover; background-position: center; }
+.mag-fig .img.sensoji { background: linear-gradient(160deg, #c4744a 0%, #8a3c1c 60%, #4c1f0a 100%); }
+.mag-fig .img.sumida { background: linear-gradient(160deg, #ddc3c8 0%, #a8b5c4 50%, #5b6b78 100%); }
+.mag-fig .img.yanaka { background: linear-gradient(160deg, #b89260 0%, #7a5430 60%, #3d2618 100%); }
+.mag-fig .img.skytree { background: linear-gradient(160deg, #7a8aa3 0%, #3d4a64 60%, #1a2840 100%); }
+.mag-fig .cap {
+  font-size: 11px; color: var(--ink-faint); letter-spacing: .04em;
+  margin-top: 6px; display: flex; align-items: center; gap: 6px;
+}
+.mag-fig .cap .n {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; border: 0.5px solid var(--border-strong);
+  color: var(--ink); font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mag-fig .cap .nm { font-weight: 500; color: var(--ink); font-size: 12px; }
+.mag-fig .cap .tm { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* Pull quote · ripreso VERBATIM dalle note utente */
+.mag-pull {
+  font-family: var(--font-serif); font-style: italic; font-size: 21px;
+  line-height: 1.35; color: var(--orange-deep);
+  padding: 18px 0 18px 22px; margin: 20px 0;
+  border-left: 2px solid var(--orange); clear: both;
+}
+.mag-pull .att {
+  display: block; font-size: 11px; font-style: normal;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-faint); margin-top: 8px; font-family: var(--font);
+}
+
+/* Ornament */
+.mag-orn { text-align: center; color: #c4baa3; font-size: 13px; letter-spacing: .4em; margin: 22px 0 4px; clear: both; }
+
+/* Itinerario */
+.mag-itin { margin-top: 8px; padding-top: 20px; border-top: 0.5px solid var(--border); clear: both; }
+.mag-itin h3 {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 500; margin: 0 0 14px;
+}
+.mag-itin-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px 22px; }
+.mag-itin-list .ii { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink); text-decoration: none; }
+.mag-itin-list .ii:hover .nm { color: var(--orange-deep); }
+.mag-itin-list .ii .n {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: white; border: 0.5px solid var(--border-strong);
+  color: var(--ink); font-size: 11px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mag-itin-list .ii .nm { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mag-itin-list .ii .tm { color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* Foot */
+.mag-foot {
+  margin-top: 18px; display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--ink-faint);
+}
+.mag-foot .regen {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--orange-deep); cursor: pointer; font-weight: 500;
+}
+.mag-foot .regen i { font-size: 12px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE 3 · Loading AI · skeleton shimmer
+───────────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -300px 0; }
+  100% { background-position: 300px 0; }
+}
+.skeleton {
+  display: inline-block; border-radius: 4px;
+  background: linear-gradient(90deg, #e7e0d2 0%, #f1ebde 50%, #e7e0d2 100%);
+  background-size: 600px 100%; animation: shimmer 1.4s linear infinite;
+}
+.skeleton.deck-line { height: 22px; width: 100%; margin-bottom: 6px; }
+.skeleton.deck-line.short { width: 60%; }
+.skeleton.intermezzo { height: 13px; width: 75%; }
+.loading-pill {
+  font-size: 10px; padding: 3px 9px; border-radius: var(--radius-pill);
+  background: rgba(244,123,58,.10); color: var(--orange-deep);
+  letter-spacing: .04em; text-transform: uppercase; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.loading-pill i { font-size: 11px; animation: shimmer-spin 1.5s linear infinite; }
+@keyframes shimmer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE 4 · AI failed
+───────────────────────────────────────────────────────────────── */
+.ai-warn {
+  display: flex; align-items: center; gap: 10px;
+  background: #fcebeb; color: #791f1f; padding: 10px 14px;
+  border-radius: var(--radius-md); font-size: 12px; margin-bottom: 22px;
+}
+.ai-warn i { font-size: 16px; }
+.ai-warn .retry { margin-left: auto; color: #791f1f; font-weight: 500; text-decoration: underline; cursor: pointer; font-size: 12px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE 5 · Empty day
+───────────────────────────────────────────────────────────────── */
+.empty {
+  padding: 60px 40px; text-align: center;
+}
+.empty .icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--surface); border: 1.5px dashed var(--border-strong);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-faint); font-size: 24px; margin-bottom: 14px;
+}
+.empty h4 { font-family: var(--font-serif); font-size: 20px; font-weight: 400; margin: 0 0 6px; font-style: italic; color: var(--ink); }
+.empty p { font-size: 13px; color: var(--ink-soft); max-width: 380px; margin: 0 auto 18px; line-height: 1.55; }
+.empty .add {
+  background: var(--orange); color: white;
+  border: 0; border-radius: var(--radius-pill);
+  padding: 9px 18px; font-size: 13px; font-weight: 500;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.empty .add i { font-size: 14px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE 6 · Mobile
+───────────────────────────────────────────────────────────────── */
+.phone-wrap { display: flex; justify-content: center; padding: 24px 0; }
+.phone { width: 360px; background: #1a1a1a; border-radius: 40px; padding: 8px; }
+.phone-screen { background: var(--bg); border-radius: 34px; overflow: hidden; max-height: 760px; overflow-y: auto; }
+
+/* Mobile: float diventa full width inline, foto sopra ogni vignette */
+.phone-screen .mag { padding: 22px 18px 22px; }
+.phone-screen .mag-stamp { position: static; margin: 0 0 10px; }
+.phone-screen .mag-deck { font-size: 17px; max-width: 100%; }
+.phone-screen .mag-fig { float: none; width: 100%; margin: 4px 0 10px; clear: none; }
+.phone-screen .mag-fig .img { height: 160px; }
+.phone-screen .mag-pull { font-size: 17px; padding: 14px 0 14px 16px; }
+.phone-screen .mag-itin-list { grid-template-columns: 1fr; }
+.phone-screen .mag-v-head { flex-wrap: wrap; }
+.phone-screen .mag-v-body { font-size: 14.5px; }
+
+/* Notes section */
+.notes {
+  margin-top: 48px; padding: 22px 24px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); font-size: 13px; line-height: 1.7;
+  color: var(--ink-soft);
+}
+.notes h3 {
+  font-size: 13px; font-weight: 500; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--orange); margin: 0 0 10px;
+}
+.notes h3:not(:first-child) { margin-top: 20px; }
+.notes b { color: var(--ink); font-weight: 500; }
+.notes code { background: var(--surface-soft); padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: 'SF Mono', Menlo, monospace; color: var(--ink); }
+.notes ul { margin: 6px 0; padding-left: 20px; }
+.notes li { margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<div class="sticky-nav">
+  <div class="sticky-nav-inner">
+    <span class="title"><i class="ti ti-book-2"></i>Day magazine · racconto del giorno</span>
+    <a class="nav-link" href="#toggle">Toggle</a>
+    <a class="nav-link" href="#s1">1·Pre-creation</a>
+    <a class="nav-link" href="#s2">2·Loaded</a>
+    <a class="nav-link" href="#s3">3·Hover edit</a>
+    <a class="nav-link" href="#s4">4·Loading AI</a>
+    <a class="nav-link" href="#s5">5·AI failed</a>
+    <a class="nav-link" href="#s6">6·Empty day</a>
+    <a class="nav-link" href="#s7">7·Mobile</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="intro" style="margin-top:24px">
+  <div class="intro-eyebrow">JapanGo · public/design</div>
+  <h1>Day magazine · racconto editoriale del giorno</h1>
+  <p class="sub">Vista <b style="color:var(--ink);font-weight:500">alternativa</b> alla lista verticale di attività — convivono dietro un toggle Lista ↔ Racconto. Nel racconto: <b style="color:var(--ink);font-weight:500">l'AI scrive solo deck e intermezzi (Morning / Afternoon / Evening)</b>, i testi descrittivi delle attività sono <b style="color:var(--ink);font-weight:500">verbatim dall'utente</b>, mai modificati. Il pull quote è una frase ripresa letteralmente dalle note. Foto floated a destra e a sinistra alternativamente, con caption che richiamano il numero del vignette.</p>
+</header>
+
+<!-- ── COMPONENTE — Toggle Lista ↔ Racconto ────────────────── -->
+<section class="section" id="toggle">
+  <div class="step-h"><span class="step-num" style="background:var(--orange)"><i class="ti ti-toggle-right" style="font-size:13px"></i></span><h3>Componente · Toggle Lista ↔ Racconto</h3><span class="ds">— due stati del segmented control + sketch della vista lista</span></div>
+
+  <!-- Stato A: List attivo -->
+  <div class="frame" style="margin-bottom:18px">
+    <div class="banner-mini" style="height:110px;padding:18px 22px">
+      <div class="meta">
+        <div class="k">Day 2 · <span class="zone">TOKYO</span></div>
+        <h2 style="font-size:22px">Asakusa e Sumida-Gawa</h2>
+      </div>
+    </div>
+    <div class="view-toggle-row">
+      <div class="view-toggle">
+        <button class="on"><i class="ti ti-list"></i>Lista</button>
+        <button><i class="ti ti-book-2"></i>Racconto<span class="ai-dot"></span></button>
+      </div>
+    </div>
+    <div class="list-sketch">
+      <div class="list-sect-h">
+        <span class="lbl">Morning</span>
+        <span class="line"></span>
+        <span class="acts">3 acts</span>
+      </div>
+      <div class="list-row">
+        <div class="thumb tokyo"><div class="tm-overlay">07:40</div></div>
+        <div class="info"><div class="nm">Uscita albergo</div><div class="ds">passeggiata di 8 minuti sino a Senso-ji</div></div>
+        <i class="ti ti-chevron-right chev"></i>
+      </div>
+      <div class="list-row">
+        <div class="thumb sensoji"><div class="tm-overlay">08:00</div></div>
+        <div class="info"><div class="nm">Sensō-ji</div><div class="ds">Il tempio è dedicato alla dea Kannon ed è stato costruito nel 7 secolo. La leggenda racconta che la statua della dea per cui fu costruito il tempio venne pescata nelle acque del Sumida-gawa…</div></div>
+        <i class="ti ti-chevron-right chev"></i>
+      </div>
+      <div class="list-row">
+        <div class="thumb sumida"><div class="tm-overlay">10:30</div></div>
+        <div class="info"><div class="nm">Parco Sumida</div><div class="ds">Passeggiare e/o fare pausa al parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni.</div></div>
+        <i class="ti ti-chevron-right chev"></i>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--ink-faint);padding:10px 0;font-style:italic">… 4 acts ancora (Afternoon · Evening)</div>
+    </div>
+  </div>
+
+  <!-- Stato B: Racconto attivo -->
+  <div class="frame">
+    <div class="banner-mini" style="height:110px;padding:18px 22px">
+      <div class="meta">
+        <div class="k">Day 2 · <span class="zone">TOKYO</span></div>
+        <h2 style="font-size:22px">Asakusa e Sumida-Gawa</h2>
+      </div>
+    </div>
+    <div class="view-toggle-row">
+      <div class="view-toggle">
+        <button><i class="ti ti-list"></i>Lista</button>
+        <button class="on"><i class="ti ti-book-2"></i>Racconto<span class="ai-dot"></span></button>
+      </div>
+    </div>
+    <article class="mag" style="padding-top:14px">
+      <p class="mag-deck">
+        <span class="ai-tag"><i class="ti ti-sparkles"></i>AI</span>Tra le lanterne del Sensō-ji e i quartieri degli artigiani, una giornata che chiude in alto sulla Skytree.
+      </p>
+      <div class="mag-body">
+        <div class="mag-sect">
+          <span class="lbl">Morning</span>
+          <span class="ai"><span class="spk">✦</span>La giornata si apre con calma, dall'albergo verso il tempio.</span>
+          <span class="acts">3 acts</span>
+        </div>
+        <div class="mag-v">
+          <div class="mag-v-head"><a class="num" href="#">1</a><span class="nm">Uscita albergo</span><span class="tm">07:40</span></div>
+          <p class="mag-v-body">passeggiata di 8 minuti sino a Senso-ji</p>
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--ink-faint);padding:10px 0;font-style:italic">… continua come negli stati 1-4</div>
+      </div>
+    </article>
+  </div>
+
+  <div style="background:#fdf5ee;border:0.5px solid #f9d4b6;border-radius:var(--radius-md);padding:12px 16px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin-top:14px">
+    <b style="color:var(--orange-deep)">Note sul toggle</b> — posizione fissa top-right del day view, sopra le sezioni di attività. Il punto arancio piccolo accanto a "Racconto" segnala che la voce usa AI. La preferenza è persistita in <code style="background:var(--surface-soft);padding:1px 5px;border-radius:4px;font-size:11.5px">localStorage("day-view-mode")</code> con default "Lista" — l'utente cambia, e tutti i giorni dello stesso viaggio si aprono nella vista scelta. Switch lato Racconto attiva il fetch di <code style="background:var(--surface-soft);padding:1px 5px;border-radius:4px;font-size:11.5px">/api/ai/describe-day</code> solo al primo open del giorno (poi cache).
+  </div>
+</section>
+
+<!-- ── STATE 1 — Pre-creation CTA ──────────────────────────── -->
+<section class="section" id="s1">
+  <div class="step-h"><span class="step-num">1</span><h3>Pre-creation · CTA esplicita</h3><span class="ds">— l'AI non parte automatica: l'utente clicca per generare</span></div>
+
+  <div class="frame">
+    <div class="banner-mini">
+      <div class="meta">
+        <div class="k">Day 2 · <span class="zone">TOKYO</span></div>
+        <h2>Asakusa e Sumida-Gawa</h2>
+        <div class="sub">SAT 1 AUG 2026 · 7 ACTIVITIES</div>
+      </div>
+    </div>
+
+    <div class="view-toggle-row">
+      <div class="view-toggle">
+        <button><i class="ti ti-list"></i>Lista</button>
+        <button class="on"><i class="ti ti-book-2"></i>Racconto<span class="ai-dot"></span></button>
+      </div>
+    </div>
+
+    <div class="precre">
+      <div class="spark"><i class="ti ti-sparkles"></i></div>
+      <h4>Vuoi raccontare questa giornata?</h4>
+      <p>Go scriverà un breve <b style="color:var(--ink);font-weight:500">deck</b> e tre <b style="color:var(--ink);font-weight:500">intermezzi</b> (Morning · Afternoon · Evening) per legare le attività. Le tue note di ogni tappa restano com'è — non le tocchiamo.</p>
+      <button class="cta"><i class="ti ti-sparkles"></i>Crea il racconto del giorno</button>
+      <a class="alt" href="#">o torna alla vista Lista</a>
+      <div class="meta-row">
+        <span><i class="ti ti-clock"></i>~ 0.6 s</span>
+        <span><i class="ti ti-brain"></i>gpt-4o-mini</span>
+        <span><i class="ti ti-text-size"></i>~ 50 parole</span>
+        <span><i class="ti ti-lock-open"></i>solo deck + intermezzi</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fdf5ee;border:0.5px solid #f9d4b6;border-radius:var(--radius-md);padding:12px 16px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin-top:14px">
+    <b style="color:var(--orange-deep)">Trigger AI esplicito</b> — è la prima volta che l'utente attiva "Racconto" su questo giorno (o ha invalidato la cache). Niente fetch automatico in background, niente chiamata silenziosa al toggle. La sequenza è: click su "Racconto" → CTA → click su "Crea il racconto" → stato Loading (step 4) → Loaded (step 2). Riapertura successiva del giorno: cache valida → salta CTA, va dritto a Loaded.
+  </div>
+</section>
+
+<!-- ── STATE 2 — Loaded (after CTA) ────────────────────────── -->
+<section class="section" id="s2">
+  <div class="step-h"><span class="step-num">2</span><h3>Stato loaded · post-generazione</h3><span class="ds">— giornata con tutte le attività + racconto AI completo</span></div>
+
+  <div class="frame">
+    <!-- contesto: il banner del giorno esistente, sopra il magazine -->
+    <div class="banner-mini">
+      <div class="meta">
+        <div class="k">Day 2 · <span class="zone">TOKYO</span></div>
+        <h2>Asakusa e Sumida-Gawa</h2>
+        <div class="sub">SAT 1 AUG 2026 · 7 ACTIVITIES</div>
+      </div>
+    </div>
+
+    <div class="view-toggle-row">
+      <div class="view-toggle">
+        <button><i class="ti ti-list"></i>Lista</button>
+        <button class="on"><i class="ti ti-book-2"></i>Racconto<span class="ai-dot"></span></button>
+      </div>
+    </div>
+
+    <article class="mag" style="padding-top:14px">
+      <div class="mag-stamp"><i class="ti ti-sparkles"></i>raccontato da Go · <b>le note sono tue</b></div>
+
+      <p class="mag-deck editable">
+        <span class="ai-tag"><i class="ti ti-sparkles"></i>AI</span>Tra le lanterne del Sensō-ji e i quartieri degli artigiani, una giornata che chiude in alto sulla Skytree.
+        <span class="pencil"><i class="ti ti-pencil"></i></span>
+      </p>
+
+      <div class="mag-body">
+
+        <div class="mag-sect">
+          <span class="lbl">Morning</span>
+          <span class="ai editable"><span class="spk">✦</span>La giornata si apre con calma, dall'albergo verso il tempio.<span class="pencil"><i class="ti ti-pencil"></i></span></span>
+          <span class="acts">3 acts</span>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-1">1</a>
+            <span class="nm">Uscita albergo</span>
+            <span class="tm">07:40</span>
+          </div>
+          <p class="mag-v-body">passeggiata di 8 minuti sino a Senso-ji</p>
+        </div>
+
+        <figure class="mag-fig right">
+          <div class="img sensoji"></div>
+          <div class="cap"><span class="n">2</span><span class="nm">Sensō-ji</span><span class="tm">08:00</span></div>
+        </figure>
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-2">2</a>
+            <span class="nm">Sensō-ji</span>
+            <span class="tm">08:00</span>
+          </div>
+          <p class="mag-v-body">Il tempio è dedicato alla dea Kannon ed è stato costruito nel 7 secolo. La leggenda racconta che la statua della dea per cui fu costruito il tempio venne pescata nelle acque del Sumida-gawa. Foto con calma e vedi i negozietti di Nakamise</p>
+        </div>
+
+        <figure class="mag-fig left">
+          <div class="img sumida"></div>
+          <div class="cap"><span class="n">3</span><span class="nm">Parco Sumida</span><span class="tm">10:30</span></div>
+        </figure>
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-3">3</a>
+            <span class="nm">Parco Sumida</span>
+            <span class="tm">10:30</span>
+          </div>
+          <p class="mag-v-body">Passeggiare e/o fare pausa al parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni. Prendere caffè a Leaves Coffee Apartment.</p>
+        </div>
+
+        <div class="mag-pull">"…scrivere una lettera a me del futuro."<span class="att">— dalle tue note · Kuramae, 12:30</span></div>
+
+        <div class="mag-sect">
+          <span class="lbl">Afternoon</span>
+          <span class="ai editable"><span class="spk">✦</span>Il pomeriggio scivola tra cartolerie, gatti randagi e Pokémon.<span class="pencil"><i class="ti ti-pencil"></i></span></span>
+          <span class="acts">3 acts</span>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-4">4</a>
+            <span class="nm">Kuramae</span>
+            <span class="tm">12:30</span>
+          </div>
+          <p class="mag-v-body">girare per il quartiere Kuramae che è il quartiere degli artigiani: Kakimori (cartoleria con penne e quaderni pazzeschi); Ink Stand (dove mescolare inchiostro); Jiyucho materiale da corrispondenza dove scrivere una lettera a me del futuro.</p>
+        </div>
+
+        <figure class="mag-fig right">
+          <div class="img yanaka"></div>
+          <div class="cap"><span class="n">5</span><span class="nm">Yanesen</span><span class="tm">14:30</span></div>
+        </figure>
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-5">5</a>
+            <span class="nm">Yanesen</span>
+            <span class="tm">14:30</span>
+          </div>
+          <p class="mag-v-body">Da Kuramae prendi i mezzi verso la stazione di Nippori/Sendagi (circa 20 min). Arrivi a Yanesen nel momento di massima attività del sabato pomeriggio. Passeggi per Yanaka Ginza, vedi l'atmosfera vintage e i gatti del quartiere.</p>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-6">6</a>
+            <span class="nm">Solamachi Pokemon Center</span>
+            <span class="booked"><i class="ti ti-bookmark"></i>Booked</span>
+            <span class="tm">17:00</span>
+          </div>
+          <p class="mag-v-body">metro (linea Chiyoda + linea Hanzomon).Pokemon Center nel centro commerciale Solamachi (sotto la torre). Al secondo piano. Dentro il centro commerciale si trovano anche Acquario, museo postale e planetario. Cenare la centro commerciale.</p>
+        </div>
+
+        <div class="mag-sect">
+          <span class="lbl">Evening</span>
+          <span class="ai editable"><span class="spk">✦</span>Si finisce in alto, con Tokyo che si accende sotto.<span class="pencil"><i class="ti ti-pencil"></i></span></span>
+          <span class="acts">1 act</span>
+        </div>
+
+        <figure class="mag-fig left">
+          <div class="img skytree"></div>
+          <div class="cap"><span class="n">7</span><span class="nm">Tokyo Sky Tower Tree</span><span class="tm">20:00</span></div>
+        </figure>
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#it-7">7</a>
+            <span class="nm">Tokyo Sky Tower Tree</span>
+            <span class="tm">20:00</span>
+          </div>
+          <p class="mag-v-body">ultimo ingresso ore 21. Salire e godere del panorama</p>
+        </div>
+
+      </div>
+
+      <div class="mag-orn">· · ·</div>
+
+      <div class="mag-itin">
+        <h3>Itinerario del giorno</h3>
+        <div class="mag-itin-list">
+          <a class="ii" id="it-1" href="#"><span class="n">1</span><span class="nm">Uscita albergo</span><span class="tm">07:40</span></a>
+          <a class="ii" id="it-2" href="#"><span class="n">2</span><span class="nm">Sensō-ji</span><span class="tm">08:00</span></a>
+          <a class="ii" id="it-3" href="#"><span class="n">3</span><span class="nm">Parco Sumida</span><span class="tm">10:30</span></a>
+          <a class="ii" id="it-4" href="#"><span class="n">4</span><span class="nm">Kuramae</span><span class="tm">12:30</span></a>
+          <a class="ii" id="it-5" href="#"><span class="n">5</span><span class="nm">Yanesen</span><span class="tm">14:30</span></a>
+          <a class="ii" id="it-6" href="#"><span class="n">6</span><span class="nm">Solamachi Pokemon Center</span><span class="tm">17:00</span></a>
+          <a class="ii" id="it-7" href="#"><span class="n">7</span><span class="nm">Tokyo Sky Tower Tree</span><span class="tm">20:00</span></a>
+        </div>
+      </div>
+
+      <div class="mag-foot">
+        <span>AI: ~ 50 parole (deck + 3 intermezzi) · gpt-4o-mini · 0.6s</span>
+        <span class="regen"><i class="ti ti-refresh"></i>Rigenera deck e intermezzi</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ── STATE 2 — Hover edit ────────────────────────────────── -->
+<section class="section" id="s3">
+  <div class="step-h"><span class="step-num">3</span><h3>Hover su un elemento AI</h3><span class="ds">— appare matita per rigenerare il singolo blocco</span></div>
+
+  <div class="frame">
+    <article class="mag">
+      <div class="mag-stamp"><i class="ti ti-sparkles"></i>raccontato da Go · <b>le note sono tue</b></div>
+
+      <p class="mag-deck editable is-hover">
+        <span class="ai-tag"><i class="ti ti-sparkles"></i>AI</span>Tra le lanterne del Sensō-ji e i quartieri degli artigiani, una giornata che chiude in alto sulla Skytree.
+        <span class="pencil" style="opacity:1"><i class="ti ti-pencil"></i></span>
+      </p>
+
+      <div class="mag-body">
+        <div class="mag-sect">
+          <span class="lbl">Morning</span>
+          <span class="ai editable is-hover"><span class="spk">✦</span>La giornata si apre con calma, dall'albergo verso il tempio.<span class="pencil" style="opacity:1;right:-30px"><i class="ti ti-pencil"></i></span></span>
+          <span class="acts">3 acts</span>
+        </div>
+        <p style="font-size:12px;color:var(--ink-faint);margin:8px 0 0;font-style:italic">Le note utente sotto non hanno pencil — si editano dall'editor attività esistente (matita sulla riga).</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ── STATE 3 — Loading AI ────────────────────────────────── -->
+<section class="section" id="s4">
+  <div class="step-h"><span class="step-num">4</span><h3>AI in caricamento</h3><span class="ds">— note utente già visibili, deck e intermezzi in shimmer</span></div>
+
+  <div class="frame">
+    <article class="mag">
+      <div class="mag-stamp">
+        <span class="loading-pill"><i class="ti ti-loader-2"></i>Go sta scrivendo</span>
+      </div>
+
+      <div style="max-width:560px;margin:0 0 22px">
+        <div class="skeleton deck-line"></div>
+        <div class="skeleton deck-line short"></div>
+      </div>
+
+      <div class="mag-body">
+
+        <div class="mag-sect">
+          <span class="lbl">Morning</span>
+          <span class="ai" style="display:flex;flex:1;min-width:0"><div class="skeleton intermezzo"></div></span>
+          <span class="acts">3 acts</span>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#">1</a>
+            <span class="nm">Uscita albergo</span>
+            <span class="tm">07:40</span>
+          </div>
+          <p class="mag-v-body">passeggiata di 8 minuti sino a Senso-ji</p>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head">
+            <a class="num" href="#">2</a>
+            <span class="nm">Sensō-ji</span>
+            <span class="tm">08:00</span>
+          </div>
+          <p class="mag-v-body">Il tempio è dedicato alla dea Kannon ed è stato costruito nel 7 secolo. La leggenda racconta che la statua della dea per cui fu costruito il tempio venne pescata nelle acque del Sumida-gawa. Foto con calma e vedi i negozietti di Nakamise</p>
+        </div>
+
+        <div style="margin:12px 0 0;padding:10px 14px;background:rgba(244,123,58,.08);border-radius:var(--radius-md);font-size:12px;color:var(--ink-soft);font-style:italic">Il contenuto utente è già navigabile — la generazione AI non blocca la lettura.</div>
+
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ── STATE 4 — AI failed ─────────────────────────────────── -->
+<section class="section" id="s5">
+  <div class="step-h"><span class="step-num">5</span><h3>AI fallita</h3><span class="ds">— fallback grazioso, contenuto utente intatto, retry possibile</span></div>
+
+  <div class="frame">
+    <article class="mag">
+
+      <div class="ai-warn">
+        <i class="ti ti-alert-triangle"></i>
+        <span>Go non è disponibile al momento — l'itinerario è leggibile, mancano solo deck e intermezzi.</span>
+        <span class="retry">Riprova</span>
+      </div>
+
+      <div class="mag-body">
+
+        <div class="mag-sect">
+          <span class="lbl">Morning</span>
+          <span class="ai" style="color:var(--ink-faint);font-style:normal;font-family:var(--font);font-size:11px;letter-spacing:.08em;text-transform:uppercase">·</span>
+          <span class="acts">3 acts</span>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head"><a class="num" href="#">1</a><span class="nm">Uscita albergo</span><span class="tm">07:40</span></div>
+          <p class="mag-v-body">passeggiata di 8 minuti sino a Senso-ji</p>
+        </div>
+
+        <div class="mag-v">
+          <div class="mag-v-head"><a class="num" href="#">2</a><span class="nm">Sensō-ji</span><span class="tm">08:00</span></div>
+          <p class="mag-v-body">Il tempio è dedicato alla dea Kannon ed è stato costruito nel 7 secolo. La leggenda racconta che la statua della dea per cui fu costruito il tempio venne pescata nelle acque del Sumida-gawa. Foto con calma e vedi i negozietti di Nakamise</p>
+        </div>
+
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ── STATE 5 — Empty day ─────────────────────────────────── -->
+<section class="section" id="s6">
+  <div class="step-h"><span class="step-num">6</span><h3>Giorno vuoto</h3><span class="ds">— niente attività, AI non viene chiamato, empty state diretto</span></div>
+
+  <div class="frame">
+    <div class="banner-mini" style="background:linear-gradient(160deg,#7a8aa3 0%,#3d4a64 100%)">
+      <div class="meta">
+        <div class="k">Day 5 · <span class="zone">KYOTO</span></div>
+        <h2>Da pianificare</h2>
+        <div class="sub">TUE 4 AUG 2026 · 0 ACTIVITIES</div>
+      </div>
+    </div>
+    <div class="mag">
+      <div class="empty">
+        <div class="icon"><i class="ti ti-book-2"></i></div>
+        <h4>Niente da raccontare, ancora.</h4>
+        <p>Aggiungi la prima attività al giorno e Go inizierà a raccontare la giornata.</p>
+        <button class="add"><i class="ti ti-plus"></i>Aggiungi attività</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATE 6 — Mobile ────────────────────────────────────── -->
+<section class="section" id="s7">
+  <div class="step-h"><span class="step-num">7</span><h3>Mobile</h3><span class="ds">— foto full-width inline (no float), tipografia ridotta, itinerario una colonna</span></div>
+
+  <div class="frame phone-wrap">
+    <div class="phone">
+      <div class="phone-screen">
+
+        <div class="banner-mini" style="height:120px;padding:18px 20px;border-radius:0">
+          <div class="meta">
+            <div class="k" style="font-size:9px">Day 2 · <span class="zone">TOKYO</span></div>
+            <h2 style="font-size:20px">Asakusa</h2>
+            <div class="sub" style="font-size:9px">SAT 1 AUG · 7 ACTIVITIES</div>
+          </div>
+        </div>
+
+        <article class="mag">
+          <div class="mag-stamp"><i class="ti ti-sparkles"></i>raccontato da Go · <b>le note sono tue</b></div>
+
+          <p class="mag-deck">
+            <span class="ai-tag"><i class="ti ti-sparkles"></i>AI</span>Tra le lanterne del Sensō-ji e i quartieri degli artigiani, una giornata che chiude in alto sulla Skytree.
+          </p>
+
+          <div class="mag-body">
+
+            <div class="mag-sect">
+              <span class="lbl">Morning</span>
+              <span class="ai"><span class="spk">✦</span>La giornata si apre con calma.</span>
+              <span class="acts">3 acts</span>
+            </div>
+
+            <div class="mag-v">
+              <div class="mag-v-head"><a class="num" href="#">1</a><span class="nm">Uscita albergo</span><span class="tm">07:40</span></div>
+              <p class="mag-v-body">passeggiata di 8 minuti sino a Senso-ji</p>
+            </div>
+
+            <figure class="mag-fig">
+              <div class="img sensoji"></div>
+              <div class="cap"><span class="n">2</span><span class="nm">Sensō-ji</span><span class="tm">08:00</span></div>
+            </figure>
+            <div class="mag-v">
+              <div class="mag-v-head"><a class="num" href="#">2</a><span class="nm">Sensō-ji</span><span class="tm">08:00</span></div>
+              <p class="mag-v-body">Il tempio è dedicato alla dea Kannon ed è stato costruito nel 7 secolo. Foto con calma e vedi i negozietti di Nakamise</p>
+            </div>
+
+            <figure class="mag-fig">
+              <div class="img sumida"></div>
+              <div class="cap"><span class="n">3</span><span class="nm">Parco Sumida</span><span class="tm">10:30</span></div>
+            </figure>
+            <div class="mag-v">
+              <div class="mag-v-head"><a class="num" href="#">3</a><span class="nm">Parco Sumida</span><span class="tm">10:30</span></div>
+              <p class="mag-v-body">Passeggiare e/o fare pausa al parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni.</p>
+            </div>
+
+            <div class="mag-pull">"…scrivere una lettera a me del futuro."<span class="att">— dalle tue note · Kuramae</span></div>
+
+            <div class="mag-sect">
+              <span class="lbl">Afternoon</span>
+              <span class="ai"><span class="spk">✦</span>Pomeriggio tra artigiani e Pokémon.</span>
+              <span class="acts">3 acts</span>
+            </div>
+
+            <div class="mag-v">
+              <div class="mag-v-head"><a class="num" href="#">4</a><span class="nm">Kuramae</span><span class="tm">12:30</span></div>
+              <p class="mag-v-body">girare per il quartiere Kuramae che è il quartiere degli artigiani…</p>
+            </div>
+
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Notes per gli sviluppatori ──────────────────────────── -->
+<div class="notes">
+  <h3>Note per gli sviluppatori</h3>
+
+  <h3>Princìpi non negoziabili</h3>
+  <ul>
+    <li><b>Le note attività dell'utente sono verbatim</b>. Nessuna trasformazione: niente capitalizzazione, niente correzioni grammaticali, niente riassunti. Renderizzare con <code>white-space: pre-wrap</code> per preservare eventuali a-capo originali.</li>
+    <li><b>L'AI scrive solo 4 elementi</b>: il <code>deck</code> in cima (1 frase, max 25 parole) e tre <code>intermezzi</code> uno per sezione (Morning / Afternoon / Evening, max 15 parole ciascuno). Totale: ~50–70 parole.</li>
+    <li><b>Il pull quote è una frase ripresa letteralmente da una delle attività</b>. L'AI sceglie l'<code>activityId</code> e restituisce l'estratto esatto della stringa: il front-end verifica che sia effettivamente una sottostringa di <code>activity.description</code>, altrimenti rifiuta. Niente "frasi inventate".</li>
+    <li><b>Nessuna chiamata AI automatica</b>. Il fetch a <code>/api/ai/describe-day</code> parte <i>solo</i> al click esplicito del bottone "Crea il racconto" (step 1). Switchare al toggle "Racconto" non genera nulla — mostra la CTA di pre-generazione.</li>
+  </ul>
+
+  <h3>Toggle Lista ↔ Racconto</h3>
+  <ul>
+    <li><b>Posizione</b>: top-right del day view, sotto il banner e sopra le sezioni di attività. È un segmented control 2-stati con icona + label.</li>
+    <li><b>Default</b>: "Lista" (la vista esistente). Persistenza in <code>localStorage("day-view-mode")</code> a livello viaggio: cambiando vista una volta, tutti i giorni dello stesso viaggio si aprono in quella modalità.</li>
+    <li><b>Punto arancio</b> piccolo accanto a "Racconto" segnala che la voce richiede AI (analogo al puntino "✦" usato altrove per Go).</li>
+    <li><b>Switch a "Racconto"</b>: se il giorno ha una <code>day_narrative</code> valida in cache → renderizza direttamente lo stato Loaded (step 2). Se non esiste o è invalidata → mostra Pre-creation CTA (step 1). <b>Mai</b> chiama l'AI come effetto dello switch.</li>
+    <li><b>Switch a "Lista"</b>: torna alla vista esistente <code>itinerary.html</code>, immediato, senza side-effects.</li>
+  </ul>
+
+  <h3>Lifecycle e cache</h3>
+  <ul>
+    <li><b>Cache key</b>: <code>dayId + day.updatedAt</code>. Modifica di un'attività → <code>updatedAt</code> nuovo → cache invalidata → al prossimo open della vista Racconto, l'utente vede la CTA di nuovo (o un'opzione "Aggiorna" sul vecchio narrative — vedi nota sotto).</li>
+    <li><b>Storage</b>: tabella Supabase <code>day_narratives</code> con <code>{dayId, dayUpdatedAt, deck, intermezzi, pullQuote, generatedAt}</code>. Cache locale React Query / SWR opzionale per ridurre round-trip.</li>
+    <li><b>Stale-but-shown</b> (opzionale v2): se la cache è invalidata ma esiste una versione precedente, mostrare il narrative vecchio con un banner "Le attività sono cambiate · <a>Aggiorna il racconto</a>" invece della CTA piena. In v1: CTA piena sempre quando non esiste un narrative valido.</li>
+  </ul>
+
+  <h3>Contratto API</h3>
+  <ul>
+    <li>Endpoint: <code>POST /api/ai/describe-day</code></li>
+    <li>Body: <code>{ dayId, zone, type, summary, practicalNote, activities: [{id, name, time, description}] }</code></li>
+    <li>Risposta: <code>{ deck: string, intermezzi: { morning?: string, afternoon?: string, evening?: string }, pullQuote: { activityId, text }, generatedAt }</code></li>
+    <li><b>Cache</b>: chiave <code>dayId + day.updatedAt</code>. Se l'utente modifica un'attività, la cache si invalida e l'AI ri-gira al prossimo open. Salva il payload in Supabase (table <code>day_narratives</code>) o in memoria server.</li>
+    <li><b>Streaming non necessario</b>: 50–70 parole arrivano in &lt; 1s con gpt-4o-mini. Una sola fetch, attesa, popolamento.</li>
+  </ul>
+
+  <h3>Selezione foto</h3>
+  <ul>
+    <li>Default: le prime 4 attività che hanno un <code>photoRef</code> da Google Places. Se &lt; 4 disponibili, mostrane meno.</li>
+    <li>Alternanza right / left: pari a destra, dispari a sinistra (o viceversa — scelta visiva).</li>
+    <li><b>Niente foto per Uscita albergo</b> e affini: euristica = se il nome contiene "uscita", "transfer", "metro", "treno", "viaggio per", salta la foto anche se disponibile.</li>
+    <li>Override manuale futuro: aggiungere un toggle "foto sì/no" su ogni attività (out of scope per la v1).</li>
+  </ul>
+
+  <h3>Anchor link</h3>
+  <ul>
+    <li>Il numerino nel <code>.mag-v-head .num</code> è un <code>&lt;a href="#it-{n}"&gt;</code> che scrolla all'itinerario in fondo.</li>
+    <li>Le righe dell'itinerario in fondo sono <code>&lt;a href="#act-{n}"&gt;</code> che scrollano alla vignette.</li>
+    <li>Usare <code>scroll-behavior: smooth</code> + offset per lo header sticky.</li>
+  </ul>
+
+  <h3>Editing</h3>
+  <ul>
+    <li><b>Deck e intermezzi</b>: matita inline al passaggio del mouse. Click → modal o popover che mostra la frase corrente + bottoni "Rigenera con tono diverso" (più caldo / più asciutto / più curioso) o "Modifica a mano".</li>
+    <li><b>Note attività</b>: <i>nessuna</i> matita nel magazine. Si editano dall'editor attività esistente (modal con form già implementato). Il magazine è una vista di lettura.</li>
+    <li><b>Rigenera tutto</b>: bottone in fondo "Rigenera deck e intermezzi" forza un re-fetch ignorando la cache.</li>
+  </ul>
+
+  <h3>Mapping con il codice React</h3>
+  <ul>
+    <li>Component principale: <code>features/day/DayMagazine.tsx</code></li>
+    <li>Sub-component: <code>features/day/DayMagazineVignette.tsx</code> (singola attività), <code>DayMagazineSection.tsx</code> (Morning/Afternoon/Evening + intermezzo)</li>
+    <li>Hook: <code>features/day/useDayNarrative(dayId)</code> → restituisce <code>{deck, intermezzi, pullQuote, status: 'loading'|'ok'|'error'}</code> con SWR/cache</li>
+    <li>API route: <code>app/api/ai/describe-day/route.ts</code></li>
+    <li>Toggle vista lista / magazine: <code>features/day/DayViewModeToggle.tsx</code> in alto al day_view, persistito in <code>localStorage</code> per preferenza utente</li>
+  </ul>
+
+  <h3>Stati che devono funzionare</h3>
+  <ul>
+    <li><b>Pre-creation</b> · primo accesso alla vista Racconto su un giorno senza <code>day_narrative</code>: CTA centrata, AI non chiamato finché l'utente non clicca</li>
+    <li><b>Loaded</b> · tutto pronto, AI risposto, foto risolte (o cache hit al riapertura)</li>
+    <li><b>Loading</b> · post-CTA: skeleton sui blocchi AI, contenuto utente già visibile e navigabile</li>
+    <li><b>AI failed</b> · banner errore in cima, retry esplicito, contenuto utente intatto, possibile fallback al toggle Lista</li>
+    <li><b>Empty day</b> · nessuna attività → empty state, AI non viene chiamato anche se l'utente è in "Racconto"</li>
+    <li><b>Pull quote validation failed</b> · se l'AI restituisce un pull quote che non è sottostringa di una activity description, omettere il pull quote (non bloccare il resto)</li>
+    <li><b>Mobile</b> · float disabilitato, foto inline full-width sopra ogni vignette interessato, itinerario in colonna singola</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>
