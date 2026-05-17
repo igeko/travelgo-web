@@ -370,8 +370,8 @@ export function AppHeader({
                   </button>
                 )}
 
-                {/* Kebab — solo per dev/admin */}
-                {isDev && (
+                {/* Kebab — per tester, dev e admin */}
+                {isTester && (
                   <div ref={kebabRef} className="relative shrink-0">
                     <button
                       type="button"
