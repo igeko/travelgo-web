@@ -1152,13 +1152,18 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
   const lastGoMessage = messages.filter((m) => m.role === "assistant" && m.content).at(-1)?.content ?? "";
   const hasHistory = messages.some((m) => m.role === "assistant" && m.content);
 
+  // Track se il panel è mai stato aperto — usato per mostrare ClosedCard anche
+  // prima che arrivi il primo messaggio (es. click su X durante il greeting).
+  const hasEverOpened = useRef(false);
+  useEffect(() => { if (open) hasEverOpened.current = true; }, [open]);
+
   if (!mounted) return null;
-  if (!open && !hasHistory) return null;
+  if (!open && !hasHistory && !hasEverOpened.current) return null;
 
   return createPortal(
     <div style={{ position: "fixed", bottom: 12, right: 12, zIndex: 9999 }}>
-      {!open && hasHistory && (
-        <ClosedCard lastMessage={lastGoMessage} onClick={() => setOpen(true)} />
+      {!open && (hasHistory || hasEverOpened.current) && (
+        <ClosedCard lastMessage={lastGoMessage || "Go · resume"} onClick={() => setOpen(true)} />
       )}
       {open && (
         <FloatPanel

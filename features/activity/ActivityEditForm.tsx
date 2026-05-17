@@ -55,7 +55,6 @@ export type ActivityEditFormProps = {
   onCancel: () => void;
   /** Called when the user presses Delete (only rendered when isNew=false) */
   onDelete?: () => void;
-  /** Called when the user clicks "Ask Go" — opens the chat panel with the activity title */
   /** Called when the user clicks "Ask Go" — passes title and optional activityId */
   onAskGo?: (title: string, activityId?: string) => void;
   /**
@@ -102,6 +101,11 @@ const DEFAULT_CURRENCIES: Currency[] = [
 
 const ALL_HOURS = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
 const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+
+const DEFAULT_THUMB = "/media/day-default-banner.png";
+/** Width of the left image column — must match ImagePicker thumbnailWidth */
+const IMG_COL_W = 120;
+const IMG_COL_H = 93; // ~4:3 ratio
 
 /* ─────────────────────────────────────────────────────────────────
    ActivityEditForm
@@ -178,7 +182,6 @@ export function ActivityEditForm({
   /* ── Photo-search triggered on title blur ── */
   async function handleTitleBlur() {
     const trimmed = title.trim();
-    // Too short, or same title we already searched, or user dismissed this result
     if (trimmed.length < 3 || trimmed === lastSearchedTitle.current || trimmed === dismissedTitle) return;
 
     lastSearchedTitle.current = trimmed;
@@ -197,14 +200,13 @@ export function ActivityEditForm({
   /* ── Apply enriched place to the address field ── */
   function handleApplyPlace() {
     if (!enriched) return;
-    const resolved: PlaceResult = {
+    setPlace({
       formatted: enriched.address,
       name: enriched.name,
       placeId: enriched.placeId,
       lat: enriched.lat,
       lng: enriched.lng,
-    };
-    setPlace(resolved);
+    });
     setShowAddress(true);
   }
 
@@ -226,22 +228,26 @@ export function ActivityEditForm({
       const data = await res.json();
       if (data.description) setDescription(data.description);
     } catch {
-      // silent fail — user can type manually
+      // silent fail
     } finally {
       setDescLoading(false);
     }
   }
 
-  /* ── Show enrichment panel? ── */
-  const showEnrichment =
-    enriched !== null && title.trim() !== dismissedTitle;
+  /* ── Derived ── */
+  const showEnrichment = enriched !== null && title.trim() !== dismissedTitle;
+
+  // Image shown in the left column: uploaded hero > enriched photo > placeholder
+  const enrichedPhotoUrl = showEnrichment && enriched?.photoRefs[0]
+    ? `/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=400`
+    : undefined;
+  const displayImageUrl = heroImage || enrichedPhotoUrl || DEFAULT_THUMB;
 
   const hasTime = hour !== undefined && minute !== undefined;
   const activeTime = hasTime
     ? `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
     : undefined;
-  const currentPeriodHours =
-    periods.find((p) => p.id === period)?.hours ?? ALL_HOURS;
+  const currentPeriodHours = periods.find((p) => p.id === period)?.hours ?? ALL_HOURS;
 
   function handlePeriodCellClick(id: string) {
     if (id === period) {
@@ -266,12 +272,15 @@ export function ActivityEditForm({
   function handleSave() {
     onSave({
       title, description, status, period, hour, minute, place, budgetAmount, budgetCurrency,
-      // Persist enriched data only if the panel is currently visible (not dismissed)
       enrichedPlace: showEnrichment ? enriched : null,
-      // Strip cache-buster (?t=…) before persisting — added by ImagePicker onApply
       heroImage: heroImage ? heroImage.split("?")[0] || null : null,
     });
   }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Shared grid column definition
+  ───────────────────────────────────────────────────────────────── */
+  const gridCols = { gridTemplateColumns: `${IMG_COL_W}px 1fr` } as const;
 
   return (
     <form
@@ -283,12 +292,13 @@ export function ActivityEditForm({
         className,
       )}
     >
+      {/* Caret arrow */}
       <div
         aria-hidden
         className="absolute -top-[7px] left-[60px] w-3 h-3 bg-surface border-t border-l border-border-strong rotate-45 z-10"
       />
 
-      {/* Header */}
+      {/* ── Header (full width) ── */}
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <span className="text-[10px] uppercase tracking-[0.08em] font-medium text-ink-soft">
           {isNew ? t("titleNew") : t("titleEdit")}
@@ -303,287 +313,16 @@ export function ActivityEditForm({
         </button>
       </div>
 
-      {/* Title + status */}
-      <div className="flex gap-2.5 items-start">
-        <div className="flex-1 min-w-0">
-          <SoftField
-            value={title}
-            onChange={setTitle}
-            label={t("titleLabel")}
-            placeholder={t("titlePlaceholder")}
-            maxLength={80}
-            hideCounter
-            inputProps={{ autoFocus: true, onBlur: handleTitleBlur }}
-          />
-        </div>
-        <CyclePill value={status} onChange={setStatus} options={STATUS_OPTIONS} className="shrink-0 self-start mt-px" />
-      </div>
+      {/* ── ROW 1: image | title + status + enrichment panel ── */}
+      <div className="grid gap-x-4 items-start" style={gridCols}>
 
-      {/* ── Place enrichment panel ── */}
-      {(enrichLoading || showEnrichment) && (
-        <div
-          className={cn(
-            "rounded-[10px] border overflow-hidden transition-all duration-200",
-            showEnrichment
-              ? "border-border bg-surface-soft"
-              : "border-border/50 bg-surface-soft/50",
-          )}
-        >
-          {enrichLoading && !showEnrichment ? (
-            /* Loading shimmer */
-            <div className="flex gap-3 p-3 items-center">
-              <div className="w-12 h-12 rounded-lg bg-border/60 shrink-0 animate-pulse" />
-              <div className="flex-1 flex flex-col gap-1.5">
-                <div className="h-2.5 w-2/3 rounded bg-border/60 animate-pulse" />
-                <div className="h-2 w-1/2 rounded bg-border/40 animate-pulse" />
-              </div>
-            </div>
-          ) : showEnrichment && enriched ? (
-            <div className="flex gap-3 p-3">
-              {/* Thumbnail */}
-              {enriched.photoRefs[0] && (
-                <div className="shrink-0 w-[52px] h-[52px] rounded-lg overflow-hidden bg-surface">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=120`}
-                    alt={enriched.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                {/* Name + dismiss */}
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-[12px] font-semibold text-ink leading-snug truncate">
-                    {enriched.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setDismissedTitle(title.trim())}
-                    className="shrink-0 w-4 h-4 inline-flex items-center justify-center text-ink-faint hover:text-ink transition-colors mt-px"
-                    aria-label={t("dismiss")}
-                  >
-                    <IconX className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Address */}
-                <p className="text-[11px] text-ink-soft leading-snug line-clamp-1 mt-0.5">
-                  {enriched.address}
-                </p>
-
-                {/* Meta row: rating + open status */}
-                <div className="flex items-center gap-2.5 mt-1 flex-wrap">
-                  {enriched.rating !== undefined && (
-                    <span className="text-[10px] text-ink-soft">
-                      ★ <b className="text-ink font-semibold">{enriched.rating.toFixed(1)}</b>
-                      {enriched.userRatingsTotal !== undefined && (
-                        <span className="text-ink-faint"> ({enriched.userRatingsTotal.toLocaleString()})</span>
-                      )}
-                    </span>
-                  )}
-                  {enriched.openNow !== undefined && (
-                    <span
-                      className={cn(
-                        "text-[10px] font-medium",
-                        enriched.openNow ? "text-[#4a9e5c]" : "text-[#9a3015]",
-                      )}
-                    >
-                      {enriched.openNow ? t("openNow") : t("closedNow")}
-                    </span>
-                  )}
-                  {enriched.weekdayText && enriched.weekdayText.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowHours((v) => !v)}
-                      className="text-[10px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors"
-                    >
-                      {showHours ? t("hideHours") : t("seeHours")}
-                    </button>
-                  )}
-                </div>
-
-                {/* Expandable hours */}
-                {showHours && enriched.weekdayText && (
-                  <ul className="mt-2 flex flex-col gap-[2px]">
-                    {enriched.weekdayText.map((line) => (
-                      <li key={line} className="text-[10px] text-ink-soft leading-snug">
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {/* Apply address action */}
-                {!place && (
-                  <button
-                    type="button"
-                    onClick={handleApplyPlace}
-                    className="mt-1.5 text-[11px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
-                  >
-                    {t("useThisAddress")}
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {/* Description + "Go give me info" */}
-      <div className="flex flex-col gap-1.5">
-        <SoftField
-          multiline
-          value={description}
-          onChange={setDescription}
-          label={t("descriptionLabel")}
-          placeholder={t("descriptionPlaceholder")}
-          maxLength={240}
-          rows={2}
-        />
-        {/* Go actions — visible when title is long enough */}
-        {title.trim().length >= 2 && (
-          <div className={cn("flex items-center", onAskGo ? "justify-between" : "justify-end")}>
-            {onAskGo && (
-              <button
-                type="button"
-                onClick={() => onAskGo(title.trim(), effectiveEditId)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-all text-ink-soft hover:text-ink"
-              >
-                <IconMessage className="w-3.5 h-3.5 text-orange" />
-                {t("askGo")}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleGoGetInfo}
-              disabled={descLoading}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-[11px] font-medium transition-all",
-                "text-ink-soft hover:text-ink",
-                descLoading && "opacity-60 cursor-wait",
-              )}
-            >
-              <IconSparkles
-                className={cn(
-                  "w-3.5 h-3.5 text-orange transition-transform",
-                  descLoading && "animate-spin",
-                )}
-              />
-              {descLoading ? t("gettingInfo") : t("goGetInfo")}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Period + time picker */}
-      <div className="flex flex-col gap-2">
-        <div
-          role="group"
-          aria-label={t("selectPeriodAndTime")}
-          className="grid rounded-pill bg-surface border border-border p-0.5 gap-0.5"
-          style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
-        >
-          {periods.map((p) => {
-            const isActive = p.id === period;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handlePeriodCellClick(p.id)}
-                className={cn(
-                  "text-center rounded-pill cursor-pointer select-none transition-colors font-sans px-1 py-[5px]",
-                  isActive ? "bg-ink text-white" : "text-ink hover:bg-surface-soft",
-                )}
-              >
-                <div className="text-[10px] font-medium uppercase tracking-[0.08em]">{p.name}</div>
-                {isActive && activeTime ? (
-                  <div className="text-[13px] font-medium tabular-nums tracking-[-0.01em] leading-none mt-px">{activeTime}</div>
-                ) : (
-                  <div className={cn("text-[9px] tabular-nums tracking-[0.04em] mt-px", isActive ? "text-white/55" : "text-ink-faint")}>{p.range}</div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {pickerOpen && (
-          <div className="bg-surface border border-border rounded-[18px] p-3.5 flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
-                <div className="grid grid-cols-4 gap-1">
-                  {currentPeriodHours.map((h) => (
-                    <button key={h} type="button" onClick={() => setHour(h)}
-                      className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
-                        h === hour ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
-                      {String(h).padStart(2, "0")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
-                <div className="grid grid-cols-4 gap-1">
-                  {MINUTES.map((m) => (
-                    <button key={m} type="button"
-                      onClick={() => { setMinute(m); if (hour !== undefined) setPickerOpen(false); }}
-                      className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
-                        m === minute ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
-                      {String(m).padStart(2, "0")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            {hasTime && (
-              <div className="flex justify-end">
-                <button type="button" onClick={handleClearTime}
-                  className="text-[11px] text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-[#9a3015] hover:decoration-[#9a3015] transition-colors">
-                  {t("clearTime")}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Optional: address */}
-      {showAddress && (
-        <div className="flex items-center gap-1.5">
-          <div className="flex-1 min-w-0">
-            <AddressField value={place} onChange={setPlace} label={t("addressLabel")} placeholder={t("addressPlaceholder")} showMapButton />
-          </div>
-          <button type="button" onClick={() => { setPlace(null); setShowAddress(false); }} aria-label={t("removeAddress")}
-            className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
-            <IconX className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Optional: budget */}
-      {showBudget && (
-        <div className="flex items-center gap-1.5">
-          <div className="flex-1 min-w-0">
-            <BudgetInput amount={budgetAmount} onAmountChange={setBudgetAmount} currency={budgetCurrency} onCurrencyChange={setBudgetCurrency} currencies={currencies} label={t("budgetLabel")} />
-          </div>
-          <button type="button" onClick={() => { setBudgetAmount(undefined); setShowBudget(false); }} aria-label={t("removeBudget")}
-            className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
-            <IconX className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Image picker — only in edit mode (activityId known) */}
-      {activityId && tripId && (
-        <div className="flex items-center gap-3 py-1 border-t border-dashed border-border mt-0.5">
+        {/* LEFT: image */}
+        {activityId && tripId ? (
           <ImagePicker
-            currentImageUrl={heroImage || undefined}
-            currentLabel={heroImage ? "custom photo" : "activity image"}
-            thumbnailWidth={88}
-            thumbnailHeight={68}
+            currentImageUrl={displayImageUrl}
+            currentLabel={heroImage ? "custom photo" : (enriched ? enriched.name : "activity image")}
+            thumbnailWidth={IMG_COL_W}
+            thumbnailHeight={IMG_COL_H}
             compress={{ maxWidth: 1200, maxHeight: 900, quality: 0.88 }}
             upload={{
               bucket: "trip-media",
@@ -597,31 +336,301 @@ export function ActivityEditForm({
             }}
             onReset={() => setHeroImage("")}
           />
-          <span className="text-[11px] text-ink-soft leading-snug">
-            Photo shown<br />on the activity card
-          </span>
+        ) : (
+          /* Static thumbnail for new activities */
+          <div
+            className="rounded-[10px] overflow-hidden bg-cover bg-center shrink-0"
+            style={{
+              width: IMG_COL_W,
+              height: IMG_COL_H,
+              backgroundImage: `url(${displayImageUrl})`,
+            }}
+          >
+            {enrichLoading && !enriched && (
+              <div className="w-full h-full bg-border/30 animate-pulse" />
+            )}
+          </div>
+        )}
+
+        {/* RIGHT: title + status + enrichment meta */}
+        <div className="flex flex-col gap-2 min-w-0">
+
+          {/* Title + status */}
+          <div className="flex gap-2.5 items-start">
+            <div className="flex-1 min-w-0">
+              <SoftField
+                value={title}
+                onChange={setTitle}
+                label={t("titleLabel")}
+                placeholder={t("titlePlaceholder")}
+                maxLength={80}
+                hideCounter
+                inputProps={{ autoFocus: true, onBlur: handleTitleBlur }}
+              />
+            </div>
+            <CyclePill value={status} onChange={setStatus} options={STATUS_OPTIONS} className="shrink-0 self-start mt-px" />
+          </div>
+
+          {/* Enrichment meta — compact strip (no photo, shown in left col) */}
+          {(enrichLoading || showEnrichment) && (
+            <div className={cn(
+              "rounded-lg border text-[11px] transition-all duration-200",
+              showEnrichment ? "border-border bg-surface-soft" : "border-border/50 bg-surface-soft/50",
+            )}>
+              {enrichLoading && !showEnrichment ? (
+                /* Shimmer */
+                <div className="flex flex-col gap-1.5 p-2.5">
+                  <div className="h-2.5 w-3/4 rounded bg-border/60 animate-pulse" />
+                  <div className="h-2 w-1/2 rounded bg-border/40 animate-pulse" />
+                </div>
+              ) : showEnrichment && enriched ? (
+                <div className="p-2.5">
+                  {/* Name + dismiss */}
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="font-semibold text-ink leading-snug truncate">
+                      {enriched.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDismissedTitle(title.trim())}
+                      className="shrink-0 w-4 h-4 inline-flex items-center justify-center text-ink-faint hover:text-ink transition-colors mt-px"
+                      aria-label={t("dismiss")}
+                    >
+                      <IconX className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Address */}
+                  <p className="text-ink-soft leading-snug line-clamp-1 mt-0.5">
+                    {enriched.address}
+                  </p>
+
+                  {/* Meta: rating + open status + hours toggle */}
+                  <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+                    {enriched.rating !== undefined && (
+                      <span className="text-ink-soft">
+                        ★{" "}
+                        <b className="text-ink font-semibold">{enriched.rating.toFixed(1)}</b>
+                        {enriched.userRatingsTotal !== undefined && (
+                          <span className="text-ink-faint">
+                            {" "}({enriched.userRatingsTotal.toLocaleString()})
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    {enriched.openNow !== undefined && (
+                      <span className={cn("font-medium", enriched.openNow ? "text-[#4a9e5c]" : "text-[#9a3015]")}>
+                        {enriched.openNow ? t("openNow") : t("closedNow")}
+                      </span>
+                    )}
+                    {enriched.weekdayText && enriched.weekdayText.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowHours((v) => !v)}
+                        className="text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors"
+                      >
+                        {showHours ? t("hideHours") : t("seeHours")}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Expandable hours */}
+                  {showHours && enriched.weekdayText && (
+                    <ul className="mt-1.5 flex flex-col gap-[2px]">
+                      {enriched.weekdayText.map((line) => (
+                        <li key={line} className="text-ink-soft leading-snug">{line}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Use this address */}
+                  {!place && (
+                    <button
+                      type="button"
+                      onClick={handleApplyPlace}
+                      className="mt-1.5 text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
+                    >
+                      {t("useThisAddress")}
+                    </button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ROW 2: spacer | description + "Go give me info" ── */}
+      <div className="grid gap-x-4 items-start" style={gridCols}>
+        <div /> {/* left spacer */}
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <SoftField
+            multiline
+            value={description}
+            onChange={setDescription}
+            label={t("descriptionLabel")}
+            placeholder={t("descriptionPlaceholder")}
+            maxLength={240}
+            rows={2}
+          />
+          {title.trim().length >= 2 && (
+            <div className={cn("flex items-center", onAskGo ? "justify-between" : "justify-end")}>
+              {onAskGo && (
+                <button
+                  type="button"
+                  onClick={() => onAskGo(title.trim(), effectiveEditId)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-soft hover:text-ink transition-colors"
+                >
+                  <IconMessage className="w-3.5 h-3.5 text-orange" />
+                  {t("askGo")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleGoGetInfo}
+                disabled={descLoading}
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-soft hover:text-ink transition-colors",
+                  descLoading && "opacity-60 cursor-wait",
+                )}
+              >
+                <IconSparkles className={cn("w-3.5 h-3.5 text-orange", descLoading && "animate-spin")} />
+                {descLoading ? t("gettingInfo") : t("goGetInfo")}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ROW 3: spacer | period + time picker ── */}
+      <div className="grid gap-x-4 items-start" style={gridCols}>
+        <div /> {/* left spacer */}
+        <div className="flex flex-col gap-2 min-w-0">
+          <div
+            role="group"
+            aria-label={t("selectPeriodAndTime")}
+            className="grid rounded-pill bg-surface border border-border p-0.5 gap-0.5"
+            style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
+          >
+            {periods.map((p) => {
+              const isActive = p.id === period;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handlePeriodCellClick(p.id)}
+                  className={cn(
+                    "text-center rounded-pill cursor-pointer select-none transition-colors font-sans px-1 py-[5px]",
+                    isActive ? "bg-ink text-white" : "text-ink hover:bg-surface-soft",
+                  )}
+                >
+                  <div className="text-[10px] font-medium uppercase tracking-[0.08em]">{p.name}</div>
+                  {isActive && activeTime ? (
+                    <div className="text-[13px] font-medium tabular-nums tracking-[-0.01em] leading-none mt-px">{activeTime}</div>
+                  ) : (
+                    <div className={cn("text-[9px] tabular-nums tracking-[0.04em] mt-px", isActive ? "text-white/55" : "text-ink-faint")}>{p.range}</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {pickerOpen && (
+            <div className="bg-surface border border-border rounded-[18px] p-3.5 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {currentPeriodHours.map((h) => (
+                      <button key={h} type="button" onClick={() => setHour(h)}
+                        className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
+                          h === hour ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
+                        {String(h).padStart(2, "0")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {MINUTES.map((m) => (
+                      <button key={m} type="button"
+                        onClick={() => { setMinute(m); if (hour !== undefined) setPickerOpen(false); }}
+                        className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
+                          m === minute ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
+                        {String(m).padStart(2, "0")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {hasTime && (
+                <div className="flex justify-end">
+                  <button type="button" onClick={handleClearTime}
+                    className="text-[11px] text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-[#9a3015] hover:decoration-[#9a3015] transition-colors">
+                    {t("clearTime")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ROW 4 (conditional): spacer | address ── */}
+      {showAddress && (
+        <div className="grid gap-x-4 items-start" style={gridCols}>
+          <div />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex-1 min-w-0">
+              <AddressField value={place} onChange={setPlace} label={t("addressLabel")} placeholder={t("addressPlaceholder")} showMapButton />
+            </div>
+            <button type="button" onClick={() => { setPlace(null); setShowAddress(false); }} aria-label={t("removeAddress")}
+              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+              <IconX className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* "+ Add …" links */}
+      {/* ── ROW 5 (conditional): spacer | budget ── */}
+      {showBudget && (
+        <div className="grid gap-x-4 items-start" style={gridCols}>
+          <div />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex-1 min-w-0">
+              <BudgetInput amount={budgetAmount} onAmountChange={setBudgetAmount} currency={budgetCurrency} onCurrencyChange={setBudgetCurrency} currencies={currencies} label={t("budgetLabel")} />
+            </div>
+            <button type="button" onClick={() => { setBudgetAmount(undefined); setShowBudget(false); }} aria-label={t("removeBudget")}
+              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+              <IconX className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ROW 6 (conditional): spacer | "+ Add" links ── */}
       {(!showAddress || !showBudget) && (
-        <div className="flex flex-wrap gap-3.5 items-center py-1 border-t border-dashed border-border mt-0.5">
-          {!showAddress && (
-            <button type="button" onClick={() => setShowAddress(true)}
-              className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-              {t("addAddress")}
-            </button>
-          )}
-          {!showBudget && (
-            <button type="button" onClick={() => setShowBudget(true)}
-              className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-              {t("addBudget")}
-            </button>
-          )}
+        <div className="grid gap-x-4 items-start" style={gridCols}>
+          <div />
+          <div className="flex flex-wrap gap-3.5 items-center py-1 border-t border-dashed border-border">
+            {!showAddress && (
+              <button type="button" onClick={() => setShowAddress(true)}
+                className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                {t("addAddress")}
+              </button>
+            )}
+            {!showBudget && (
+              <button type="button" onClick={() => setShowBudget(true)}
+                className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                {t("addBudget")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Actions */}
+      {/* ── Footer (full width) ── */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-0.5">
         {!isNew && onDelete ? (
           confirmDelete ? (

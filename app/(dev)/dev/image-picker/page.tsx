@@ -265,52 +265,52 @@ export default function ImagePickerStories() {
               {
                 prop: "currentImageUrl",
                 type: "string",
-                default: "—",
+                defaultValue: "—",
                 description: "URL shown as thumbnail background.",
               },
               {
                 prop: "currentLabel",
                 type: "string",
-                default: '"custom image"',
+                defaultValue: '"custom image"',
                 description: 'Short label in the footer: "Current: …".',
               },
               {
                 prop: "thumbnailWidth",
                 type: "number",
-                default: "120",
+                defaultValue: "120",
                 description: "Thumbnail width in px.",
               },
               {
                 prop: "thumbnailHeight",
                 type: "number",
-                default: "68",
+                defaultValue: "68",
                 description: "Thumbnail height in px.",
               },
               {
                 prop: "compress",
                 type: "CompressOptions",
-                default: "—",
+                defaultValue: "—",
                 description:
                   "Client-side WebP compression. { maxWidth, maxHeight, quality? }. Omit to skip.",
               },
               {
                 prop: "upload",
                 type: "UploadOptions",
-                default: "—",
+                defaultValue: "—",
                 description:
                   "Supabase Storage config. { bucket, path }. Omit for local-only preview.",
               },
               {
                 prop: "onApply",
                 type: "(result: ImagePickerApplyResult) => void",
-                default: "—",
+                defaultValue: "—",
                 description:
                   "Fired on Apply. Result contains file, previewUrl, width, height and (if upload) storagePath + publicUrl.",
               },
               {
                 prop: "onReset",
                 type: "() => void",
-                default: "—",
+                defaultValue: "—",
                 description: 'Shows "Reset to default" when provided.',
               },
             ]}

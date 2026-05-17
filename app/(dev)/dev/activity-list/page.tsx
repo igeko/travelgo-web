@@ -7,7 +7,7 @@ import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { ActivityList } from "@/features/activity/ActivityList";
 import type { Activity } from "@/lib/dal/trips";
 
-const STUB: Pick<Activity, "trip_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng"> = {
+const STUB: Pick<Activity, "trip_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng" | "place_enriched"> = {
   trip_id: "trip-1",
   position: 0,
   icon: null,
@@ -15,6 +15,7 @@ const STUB: Pick<Activity, "trip_id" | "position" | "icon" | "url" | "location_p
   location_place_id: null,
   location_lat: null,
   location_lng: null,
+  place_enriched: null,
 };
 
 /* ── Sample data ── */

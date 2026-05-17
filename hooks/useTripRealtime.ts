@@ -101,8 +101,8 @@ export function useTripRealtime(
       .on("presence", { event: "join" }, ({ newPresences }) => {
         setViewers((prev) => {
           const incoming = newPresences
-            .filter((p) => (p as PresenceState).userId !== currentUser.id)
-            .map((p) => p as PresenceState)
+            .filter((p) => (p as unknown as PresenceState).userId !== currentUser.id)
+            .map((p) => p as unknown as PresenceState)
             .map((p) => ({
               userId: p.userId,
               fullName: p.fullName,
@@ -114,7 +114,7 @@ export function useTripRealtime(
         });
       })
       .on("presence", { event: "leave" }, ({ leftPresences }) => {
-        const leftIds = new Set(leftPresences.map((p) => (p as PresenceState).userId));
+        const leftIds = new Set(leftPresences.map((p) => (p as unknown as PresenceState).userId));
         setViewers((prev) => prev.filter((v) => !leftIds.has(v.userId)));
       });
 

@@ -9,14 +9,12 @@ const SECTIONS = [
     title: "Brief tecnici",
     description: "Documentazione architetturale — decisioni di design, setup, integrazioni.",
     icon: "📄",
-    badge: null,
   },
   {
     href: "/design/",
     title: "Design prototypes",
     description: "Prototipi HTML statici · design system, componenti, flow principali.",
     icon: "🎨",
-    badge: null,
     external: true,
   },
   {
@@ -24,7 +22,22 @@ const SECTIONS = [
     title: "API docs",
     description: "Specifica OpenAPI 3.0 dei route interni dell'app.",
     icon: "⚡",
-    badge: null,
+  },
+];
+
+/* ─── Dashboard esterne ──────────────────────────────────────── */
+const DASHBOARDS = [
+  {
+    href: "https://supabase.com/dashboard/project/nxyeelvvzserzlxzente",
+    title: "Supabase",
+    description: "Database, auth, storage, edge functions.",
+    icon: "🗄️",
+  },
+  {
+    href: "https://vercel.com/enrico-delgrecos-projects",
+    title: "Vercel",
+    description: "Deploy, preview, env vars, logs.",
+    icon: "▲",
   },
 ];
 
@@ -73,6 +86,30 @@ export default function DevIndex() {
               </div>
               <p className="mt-1 text-sm text-ink-soft leading-snug">{s.description}</p>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Dashboard esterne ── */}
+      <section>
+        <h2 className="text-[10px] font-medium tracking-[0.12em] uppercase text-ink-faint mb-4">Dashboard</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {DASHBOARDS.map((d) => (
+            <a
+              key={d.href}
+              href={d.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group rounded-xl border border-border bg-surface p-5 hover:border-border-strong hover:shadow-sm transition-all no-underline flex items-start gap-4"
+            >
+              <span className="text-2xl shrink-0">{d.icon}</span>
+              <div>
+                <div className="font-medium text-ink group-hover:text-orange transition-colors text-[15px]">
+                  {d.title} <span className="text-ink-faint text-[11px]">↗</span>
+                </div>
+                <p className="mt-0.5 text-sm text-ink-soft leading-snug">{d.description}</p>
+              </div>
+            </a>
           ))}
         </div>
       </section>
