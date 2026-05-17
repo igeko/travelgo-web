@@ -2,16 +2,11 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { IconBug, IconBulb, IconCheck, IconMessage, IconMessageReport, IconSend, IconX } from "@/components/ui/icons";
 
 type NoteType = "bug" | "suggestion" | "other";
-
-const TYPES: { id: NoteType; label: string; icon: React.ReactNode }[] = [
-  { id: "bug",        label: "Bug",          icon: <IconBug size={20} /> },
-  { id: "suggestion", label: "Suggerimento",  icon: <IconBulb size={20} /> },
-  { id: "other",      label: "Altro",         icon: <IconMessage size={20} /> },
-];
 
 type Props = {
   tripId?: string;
@@ -19,11 +14,25 @@ type Props = {
 };
 
 export function FeedbackModal({ tripId, onClose }: Props) {
+  const t = useTranslations("FeedbackModal");
   const pathname = usePathname();
   const [type, setType] = useState<NoteType>("suggestion");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+
+  const TYPES: { id: NoteType; label: string; icon: React.ReactNode }[] = [
+    { id: "bug",        label: t("types.bug"),        icon: <IconBug size={20} /> },
+    { id: "suggestion", label: t("types.suggestion"), icon: <IconBulb size={20} /> },
+    { id: "other",      label: t("types.other"),      icon: <IconMessage size={20} /> },
+  ];
+
+  const placeholder =
+    type === "bug"
+      ? t("placeholders.bug")
+      : type === "suggestion"
+      ? t("placeholders.suggestion")
+      : t("placeholders.other");
 
   async function handleSubmit() {
     if (!note.trim()) return;
@@ -52,7 +61,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
           <IconMessageReport size={16} className="text-ink-soft shrink-0" />
-          <span className="text-[13px] font-medium text-ink flex-1">Lascia un feedback</span>
+          <span className="text-[13px] font-medium text-ink flex-1">{t("title")}</span>
           <button
             type="button"
             onClick={onClose}
@@ -67,28 +76,28 @@ export function FeedbackModal({ tripId, onClose }: Props) {
             <div className="w-10 h-10 rounded-full bg-ink flex items-center justify-center">
               <IconCheck size={20} className="text-white" />
             </div>
-            <p className="text-[14px] font-medium text-ink mt-1">Grazie!</p>
-            <p className="text-[12px] text-ink-soft">Il tuo feedback è stato salvato.</p>
+            <p className="text-[14px] font-medium text-ink mt-1">{t("thankYou")}</p>
+            <p className="text-[12px] text-ink-soft">{t("saved")}</p>
           </div>
         ) : (
           <div className="px-5 py-4 flex flex-col gap-4">
 
             {/* Tipo */}
             <div className="flex gap-2">
-              {TYPES.map((t) => (
+              {TYPES.map((item) => (
                 <button
-                  key={t.id}
+                  key={item.id}
                   type="button"
-                  onClick={() => setType(t.id)}
+                  onClick={() => setType(item.id)}
                   className={cn(
                     "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border text-[11px] font-medium transition-colors cursor-pointer",
-                    type === t.id
+                    type === item.id
                       ? "border-ink bg-ink text-white"
                       : "border-border text-ink-soft hover:border-border-strong hover:text-ink",
                   )}
                 >
-                  {t.icon}
-                  {t.label}
+                  {item.icon}
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -98,13 +107,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={4}
-              placeholder={
-                type === "bug"
-                  ? "Descrivi il problema — cosa hai fatto e cosa è successo…"
-                  : type === "suggestion"
-                  ? "Che funzionalità vorresti vedere?"
-                  : "Scrivi qui il tuo commento…"
-              }
+              placeholder={placeholder}
               className={cn(
                 "w-full resize-none rounded-xl bg-bg border border-border px-3.5 py-2.5",
                 "text-[13px] text-ink placeholder:text-ink-faint font-sans",
@@ -116,7 +119,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
 
             {/* Pagina auto-catturata */}
             <div className="text-[11px] text-ink-faint">
-              Pagina: <span className="font-mono text-ink-soft">{pathname}</span>
+              {t("page")} <span className="font-mono text-ink-soft">{pathname}</span>
             </div>
 
             {/* Footer */}
@@ -126,7 +129,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
                 onClick={onClose}
                 className="text-[12px] text-ink-soft hover:text-ink underline decoration-ink/20 px-2 py-1.5 transition-colors"
               >
-                Annulla
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -140,7 +143,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
                 )}
               >
                 <IconSend size={13} />
-                {saving ? "Salvataggio…" : "Invia"}
+                {saving ? t("sending") : t("send")}
               </button>
             </div>
 

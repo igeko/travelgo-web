@@ -1,32 +1,32 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { SlotStation } from "./SlotStation";
 import type { Activity } from "@/lib/dal/trips";
-
-const SLOT_LABELS: Record<string, string> = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-  night: "Night",
-};
 
 const SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
 
 type Props = {
   activities: Activity[];
   editMode?: boolean;
+  tripId?: string;
   onActivitySave?: (id: string, data: ActivityData) => void;
   onActivityDelete?: (id: string) => void;
+  onAskGo?: (title: string, activityId?: string) => void;
 };
 
 export function ActivityList({
   activities,
   editMode = false,
+  tripId,
   onActivitySave,
   onActivityDelete,
+  onAskGo,
 }: Props) {
+  const t = useTranslations("ActivityList");
+
   function renderRow(a: Activity) {
     return (
       <ActivityRow
@@ -40,6 +40,8 @@ export function ActivityList({
         status={a.budget_paid ? "paid" : undefined}
         href={a.url ?? "#"}
         editMode={editMode}
+        activityId={a.id}
+        tripId={tripId}
         initialData={{
           title: a.title,
           description: a.short_desc ?? "",
@@ -58,9 +60,13 @@ export function ActivityList({
           budgetAmount: a.budget_amount ?? undefined,
           budgetCurrency: a.budget_currency ?? "EUR",
           status: a.budget_paid ? "paid" : null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          enrichedPlace: (a.place_enriched as any) ?? null,
+          heroImage: a.hero_image ?? null,
         }}
         onSave={(data) => onActivitySave?.(a.id, data)}
         onDelete={() => onActivityDelete?.(a.id)}
+        onAskGo={onAskGo}
       />
     );
   }
@@ -68,7 +74,7 @@ export function ActivityList({
   if (activities.length === 0) {
     return (
       <p className="text-ink-soft text-[14px] text-center py-12">
-        No activities for this day.
+        {t("empty")}
       </p>
     );
   }
@@ -80,14 +86,14 @@ export function ActivityList({
         if (!acts.length) return null;
         return (
           <div key={slot}>
-            <SlotStation label={SLOT_LABELS[slot]} count={acts.length} />
+            <SlotStation label={t(`slots.${slot}`)} count={acts.length} />
             {acts.map(renderRow)}
           </div>
         );
       })}
       {activities.filter((a) => !a.slot).map((a) => (
         <div key={`unslotted-${a.id}`}>
-          <SlotStation label="Attività" count={1} />
+          <SlotStation label={t("slots.unslotted")} count={1} />
           {renderRow(a)}
         </div>
       ))}

@@ -1,0 +1,188 @@
+{
+  "AppHeader": {
+    "nav": {
+      "myTrips": "My trips",
+      "explore": "Explore",
+      "guides": "Guides",
+      "budget": "Budget"
+    },
+    "tabs": {
+      "trip": "Trip",
+      "dayByDay": "Day by day",
+      "map": "Map",
+      "budget": "Budget",
+      "notes": "Notes"
+    },
+    "greeting": "Hi, {name}",
+    "profileLabel": "Your profile",
+    "signIn": "Sign in",
+    "menu": "Menu",
+    "editMode": "Editing",
+    "viewMode": "View",
+    "enableEditMode": "Switch to edit mode",
+    "disableEditMode": "Switch to view mode",
+    "debug": "Debug",
+    "enableDebug": "Enable debug mode",
+    "disableDebug": "Disable debug mode",
+    "feedback": "Feedback",
+    "leaveFeedback": "Leave feedback",
+    "tripActions": "Trip actions",
+    "allFeedback": "View all feedback",
+    "tripSection": "Trip · {name}"
+  },
+  "FeedbackModal": {
+    "title": "Leave feedback",
+    "types": {
+      "bug": "Bug",
+      "suggestion": "Suggestion",
+      "other": "Other"
+    },
+    "placeholders": {
+      "bug": "Describe the problem — what did you do and what happened…",
+      "suggestion": "What feature would you like to see?",
+      "other": "Write your comment here…"
+    },
+    "page": "Page:",
+    "cancel": "Cancel",
+    "send": "Send",
+    "sending": "Sending…",
+    "thankYou": "Thank you!",
+    "saved": "Your feedback has been saved."
+  },
+  "TripShell": {
+    "daysCount": "{count, plural, one {# day} other {# days}}",
+    "empty": {
+      "body": "The trip has been created but you haven't added any dates yet.",
+      "hint": "Add a date range to generate the day-by-day itinerary.",
+      "comingSoon": "Feature to edit trip dates coming soon."
+    }
+  },
+  "TripDayView": {
+    "sidebar": {
+      "itinerary": "Itinerary",
+      "dayByDay": "Day by day",
+      "summary": "{count, plural, one {# day} other {# days}} · {start} → {end}"
+    },
+    "day": {
+      "eyebrow": "Day {number}",
+      "activityCount": "{count, plural, one {# activity} other {# activities}}"
+    },
+    "go": {
+      "hiLabel": "Hi from Go",
+      "wantToFind": "Want to find",
+      "rotating0": "a place to visit?",
+      "rotating1": "a stay for tonight?",
+      "rotating2": "a food spot?",
+      "rotating3": "an idea?",
+      "tagline": "Two words from you, a handful of ideas from me.",
+      "askMe": "Ask me",
+      "letsGo": "Let's go…",
+      "ariaLabel": "Ask Go for trip suggestions"
+    },
+    "shortcuts": {
+      "title": "Shortcuts",
+      "editDay": "Edit day",
+      "editLodging": "Edit lodging",
+      "addActivity": "Add activity",
+      "closePanel": "Close panel"
+    },
+    "nextDay": "Next · Day {number} · {dow}"
+  },
+  "HeroBanner": {
+    "editDay": "Edit Day",
+    "prev": "Previous",
+    "next": "Next",
+    "hero": {
+      "formTitle": "Day description",
+      "zone": "Zone",
+      "zonePlaceholder": "e.g. Mount Fuji",
+      "location": "Location / Main activity",
+      "locationPlaceholder": "A few words on the day's activity",
+      "summary": "Summary",
+      "summaryPlaceholder": "A short narrative sentence about the day",
+      "practicalNote": "Practical note",
+      "practicalNotePlaceholder": "Useful reminder (what to bring, things to watch out for)",
+      "change": "Change"
+    },
+    "lodging": {
+      "formTitle": "Edit lodging",
+      "name": "Accommodation name",
+      "namePlaceholder": "Accommodation name",
+      "address": "Address",
+      "addressPlaceholder": "Street, city",
+      "bookingLink": "Booking link",
+      "bookingLinkPlaceholder": "Booking URL or property website",
+      "budgetPerNight": "Budget / night",
+      "addAddress": "+ Add address",
+      "addLink": "+ Add link",
+      "addBudget": "+ Add budget",
+      "remove": "Remove lodging",
+      "removeAddress": "Remove address",
+      "removeLink": "Remove link",
+      "removeBudget": "Remove budget",
+      "empty": "No stay set for this night",
+      "addStay": "Add stay",
+      "open": "Open ↗",
+      "editTitle": "Edit lodging"
+    },
+    "pressEnterToSave": "Press Enter to save",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "Itinerary": {
+    "title": "Day itinerary",
+    "hideMap": "Hide map",
+    "showMap": "Show map",
+    "addActivity": "Add activity"
+  },
+  "ActivityList": {
+    "empty": "No activities for this day.",
+    "slots": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "night": "Night",
+      "unslotted": "Activity"
+    }
+  },
+  "ActivityForm": {
+    "titleNew": "New activity",
+    "titleEdit": "Edit activity",
+    "closeWithoutSaving": "Close without saving",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Activity title",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Short description (optional)",
+    "selectPeriodAndTime": "Select period and time",
+    "hour": "Hour",
+    "minutes": "Minutes",
+    "clearTime": "clear time",
+    "addressLabel": "Address",
+    "addressPlaceholder": "Start typing for suggestions…",
+    "removeAddress": "Remove address",
+    "budgetLabel": "Budget",
+    "removeBudget": "Remove budget",
+    "addAddress": "+ Add address",
+    "addBudget": "+ Add budget",
+    "areYouSure": "Sure?",
+    "deleteActivity": "Delete activity",
+    "delete": "Delete",
+    "pressEnterToSave": "Press Enter to save",
+    "cancel": "Cancel",
+    "createActivity": "Create activity",
+    "saveActivity": "Save activity",
+    "status": "Status",
+    "statusTodo": "To book",
+    "statusBooked": "Booked",
+    "statusPaid": "Paid",
+    "openNow": "Open now",
+    "closedNow": "Closed now",
+    "seeHours": "See hours",
+    "hideHours": "Hide hours",
+    "useThisAddress": "+ Use this address",
+    "askGo": "Ask Go",
+    "goGetInfo": "Go give me info",
+    "gettingInfo": "Getting info…",
+    "dismiss": "Dismiss"
+  }
+}

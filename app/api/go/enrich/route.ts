@@ -10,7 +10,9 @@ import OpenAI from "openai";
  * Body: { title, category, location, why, tripContext? }
  */
 
-const openai = new OpenAI();
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const ENRICH_SYSTEM_PROMPT = `You are Go, TravelGo's travel assistant.
 The user has asked for a deeper description of a specific place or activity.
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const system = ENRICH_SYSTEM_PROMPT;
 
-  const stream = await openai.chat.completions.create({
+  const stream = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     stream: true,
     messages: [

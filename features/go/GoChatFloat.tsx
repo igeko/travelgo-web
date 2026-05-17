@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { IconArrowUp, IconChevronDown, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import { IconArrowsMaximize, IconArrowsMinimize, IconExternalLink, IconHeart, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
+import { IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { imageSearch } from "@/features/media/imageSearch";
@@ -172,12 +172,16 @@ function SuggestionCard({
   onToggleSelect,
   sizeMode,
   tripContext,
+  activeEditMatch,
+  onApplyToActivity,
 }: {
   suggestion: GoSuggestion;
   selected: boolean;
   onToggleSelect: () => void;
   sizeMode: SizeMode;
   tripContext?: string;
+  activeEditMatch?: boolean;
+  onApplyToActivity?: (data: { title: string; description: string }) => void;
 }) {
   const [open, setOpen] = useState(suggestion.autoExpand ?? false);
 
@@ -518,7 +522,7 @@ function SuggestionCard({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2" style={{ borderTop: "1px dashed rgba(13,44,61,0.08)" }}>
+          <div className="flex gap-2 pt-2 flex-wrap" style={{ borderTop: "1px dashed rgba(13,44,61,0.08)" }}>
             {place?.website && (
               <Button variant="outline" size="sm" iconOnly={false} tone="neutral" asChild>
                 <a href={place.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -526,12 +530,31 @@ function SuggestionCard({
                 </a>
               </Button>
             )}
-            <Button variant="outline" size="sm" iconOnly={false} tone="neutral">
-              <IconHeart size={12} /> Wishlist
+            <Button variant="outline" size="sm" iconOnly tone="neutral" aria-label="Wishlist">
+              <IconBookmark size={12} />
             </Button>
             <Button variant="solid" size="sm" iconOnly={false} tone="neutral" className="flex-1">
               <IconPlus size={12} /> Add to day
             </Button>
+            {activeEditMatch && onApplyToActivity && (
+              <Button
+                variant="solid"
+                size="sm"
+                iconOnly={false}
+                tone="neutral"
+                className="w-full bg-orange/10 text-orange border border-orange/30 hover:bg-orange/20"
+                style={{ background: "rgba(244,123,58,0.10)", color: "var(--color-orange)", borderColor: "rgba(244,123,58,0.30)" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApplyToActivity({
+                    title: suggestion.title,
+                    description: place?.editorialSummary ?? suggestion.why,
+                  });
+                }}
+              >
+                Applica all&apos;attività
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -548,11 +571,15 @@ function SuggestionsBlock({
   sizeMode,
   tripContext,
   onSelectionChange,
+  activeEditMatch,
+  onApplyToActivity,
 }: {
   suggestions: GoSuggestion[];
   sizeMode: SizeMode;
   tripContext?: string;
   onSelectionChange?: (s: GoSuggestion | null) => void;
+  activeEditMatch?: boolean;
+  onApplyToActivity?: (data: { title: string; description: string }) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -593,6 +620,8 @@ function SuggestionsBlock({
           onToggleSelect={() => toggleSelect(s.id)}
           sizeMode={sizeMode}
           tripContext={tripContext}
+          activeEditMatch={activeEditMatch}
+          onApplyToActivity={onApplyToActivity}
         />
       ))}
     </div>
@@ -663,9 +692,11 @@ type FloatPanelProps = {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
   tripContext?: string;
+  activeEditMatch?: boolean;
+  onApplyToActivity?: (data: { title: string; description: string }) => void;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity }: FloatPanelProps) {
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -822,6 +853,8 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                   sizeMode={sizeMode}
                   tripContext={tripContext}
                   onSelectionChange={onSelectionChange}
+                  activeEditMatch={activeEditMatch}
+                  onApplyToActivity={onApplyToActivity}
                 />
               )}
             </div>
@@ -922,9 +955,17 @@ export type GoChatFloatProps = {
   onDebugCall?: GoChatDebugFn;
   open?: boolean;
   onClose?: () => void;
+  /** Messaggio da inviare appena il panel è pronto (sopprime il greeting). */
+  pendingMessage?: string;
+  /** Chiamata quando pendingMessage è stato acquisito internamente. */
+  onPendingMessageConsumed?: () => void;
+  /** true quando c'è un editor aperto che corrisponde all'attività cercata. */
+  activeEditMatch?: boolean;
+  /** Callback per applicare i dati della suggestion alla form attiva. */
+  onApplyToActivity?: (data: { title: string; description: string }) => void;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose }: GoChatFloatProps) {
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -935,7 +976,9 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose 
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const greetingSent = useRef(false);
+  const greetingSent  = useRef(false);
+  /** Buffer interno per il messaggio pendente — evita race con lo streaming. */
+  const pendingRef    = useRef<string | null>(null);
 
   useEffect(() => { if (openProp !== undefined) setOpen(openProp); }, [openProp]);
   useEffect(() => { setMounted(true); }, []);
@@ -1066,16 +1109,38 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose 
 
   const handleClose = useCallback(() => { setOpen(false); onClose?.(); }, [onClose]);
 
-  // Greeting alla prima apertura
+  // Effect 1: acquisisce il pendingMessage dal parent e sopprime il greeting
+  useEffect(() => {
+    if (!pendingMessage) return;
+    pendingRef.current = pendingMessage;
+    greetingSent.current = true;          // il messaggio specifico prende il posto del saluto
+    onPendingMessageConsumed?.();         // libera il parent subito
+  }, [pendingMessage, onPendingMessageConsumed]);
+
+  // Effect 2: invia il messaggio quando il panel è aperto e Go non sta streamando
+  useEffect(() => {
+    if (!open || loading || !pendingRef.current) return;
+    const msg = pendingRef.current;
+    pendingRef.current = null;
+    void send(msg, false, false);
+  }, [open, loading, send]);
+
+  // Greeting contestuale alla prima apertura — parte solo quando tripContext è pronto
   useEffect(() => {
     if (!open || greetingSent.current) return;
+    // Aspetta il contesto: se non è ancora arrivato, questo effect si riprocessa
+    // quando tripContext cambia (è nelle deps)
+    if (!tripContext) return;
     greetingSent.current = true;
     void send(
-      "Greet the user with one warm sentence mentioning the destination and trip vibe, then immediately suggest 2-3 must-do activities or places tailored to their trip context.",
-      true,
-      true, // forceSuggestions → JSON mode
+      "Apri la conversazione: saluta l'utente in modo caldo e breve (una frase), " +
+      "menziona la destinazione del viaggio e, se disponibile, il giorno o la sezione che sta visualizzando. " +
+      "Poi proponi 2-3 modi concisi in cui puoi aiutare in questo momento. " +
+      "Tono caldo, conciso. Niente elenchi numerati — usa frasi fluide.",
+      true,  // silent: non mostra il messaggio utente nella chat
+      false, // no forceSuggestions: risposta testuale, non cards
     );
-  }, [open, send]);
+  }, [open, tripContext, send]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1107,6 +1172,8 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose 
           inputRef={inputRef}
           bottomRef={bottomRef}
           tripContext={tripContext}
+          activeEditMatch={activeEditMatch}
+          onApplyToActivity={onApplyToActivity}
         />
       )}
     </div>,

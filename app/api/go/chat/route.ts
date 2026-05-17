@@ -11,9 +11,12 @@
  */
 
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { runDeepDive } from "../_deepDive";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 /* ─────────────────────────────────────────────────────────────────
    System prompts
@@ -88,13 +91,13 @@ async function classifyIntent(
     ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${selectedTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${selectedTitle}" }.`
     : CLASSIFIER_SYSTEM;
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     max_tokens: 60,
     messages: [
       { role: "system", content: systemWithContext },
-      ...recent as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+      ...recent as ChatCompletionMessageParam[],
     ],
   });
 
@@ -172,7 +175,7 @@ export async function POST(req: Request): Promise<Response> {
       : SUGGESTIONS_SYSTEM_PROMPT;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         response_format: { type: "json_object" },
         messages: [
@@ -198,7 +201,7 @@ export async function POST(req: Request): Promise<Response> {
     ? `${BASE_SYSTEM_PROMPT}\n\n${tripContext}`
     : BASE_SYSTEM_PROMPT;
 
-  const stream = await openai.chat.completions.create({
+  const stream = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     stream: true,
     messages: [

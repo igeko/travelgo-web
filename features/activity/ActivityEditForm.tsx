@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { SoftField } from "@/components/ui/SoftField";
@@ -8,8 +9,10 @@ import { CyclePill, type CycleOption } from "@/components/ui/CyclePill";
 import { PeriodBar, DEFAULT_PERIODS, type Period } from "@/components/ui/PeriodBar";
 import { BudgetInput, type Currency } from "@/components/ui/BudgetInput";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
-import { IconTrash, IconX } from "@/components/ui/icons";
+import { ImagePicker } from "@/components/ui/ImagePicker";
+import { IconMessage, IconSparkles, IconTrash, IconX } from "@/components/ui/icons";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
+import { useTripGo } from "@/features/go/TripGoContext";
 
 /* ─────────────────────────────────────────────────────────────────
    Types
@@ -31,6 +34,10 @@ export type ActivityData = {
   budgetAmount: number | undefined;
   /** Budget currency code */
   budgetCurrency: string;
+  /** Cached place enrichment — persisted to DB and restored on next open */
+  enrichedPlace?: PlaceEnriched | null;
+  /** Hero image URL for the activity card thumbnail */
+  heroImage?: string | null;
 };
 
 export type ActivityEditFormProps = {
@@ -48,19 +55,44 @@ export type ActivityEditFormProps = {
   onCancel: () => void;
   /** Called when the user presses Delete (only rendered when isNew=false) */
   onDelete?: () => void;
+  /** Called when the user clicks "Ask Go" — opens the chat panel with the activity title */
+  /** Called when the user clicks "Ask Go" — passes title and optional activityId */
+  onAskGo?: (title: string, activityId?: string) => void;
+  /**
+   * Activity ID — when provided (edit mode), the ImagePicker is shown and
+   * uploads to trips/{tripId}/activities/{activityId}/hero.webp.
+   */
+  activityId?: string;
+  /** Trip ID — required alongside activityId for the storage path. */
+  tripId?: string;
   className?: string;
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   Place enrichment types (mirrors /api/places/photo-search)
+───────────────────────────────────────────────────────────────── */
+
+type PlaceEnriched = {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating?: number;
+  userRatingsTotal?: number;
+  openNow?: boolean;
+  weekdayText?: string[];
+  website?: string;
+  types?: string[];
+  editorialSummary?: string;
+  photoRefs: string[];
 };
 
 /* ─────────────────────────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────────────────────────── */
 
-const STATUS_OPTIONS: CycleOption<ActivityStatus | null>[] = [
-  { value: null,     label: "Status",      dotColor: "var(--color-ink-faint)" },
-  { value: "todo",   label: "To book",     dotColor: "#e24b4a" },
-  { value: "booked", label: "Booked",      dotColor: "#ef9f27" },
-  { value: "paid",   label: "Paid",        dotColor: "#97c459" },
-];
+// STATUS_OPTIONS is defined inside the component to use translations
 
 const DEFAULT_CURRENCIES: Currency[] = [
   { code: "EUR", symbol: "€" },
@@ -83,8 +115,20 @@ export function ActivityEditForm({
   onSave,
   onCancel,
   onDelete,
+  onAskGo,
+  activityId,
+  tripId,
   className,
 }: ActivityEditFormProps) {
+  const t = useTranslations("ActivityForm");
+
+  const STATUS_OPTIONS: CycleOption<ActivityStatus | null>[] = [
+    { value: null,     label: t("status"),       dotColor: "var(--color-ink-faint)" },
+    { value: "todo",   label: t("statusTodo"),   dotColor: "#e24b4a" },
+    { value: "booked", label: t("statusBooked"), dotColor: "#ef9f27" },
+    { value: "paid",   label: t("statusPaid"),   dotColor: "#97c459" },
+  ];
+
   const [title, setTitle] = useState(initialData?.title ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [status, setStatus] = useState<ActivityStatus | null>(initialData?.status ?? null);
@@ -99,8 +143,98 @@ export function ActivityEditForm({
   const [showBudget, setShowBudget] = useState(
     initialData?.budgetAmount !== undefined && initialData.budgetAmount > 0
   );
+  const [heroImage, setHeroImage] = useState<string>(initialData?.heroImage ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  /* ── Place enrichment state ── */
+  const [enriched, setEnriched] = useState<PlaceEnriched | null>(
+    (initialData?.enrichedPlace as PlaceEnriched | null | undefined) ?? null
+  );
+  const [enrichLoading, setEnrichLoading] = useState(false);
+  const [dismissedTitle, setDismissedTitle] = useState<string | null>(null);
+  const [showHours, setShowHours] = useState(false);
+  /** Tracks the last title we searched for — avoids re-fetching on repeated blurs */
+  const lastSearchedTitle = useRef<string | null>(
+    initialData?.enrichedPlace ? (initialData.title ?? null) : null
+  );
+
+  /* ── Register this form as the active edit target in Go context ── */
+  const { registerActiveEdit, unregisterActiveEdit } = useTripGo();
+  const effectiveEditId = activityId ?? (isNew ? "new" : undefined);
+  useEffect(() => {
+    if (!effectiveEditId) return;
+    registerActiveEdit(effectiveEditId, ({ title: t, description: d }) => {
+      if (t) setTitle(t);
+      if (d) setDescription(d);
+    });
+    return () => unregisterActiveEdit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveEditId]);
+
+  /* ── AI describe state ── */
+  const [descLoading, setDescLoading] = useState(false);
+
+  /* ── Photo-search triggered on title blur ── */
+  async function handleTitleBlur() {
+    const trimmed = title.trim();
+    // Too short, or same title we already searched, or user dismissed this result
+    if (trimmed.length < 3 || trimmed === lastSearchedTitle.current || trimmed === dismissedTitle) return;
+
+    lastSearchedTitle.current = trimmed;
+    setEnrichLoading(true);
+    try {
+      const res = await fetch(`/api/places/photo-search?q=${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      setEnriched(data.place ?? null);
+    } catch {
+      setEnriched(null);
+    } finally {
+      setEnrichLoading(false);
+    }
+  }
+
+  /* ── Apply enriched place to the address field ── */
+  function handleApplyPlace() {
+    if (!enriched) return;
+    const resolved: PlaceResult = {
+      formatted: enriched.address,
+      name: enriched.name,
+      placeId: enriched.placeId,
+      lat: enriched.lat,
+      lng: enriched.lng,
+    };
+    setPlace(resolved);
+    setShowAddress(true);
+  }
+
+  /* ── "Go give me info" — AI description ── */
+  async function handleGoGetInfo() {
+    if (!title.trim() || descLoading) return;
+    setDescLoading(true);
+    try {
+      const res = await fetch("/api/ai/describe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: title.trim(),
+          address: enriched?.address ?? place?.formatted,
+          types: enriched?.types,
+          editorialSummary: enriched?.editorialSummary,
+        }),
+      });
+      const data = await res.json();
+      if (data.description) setDescription(data.description);
+    } catch {
+      // silent fail — user can type manually
+    } finally {
+      setDescLoading(false);
+    }
+  }
+
+  /* ── Show enrichment panel? ── */
+  const showEnrichment =
+    enriched !== null && title.trim() !== dismissedTitle;
 
   const hasTime = hour !== undefined && minute !== undefined;
   const activeTime = hasTime
@@ -130,7 +264,13 @@ export function ActivityEditForm({
   }
 
   function handleSave() {
-    onSave({ title, description, status, period, hour, minute, place, budgetAmount, budgetCurrency });
+    onSave({
+      title, description, status, period, hour, minute, place, budgetAmount, budgetCurrency,
+      // Persist enriched data only if the panel is currently visible (not dismissed)
+      enrichedPlace: showEnrichment ? enriched : null,
+      // Strip cache-buster (?t=…) before persisting — added by ImagePicker onApply
+      heroImage: heroImage ? heroImage.split("?")[0] || null : null,
+    });
   }
 
   return (
@@ -151,13 +291,13 @@ export function ActivityEditForm({
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <span className="text-[10px] uppercase tracking-[0.08em] font-medium text-ink-soft">
-          {isNew ? "New activity" : "Edit activity"}
+          {isNew ? t("titleNew") : t("titleEdit")}
         </span>
         <button
           type="button"
           onClick={onCancel}
           className="w-6 h-6 rounded-full inline-flex items-center justify-center text-ink-faint hover:bg-surface-soft hover:text-ink transition-colors"
-          aria-label="Close without saving"
+          aria-label={t("closeWithoutSaving")}
         >
           <IconX className="w-3.5 h-3.5" />
         </button>
@@ -166,19 +306,183 @@ export function ActivityEditForm({
       {/* Title + status */}
       <div className="flex gap-2.5 items-start">
         <div className="flex-1 min-w-0">
-          <SoftField value={title} onChange={setTitle} label="Title" placeholder="Activity title" maxLength={80} hideCounter inputProps={{ autoFocus: true }} />
+          <SoftField
+            value={title}
+            onChange={setTitle}
+            label={t("titleLabel")}
+            placeholder={t("titlePlaceholder")}
+            maxLength={80}
+            hideCounter
+            inputProps={{ autoFocus: true, onBlur: handleTitleBlur }}
+          />
         </div>
         <CyclePill value={status} onChange={setStatus} options={STATUS_OPTIONS} className="shrink-0 self-start mt-px" />
       </div>
 
-      {/* Description */}
-      <SoftField multiline value={description} onChange={setDescription} label="Description" placeholder="Short description (optional)" maxLength={240} rows={2} />
+      {/* ── Place enrichment panel ── */}
+      {(enrichLoading || showEnrichment) && (
+        <div
+          className={cn(
+            "rounded-[10px] border overflow-hidden transition-all duration-200",
+            showEnrichment
+              ? "border-border bg-surface-soft"
+              : "border-border/50 bg-surface-soft/50",
+          )}
+        >
+          {enrichLoading && !showEnrichment ? (
+            /* Loading shimmer */
+            <div className="flex gap-3 p-3 items-center">
+              <div className="w-12 h-12 rounded-lg bg-border/60 shrink-0 animate-pulse" />
+              <div className="flex-1 flex flex-col gap-1.5">
+                <div className="h-2.5 w-2/3 rounded bg-border/60 animate-pulse" />
+                <div className="h-2 w-1/2 rounded bg-border/40 animate-pulse" />
+              </div>
+            </div>
+          ) : showEnrichment && enriched ? (
+            <div className="flex gap-3 p-3">
+              {/* Thumbnail */}
+              {enriched.photoRefs[0] && (
+                <div className="shrink-0 w-[52px] h-[52px] rounded-lg overflow-hidden bg-surface">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=120`}
+                    alt={enriched.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                {/* Name + dismiss */}
+                <div className="flex items-start justify-between gap-1">
+                  <span className="text-[12px] font-semibold text-ink leading-snug truncate">
+                    {enriched.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setDismissedTitle(title.trim())}
+                    className="shrink-0 w-4 h-4 inline-flex items-center justify-center text-ink-faint hover:text-ink transition-colors mt-px"
+                    aria-label={t("dismiss")}
+                  >
+                    <IconX className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Address */}
+                <p className="text-[11px] text-ink-soft leading-snug line-clamp-1 mt-0.5">
+                  {enriched.address}
+                </p>
+
+                {/* Meta row: rating + open status */}
+                <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+                  {enriched.rating !== undefined && (
+                    <span className="text-[10px] text-ink-soft">
+                      ★ <b className="text-ink font-semibold">{enriched.rating.toFixed(1)}</b>
+                      {enriched.userRatingsTotal !== undefined && (
+                        <span className="text-ink-faint"> ({enriched.userRatingsTotal.toLocaleString()})</span>
+                      )}
+                    </span>
+                  )}
+                  {enriched.openNow !== undefined && (
+                    <span
+                      className={cn(
+                        "text-[10px] font-medium",
+                        enriched.openNow ? "text-[#4a9e5c]" : "text-[#9a3015]",
+                      )}
+                    >
+                      {enriched.openNow ? t("openNow") : t("closedNow")}
+                    </span>
+                  )}
+                  {enriched.weekdayText && enriched.weekdayText.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHours((v) => !v)}
+                      className="text-[10px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors"
+                    >
+                      {showHours ? t("hideHours") : t("seeHours")}
+                    </button>
+                  )}
+                </div>
+
+                {/* Expandable hours */}
+                {showHours && enriched.weekdayText && (
+                  <ul className="mt-2 flex flex-col gap-[2px]">
+                    {enriched.weekdayText.map((line) => (
+                      <li key={line} className="text-[10px] text-ink-soft leading-snug">
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Apply address action */}
+                {!place && (
+                  <button
+                    type="button"
+                    onClick={handleApplyPlace}
+                    className="mt-1.5 text-[11px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
+                  >
+                    {t("useThisAddress")}
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Description + "Go give me info" */}
+      <div className="flex flex-col gap-1.5">
+        <SoftField
+          multiline
+          value={description}
+          onChange={setDescription}
+          label={t("descriptionLabel")}
+          placeholder={t("descriptionPlaceholder")}
+          maxLength={240}
+          rows={2}
+        />
+        {/* Go actions — visible when title is long enough */}
+        {title.trim().length >= 2 && (
+          <div className={cn("flex items-center", onAskGo ? "justify-between" : "justify-end")}>
+            {onAskGo && (
+              <button
+                type="button"
+                onClick={() => onAskGo(title.trim(), effectiveEditId)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-all text-ink-soft hover:text-ink"
+              >
+                <IconMessage className="w-3.5 h-3.5 text-orange" />
+                {t("askGo")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGoGetInfo}
+              disabled={descLoading}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[11px] font-medium transition-all",
+                "text-ink-soft hover:text-ink",
+                descLoading && "opacity-60 cursor-wait",
+              )}
+            >
+              <IconSparkles
+                className={cn(
+                  "w-3.5 h-3.5 text-orange transition-transform",
+                  descLoading && "animate-spin",
+                )}
+              />
+              {descLoading ? t("gettingInfo") : t("goGetInfo")}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Period + time picker */}
       <div className="flex flex-col gap-2">
         <div
           role="group"
-          aria-label="Select period and time"
+          aria-label={t("selectPeriodAndTime")}
           className="grid rounded-pill bg-surface border border-border p-0.5 gap-0.5"
           style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
         >
@@ -209,7 +513,7 @@ export function ActivityEditForm({
           <div className="bg-surface border border-border rounded-[18px] p-3.5 flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">Hour</div>
+                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
                 <div className="grid grid-cols-4 gap-1">
                   {currentPeriodHours.map((h) => (
                     <button key={h} type="button" onClick={() => setHour(h)}
@@ -221,7 +525,7 @@ export function ActivityEditForm({
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">Minutes</div>
+                <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
                 <div className="grid grid-cols-4 gap-1">
                   {MINUTES.map((m) => (
                     <button key={m} type="button"
@@ -238,7 +542,7 @@ export function ActivityEditForm({
               <div className="flex justify-end">
                 <button type="button" onClick={handleClearTime}
                   className="text-[11px] text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-[#9a3015] hover:decoration-[#9a3015] transition-colors">
-                  clear time
+                  {t("clearTime")}
                 </button>
               </div>
             )}
@@ -250,9 +554,9 @@ export function ActivityEditForm({
       {showAddress && (
         <div className="flex items-center gap-1.5">
           <div className="flex-1 min-w-0">
-            <AddressField value={place} onChange={setPlace} label="Address" placeholder="Start typing for suggestions…" showMapButton />
+            <AddressField value={place} onChange={setPlace} label={t("addressLabel")} placeholder={t("addressPlaceholder")} showMapButton />
           </div>
-          <button type="button" onClick={() => { setPlace(null); setShowAddress(false); }} aria-label="Remove address"
+          <button type="button" onClick={() => { setPlace(null); setShowAddress(false); }} aria-label={t("removeAddress")}
             className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
             <IconX className="w-3.5 h-3.5" />
           </button>
@@ -263,12 +567,39 @@ export function ActivityEditForm({
       {showBudget && (
         <div className="flex items-center gap-1.5">
           <div className="flex-1 min-w-0">
-            <BudgetInput amount={budgetAmount} onAmountChange={setBudgetAmount} currency={budgetCurrency} onCurrencyChange={setBudgetCurrency} currencies={currencies} label="Budget" />
+            <BudgetInput amount={budgetAmount} onAmountChange={setBudgetAmount} currency={budgetCurrency} onCurrencyChange={setBudgetCurrency} currencies={currencies} label={t("budgetLabel")} />
           </div>
-          <button type="button" onClick={() => { setBudgetAmount(undefined); setShowBudget(false); }} aria-label="Remove budget"
+          <button type="button" onClick={() => { setBudgetAmount(undefined); setShowBudget(false); }} aria-label={t("removeBudget")}
             className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
             <IconX className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* Image picker — only in edit mode (activityId known) */}
+      {activityId && tripId && (
+        <div className="flex items-center gap-3 py-1 border-t border-dashed border-border mt-0.5">
+          <ImagePicker
+            currentImageUrl={heroImage || undefined}
+            currentLabel={heroImage ? "custom photo" : "activity image"}
+            thumbnailWidth={88}
+            thumbnailHeight={68}
+            compress={{ maxWidth: 1200, maxHeight: 900, quality: 0.88 }}
+            upload={{
+              bucket: "trip-media",
+              path: () => `trips/${tripId}/activities/${activityId}/hero.webp`,
+            }}
+            onApply={(result) => {
+              const url = result.publicUrl
+                ? `${result.publicUrl}?t=${Date.now()}`
+                : result.previewUrl;
+              setHeroImage(url);
+            }}
+            onReset={() => setHeroImage("")}
+          />
+          <span className="text-[11px] text-ink-soft leading-snug">
+            Photo shown<br />on the activity card
+          </span>
         </div>
       )}
 
@@ -278,13 +609,13 @@ export function ActivityEditForm({
           {!showAddress && (
             <button type="button" onClick={() => setShowAddress(true)}
               className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-              + Add address
+              {t("addAddress")}
             </button>
           )}
           {!showBudget && (
             <button type="button" onClick={() => setShowBudget(true)}
               className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-              + Add budget
+              {t("addBudget")}
             </button>
           )}
         </div>
@@ -295,29 +626,29 @@ export function ActivityEditForm({
         {!isNew && onDelete ? (
           confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[#9a3015]">Sicuro?</span>
+              <span className="text-[12px] text-[#9a3015]">{t("areYouSure")}</span>
               <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
                 <IconTrash />
-                Elimina
+                {t("delete")}
               </Button>
               <Button variant="text-only" iconOnly={false} onClick={() => setConfirmDelete(false)}>
-                Annulla
+                {t("cancel")}
               </Button>
             </div>
           ) : (
             <Button variant="ghost" tone="danger" iconOnly={false} onClick={() => setConfirmDelete(true)}>
               <IconTrash />
-              Delete activity
+              {t("deleteActivity")}
             </Button>
           )
         ) : (
           <span />
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-ink-faint">Press Enter to save</span>
-          <Button variant="text-only" iconOnly={false} onClick={onCancel}>Cancel</Button>
+          <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
+          <Button variant="text-only" iconOnly={false} onClick={onCancel}>{t("cancel")}</Button>
           <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>
-            {isNew ? "Create activity" : "Save activity"}
+            {isNew ? t("createActivity") : t("saveActivity")}
           </Button>
         </div>
       </div>

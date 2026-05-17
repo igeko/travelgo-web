@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Media upload · cambio immagine banner del giorno</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Media upload · prototipo singolo · Day banner picker
+───────────────────────────────────────────────────────────────── */
+body { padding: 36px 24px 80px; }
+.wrap { max-width: 1100px; margin: 0 auto; }
+.eyebrow { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+h1 { font-size: 26px; font-weight: 500; margin: 6px 0 8px; }
+.sub { font-size: 13px; color: var(--ink-soft); line-height: 1.6; max-width: 720px; }
+
+/* Step header */
+.section { margin-top: 44px; }
+.step-h { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: white; font-size: 11px; font-weight: 500; }
+.step-h h3 { font-size: 14px; font-weight: 500; margin: 0; }
+.step-h .ds { font-size: 13px; color: var(--ink-soft); }
+
+/* Frame · mockup container */
+.frame { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow: hidden; }
+.panel-pad { padding: 18px 22px; }
+
+/* Day description small label */
+.ksm { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); font-weight: 500; }
+
+/* Two-column row (thumbnail + fields) — mimicking the real HeroBanner edit row */
+.gap-row { display: grid; grid-template-columns: 120px 1fr; gap: 18px; align-items: start; }
+.col-gap { display: flex; flex-direction: column; gap: 8px; }
+
+/* Thumbnail · 120×68 with hover overlay */
+.thumb { width: 120px; height: 68px; border-radius: 10px; overflow: hidden; position: relative; cursor: pointer; background-size: cover; background-position: center; background-color: #a8b5c4; }
+.thumb-tokyo { background: linear-gradient(160deg, #d6a87f 0%, #b88766 25%, #6b7a8b 60%, #475565 100%); }
+.thumb-tokyo-new { background: linear-gradient(160deg, #e8b889, #a07560 55%, #3d4a64); }
+.thumb-ovl { position: absolute; inset: 0; background: rgba(13, 44, 61, .55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: white; font-size: 11px; font-weight: 500; }
+.thumb-ovl i { font-size: 18px; }
+
+/* Soft field (reuse JapanGo soft input shape) */
+.field { background: var(--surface-soft); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; color: var(--ink); }
+.field.lg { padding: 14px; line-height: 1.55; }
+.field.focus-coral { border: 1.5px solid var(--orange); padding: 8.5px 12.5px; }
+
+/* Type chips (reuse pattern) */
+.type-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip { padding: 5px 14px; border-radius: var(--radius-pill); font-size: 12px; border: .5px solid var(--ink); color: var(--ink); background: transparent; line-height: 1.4; }
+.chip.on { background: var(--ink); color: white; }
+
+/* Bottom bar (Save / Cancel) */
+.formfoot { display: flex; align-items: center; justify-content: space-between; padding-top: 18px; margin-top: 18px; border-top: 0.5px solid var(--border); }
+.formfoot .hint { font-size: 12px; color: var(--ink-soft); }
+.formfoot .acts { display: flex; gap: 8px; }
+
+/* ── Popover · scuro (matches Shortcuts bar style) ─────────────── */
+.pop { width: 380px; background: var(--ink); color: #d8d1c1; border-radius: 14px; padding: 14px; position: relative; }
+.pop-arrow { position: absolute; top: -7px; left: 48px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid var(--ink); }
+.tabs { display: flex; gap: 3px; background: rgba(255,255,255,.06); padding: 3px; border-radius: 9px; margin-bottom: 12px; }
+.tab { flex: 1; font-size: 12px; text-align: center; padding: 7px 6px; border-radius: 7px; color: #b8b0a0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; font-weight: 500; }
+.tab.on { background: var(--bg); color: var(--ink); }
+.tab i { font-size: 13px; }
+
+.drop { border: 1.5px dashed rgba(232,226,213,.32); border-radius: 10px; padding: 24px 14px; text-align: center; background: rgba(255,255,255,.03); }
+.drop.active { border-color: var(--orange); background: rgba(244, 123, 58, .12); }
+.drop.error { border-color: rgba(255, 180, 180, .55); background: rgba(154, 48, 21, .12); }
+.drop i.big { font-size: 26px; }
+.drop .t1 { font-size: 13px; color: #e8e2d5; margin-top: 8px; font-weight: 500; }
+.drop .t1.coral { color: var(--orange); }
+.drop .t1.err { color: #faafaf; }
+.drop .t2 { font-size: 11px; color: #9a9382; margin-top: 3px; }
+.drop button.browse { margin-top: 12px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 6px; border: 0; cursor: pointer; }
+
+.pop-foot { font-size: 11px; color: #9a9382; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.pop-foot a { color: var(--orange); text-decoration: none; }
+.pop-foot a:hover { text-decoration: underline; }
+.pop-foot .acts { display: flex; gap: 6px; }
+.pop-btn-ghost { background: transparent; color: #9a9382; border: .5px solid rgba(255,255,255,.10); border-radius: var(--radius-pill); font-size: 12px; padding: 5px 14px; cursor: pointer; font-family: inherit; }
+.pop-btn-coral { background: var(--orange); color: white; border: 0; border-radius: var(--radius-pill); font-size: 12px; padding: 5px 16px; cursor: pointer; font-weight: 500; font-family: inherit; }
+.pop-btn-coral:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Preview card inside popover */
+.preview-card { border: .5px solid rgba(255,255,255,.10); border-radius: 10px; padding: 10px; display: flex; gap: 10px; align-items: center; }
+.preview-card .pv { width: 78px; height: 50px; border-radius: 6px; background-size: cover; background-position: center; flex: 0 0 78px; }
+.preview-card .info { flex: 1; min-width: 0; }
+.preview-card .name { font-size: 13px; color: white; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-card .meta { font-size: 11px; color: #9a9382; margin-top: 2px; }
+.prog { height: 3px; background: rgba(255,255,255,.10); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.prog i { display: block; height: 100%; background: var(--orange); border-radius: 999px; }
+
+/* Search tab */
+.search-input { background: rgba(255,255,255,.06); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.search-input i { font-size: 14px; color: #9a9382; }
+.search-input span { font-size: 13px; color: #e8e2d5; }
+.res-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.res-grid .r { aspect-ratio: 1; border-radius: 6px; cursor: pointer; }
+.res-grid .r.sel { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* Default tab */
+.def-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.def-tile { aspect-ratio: 16/9; border-radius: 7px; position: relative; overflow: hidden; cursor: pointer; }
+.def-tile .nm { position: absolute; left: 6px; bottom: 5px; color: white; font-size: 10px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,.55); }
+.def-tile.sel { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* Banner (mimicking the real day banner) */
+.banner { height: 210px; position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 24px 28px; background: linear-gradient(160deg, #dfa97e 0%, #c88b65 22%, #9a7d80 45%, #566677 70%, #3d4a64 100%); }
+.banner.new-img { background: linear-gradient(160deg, #e8b889 0%, #c88b65 22%, #9a7d80 45%, #566677 70%, #3d4a64 100%); }
+.banner-meta { color: white; text-shadow: 0 1px 2px rgba(0,0,0,.35); position: relative; z-index: 1; }
+.banner-meta .day-k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: white; opacity: .85; }
+.banner-meta .zone { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); font-weight: 500; }
+.banner-meta h2 { font-size: 32px; font-weight: 500; margin: 6px 0 4px; line-height: 1.1; }
+.banner-meta .sub-meta { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: white; opacity: .85; }
+.banner-arrows { position: absolute; right: 24px; bottom: 24px; display: flex; gap: 6px; }
+.banner-arrows .a { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; color: white; }
+.banner-arrows .a i { font-size: 14px; }
+.banner-edit { position: absolute; top: 16px; right: 18px; display: inline-flex; align-items: center; gap: 6px; background: var(--orange); color: white; border-radius: var(--radius-pill); padding: 7px 16px; font-size: 13px; font-weight: 500; }
+.banner-edit i { font-size: 14px; }
+
+/* Shortcuts pill (matches real UI) */
+.shortcuts-row { display: flex; justify-content: center; padding: 16px 0 12px; }
+.shortcuts { background: var(--ink); color: #d8d1c1; border-radius: var(--radius-pill); padding: 10px 18px; display: flex; gap: 18px; align-items: center; font-size: 13px; }
+.shortcuts .k { font-size: 11px; color: #9a9382; letter-spacing: .08em; text-transform: uppercase; }
+.kbd { display: inline-flex; align-items: center; background: rgba(255,255,255,.06); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #d8d1c1; margin-right: 5px; }
+
+/* Drag-over row */
+.row-drag { border: 2px dashed var(--orange); background: rgba(244, 123, 58, .07); border-radius: var(--radius-md); padding: 26px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--orange-deep); font-size: 14px; font-weight: 500; }
+.row-drag i { font-size: 22px; }
+
+/* Toast */
+.toast { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-md); background: #e6f3ea; color: #1f6b3a; font-size: 12px; margin-top: 14px; }
+.toast i { font-size: 14px; }
+
+/* Mobile phone frame */
+.phone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.phone-cap { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); font-weight: 500; text-align: center; margin-bottom: 8px; }
+.phone { width: 300px; background: #1a1a1a; border-radius: 36px; padding: 8px; margin: 0 auto; }
+.phone-screen { background: var(--bg); border-radius: 30px; padding: 14px 12px 18px; overflow: hidden; }
+.mini-banner { height: 120px; border-radius: 14px; background: linear-gradient(160deg, #dfa97e 0%, #c88b65 22%, #9a7d80 45%, #566677 70%, #3d4a64 100%); position: relative; padding: 14px; display: flex; align-items: flex-end; }
+.mini-banner-meta { color: white; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.mini-banner-meta .k { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.mini-banner-meta .k .z { color: var(--orange); font-weight: 500; }
+.mini-banner-meta h3 { font-size: 18px; font-weight: 500; margin: 3px 0 0; }
+.mobile-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+.sheet-overlay { position: relative; }
+.sheet { background: var(--ink); color: #d8d1c1; border-radius: 18px 18px 0 0; margin: 24px -12px 0; padding: 16px 14px 22px; }
+.sheet .grab { width: 34px; height: 4px; background: rgba(255,255,255,.18); border-radius: 99px; margin: 0 auto 14px; }
+.sheet h4 { font-size: 13px; font-weight: 500; color: white; margin: 0 0 14px; text-align: center; }
+.sheet-btn { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.06); border-radius: 10px; padding: 12px 14px; color: white; font-size: 13px; font-weight: 500; text-align: left; border: 0; cursor: pointer; width: 100%; font-family: inherit; margin-bottom: 8px; }
+.sheet-btn i { font-size: 18px; color: var(--orange); }
+.sheet-cancel { width: 100%; margin-top: 6px; color: #9a9382; font-size: 13px; padding: 8px; background: transparent; border: 0; cursor: pointer; font-family: inherit; }
+
+/* Nav (sticky list of jumps) */
+.sticky-nav { position: sticky; top: 0; background: rgba(241,239,232,.92); backdrop-filter: blur(8px); z-index: 50; border-bottom: 0.5px solid var(--border); margin: -36px -24px 0; padding: 12px 24px; }
+.sticky-nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+.sticky-nav .title { font-size: 13px; font-weight: 500; color: var(--ink); margin-right: 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.sticky-nav .title i { font-size: 14px; color: var(--orange); }
+.nav-link { font-size: 12px; color: var(--ink-soft); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+.nav-link:hover { background: rgba(0,0,0,.04); color: var(--ink); }
+
+/* Notes */
+.notes { margin-top: 44px; padding: 22px 24px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); font-size: 13px; line-height: 1.7; color: var(--ink-soft); }
+.notes h3 { font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); margin: 0 0 10px; }
+.notes b { color: var(--ink); font-weight: 500; }
+.notes ul { margin: 6px 0; padding-left: 20px; }
+.notes li { margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<div class="sticky-nav">
+  <div class="sticky-nav-inner">
+    <span class="title"><i class="ti ti-camera-up"></i>Media upload · Day banner</span>
+    <a class="nav-link" href="#s1">1·Idle</a>
+    <a class="nav-link" href="#s2">2·Hover</a>
+    <a class="nav-link" href="#s3">3·Popover</a>
+    <a class="nav-link" href="#s4">4·Drag-over</a>
+    <a class="nav-link" href="#s5">5·Uploading</a>
+    <a class="nav-link" href="#s6">6·Preview</a>
+    <a class="nav-link" href="#s7">7·Error</a>
+    <a class="nav-link" href="#s8">8·Search</a>
+    <a class="nav-link" href="#s9">9·Default</a>
+    <a class="nav-link" href="#s10">10·Row drop</a>
+    <a class="nav-link" href="#s11">11·Applied</a>
+    <a class="nav-link" href="#s12">12·Mobile</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header style="margin-top:24px">
+  <div class="eyebrow">JapanGo · public/design</div>
+  <h1>Media upload · cambio immagine banner del giorno</h1>
+  <p class="sub">Single-image. Click sulla thumbnail apre un popover scuro ancorato con 3 tab (Upload / Search / Default). Il drag&amp;drop di un file dal desktop avviene sull'intera riga "Day description", indipendentemente dal popover.</p>
+</header>
+
+<!-- ── STEP 1 — Initial ───────────────────────────────────────── -->
+<section class="section" id="s1">
+  <div class="step-h"><span class="step-num">1</span><h3>Stato iniziale</h3><span class="ds">— editing del giorno, immagine attuale visibile</span></div>
+  <div class="frame">
+    <div class="shortcuts-row">
+      <div class="shortcuts">
+        <span class="k">Shortcuts</span>
+        <span><span class="kbd">⌥E</span>Edit day</span>
+        <span><span class="kbd">⌥L</span>Edit lodging</span>
+        <span><span class="kbd">⌥A</span>Add activity</span>
+        <span><span class="kbd">Esc</span>Close panel</span>
+      </div>
+    </div>
+    <div class="banner">
+      <div class="banner-meta">
+        <div><span class="day-k">Day 2</span> · <span class="zone">TOKYO</span></div>
+        <h2>Asakusa e Sumida-Gawa</h2>
+        <div class="sub-meta">SAT 1 AUG 2026 · 7 ACTIVITIES</div>
+      </div>
+      <div class="banner-arrows"><div class="a"><i class="ti ti-chevron-left"></i></div><div class="a"><i class="ti ti-chevron-right"></i></div></div>
+      <div class="banner-edit"><i class="ti ti-pencil"></i>Edit Day</div>
+    </div>
+    <div class="panel-pad">
+      <div class="ksm" style="margin-bottom:14px">Day description</div>
+      <div class="gap-row">
+        <div class="thumb thumb-tokyo"></div>
+        <div class="col-gap">
+          <div class="field focus-coral">
+            <div class="ksm" style="margin-bottom:2px">Zone</div>Tokyo
+          </div>
+          <div class="field">Asakusa e Sumida-Gawa</div>
+          <div class="field lg">La città si rivela nei dettagli: un tempio nascosto tra i grattacieli, un mercatino che apre all'alba, il rumore ordinato della folla.</div>
+          <div class="field">Mattina ideale per templi e parchi, shopping e torre nel pomeriggio.</div>
+          <div class="type-chips">
+            <span class="chip on">City</span><span class="chip">Nature</span><span class="chip">Roadtrip</span><span class="chip">Beach</span><span class="chip">Village</span><span class="chip">Rest</span>
+          </div>
+        </div>
+      </div>
+      <div class="formfoot">
+        <div class="hint">Press Enter to save</div>
+        <div class="acts">
+          <button class="btn-icon text-only btn-md">Cancel</button>
+          <button class="btn-icon solid text-only btn-md">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 2 — Hover ─────────────────────────────────────────── -->
+<section class="section" id="s2">
+  <div class="step-h"><span class="step-num">2</span><h3>Hover sulla thumbnail</h3><span class="ds">— appare overlay "Change image"</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="gap-row">
+      <div class="thumb thumb-tokyo">
+        <div class="thumb-ovl"><i class="ti ti-photo-edit"></i><span>Change image</span></div>
+      </div>
+      <div class="col-gap">
+        <div class="field focus-coral"><div class="ksm" style="margin-bottom:2px">Zone</div>Tokyo</div>
+        <div class="field">Asakusa e Sumida-Gawa</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 3 — Popover · Upload idle ─────────────────────────── -->
+<section class="section" id="s3">
+  <div class="step-h"><span class="step-num">3</span><h3>Click → Popover aperto · tab Upload · idle</h3><span class="ds">— punto di entrata principale</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="gap-row">
+      <div class="thumb thumb-tokyo">
+        <div class="thumb-ovl" style="background:rgba(13,44,61,.65)"><i class="ti ti-photo-edit"></i><span>Change image</span></div>
+      </div>
+      <div class="col-gap">
+        <div class="field"><div class="ksm" style="margin-bottom:2px">Zone</div>Tokyo</div>
+        <div class="field">Asakusa e Sumida-Gawa</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="pop">
+        <div class="pop-arrow"></div>
+        <div class="tabs">
+          <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+          <div class="tab"><i class="ti ti-search"></i>Search</div>
+          <div class="tab"><i class="ti ti-category"></i>Default</div>
+        </div>
+        <div class="drop">
+          <i class="ti ti-cloud-upload big"></i>
+          <div class="t1">Drop a photo here</div>
+          <div class="t2">JPG · PNG · HEIC · WebP — up to 50 MB</div>
+          <button class="browse">Browse files</button>
+        </div>
+        <div class="pop-foot">
+          <span>Current: custom image</span>
+          <a href="#"><i class="ti ti-rotate" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>Reset to City default</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 4 — Popover · Drag-over ────────────────────────────── -->
+<section class="section" id="s4">
+  <div class="step-h"><span class="step-num">4</span><h3>Drag sopra il drop del popover</h3><span class="ds">— bordo arancio + bg tintato</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="pop">
+      <div class="tabs">
+        <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+        <div class="tab"><i class="ti ti-search"></i>Search</div>
+        <div class="tab"><i class="ti ti-category"></i>Default</div>
+      </div>
+      <div class="drop active">
+        <i class="ti ti-photo-down big" style="color:var(--orange)"></i>
+        <div class="t1 coral">Drop to upload</div>
+        <div class="t2">tokyo-tower-sunset.jpg · 3.2 MB</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 5 — Uploading ─────────────────────────────────────── -->
+<section class="section" id="s5">
+  <div class="step-h"><span class="step-num">5</span><h3>Uploading</h3><span class="ds">— preview tenue + progress bar arancio</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="pop">
+      <div class="tabs">
+        <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+        <div class="tab"><i class="ti ti-search"></i>Search</div>
+        <div class="tab"><i class="ti ti-category"></i>Default</div>
+      </div>
+      <div class="preview-card">
+        <div class="pv" style="background:linear-gradient(160deg,#e8b889,#a07560 60%,#3d4a64);opacity:.7"></div>
+        <div class="info">
+          <div class="name">tokyo-tower-sunset.jpg</div>
+          <div class="meta">3.2 MB · uploading 62%</div>
+          <div class="prog"><i style="width:62%"></i></div>
+        </div>
+        <i class="ti ti-x" style="font-size:16px;color:#9a9382;cursor:pointer"></i>
+      </div>
+      <div class="pop-foot">
+        <span></span>
+        <button class="pop-btn-coral" disabled>Apply</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 6 — Preview ───────────────────────────────────────── -->
+<section class="section" id="s6">
+  <div class="step-h"><span class="step-num">6</span><h3>Upload completato · preview pronto da applicare</h3><span class="ds">— Apply / Replace / Cancel</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="pop">
+      <div class="tabs">
+        <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+        <div class="tab"><i class="ti ti-search"></i>Search</div>
+        <div class="tab"><i class="ti ti-category"></i>Default</div>
+      </div>
+      <div class="preview-card">
+        <div class="pv" style="background:linear-gradient(160deg,#e8b889,#a07560 60%,#3d4a64)"></div>
+        <div class="info">
+          <div class="name">tokyo-tower-sunset.jpg</div>
+          <div class="meta">3.2 MB · 2456 × 1638 · ready</div>
+        </div>
+        <i class="ti ti-check" style="font-size:16px;color:#7cd49b"></i>
+      </div>
+      <div class="pop-foot" style="margin-top:14px">
+        <a href="#"><i class="ti ti-refresh" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>Replace</a>
+        <div class="acts">
+          <button class="pop-btn-ghost">Cancel</button>
+          <button class="pop-btn-coral">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 7 — Error ─────────────────────────────────────────── -->
+<section class="section" id="s7">
+  <div class="step-h"><span class="step-num">7</span><h3>Errore · file troppo grande / formato non supportato</h3><span class="ds">— bordo rosso + riga sotto</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:780px">
+      <div class="pop">
+        <div class="tabs">
+          <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+          <div class="tab"><i class="ti ti-search"></i>Search</div>
+          <div class="tab"><i class="ti ti-category"></i>Default</div>
+        </div>
+        <div class="drop error">
+          <i class="ti ti-alert-circle big" style="color:#faafaf"></i>
+          <div class="t1 err">File too large</div>
+          <div class="t2">tokyo-raw.heic · 64.3 MB — max 50 MB</div>
+        </div>
+        <div class="pop-foot"><span></span><a href="#">Try another file</a></div>
+      </div>
+      <div class="pop">
+        <div class="tabs">
+          <div class="tab on"><i class="ti ti-upload"></i>Upload</div>
+          <div class="tab"><i class="ti ti-search"></i>Search</div>
+          <div class="tab"><i class="ti ti-category"></i>Default</div>
+        </div>
+        <div class="drop error">
+          <i class="ti ti-file-alert big" style="color:#faafaf"></i>
+          <div class="t1 err">Unsupported format</div>
+          <div class="t2">notes.tiff — use JPG, PNG, HEIC or WebP</div>
+        </div>
+        <div class="pop-foot"><span></span><a href="#">Try another file</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 8 — Search ────────────────────────────────────────── -->
+<section class="section" id="s8">
+  <div class="step-h"><span class="step-num">8</span><h3>Tab Search</h3><span class="ds">— ricerca via ImageSearchService, una è selezionata</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="pop">
+      <div class="tabs">
+        <div class="tab"><i class="ti ti-upload"></i>Upload</div>
+        <div class="tab on"><i class="ti ti-search"></i>Search</div>
+        <div class="tab"><i class="ti ti-category"></i>Default</div>
+      </div>
+      <div class="search-input"><i class="ti ti-search"></i><span>Tokyo skyline sunset</span></div>
+      <div class="res-grid">
+        <div class="r" style="background:linear-gradient(160deg,#dfa97e,#3d4a64)"></div>
+        <div class="r sel" style="background:linear-gradient(160deg,#e8b889,#a07560 60%,#3d4a64)"></div>
+        <div class="r" style="background:linear-gradient(160deg,#a8c5d6,#475565)"></div>
+        <div class="r" style="background:linear-gradient(160deg,#c4b8a0,#7a8aa3)"></div>
+        <div class="r" style="background:linear-gradient(160deg,#d6b8a8,#896a55)"></div>
+        <div class="r" style="background:linear-gradient(160deg,#b8a8c9,#3d4a64)"></div>
+      </div>
+      <div class="pop-foot" style="margin-top:14px">
+        <span>Powered by <b style="color:#d8d1c1">ImageSearchService</b></span>
+        <button class="pop-btn-coral">Apply</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 9 — Default ───────────────────────────────────────── -->
+<section class="section" id="s9">
+  <div class="step-h"><span class="step-num">9</span><h3>Tab Default</h3><span class="ds">— 6 banner di tipo (City, Nature, …)</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="pop">
+      <div class="tabs">
+        <div class="tab"><i class="ti ti-upload"></i>Upload</div>
+        <div class="tab"><i class="ti ti-search"></i>Search</div>
+        <div class="tab on"><i class="ti ti-category"></i>Default</div>
+      </div>
+      <div class="def-grid">
+        <div class="def-tile sel" style="background:linear-gradient(160deg,#7a8aa3,#3d4a64)"><div class="nm">City</div></div>
+        <div class="def-tile" style="background:linear-gradient(160deg,#9bbf9a,#557a45)"><div class="nm">Nature</div></div>
+        <div class="def-tile" style="background:linear-gradient(160deg,#d6b8a8,#896a55)"><div class="nm">Roadtrip</div></div>
+        <div class="def-tile" style="background:linear-gradient(160deg,#a8d6d2,#5f9e9a)"><div class="nm">Beach</div></div>
+        <div class="def-tile" style="background:linear-gradient(160deg,#c4b8a0,#7a6a55)"><div class="nm">Village</div></div>
+        <div class="def-tile" style="background:linear-gradient(160deg,#b8a8c9,#5d4a7a)"><div class="nm">Rest</div></div>
+      </div>
+      <div class="pop-foot" style="margin-top:14px">
+        <span>Synced with type chip</span>
+        <button class="pop-btn-coral">Apply</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 10 — Row drag-over ────────────────────────────────── -->
+<section class="section" id="s10">
+  <div class="step-h"><span class="step-num">10</span><h3>Drag file dal desktop sopra la riga</h3><span class="ds">— l'intera riga "Day description" diventa drop target</span></div>
+  <div class="frame panel-pad">
+    <div class="ksm" style="margin-bottom:14px">Day description</div>
+    <div class="row-drag">
+      <i class="ti ti-cloud-upload"></i>
+      Drop to replace Day 2 banner — tokyo-tower-sunset.jpg
+    </div>
+    <div style="opacity:.35;margin-top:12px">
+      <div class="gap-row">
+        <div class="thumb thumb-tokyo"></div>
+        <div class="col-gap">
+          <div class="field">Tokyo</div>
+          <div class="field">Asakusa e Sumida-Gawa</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 11 — Applied ──────────────────────────────────────── -->
+<section class="section" id="s11">
+  <div class="step-h"><span class="step-num">11</span><h3>Immagine applicata</h3><span class="ds">— banner aggiornato, thumbnail aggiornata, toast in basso</span></div>
+  <div class="frame">
+    <div class="banner new-img">
+      <div class="banner-meta">
+        <div><span class="day-k">Day 2</span> · <span class="zone">TOKYO</span></div>
+        <h2>Asakusa e Sumida-Gawa</h2>
+        <div class="sub-meta">SAT 1 AUG 2026 · 7 ACTIVITIES</div>
+      </div>
+      <div class="banner-arrows"><div class="a"><i class="ti ti-chevron-left"></i></div><div class="a"><i class="ti ti-chevron-right"></i></div></div>
+      <div class="banner-edit"><i class="ti ti-pencil"></i>Edit Day</div>
+    </div>
+    <div class="panel-pad">
+      <div class="ksm" style="margin-bottom:14px">Day description</div>
+      <div class="gap-row">
+        <div class="thumb thumb-tokyo-new"></div>
+        <div class="col-gap">
+          <div class="field"><div class="ksm" style="margin-bottom:2px">Zone</div>Tokyo</div>
+          <div class="field">Asakusa e Sumida-Gawa</div>
+        </div>
+      </div>
+      <div class="toast"><i class="ti ti-check"></i>Image updated · tokyo-tower-sunset.jpg</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STEP 12 — Mobile ───────────────────────────────────────── -->
+<section class="section" id="s12">
+  <div class="step-h"><span class="step-num">12</span><h3>Mobile · bottom sheet</h3><span class="ds">— tap sulla thumbnail apre uno sheet dal basso con le 4 sorgenti</span></div>
+  <div class="frame panel-pad">
+    <div class="phone-grid">
+      <div>
+        <div class="phone-cap">Tap thumbnail</div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="mini-banner">
+              <div class="mini-banner-meta">
+                <div class="k">Day 2 · <span class="z">TOKYO</span></div>
+                <h3>Asakusa</h3>
+              </div>
+            </div>
+            <div class="ksm" style="margin:14px 4px 8px">Day description</div>
+            <div class="mobile-row">
+              <div class="thumb thumb-tokyo" style="width:80px;height:48px">
+                <div class="thumb-ovl" style="background:rgba(13,44,61,.45)"><i class="ti ti-photo-edit" style="font-size:14px"></i></div>
+              </div>
+              <div class="field" style="flex:1;font-size:12px;padding:8px 12px">Tokyo</div>
+            </div>
+            <div class="field" style="margin-top:8px;font-size:12px;padding:10px 12px">Asakusa e Sumida-Gawa</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="phone-cap">Bottom sheet aperto</div>
+        <div class="phone">
+          <div class="phone-screen sheet-overlay" style="padding-bottom:0">
+            <div class="mini-banner" style="opacity:.4"></div>
+            <div class="ksm" style="margin:14px 4px 8px;opacity:.4">Day description</div>
+            <div class="mobile-row" style="opacity:.4">
+              <div class="thumb thumb-tokyo" style="width:80px;height:48px"></div>
+              <div class="field" style="flex:1;font-size:12px;padding:8px 12px">Tokyo</div>
+            </div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <h4>Change banner image</h4>
+              <button class="sheet-btn"><i class="ti ti-camera"></i>Take a photo</button>
+              <button class="sheet-btn"><i class="ti ti-photo"></i>Choose from gallery</button>
+              <button class="sheet-btn"><i class="ti ti-search"></i>Search online</button>
+              <button class="sheet-btn"><i class="ti ti-category"></i>Use City default</button>
+              <button class="sheet-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Notes ──────────────────────────────────────────────────── -->
+<div class="notes">
+  <h3>Note di design</h3>
+  <ul>
+    <li><b>Sorgenti unificate</b> in un solo popover (Upload · Search · Default). Niente menù separati.</li>
+    <li><b>Drag&amp;drop a livello riga</b>: il drop sull'intera riga "Day description" salta direttamente all'upload (chiude il popover se aperto).</li>
+    <li><b>Apply esplicito</b>: l'immagine non sostituisce subito quella vera — l'utente vede la preview e poi conferma con "Apply". Coerente col bottone "Save" del form padre.</li>
+    <li><b>Reset to default</b> sempre disponibile in basso a destra del popover — ritorna al banner di tipo (City, Nature, …).</li>
+    <li><b>Sync col chip Type</b>: se l'utente non ha mai caricato un'immagine custom, cambiare il chip aggiorna il banner. Se c'è un'immagine custom, cambiare il chip non la sovrascrive (solo "Reset to default" o un nuovo upload la sostituiscono).</li>
+    <li><b>Mobile</b>: niente drag&amp;drop. Bottom sheet con 4 voci, una delle quali apre direttamente la fotocamera (rilevante in viaggio).</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

@@ -5,7 +5,9 @@
 
 import OpenAI from "openai";
 
-const openai = new OpenAI();
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export const DEEP_DIVE_SYSTEM = `You are Go, TravelGo's expert travel assistant.
 The user wants a detailed breakdown of a specific place or activity.
@@ -45,7 +47,7 @@ export async function runDeepDive(input: DeepDiveInput): Promise<DeepDiveResult>
     input.tripContext ? `Trip context: ${input.tripContext}` : null,
   ].filter(Boolean).join("\n");
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
     messages: [

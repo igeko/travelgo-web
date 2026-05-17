@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { useAltLabel } from "@/lib/hooks/useOS";
 import { useShortcuts } from "@/lib/hooks/useShortcut";
 import { useRouter } from "next/navigation";
@@ -17,14 +18,6 @@ import { cn } from "@/lib/cn";
 import type { Trip, Day, Activity } from "@/lib/dal/trips";
 
 /* ─── helpers ─── */
-const DOW_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const MONTH_IT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTH_IT[m - 1]} ${y}`;
-}
-
 function localDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
@@ -34,10 +27,10 @@ function localDate(iso: string) {
 
 type LaunchPhase = "idle" | "collapsing" | "launching" | "gone";
 
-const ROTATING_WORDS = ["a place to visit?", "a stay for tonight?", "a food spot?", "an idea?"];
-
 function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
+  const t = useTranslations("TripDayView");
   const [phase, setPhase] = useState<LaunchPhase>("idle");
+  const rotatingWords = [t("go.rotating0"), t("go.rotating1"), t("go.rotating2"), t("go.rotating3")];
 
   function handleClick() {
     if (phase !== "idle") return;
@@ -70,7 +63,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
       }}
       onClick={handleClick}
       role="button"
-      aria-label="Ask Go for trip suggestions"
+      aria-label={t("go.ariaLabel")}
     >
       {/* Sweep background */}
       <span
@@ -89,20 +82,20 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
           pointerEvents: "none",
         }}
       >
-        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">Hi from Go</div>
+        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">{t("go.hiLabel")}</div>
         <div className="text-[14px] font-medium text-ink mt-0.5 overflow-hidden">
-          Want to find{" "}
+          {t("go.wantToFind")}{" "}
           <span className="inline-block h-[20px] overflow-hidden align-[-4px] min-w-[145px]">
             <ul className="go-words-rotate list-none m-0 p-0 flex flex-col">
-              {ROTATING_WORDS.map((w) => (
+              {rotatingWords.map((w) => (
                 <li key={w} className="h-[20px] leading-[20px] font-serif italic text-ink whitespace-nowrap">{w}</li>
               ))}
-              <li className="h-[20px] leading-[20px] font-serif italic text-ink whitespace-nowrap">{ROTATING_WORDS[0]}</li>
+              <li className="h-[20px] leading-[20px] font-serif italic text-ink whitespace-nowrap">{rotatingWords[0]}</li>
             </ul>
           </span>
         </div>
         <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">
-          Two words from you, a handful of ideas from me.
+          {t("go.tagline")}
         </div>
       </div>
 
@@ -118,7 +111,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
       >
         <span className="inline-flex items-center gap-1.5 bg-ink text-white rounded-pill text-[12px] font-medium pl-3 pr-4 py-2">
           <IconSparkles size={13} className="text-orange" />
-          Ask me
+          {t("go.askMe")}
         </span>
       </div>
 
@@ -149,7 +142,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
             whiteSpace: "nowrap",
           }}
         >
-          Let's go…
+          {t("go.letsGo")}
         </span>
       </div>
     </div>
@@ -166,14 +159,15 @@ function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 function ShortcutBar() {
+  const t = useTranslations("TripDayView");
   const alt = useAltLabel();
   return (
     <div className="flex items-center gap-4 px-3 py-2 mb-3 rounded-[var(--radius-md)] bg-ink text-white/70 text-[11px] flex-wrap">
-      <span className="text-white/40 text-[10px] uppercase tracking-[0.08em] font-medium shrink-0">Shortcuts</span>
-      <span className="flex items-center gap-1.5"><Kbd>{alt}E</Kbd> Edit day</span>
-      <span className="flex items-center gap-1.5"><Kbd>{alt}L</Kbd> Edit lodging</span>
-      <span className="flex items-center gap-1.5"><Kbd>{alt}A</Kbd> Add activity</span>
-      <span className="flex items-center gap-1.5"><Kbd>Esc</Kbd> Close panel</span>
+      <span className="text-white/40 text-[10px] uppercase tracking-[0.08em] font-medium shrink-0">{t("shortcuts.title")}</span>
+      <span className="flex items-center gap-1.5"><Kbd>{alt}E</Kbd> {t("shortcuts.editDay")}</span>
+      <span className="flex items-center gap-1.5"><Kbd>{alt}L</Kbd> {t("shortcuts.editLodging")}</span>
+      <span className="flex items-center gap-1.5"><Kbd>{alt}A</Kbd> {t("shortcuts.addActivity")}</span>
+      <span className="flex items-center gap-1.5"><Kbd>Esc</Kbd> {t("shortcuts.closePanel")}</span>
     </div>
   );
 }
@@ -185,10 +179,21 @@ type Props = {
   initialDayId: string;
   editMode?: boolean;
   debugMode?: boolean;
+  reloadTick?: number;
 };
 
-export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false, debugMode = false }: Props) {
+export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false, debugMode = false, reloadTick = 0 }: Props) {
+  const t = useTranslations("TripDayView");
+  const locale = useLocale();
   const router = useRouter();
+
+  function formatDate(iso: string) {
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(localDate(iso));
+  }
+
+  function getDow(iso: string) {
+    return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(localDate(iso)).toUpperCase();
+  }
   const [localDays, setLocalDays] = useState(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(initialDayId);
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
@@ -217,7 +222,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
 
-  const { setTripContext, openGo, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened } = useTripGo();
+  const { setTripContext, openGo, openGoWith, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened } = useTripGo();
 
   const goFocus = useMemo(
     () => selectedDay ? { type: "day" as const, dayNumber: selectedDay.day_number } : undefined,
@@ -226,7 +231,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   const { context: tripContext } = useTripContext(trip.id, goFocus);
 
-  // Aggiorna il contesto Go quando cambia giorno o quando il context è pronto
+  // Update Go context when the selected day changes or the context is ready
   useEffect(() => {
     if (tripContext) setTripContext(tripContext);
   }, [tripContext, setTripContext]);
@@ -245,17 +250,26 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     }
   }, []);
 
+  // Reload activities when a remote change arrives (realtime)
+  const prevReloadTick = useRef(reloadTick);
+  useEffect(() => {
+    if (reloadTick !== prevReloadTick.current && selectedDay?.id) {
+      prevReloadTick.current = reloadTick;
+      loadActivities(selectedDay.id);
+    }
+  }, [reloadTick, selectedDay?.id, loadActivities]);
+
   useEffect(() => {
     if (selectedDayId === initialDayId) return;
     loadActivities(selectedDayId);
   }, [selectedDayId, initialDayId, loadActivities]);
 
   /* ─── Hero content ─── */
-  const heroDow = selectedDay.date ? DOW_EN[localDate(selectedDay.date).getDay()] : "";
+  const heroDow = selectedDay.date ? getDow(selectedDay.date) : "";
   const heroDate = selectedDay.date ? formatDate(selectedDay.date) : "";
-  const heroEyebrow = `Day ${selectedDay.day_number}`;
+  const heroEyebrow = t("day.eyebrow", { number: selectedDay.day_number });
   const heroTitle = selectedDay.label ?? selectedDay.city ?? "";
-  const heroMeta = `${heroDow} ${heroDate} · ${activities.length} activities`;
+  const heroMeta = `${heroDow} ${heroDate} · ${t("day.activityCount", { count: activities.length })}`;
 
   /* ─── Lodging sub-banner ─── */
   const DB_TO_LODGING_TYPE: Record<string, LodgingType> = {
@@ -289,8 +303,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     : undefined;
 
   /* ─── Next day ─── */
-  const nextDayDate = nextDay?.date ? localDate(nextDay.date) : null;
-  const nextDayDow = nextDayDate ? DOW_EN[nextDayDate.getDay()] : "";
+  const nextDayDow = nextDay?.date ? getDow(nextDay.date) : "";
 
   return (
     /* ── Replica esatta di .daybyday dal design ── */
@@ -309,23 +322,26 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       >
         {/* .day-list-head */}
         <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0">
-          <div className="text-[10px] uppercase tracking-[0.10em] text-ink-soft">Itinerary</div>
-          <div className="text-[16px] font-semibold text-ink mt-0.5">Day by day</div>
+          <div className="text-[10px] uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
+          <div className="text-[16px] font-semibold text-ink mt-0.5">{t("sidebar.dayByDay")}</div>
           <div className="text-[12px] text-ink-soft mt-0.5">
-            {localDays.length} days · {trip.start_date ? formatDate(trip.start_date) : ""} → {trip.end_date ? formatDate(trip.end_date) : ""}
+            {t("sidebar.summary", {
+              count: localDays.length,
+              start: trip.start_date ? formatDate(trip.start_date) : "",
+              end: trip.end_date ? formatDate(trip.end_date) : "",
+            })}
           </div>
         </div>
 
         {/* .day-items — lista scrollabile */}
         <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin">
           {localDays.map((d) => {
-            const date = d.date ? localDate(d.date) : null;
             return (
               <DayItem
                 key={d.id}
                 id={`day-${d.day_number - 1}`}
-                dow={date ? DOW_EN[date.getDay()] : ""}
-                dayNumber={date ? date.getDate() : d.day_number}
+                dow={d.date ? getDow(d.date) : ""}
+                dayNumber={d.date ? localDate(d.date).getDate() : d.day_number}
                 zone={d.city ?? undefined}
                 place={d.label ?? undefined}
                 selected={d.id === selectedDayId}
@@ -352,17 +368,27 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           summary={selectedDay.summary ?? undefined}
           practicalNote={selectedDay.notes ?? undefined}
           type={selectedDay.day_type ? (selectedDay.day_type.charAt(0).toUpperCase() + selectedDay.day_type.slice(1)) as HeroBannerType : undefined}
+          imageUrl={selectedDay.image_url ?? undefined}
+          imageUpload={{
+            bucket: "trip-media",
+            path: () => `trips/${trip.id}/days/${selectedDayId}/banner/hero.webp`,
+          }}
           meta={heroMeta}
           subBanner={lodging}
           editMode={editMode}
           onSave={async (data) => {
             const day_type = data.type ? data.type.toLowerCase() : null;
+            // Strip the cache-buster (?t=…) added by HeroBanner's onApply before persisting.
+            const image_url = data.imageUrl
+              ? data.imageUrl.split("?")[0] || null
+              : null;
             patchDay(selectedDayId, {
               city: data.subtitle || null,
               label: data.title || null,
               day_type,
               notes: data.practicalNote || null,
               summary: data.summary || null,
+              image_url,
             });
             await fetch(`/api/trips/days/${selectedDayId}`, {
               method: "PATCH",
@@ -373,6 +399,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 day_type,
                 notes: data.practicalNote,
                 summary: data.summary,
+                image_url,
               }),
             });
           }}
@@ -453,8 +480,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             key={selectedDayId}
             activities={activities}
             editMode={editMode}
+            tripId={trip.id}
             externalShowAddForm={showAddForm}
             onAddFormClose={() => setShowAddForm(false)}
+            onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
             initialShowMap={selectedDay.show_map}
             onToggleMap={async (show) => {
               await fetch(`/api/trips/days/${selectedDayId}`, {
@@ -466,6 +495,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             onActivitySave={async (id, data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
                 ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+                : null;
+              // Strip cache-buster (?t=…) from hero_image before persisting
+              const hero_image = data.heroImage
+                ? data.heroImage.split("?")[0] || null
                 : null;
               // Optimistic update
               setActivities((prev) =>
@@ -484,6 +517,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                         budget_amount: data.budgetAmount ?? null,
                         budget_currency: data.budgetCurrency,
                         budget_paid: data.status === "paid",
+                        hero_image,
                       }
                     : a
                 )
@@ -503,6 +537,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
                   budget_paid: data.status === "paid",
+                  place_enriched: data.enrichedPlace ?? null,
+                  hero_image,
                 }),
               });
             }}
@@ -529,6 +565,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
                   budget_paid: data.status === "paid",
+                  place_enriched: data.enrichedPlace ?? null,
                 }),
               });
               if (res.ok) {
@@ -572,7 +609,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             <IconArrowRightCircle className="w-7 h-7 text-orange shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-[10px] opacity-70 uppercase tracking-[0.08em]">
-                Tomorrow · Day {nextDay.day_number} · {nextDayDow}
+                {t("nextDay", { number: nextDay.day_number, dow: nextDayDow })}
               </div>
               <div className="text-[14px] font-medium mt-0.5 truncate">
                 {nextDay.label ?? nextDay.city ?? ""}

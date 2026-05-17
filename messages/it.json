@@ -1,0 +1,188 @@
+{
+  "AppHeader": {
+    "nav": {
+      "myTrips": "I miei viaggi",
+      "explore": "Esplora",
+      "guides": "Guide",
+      "budget": "Budget"
+    },
+    "tabs": {
+      "trip": "Viaggio",
+      "dayByDay": "Giorno per giorno",
+      "map": "Mappa",
+      "budget": "Budget",
+      "notes": "Note"
+    },
+    "greeting": "Ciao, {name}",
+    "profileLabel": "Il tuo profilo",
+    "signIn": "Accedi",
+    "menu": "Menu",
+    "editMode": "Modifica",
+    "viewMode": "Visualizza",
+    "enableEditMode": "Passa alla modalità modifica",
+    "disableEditMode": "Passa alla modalità visualizzazione",
+    "debug": "Debug",
+    "enableDebug": "Abilita modalità debug",
+    "disableDebug": "Disabilita modalità debug",
+    "feedback": "Feedback",
+    "leaveFeedback": "Lascia un feedback",
+    "tripActions": "Azioni viaggio",
+    "allFeedback": "Vedi tutti i feedback",
+    "tripSection": "Viaggio · {name}"
+  },
+  "FeedbackModal": {
+    "title": "Lascia un feedback",
+    "types": {
+      "bug": "Bug",
+      "suggestion": "Suggerimento",
+      "other": "Altro"
+    },
+    "placeholders": {
+      "bug": "Descrivi il problema — cosa hai fatto e cosa è successo…",
+      "suggestion": "Che funzionalità vorresti vedere?",
+      "other": "Scrivi qui il tuo commento…"
+    },
+    "page": "Pagina:",
+    "cancel": "Annulla",
+    "send": "Invia",
+    "sending": "Salvataggio…",
+    "thankYou": "Grazie!",
+    "saved": "Il tuo feedback è stato salvato."
+  },
+  "TripShell": {
+    "daysCount": "{count, plural, one {# giorno} other {# giorni}}",
+    "empty": {
+      "body": "Il viaggio è stato creato ma non hai ancora aggiunto le date.",
+      "hint": "Aggiungi un intervallo di date per generare il programma giorno per giorno.",
+      "comingSoon": "Funzionalità per modificare le date del viaggio in arrivo."
+    }
+  },
+  "TripDayView": {
+    "sidebar": {
+      "itinerary": "Itinerario",
+      "dayByDay": "Giorno per giorno",
+      "summary": "{count, plural, one {# giorno} other {# giorni}} · {start} → {end}"
+    },
+    "day": {
+      "eyebrow": "Giorno {number}",
+      "activityCount": "{count, plural, one {# attività} other {# attività}}"
+    },
+    "go": {
+      "hiLabel": "Ciao da Go",
+      "wantToFind": "Vuoi trovare",
+      "rotating0": "un posto da visitare?",
+      "rotating1": "un alloggio per stanotte?",
+      "rotating2": "un posto dove mangiare?",
+      "rotating3": "un'idea?",
+      "tagline": "Due parole da te, una manciata di idee da me.",
+      "askMe": "Chiedimi",
+      "letsGo": "Andiamo…",
+      "ariaLabel": "Chiedi a Go suggerimenti per il viaggio"
+    },
+    "shortcuts": {
+      "title": "Scorciatoie",
+      "editDay": "Modifica giorno",
+      "editLodging": "Modifica alloggio",
+      "addActivity": "Aggiungi attività",
+      "closePanel": "Chiudi pannello"
+    },
+    "nextDay": "Successivo · Giorno {number} · {dow}"
+  },
+  "HeroBanner": {
+    "editDay": "Modifica giorno",
+    "prev": "Precedente",
+    "next": "Successivo",
+    "hero": {
+      "formTitle": "Descrizione giorno",
+      "zone": "Zona",
+      "zonePlaceholder": "es. Monte Fuji",
+      "location": "Luogo / Attività principale",
+      "locationPlaceholder": "Poche parole sull'attività del giorno",
+      "summary": "Riepilogo",
+      "summaryPlaceholder": "Una breve frase narrativa sul giorno",
+      "practicalNote": "Nota pratica",
+      "practicalNotePlaceholder": "Promemoria utile (cosa portare, cose a cui fare attenzione)",
+      "change": "Cambia"
+    },
+    "lodging": {
+      "formTitle": "Modifica alloggio",
+      "name": "Nome struttura",
+      "namePlaceholder": "Nome struttura",
+      "address": "Indirizzo",
+      "addressPlaceholder": "Via, città",
+      "bookingLink": "Link prenotazione",
+      "bookingLinkPlaceholder": "URL di prenotazione o sito della struttura",
+      "budgetPerNight": "Budget / notte",
+      "addAddress": "+ Aggiungi indirizzo",
+      "addLink": "+ Aggiungi link",
+      "addBudget": "+ Aggiungi budget",
+      "remove": "Rimuovi alloggio",
+      "removeAddress": "Rimuovi indirizzo",
+      "removeLink": "Rimuovi link",
+      "removeBudget": "Rimuovi budget",
+      "empty": "Nessun alloggio per questa notte",
+      "addStay": "Aggiungi alloggio",
+      "open": "Apri ↗",
+      "editTitle": "Modifica alloggio"
+    },
+    "pressEnterToSave": "Premi Invio per salvare",
+    "cancel": "Annulla",
+    "save": "Salva"
+  },
+  "Itinerary": {
+    "title": "Itinerario del giorno",
+    "hideMap": "Nascondi mappa",
+    "showMap": "Mostra mappa",
+    "addActivity": "Aggiungi attività"
+  },
+  "ActivityList": {
+    "empty": "Nessuna attività per questo giorno.",
+    "slots": {
+      "morning": "Mattina",
+      "afternoon": "Pomeriggio",
+      "evening": "Sera",
+      "night": "Notte",
+      "unslotted": "Attività"
+    }
+  },
+  "ActivityForm": {
+    "titleNew": "Nuova attività",
+    "titleEdit": "Modifica attività",
+    "closeWithoutSaving": "Chiudi senza salvare",
+    "titleLabel": "Titolo",
+    "titlePlaceholder": "Titolo attività",
+    "descriptionLabel": "Descrizione",
+    "descriptionPlaceholder": "Breve descrizione (opzionale)",
+    "selectPeriodAndTime": "Seleziona periodo e orario",
+    "hour": "Ora",
+    "minutes": "Minuti",
+    "clearTime": "rimuovi orario",
+    "addressLabel": "Indirizzo",
+    "addressPlaceholder": "Inizia a digitare per suggerimenti…",
+    "removeAddress": "Rimuovi indirizzo",
+    "budgetLabel": "Budget",
+    "removeBudget": "Rimuovi budget",
+    "addAddress": "+ Aggiungi indirizzo",
+    "addBudget": "+ Aggiungi budget",
+    "areYouSure": "Sicuro?",
+    "deleteActivity": "Elimina attività",
+    "delete": "Elimina",
+    "pressEnterToSave": "Premi Invio per salvare",
+    "cancel": "Annulla",
+    "createActivity": "Crea attività",
+    "saveActivity": "Salva attività",
+    "status": "Stato",
+    "statusTodo": "Da prenotare",
+    "statusBooked": "Prenotato",
+    "statusPaid": "Pagato",
+    "openNow": "Aperto ora",
+    "closedNow": "Chiuso ora",
+    "seeHours": "Vedi orari",
+    "hideHours": "Nascondi orari",
+    "useThisAddress": "+ Usa questo indirizzo",
+    "askGo": "Chiedi a Go",
+    "goGetInfo": "Go dammi info",
+    "gettingInfo": "Caricamento…",
+    "dismiss": "Chiudi"
+  }
+}

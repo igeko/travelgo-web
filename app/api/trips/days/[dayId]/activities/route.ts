@@ -36,6 +36,7 @@ export async function POST(
     "title", "short_desc", "slot", "time",
     "location", "location_place_id", "location_lat", "location_lng",
     "budget_amount", "budget_currency", "budget_paid",
+    "place_enriched",
   ] as const;
 
   const insert: Record<string, unknown> = {
@@ -51,7 +52,7 @@ export async function POST(
   const { data: created, error } = await supabase
     .from("activities")
     .insert(insert)
-    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid")
+    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, place_enriched")
     .single();
 
   if (error) {

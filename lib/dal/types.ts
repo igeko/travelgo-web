@@ -77,6 +77,7 @@ export type DbDay = {
   accommodation_cost_amount: number | null;
   accommodation_cost_currency: string | null;
   accommodation_cost_paid: boolean;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };

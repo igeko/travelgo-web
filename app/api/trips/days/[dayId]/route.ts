@@ -19,6 +19,7 @@ export async function PATCH(
     "accommodation_url", "accommodation_notes",
     "accommodation_place_id", "accommodation_lat", "accommodation_lng",
     "accommodation_cost_amount", "accommodation_cost_currency", "accommodation_cost_paid",
+    "image_url",
   ] as const;
 
   const patch: Record<string, unknown> = {};

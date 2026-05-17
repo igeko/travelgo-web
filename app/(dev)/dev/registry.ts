@@ -76,6 +76,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Fields",
     description: "Pill text input / textarea · floating label, prefix, suffix, counter",
   },
+  {
+    slug: "image-picker",
+    title: "ImagePicker",
+    group: "Atoms",
+    subgroup: "Fields",
+    description: "Thumbnail + dark popover · Upload tab with 7 states (idle → drag-over → uploading → complete → error)",
+  },
   // Map subgroup
   {
     slug: "map",

@@ -63,7 +63,7 @@ export async function GET() {
 
   let query = db
     .from("tester_notes")
-    .select("id, type, note, page_url, trip_id, created_at, user_id, status")
+    .select("id, type, note, fix_notes, page_url, trip_id, created_at, user_id, status")
     .order("created_at", { ascending: false });
 
   if (!isAdmin) query = query.eq("user_id", user.id);

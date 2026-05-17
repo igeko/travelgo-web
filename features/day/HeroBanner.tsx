@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import {
   IconBed,
@@ -10,7 +11,6 @@ import {
   IconCheck,
   IconPencil,
   IconPlus,
-  IconUpload,
   IconX,
   IconTrash,
   IconLink,
@@ -19,6 +19,7 @@ import { SoftField } from "@/components/ui/SoftField";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
 import { BudgetInput, type Currency } from "@/components/ui/BudgetInput";
 import { Button } from "@/components/ui/Button";
+import { ImagePicker, type CompressOptions, type UploadOptions } from "@/components/ui/ImagePicker";
 
 /* ─────────────────────────────────────────────────────────────────
    HeroBanner · Full-bleed hero + optional sub-banner (lodging).
@@ -67,23 +68,14 @@ const DEFAULT_CURRENCIES: Currency[] = [
 
 /* ── Sub-banner data ─────────────────────────────────────────────── */
 export type HeroBannerSubBanner = {
-  /** Lodging type key — drives emoji */
   type?: LodgingType;
-  /** Emoji override (used when type is not set) */
   emoji?: string;
-  /** Small uppercase label, e.g. "Staying at" */
   label?: string;
-  /** Primary name */
   name: string;
-  /** Street address or locality */
   detail?: string;
-  /** Resolved place (from AddressField) */
   place?: PlaceResult | null;
-  /** External booking URL */
   href?: string;
-  /** CTA label. Defaults to "Open ↗" */
   ctaLabel?: string;
-  /** Budget */
   budgetAmount?: number;
   budgetCurrency?: string;
 };
@@ -94,9 +86,7 @@ export type HeroBannerData = {
   subtitle: string;
   imageUrl: string;
   type?: HeroBannerType;
-  /** Short narrative sentence about the day */
   summary?: string;
-  /** Practical reminder (what to bring, watch out for) */
   practicalNote?: string;
 };
 
@@ -104,34 +94,26 @@ export type HeroBannerSubBannerData = HeroBannerSubBanner;
 
 /* ── Props ───────────────────────────────────────────────────────── */
 export type HeroBannerProps = {
-  /** When this value changes, all draft state is reset to the current props. Use to signal a context switch (e.g. different day selected). */
   resetKey?: string | number;
   eyebrow?: string;
   title: string;
-  /** Zone/area — shown uppercase in orange after the eyebrow */
   subtitle?: string;
-  /** Secondary line below the title, e.g. "August 3, 2026 · 5 activities" */
   meta?: string;
-  /** Short narrative sentence about the day */
   summary?: string;
-  /** Practical reminder (what to bring, watch out for) */
   practicalNote?: string;
-  /** Day type — drives the default background image when imageUrl is not set */
   type?: HeroBannerType;
   imageUrl?: string;
-  /** When true, shows the edit pencil on the hero and the lodging sub-banner */
   editMode?: boolean;
-  /** Called when the hero edit form is saved */
+  /** Client-side WebP compression for the banner image upload. */
+  imageCompress?: CompressOptions;
+  /** Supabase Storage destination for the banner image upload. */
+  imageUpload?: UploadOptions;
   onSave?: (data: HeroBannerData) => void;
   onPrev?: () => void;
   onNext?: () => void;
-  /** Optional sub-banner (lodging). Shows pencil if onSaveLodging is provided. */
   subBanner?: HeroBannerSubBanner;
-  /** Called when the lodging edit form is saved */
   onSaveLodging?: (data: HeroBannerSubBannerData) => void;
-  /** Called when the user removes the lodging */
   onRemoveLodging?: () => void;
-  /** Called when the user clicks "Add stay" in the empty lodging state */
   onAddLodging?: () => void;
   className?: string;
 };
@@ -158,7 +140,6 @@ function LodgingTypePicker({
   const ref = useRef<HTMLDivElement>(null);
   const cur = LODGING_TYPES.find((t) => t.k === value) ?? LODGING_TYPES[0];
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
@@ -228,6 +209,8 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   type,
   imageUrl,
   editMode = false,
+  imageCompress,
+  imageUpload,
   onSave,
   onPrev,
   onNext,
@@ -237,6 +220,8 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   onAddLodging,
   className,
 }, ref) {
+  const t = useTranslations("HeroBanner");
+
   /* ── Hero edit state ── */
   const [heroOpen, setHeroOpen] = useState(false);
   const [draftPlace,         setDraftPlace]         = useState(title);
@@ -246,7 +231,6 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   const [draftImageUrl,      setDraftImageUrl]      = useState(imageUrl ?? "");
   const [draftHeroType,      setDraftHeroType]      = useState<HeroBannerType | undefined>(type);
 
-  /* ── Reset drafts when resetKey changes (e.g. day switch) ── */
   useEffect(() => {
     setDraftPlace(title);
     setDraftZone(subtitle ?? "");
@@ -269,10 +253,10 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   const [showLodgingLink,    setShowLodgingLink]    = useState(!!subBanner?.href);
   const [showLodgingBudget,  setShowLodgingBudget]  = useState(!!subBanner?.budgetAmount);
 
-  const hasSubBanner      = !!subBanner;
-  const lodgingEditable   = editMode && hasSubBanner && !!onSaveLodging;
+  const hasSubBanner    = !!subBanner;
+  const lodgingEditable = editMode && hasSubBanner && !!onSaveLodging;
 
-  /* ─── Hero handlers ──────────────────────────────────────────── */
+  /* ─── Hero handlers ── */
   function openHeroEdit() {
     setDraftPlace(title);
     setDraftZone(subtitle ?? "");
@@ -296,7 +280,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
     setHeroOpen(false);
   }
 
-  /* ─── Lodging handlers ───────────────────────────────────────── */
+  /* ─── Lodging handlers ── */
   function openLodgingEdit() {
     setDraftLodgingType(subBanner?.type ?? "Hotel");
     setDraftLodgingName(subBanner?.name ?? "");
@@ -326,15 +310,14 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
     setLodgingOpen(false);
   }
 
-  /* ─── Imperative handle (shortcut trigger from parent) ──────── */
+  /* ─── Imperative handle ── */
   useImperativeHandle(ref, () => ({
-    openEdit:   () => { if (!heroOpen) openHeroEdit(); },
+    openEdit:    () => { if (!heroOpen)    openHeroEdit(); },
     openLodging: () => { if (!lodgingOpen) openLodgingEdit(); },
   }), [heroOpen, lodgingOpen]);
 
-  /* ─── Layout flags ───────────────────────────────────────────── */
+  /* ─── Layout flags ── */
   const showEmptyLodging = !hasSubBanner;
-  // Hero bottom radius: flat when either form is open OR sub-banner present OR empty lodging strip
   const heroFlat = heroOpen || lodgingOpen || hasSubBanner || showEmptyLodging;
 
   return (
@@ -346,20 +329,18 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           "relative overflow-hidden bg-ink min-h-[220px] bg-cover bg-center",
           heroFlat ? "rounded-t-[var(--radius-lg)]" : "rounded-[var(--radius-lg)]",
         )}
-        style={{ backgroundImage: `url(${resolveHeroBanner(heroOpen ? draftHeroType : type, imageUrl)})` }}
+        style={{ backgroundImage: `url(${resolveHeroBanner(heroOpen ? draftHeroType : type, heroOpen ? draftImageUrl : imageUrl)})` }}
       >
-        {/* Gradient — darker at top (eyebrow) and bottom (title/meta) */}
         <div
           aria-hidden
           className="absolute inset-0"
           style={{ background: "linear-gradient(180deg, rgba(13,44,61,0.45) 0%, rgba(13,44,61,0) 38%, rgba(13,44,61,0.72) 100%)" }}
         />
 
-        {/* Pencil handle — pill with label, over-media style */}
         {editMode && (
           <button
             onClick={openHeroEdit}
-            title="Edit day"
+            title={t("editDay")}
             className={cn(
               "absolute top-3 right-3 z-10 h-8 rounded-pill px-3",
               "inline-flex items-center gap-1.5 cursor-pointer transition-colors duration-150 text-[12px] font-medium",
@@ -369,11 +350,10 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             )}
           >
             <IconPencil size={13} />
-            <span>Edit Day</span>
+            <span>{t("editDay")}</span>
           </button>
         )}
 
-        {/* Content */}
         <div className="absolute inset-x-[18px] bottom-4 z-10 flex items-end justify-between gap-3 text-white">
           <div className="min-w-0">
             {(eyebrow || subtitle) && (
@@ -393,13 +373,13 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           {(onPrev || onNext) && (
             <div className="flex gap-1.5 shrink-0">
               {onPrev && (
-                <button onClick={onPrev} title="Previous"
+                <button onClick={onPrev} title={t("prev")}
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-white/15 border border-white/20 hover:bg-white/25 transition-colors cursor-pointer">
                   <IconChevronLeft size={16} />
                 </button>
               )}
               {onNext && (
-                <button onClick={onNext} title="Next"
+                <button onClick={onNext} title={t("next")}
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-white/15 border border-white/20 hover:bg-white/25 transition-colors cursor-pointer">
                   <IconChevronRight size={16} />
                 </button>
@@ -420,36 +400,42 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           )}
         >
           <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
-            Day description
+            {t("hero.formTitle")}
           </div>
 
-          {/* Thumbnail + fields */}
           <div className="grid gap-4" style={{ gridTemplateColumns: "120px 1fr" }}>
-            <div
-              className="relative rounded-[10px] overflow-hidden bg-surface-soft bg-cover bg-center cursor-pointer group"
-              style={{ height: 68, backgroundImage: `url(${resolveHeroBanner(draftHeroType, draftImageUrl)})` }}
-              title="Change image"
-            >
-              <div className="absolute inset-0 bg-ink/55 flex flex-col items-center justify-center gap-1 text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                <IconUpload size={18} />
-                <span>Change</span>
-              </div>
-            </div>
+            <ImagePicker
+              currentImageUrl={resolveHeroBanner(draftHeroType, draftImageUrl)}
+              currentLabel={draftImageUrl ? "custom photo" : `${draftHeroType ?? "default"}`}
+              thumbnailWidth={120}
+              thumbnailHeight={68}
+              compress={imageCompress ?? { maxWidth: 1920, maxHeight: 600, quality: 0.90 }}
+              upload={imageUpload}
+              onApply={(result) => {
+                // Append cache-buster so the browser doesn't serve the old image
+                // after an overwrite (same URL, same filename). The bust is only
+                // for the live draft preview; onSave strips it before writing to DB.
+                const url = result.publicUrl
+                  ? `${result.publicUrl}?t=${Date.now()}`
+                  : result.previewUrl;
+                setDraftImageUrl(url);
+              }}
+              onReset={() => setDraftImageUrl("")}
+            />
             <div className="flex flex-col gap-2">
-              <SoftField value={draftZone} onChange={setDraftZone} label="Zone" placeholder="e.g. Monte Fuji" maxLength={120} hideCounter inputProps={{ autoFocus: true }} />
-              <SoftField value={draftPlace} onChange={setDraftPlace} label="Location / Main activity" placeholder="A few words on the day's activity" maxLength={120} hideCounter />
+              <SoftField value={draftZone} onChange={setDraftZone} label={t("hero.zone")} placeholder={t("hero.zonePlaceholder")} maxLength={120} hideCounter inputProps={{ autoFocus: true }} />
+              <SoftField value={draftPlace} onChange={setDraftPlace} label={t("hero.location")} placeholder={t("hero.locationPlaceholder")} maxLength={120} hideCounter />
             </div>
           </div>
 
-          {/* Summary + Practical note — same column width as the fields above */}
           <div className="grid gap-2" style={{ gridTemplateColumns: "120px 1fr" }}>
-            <div /> {/* spacer to align with the thumbnail column */}
+            <div />
             <div className="flex flex-col gap-2">
               <SoftField
                 value={draftSummary}
                 onChange={setDraftSummary}
-                label="Summary"
-                placeholder="A short narrative sentence about the day"
+                label={t("hero.summary")}
+                placeholder={t("hero.summaryPlaceholder")}
                 multiline
                 rows={2}
                 maxLength={280}
@@ -457,114 +443,107 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               <SoftField
                 value={draftPracticalNote}
                 onChange={setDraftPracticalNote}
-                label="Practical note"
-                placeholder="Useful reminder (what to bring, things to watch out for)"
+                label={t("hero.practicalNote")}
+                placeholder={t("hero.practicalNotePlaceholder")}
                 maxLength={120}
               />
             </div>
           </div>
 
-          {/* Type chips — same column alignment */}
           <div className="grid gap-2" style={{ gridTemplateColumns: "120px 1fr" }}>
             <div />
             <div className="flex flex-wrap gap-1.5">
-              {HERO_TYPE_CHIPS.map((t) => (
-                <button key={t} type="button" onClick={() => setDraftHeroType(t)}
+              {HERO_TYPE_CHIPS.map((chip) => (
+                <button key={chip} type="button" onClick={() => setDraftHeroType(chip)}
                   className={cn(
                     "px-2.5 py-1 rounded-pill text-[11px] border cursor-pointer transition-colors font-sans",
-                    draftHeroType === t
+                    draftHeroType === chip
                       ? "bg-ink text-white border-ink font-medium"
                       : "bg-surface text-ink-soft border-border hover:border-border-strong",
                   )}>
-                  {t}
+                  {chip}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
-            <span className="text-[10px] text-ink-faint">Press Enter to save</span>
+            <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
             <div className="flex items-center gap-2">
-              <Button variant="text-only" iconOnly={false} onClick={() => setHeroOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>Save</Button>
+              <Button variant="text-only" iconOnly={false} onClick={() => setHeroOpen(false)}>{t("cancel")}</Button>
+              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>{t("save")}</Button>
             </div>
           </div>
         </form>
       )}
 
-      {/* ══ LODGING EDIT FORM (opens between hero and sub-banner) ═══ */}
+      {/* ══ LODGING EDIT FORM ═══════════════════════════════════════ */}
       {lodgingOpen && (
         <form
           onSubmit={(e) => { e.preventDefault(); saveLodging(); }}
           onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); setLodgingOpen(false); } }}
           className="relative bg-surface border border-border-strong border-t-0 px-4 pt-4 pb-4 flex flex-col gap-3"
         >
-          {/* Arrow-down pointing at the sub-banner below */}
           <div
             aria-hidden
             className="absolute -bottom-[7px] left-[60px] w-3 h-3 bg-surface border-r border-b border-border-strong rotate-45 z-10"
           />
 
           <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
-            Edit lodging
+            {t("lodging.formTitle")}
           </div>
 
-          {/* Type picker */}
           <LodgingTypePicker value={draftLodgingType} onChange={setDraftLodgingType} />
 
-          {/* Name */}
           <SoftField
             value={draftLodgingName}
             onChange={setDraftLodgingName}
-            label="Accommodation name"
-            placeholder="Accommodation name"
+            label={t("lodging.name")}
+            placeholder={t("lodging.namePlaceholder")}
             maxLength={80}
             hideCounter
             inputProps={{ autoFocus: true }}
           />
 
-          {/* Optional: address */}
           {showLodgingAddress && (
             <div className="flex items-center gap-1.5">
               <div className="flex-1 min-w-0">
                 <AddressField
                   value={draftLodgingPlace}
                   onChange={setDraftLodgingPlace}
-                  label="Address"
-                  placeholder="Street, city"
+                  label={t("lodging.address")}
+                  placeholder={t("lodging.addressPlaceholder")}
                   showMapButton
                 />
               </div>
               <button type="button" onClick={() => { setDraftLodgingPlace(null); setShowLodgingAddress(false); }}
-                aria-label="Remove address"
+                aria-label={t("lodging.removeAddress")}
                 className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
                 <IconX size={14} />
               </button>
             </div>
           )}
 
-          {/* Optional: link */}
           {showLodgingLink && (
             <div className="flex items-center gap-1.5">
               <div className="flex-1 min-w-0">
                 <SoftField
                   value={draftLodgingHref}
                   onChange={setDraftLodgingHref}
-                  label="Booking link"
-                  placeholder="Booking URL or property website"
+                  label={t("lodging.bookingLink")}
+                  placeholder={t("lodging.bookingLinkPlaceholder")}
                 >
                   <SoftField.Prefix><IconLink size={14} className="text-ink-faint" /></SoftField.Prefix>
                 </SoftField>
               </div>
               <button type="button" onClick={() => { setDraftLodgingHref(""); setShowLodgingLink(false); }}
-                aria-label="Remove link"
+                aria-label={t("lodging.removeLink")}
                 className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
                 <IconX size={14} />
               </button>
             </div>
           )}
 
-          {/* Optional: budget */}
           {showLodgingBudget && (
             <div className="flex items-center gap-1.5">
               <div className="flex-1 min-w-0">
@@ -574,66 +553,64 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
                   currency={draftLodgingCurrency}
                   onCurrencyChange={setDraftLodgingCurrency}
                   currencies={DEFAULT_CURRENCIES}
-                  label="Budget / night"
+                  label={t("lodging.budgetPerNight")}
                 />
               </div>
               <button type="button" onClick={() => { setDraftLodgingBudget(undefined); setShowLodgingBudget(false); }}
-                aria-label="Remove budget"
+                aria-label={t("lodging.removeBudget")}
                 className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
                 <IconX size={14} />
               </button>
             </div>
           )}
 
-          {/* "+ Add …" links */}
           {(!showLodgingAddress || !showLodgingLink || !showLodgingBudget) && (
             <div className="flex flex-wrap gap-3.5 items-center pt-1">
               {!showLodgingAddress && (
                 <button type="button" onClick={() => setShowLodgingAddress(true)}
                   className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-                  + Add address
+                  {t("lodging.addAddress")}
                 </button>
               )}
               {!showLodgingLink && (
                 <button type="button" onClick={() => setShowLodgingLink(true)}
                   className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-                  + Add link
+                  {t("lodging.addLink")}
                 </button>
               )}
               {!showLodgingBudget && (
                 <button type="button" onClick={() => setShowLodgingBudget(true)}
                   className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
-                  + Add budget
+                  {t("lodging.addBudget")}
                 </button>
               )}
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             {onRemoveLodging ? (
               <Button variant="ghost" tone="danger" iconOnly={false} onClick={() => { onRemoveLodging(); setLodgingOpen(false); }}>
                 <IconTrash />
-                Remove lodging
+                {t("lodging.remove")}
               </Button>
             ) : <span />}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-ink-faint">Press Enter to save</span>
-              <Button variant="text-only" iconOnly={false} onClick={() => setLodgingOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>Save</Button>
+              <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
+              <Button variant="text-only" iconOnly={false} onClick={() => setLodgingOpen(false)}>{t("cancel")}</Button>
+              <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>{t("save")}</Button>
             </div>
           </div>
         </form>
       )}
 
-      {/* ══ EMPTY LODGING STATE (editMode, no subBanner) ═══════════ */}
+      {/* ══ EMPTY LODGING STATE ═════════════════════════════════════ */}
       {showEmptyLodging && (
         <div
           className="rounded-b-[var(--radius-lg)] -mt-px flex items-center justify-center gap-2.5 px-4 py-2.5 border-t border-white/[0.08]"
           style={{ background: "#1a3a4f", color: "white" }}
         >
           <IconBed size={16} className="text-white/55 shrink-0" />
-          <span className="text-[13px] text-white/70">No stay set for this night</span>
+          <span className="text-[13px] text-white/70">{t("lodging.empty")}</span>
           {editMode && (
             <>
               <span aria-hidden className="text-white/30 text-[13px]">·</span>
@@ -643,7 +620,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
                 className="inline-flex items-center gap-1 text-[12px] font-medium text-white/80 hover:text-white bg-white/[0.10] hover:bg-white/[0.18] border border-white/[0.18] rounded-pill px-3 py-1 transition-colors cursor-pointer"
               >
                 <IconPlus size={13} className="text-orange" />
-                Add stay
+                {t("lodging.addStay")}
               </button>
             </>
           )}
@@ -662,12 +639,10 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               : (subBanner.href ? "30px 1fr auto" : "30px 1fr"),
           }}
         >
-          {/* Emoji */}
           <div className="w-[30px] h-[30px] rounded-lg bg-white/[0.08] flex items-center justify-center text-base shrink-0">
             {resolveEmoji(subBanner.type, subBanner.emoji)}
           </div>
 
-          {/* Body */}
           <div className="min-w-0 flex flex-wrap items-baseline gap-x-1.5">
             {subBanner.label && (
               <span className="text-[10px] font-semibold text-white/60 uppercase tracking-[0.08em]">
@@ -680,19 +655,17 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             )}
           </div>
 
-          {/* CTA */}
           {subBanner.href && (
             <a href={subBanner.href} target="_blank" rel="noopener noreferrer"
               className="shrink-0 text-[11px] font-medium text-white px-3 py-1.5 rounded-pill bg-white/[0.12] border border-white/[0.18] hover:bg-white/20 transition-colors whitespace-nowrap">
-              {subBanner.ctaLabel ?? "Open ↗"}
+              {subBanner.ctaLabel ?? t("lodging.open")}
             </a>
           )}
 
-          {/* Pencil handle on sub-banner */}
           {lodgingEditable && (
             <button
               onClick={openLodgingEdit}
-              title="Edit lodging"
+              title={t("lodging.editTitle")}
               className={cn(
                 "shrink-0 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors duration-150",
                 lodgingOpen

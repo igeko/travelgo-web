@@ -42,8 +42,13 @@ export type ActivityRowProps = {
   editMode?: boolean;
   /** Initial data for the edit form */
   initialData?: Partial<ActivityData>;
+  /** Activity ID — passed to ActivityEditForm to enable the ImagePicker */
+  activityId?: string;
+  /** Trip ID — passed to ActivityEditForm for the storage path */
+  tripId?: string;
   onSave?: (data: ActivityData) => void;
   onDelete?: () => void;
+  onAskGo?: (title: string, activityId?: string) => void;
   className?: string;
 };
 
@@ -67,8 +72,11 @@ export function ActivityRow({
   href = "#",
   editMode = false,
   initialData,
+  activityId,
+  tripId,
   onSave,
   onDelete,
+  onAskGo,
   className,
 }: ActivityRowProps) {
   const [editOpen, setEditOpen] = useState(false);
@@ -246,9 +254,12 @@ export function ActivityRow({
           <ActivityEditForm
             isNew={false}
             initialData={initialData}
+            activityId={activityId}
+            tripId={tripId}
             onSave={(data) => { onSave?.(data); setEditOpen(false); }}
             onCancel={() => setEditOpen(false)}
             onDelete={onDelete ? () => { onDelete(); setEditOpen(false); } : undefined}
+            onAskGo={onAskGo}
           />
         </div>
       )}

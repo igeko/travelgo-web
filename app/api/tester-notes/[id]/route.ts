@@ -11,7 +11,7 @@ function getServiceClient() {
 }
 
 const ADMIN_ROLES = ["dev", "admin"];
-const VALID_STATUSES = ["proposed", "approved", "in_progress", "done", "archived"];
+const VALID_STATUSES = ["proposed", "approved", "in_progress", "to_be_tested", "done", "archived"];
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,25 +22,57 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const db = getServiceClient();
 
-  // Solo admin/dev possono cambiare stato
-  const { data: adminRoles } = await db
-    .from("user_platform_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .in("role", ADMIN_ROLES);
-
-  if (!adminRoles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const body = await req.json();
-  const { status } = body;
+  const { status, note, fix_notes } = body;
 
-  if (!VALID_STATUSES.includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  const updates: Record<string, unknown> = {};
+
+  // status e fix_notes: solo admin/dev
+  if (status !== undefined || fix_notes !== undefined) {
+    const { data: adminRoles } = await db
+      .from("user_platform_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ADMIN_ROLES);
+
+    if (!adminRoles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      }
+      updates.status = status;
+    }
+
+    if (fix_notes !== undefined) {
+      updates.fix_notes = fix_notes?.trim() || null;
+    }
+  }
+
+  // note: solo l'autore della nota
+  if (note !== undefined) {
+    if (!note?.trim()) return NextResponse.json({ error: "Note cannot be empty" }, { status: 400 });
+
+    const { data: noteData } = await db
+      .from("tester_notes")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+
+    if (!noteData || noteData.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    updates.note = note.trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
   const { error } = await db
     .from("tester_notes")
-    .update({ status })
+    .update(updates)
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

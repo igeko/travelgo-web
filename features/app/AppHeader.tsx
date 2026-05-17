@@ -2,8 +2,10 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
+import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
 import { IconMessageReport, IconNotes } from "@/components/ui/icons";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -44,21 +46,6 @@ export type AppHeaderProps = {
   className?: string;
 };
 
-const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
-  { id: "trips",   label: "My trips", href: "/trips",   authRequired: true },
-  { id: "explore", label: "Explore",  href: "/explore", authRequired: false },
-  { id: "guides",  label: "Guides",   href: "/guides",  authRequired: false },
-  { id: "budget",  label: "Budget",   href: "/budget",  authRequired: false },
-];
-
-const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
-  { id: "trip",      label: "Trip",       href: (id) => `/trips/${id}/overview` },
-  { id: "day-by-day", label: "Day by day", href: (id) => `/trips/${id}` },
-  { id: "map",        label: "Map",        href: (id) => `/trips/${id}?tab=map` },
-  { id: "budget",     label: "Budget",     href: (id) => `/trips/${id}?tab=budget` },
-  { id: "notes",      label: "Notes",      href: (id) => `/trips/${id}?tab=notes` },
-];
-
 export function AppHeader({
   activeNav = "trips",
   tripName,
@@ -79,11 +66,27 @@ export function AppHeader({
   isLoggedIn = false,
   className,
 }: AppHeaderProps) {
+  const t = useTranslations("AppHeader");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [kebabOpen, setKebabOpen] = useState(false);
   const kebabRef = useRef<HTMLDivElement>(null);
   const hasTripContext = !!tripName;
+
+  const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
+    { id: "trips",   label: t("nav.myTrips"), href: "/trips",   authRequired: true },
+    { id: "explore", label: t("nav.explore"), href: "/explore", authRequired: false },
+    { id: "guides",  label: t("nav.guides"),  href: "/guides",  authRequired: false },
+    { id: "budget",  label: t("nav.budget"),  href: "/budget",  authRequired: false },
+  ];
+
+  const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
+    { id: "trip",       label: t("tabs.trip"),      href: (id) => `/trips/${id}/overview` },
+    { id: "day-by-day", label: t("tabs.dayByDay"),  href: (id) => `/trips/${id}` },
+    { id: "map",        label: t("tabs.map"),        href: (id) => `/trips/${id}?tab=map` },
+    { id: "budget",     label: t("tabs.budget"),     href: (id) => `/trips/${id}?tab=budget` },
+    { id: "notes",      label: t("tabs.notes"),      href: (id) => `/trips/${id}?tab=notes` },
+  ];
 
   return (
     <div className={cn("sticky top-0 z-50", className)}>
@@ -140,10 +143,11 @@ export function AppHeader({
             <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
               {fullName && (
                 <span className="text-[13px] text-ink-soft">
-                  Ciao, <span className="text-ink font-medium">{fullName.split(" ")[0]}</span>
+                  {t("greeting", { name: fullName.split(" ")[0] })}
                 </span>
               )}
-              <Link href="/profile" aria-label="Il tuo profilo" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-border transition-all">
+              <LocaleSwitcher variant="chip" />
+              <Link href="/profile" aria-label={t("profileLabel")} className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-border transition-all">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -159,19 +163,22 @@ export function AppHeader({
               </Link>
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="hidden md:inline-flex ml-auto items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors shrink-0"
-            >
-              Sign in
-            </Link>
+            <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
+              <LocaleSwitcher variant="chip" />
+              <Link
+                href="/login"
+                className="inline-flex items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors"
+              >
+                {t("signIn")}
+              </Link>
+            </div>
           )}
 
           {/* Hamburger — visible only below @sm */}
           <button
             type="button"
             onClick={() => setDrawerOpen((v) => !v)}
-            aria-label="Menu"
+            aria-label={t("menu")}
             aria-expanded={drawerOpen}
             className="md:hidden ml-auto w-8 h-8 flex items-center justify-center text-ink bg-transparent border-0 cursor-pointer"
           >
@@ -207,11 +214,19 @@ export function AppHeader({
               </nav>
             </div>
 
+            {/* Language switcher */}
+            <div className="mt-[14px] pt-[14px] border-t border-border">
+              <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-ink-faint mb-2">
+                Language
+              </div>
+              <LocaleSwitcher variant="full" />
+            </div>
+
             {/* Section 2 — trip tabs */}
             {hasTripContext && (
               <div className="mt-[14px] pt-[14px] border-t border-border">
                 <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-orange mb-2">
-                  Trip · {tripName}
+                  {t("tripSection", { name: tripName })}
                 </div>
                 <nav className="flex flex-col">
                   {SECTION_TABS.map((tab) => (
@@ -256,14 +271,14 @@ export function AppHeader({
             <div className="flex items-center px-5 h-[42px] max-w-[1280px] mx-auto gap-3.5">
 
               {/* Trip name + progress */}
-              <div className="flex items-baseline gap-1.5 min-w-0 shrink-0">
-                <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-orange">
+              <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
+                <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-orange truncate">
                   {tripName}
                 </span>
                 {tripProgress && (
                   <>
-                    <span className="text-ink-faint text-[12px]">·</span>
-                    <span className="text-[12px] text-ink-soft whitespace-nowrap">{tripProgress}</span>
+                    <span className="text-ink-faint text-[12px] shrink-0">·</span>
+                    <span className="text-[12px] text-ink-soft whitespace-nowrap shrink-0">{tripProgress}</span>
                   </>
                 )}
               </div>
@@ -305,87 +320,93 @@ export function AppHeader({
               {/* Divider — hidden below @sm */}
               <span aria-hidden className="hidden md:block w-px h-[22px] bg-border shrink-0" />
 
-              {/* Debug-mode chip — only for devs */}
-              {isDev && (
-                <button
-                  type="button"
-                  onClick={onToggleDebugMode}
-                  title={debugMode ? "Disable debug mode" : "Enable debug mode"}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans font-mono",
-                    debugMode
-                      ? "bg-[#1a1a2e] border-[#1a1a2e] text-[#7ee8a2] font-medium"
-                      : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft",
-                  )}
-                >
-                  <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
-                  <span>{debugMode ? "Debug" : "Debug"}</span>
-                </button>
-              )}
+              {/* ── Action chips ── */}
+              <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
 
-              {/* Edit-state chip — always visible */}
-              <button
-                type="button"
-                onClick={onToggleEditMode}
-                title={editMode ? "Switch to view mode" : "Switch to edit mode"}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans md:ml-0 ml-auto",
-                  editMode
-                    ? "bg-orange border-orange text-white font-medium"
-                    : "bg-transparent border-border text-ink-soft hover:border-border-strong",
-                )}
-              >
-                <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", editMode ? "bg-white" : "bg-ink-faint")} />
-                <span>{editMode ? "Editing" : "View"}</span>
-              </button>
-
-              {/* Feedback — solo per tester */}
-              {isTester && (
-                <button
-                  type="button"
-                  onClick={() => setFeedbackOpen(true)}
-                  title="Lascia un feedback"
-                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                >
-                  <IconMessageReport size={13} />
-                  Feedback
-                </button>
-              )}
-
-              {/* Kebab — solo per dev/admin */}
-              {isDev && (
-                <div ref={kebabRef} className="relative shrink-0">
+                {/* Debug-mode chip — only for devs */}
+                {isDev && (
                   <button
                     type="button"
-                    onClick={() => setKebabOpen((v) => !v)}
-                    aria-label="Trip actions"
-                    title="Trip actions"
-                    className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
+                    onClick={onToggleDebugMode}
+                    title={debugMode ? t("disableDebug") : t("enableDebug")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans font-mono",
+                      debugMode
+                        ? "bg-[#1a1a2e] border-[#1a1a2e] text-[#7ee8a2] font-medium"
+                        : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft",
+                    )}
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                      <circle cx="12" cy="5"  r="1.5" />
-                      <circle cx="12" cy="12" r="1.5" />
-                      <circle cx="12" cy="19" r="1.5" />
-                    </svg>
+                    <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
+                    <span>{t("debug")}</span>
                   </button>
+                )}
 
-                  {kebabOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
-                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
-                        <Link
-                          href="/admin/tester-notes"
-                          onClick={() => setKebabOpen(false)}
-                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
-                        >
-                          <IconNotes size={15} className="shrink-0" />
-                          Vedi tutti i feedback
-                        </Link>
-                      </div>
-                    </>
+                {/* Edit-state chip — always visible */}
+                <button
+                  type="button"
+                  onClick={onToggleEditMode}
+                  title={editMode ? t("disableEditMode") : t("enableEditMode")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans",
+                    editMode
+                      ? "bg-orange border-orange text-white font-medium"
+                      : "bg-transparent border-border text-ink-soft hover:border-border-strong",
                   )}
-                </div>
-              )}
+                >
+                  <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", editMode ? "bg-white" : "bg-ink-faint")} />
+                  <span>{editMode ? t("editMode") : t("viewMode")}</span>
+                </button>
+
+                {/* Feedback — solo per tester */}
+                {isTester && (
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackOpen(true)}
+                    title={t("leaveFeedback")}
+                    className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
+                  >
+                    <IconMessageReport size={13} />
+                    {t("feedback")}
+                  </button>
+                )}
+
+                {/* Kebab — solo per dev/admin */}
+                {isDev && (
+                  <div ref={kebabRef} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setKebabOpen((v) => !v)}
+                      aria-label={t("tripActions")}
+                      title={t("tripActions")}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                        <circle cx="12" cy="5"  r="1.5" />
+                        <circle cx="12" cy="12" r="1.5" />
+                        <circle cx="12" cy="19" r="1.5" />
+                      </svg>
+                    </button>
+
+                    {kebabOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
+                        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+                          <Link
+                            href="/admin/tester-notes"
+                            onClick={() => setKebabOpen(false)}
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
+                          >
+                            <IconNotes size={15} className="shrink-0" />
+                            {t("allFeedback")}
+                          </Link>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+              </div>
+              {/* ── end action chips ── */}
 
             </div>
           </div>

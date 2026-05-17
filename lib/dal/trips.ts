@@ -27,6 +27,7 @@ export type Day = {
   show_map: boolean;
   notes: string | null;
   summary: string | null;
+  image_url: string | null;
 };
 
 export type Activity = {
@@ -48,6 +49,7 @@ export type Activity = {
   budget_amount: number | null;
   budget_currency: string | null;
   budget_paid: boolean;
+  place_enriched: unknown | null;
 };
 
 export async function getTrip(id: string): Promise<Trip | null> {
@@ -64,7 +66,7 @@ export async function getTripDays(tripId: string): Promise<Day[]> {
   const supabase = await getServerClient();
   const { data } = await supabase
     .from("days")
-    .select("id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary")
+    .select("id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary, image_url")
     .eq("trip_id", tripId)
     .order("day_number", { ascending: true });
   return data ?? [];
@@ -74,7 +76,7 @@ export async function getDayActivities(dayId: string): Promise<Activity[]> {
   const supabase = await getServerClient();
   const { data } = await supabase
     .from("activities")
-    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid")
+    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, place_enriched")
     .eq("day_id", dayId)
     .order("position", { ascending: true });
   return data ?? [];

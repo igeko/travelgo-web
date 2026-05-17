@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { IconMap, IconPlus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { RouteMap } from "@/components/ui/RouteMap";
@@ -12,25 +13,22 @@ import type { PlaceResult } from "@/components/ui/AddressField";
 type Props = {
   activities: Activity[];
   editMode?: boolean;
-  /** Controlled: initial/persisted map visibility. Defaults to true. */
+  tripId?: string;
   initialShowMap?: boolean;
-  /** Called when the user toggles the map — parent should persist this. */
   onToggleMap?: (show: boolean) => void;
   onActivitySave?: (id: string, data: ActivityData) => void;
   onActivityDelete?: (id: string) => void;
-  /** Called after the user fills in and confirms the inline "New activity" form. */
   onCreateActivity?: (data: ActivityData) => void;
-  /** @deprecated Pass onCreateActivity instead. Kept for back-compat — clicking Add will open the inline form regardless. */
   onAddActivity?: () => void;
-  /** Controlled from outside — e.g. via keyboard shortcut from the parent page. */
   externalShowAddForm?: boolean;
-  /** Called when the form is closed internally (Cancel or save) */
   onAddFormClose?: () => void;
+  onAskGo?: (title: string, activityId?: string) => void;
 };
 
 export function Itinerary({
   activities,
   editMode = false,
+  tripId,
   initialShowMap = true,
   onToggleMap,
   onActivitySave,
@@ -39,11 +37,12 @@ export function Itinerary({
   onAddActivity,
   externalShowAddForm,
   onAddFormClose,
+  onAskGo,
 }: Props) {
+  const t = useTranslations("Itinerary");
   const [showMap, setShowMap] = useState(initialShowMap);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Sync external trigger
   useEffect(() => {
     if (externalShowAddForm) setShowAddForm(true);
   }, [externalShowAddForm]);
@@ -70,8 +69,6 @@ export function Itinerary({
     onAddFormClose?.();
   }
 
-
-  /* Sort activities by time ascending */
   const sorted = useMemo(() => {
     return [...activities].sort((a, b) => {
       if (!a.time) return 1;
@@ -80,7 +77,6 @@ export function Itinerary({
     });
   }, [activities]);
 
-  /* Extract PlaceResult from activities that have lat/lng. */
   const mapPoints = sorted.reduce<PlaceResult[]>((acc, a) => {
     const lat = (a as any).location_lat;
     const lng = (a as any).location_lng;
@@ -101,7 +97,7 @@ export function Itinerary({
       {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
-          Day itinerary
+          {t("title")}
         </div>
         <div className="flex items-center gap-2">
           {editMode && (
@@ -113,7 +109,7 @@ export function Itinerary({
               className="gap-1.5 text-ink-soft"
             >
               <IconMap />
-              {showMap ? "Hide map" : "Show map"}
+              {showMap ? t("hideMap") : t("showMap")}
             </Button>
           )}
           {editMode && (
@@ -125,23 +121,22 @@ export function Itinerary({
               disabled={showAddForm}
             >
               <IconPlus />
-              Add activity
+              {t("addActivity")}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Inline "New activity" form */}
       {showAddForm && (
         <ActivityEditForm
           isNew
           onSave={handleCreateSave}
           onCancel={handleCreateCancel}
+          onAskGo={onAskGo}
           className="mb-4"
         />
       )}
 
-      {/* Map */}
       {showMap && (
         <RouteMap
           points={mapPoints}
@@ -150,12 +145,13 @@ export function Itinerary({
         />
       )}
 
-      {/* Activity list */}
       <ActivityList
         activities={sorted}
         editMode={editMode}
+        tripId={tripId}
         onActivitySave={onActivitySave}
         onActivityDelete={onActivityDelete}
+        onAskGo={onAskGo}
       />
     </div>
   );
