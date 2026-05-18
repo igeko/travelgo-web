@@ -528,7 +528,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                     : a
                 )
               );
-              await fetch(`/api/trips/activities/${id}`, {
+              const res = await fetch(`/api/trips/activities/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -548,6 +548,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   hero_image,
                 }),
               });
+              // If save was successful, reload activities to ensure status persists from DB
+              if (res.ok && selectedDay?.id) {
+                await loadActivities(selectedDay.id);
+              }
             }}
             onActivityDelete={async (id) => {
               setActivities((prev) => prev.filter((a) => a.id !== id));
