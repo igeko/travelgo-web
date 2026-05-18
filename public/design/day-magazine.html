@@ -178,10 +178,25 @@ body { padding: 36px 24px 80px; }
 .banner-mini .meta .sub { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
 
 /* ─────────────────────────────────────────────────────────────────
-   COMPONENT: magazine article
+   COMPONENT: magazine article · "pagina di rivista"
+   Sfondo bianco, hairline, radius, ombra discreta dentro la cornice cream.
 ───────────────────────────────────────────────────────────────── */
 .mag {
-  padding: 34px 40px 32px; position: relative; background: var(--bg);
+  margin: 16px 22px 22px;
+  padding: 34px 40px 32px;
+  position: relative;
+  background: var(--surface);                  /* foglio bianco */
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 2px rgba(13, 44, 61, 0.04),
+    0 6px 22px rgba(13, 44, 61, 0.05);
+}
+/* Hairline arancio appena percettibile in cima · "segnalibro" del foglio */
+.mag::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--orange-border) 50%, transparent 100%);
+  opacity: 0.55; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .mag-stamp {
   position: absolute; top: 18px; right: 22px;
@@ -412,7 +427,13 @@ body { padding: 36px 24px 80px; }
 .phone-screen { background: var(--bg); border-radius: 34px; overflow: hidden; max-height: 760px; overflow-y: auto; }
 
 /* Mobile: float diventa full width inline, foto sopra ogni vignette */
-.phone-screen .mag { padding: 22px 18px 22px; }
+.phone-screen .mag {
+  padding: 22px 18px 22px;
+  margin: 10px 10px 14px;             /* foglio quasi edge-to-edge nel telefono */
+  border-radius: var(--radius-md);    /* radius leggermente ridotto */
+  box-shadow: 0 1px 2px rgba(13, 44, 61, 0.04), 0 3px 12px rgba(13, 44, 61, 0.05);
+}
+.phone-screen .mag::before { display: none; } /* hairline arancio in alto via su mobile */
 .phone-screen .mag-stamp { position: static; margin: 0 0 10px; }
 .phone-screen .mag-deck { font-size: 17px; max-width: 100%; }
 .phone-screen .mag-fig { float: none; width: 100%; margin: 4px 0 10px; clear: none; }
@@ -521,7 +542,7 @@ body { padding: 36px 24px 80px; }
         <button class="on"><i class="ti ti-book-2"></i>Racconto<span class="ai-dot"></span></button>
       </div>
     </div>
-    <article class="mag" style="padding-top:14px">
+    <article class="mag">
       <p class="mag-deck">
         <span class="ai-tag"><i class="ti ti-sparkles"></i>AI</span>Tra le lanterne del Sensō-ji e i quartieri degli artigiani, una giornata che chiude in alto sulla Skytree.
       </p>
@@ -606,7 +627,7 @@ body { padding: 36px 24px 80px; }
       </div>
     </div>
 
-    <article class="mag" style="padding-top:14px">
+    <article class="mag">
       <div class="mag-stamp"><i class="ti ti-sparkles"></i>raccontato da Go · <b>le note sono tue</b></div>
 
       <p class="mag-deck editable">
@@ -966,6 +987,14 @@ body { padding: 36px 24px 80px; }
     <li><b>Punto arancio</b> piccolo accanto a "Racconto" segnala che la voce richiede AI (analogo al puntino "✦" usato altrove per Go).</li>
     <li><b>Switch a "Racconto"</b>: se il giorno ha una <code>day_narrative</code> valida in cache → renderizza direttamente lo stato Loaded (step 2). Se non esiste o è invalidata → mostra Pre-creation CTA (step 1). <b>Mai</b> chiama l'AI come effetto dello switch.</li>
     <li><b>Switch a "Lista"</b>: torna alla vista esistente <code>itinerary.html</code>, immediato, senza side-effects.</li>
+  </ul>
+
+  <h3>Trattamento "pagina"</h3>
+  <ul>
+    <li>L'articolo magazine vive dentro una <b>surface bianca</b> (<code>var(--surface)</code>) con hairline border, radius <code>var(--radius-lg)</code> e ombra discreta (<code>0 1px 2px + 0 6px 22px</code>, opacità &lt; 6%). Il margine dalla cornice cream del day view è <code>16px 22px 22px</code>: la "pagina" si solleva visibilmente dal foglio di base.</li>
+    <li>Una <b>hairline arancio sfumata</b> in cima al foglio (gradient orange-border al centro) suggerisce un segnalibro / inizio capitolo. Su mobile la hairline si disattiva e i margini si stringono (foglio quasi a tutto schermo del telefono).</li>
+    <li>La <b>pre-creation CTA</b> (step 1) usa lo stesso trattamento white-surface per continuità: il foglio c'è sempre quando si è in modalità Racconto, ma può essere occupato dalla CTA o dall'articolo.</li>
+    <li>Cornice cream del day view = chrome (banner, toggle, padding). Pagina bianca = contenuto editoriale. Mantenere questa separazione anche se in futuro aggiungiamo elementi (es. azioni "stampa", "condividi") — vanno sulla cornice cream, mai sulla pagina.</li>
   </ul>
 
   <h3>Lifecycle e cache</h3>

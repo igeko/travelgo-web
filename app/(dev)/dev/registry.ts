@@ -194,4 +194,10 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Admin",
     description: "Feedback e segnalazioni bug dai tester · lista filtrata per tipo",
   },
+  {
+    slug: "docs",
+    title: "Design docs",
+    group: "Admin",
+    description: "Viewer MD per i doc di design in docs/design/ · index + rendering via marked",
+  },
 ];

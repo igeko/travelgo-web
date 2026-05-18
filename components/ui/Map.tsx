@@ -108,6 +108,12 @@ export function Map({
     mapRef.current.setZoom(zoom);
   }, [zoom]);
 
+  // Update map type when it changes.
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setMapTypeId(mapTypeId ?? "roadmap");
+  }, [mapTypeId]);
+
   return (
     <div className={cn("relative overflow-hidden rounded-lg bg-surface-soft", className)} style={style}>
       {/* Map container — always in DOM so Google can attach to it */}

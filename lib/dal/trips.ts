@@ -28,6 +28,7 @@ export type Day = {
   notes: string | null;
   summary: string | null;
   image_url: string | null;
+  narrative: unknown | null;
 };
 
 export type Activity = {
@@ -67,7 +68,7 @@ export async function getTripDays(tripId: string): Promise<Day[]> {
   const supabase = await getServerClient();
   const { data } = await supabase
     .from("days")
-    .select("id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary, image_url")
+    .select("id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary, image_url, narrative")
     .eq("trip_id", tripId)
     .order("day_number", { ascending: true });
   return data ?? [];

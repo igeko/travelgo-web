@@ -36,22 +36,10 @@ function hashActivities(acts: DescribeDayActivity[]): string {
 
 const CACHE_PREFIX = "travelgo:narrative:v7:";
 
-/**
- * Normalise narratives that were saved with the old pullQuote shape
- * { activityId, text } → string
- */
-function normalise(n: DayNarrative): DayNarrative {
-  const pq = n.pullQuote as unknown;
-  if (pq && typeof pq === "object" && "text" in pq) {
-    return { ...n, pullQuote: (pq as { text: string }).text };
-  }
-  return n;
-}
-
 function readCache(key: string): DayNarrative | null {
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + key);
-    return raw ? normalise(JSON.parse(raw) as DayNarrative) : null;
+    return raw ? (JSON.parse(raw) as DayNarrative) : null;
   } catch {
     return null;
   }
@@ -100,7 +88,7 @@ export function useDayNarrative(
 
     // ── 1. DB narrative (skip on forced regenerate) ───────────────
     if (forceTick === 0 && day?.narrative) {
-      const dbNarrative = normalise(day.narrative as DayNarrative);
+      const dbNarrative = day.narrative as DayNarrative;
       setNarrative(dbNarrative);
       setStatus("ok");
       // Also warm localStorage so we have a fast path on next render

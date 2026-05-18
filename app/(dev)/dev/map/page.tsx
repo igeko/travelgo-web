@@ -18,6 +18,7 @@ export default function MapStories() {
   const [presetLabel, setPresetLabel] = useState("Tokyo");
   const [zoom, setZoom] = useState(13);
   const [height, setHeight] = useState(320);
+  const [mapTypeId, setMapTypeId] = useState<"roadmap" | "satellite" | "hybrid" | "terrain">("roadmap");
   const [zoomControl, setZoomControl] = useState(true);
   const [fullscreenControl, setFullscreenControl] = useState(false);
   const [mapTypeControl, setMapTypeControl] = useState(false);
@@ -43,6 +44,19 @@ export default function MapStories() {
     {
       title: "Map",
       controls: [
+        {
+          kind: "radio",
+          id: "map-type",
+          label: "Map type",
+          value: mapTypeId,
+          onChange: (v) => setMapTypeId(v as typeof mapTypeId),
+          options: [
+            { value: "roadmap",   label: "Roadmap" },
+            { value: "satellite", label: "Satellite" },
+            { value: "hybrid",    label: "Hybrid" },
+            { value: "terrain",   label: "Terrain" },
+          ],
+        },
         {
           kind: "number",
           id: "zoom",
@@ -122,6 +136,7 @@ export default function MapStories() {
           <Map
             center={{ lat: preset.lat, lng: preset.lng }}
             zoom={zoom}
+            mapTypeId={mapTypeId}
             className="w-full"
             style={{ height }}
             controls={{

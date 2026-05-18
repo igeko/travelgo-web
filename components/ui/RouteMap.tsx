@@ -31,6 +31,8 @@ export type RouteMapProps = {
   points: PlaceResult[];
   /** Routing mode — default WALKING */
   travelMode?: TravelMode;
+  /** Map type: roadmap | satellite | hybrid | terrain. Default "roadmap". */
+  mapTypeId?: "roadmap" | "satellite" | "hybrid" | "terrain";
   /** Extra classes on the wrapper (use for width/height) */
   className?: string;
   /** Inline styles on the wrapper (e.g. dynamic height) */
@@ -114,6 +116,7 @@ const MAP_STYLES: google.maps.MapTypeStyle[] = [
 export function RouteMap({
   points,
   travelMode = "WALKING",
+  mapTypeId = "roadmap",
   className,
   style,
   controls = {},
@@ -133,6 +136,7 @@ export function RouteMap({
     mapRef.current = new google.maps.Map(containerRef.current, {
       center: { lat: 35.6762, lng: 139.6503 },
       zoom: 13,
+      mapTypeId,
       styles: MAP_STYLES,
       disableDefaultUI: true,
       zoomControl:        controls.zoomControl        ?? true,
@@ -143,6 +147,12 @@ export function RouteMap({
       gestureHandling: "cooperative",
     });
   }, [status]);
+
+  // ── Update map type when prop changes ──────────────────────────
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setMapTypeId(mapTypeId);
+  }, [mapTypeId]);
 
   // ── Redraw markers + fetch route whenever points/travelMode change
   useEffect(() => {

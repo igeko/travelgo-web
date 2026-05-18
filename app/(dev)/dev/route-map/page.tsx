@@ -51,6 +51,7 @@ const POINT_COUNT_OPTIONS = [2, 3, 4, 5];
 export default function RouteMapStories() {
   const [pointCount, setPointCount] = useState(3);
   const [travelMode, setTravelMode] = useState<TravelMode>("WALKING");
+  const [mapTypeId, setMapTypeId] = useState<"roadmap" | "satellite" | "hybrid" | "terrain">("roadmap");
   const [height, setHeight] = useState(400);
   const [showList, setShowList] = useState(false);
   const [zoomControl, setZoomControl] = useState(true);
@@ -75,6 +76,24 @@ export default function RouteMapStories() {
             value: String(n),
             label: String(n),
           })),
+        },
+      ],
+    },
+    {
+      title: "Map",
+      controls: [
+        {
+          kind: "radio",
+          id: "map-type",
+          label: "Map type",
+          value: mapTypeId,
+          onChange: (v) => setMapTypeId(v as typeof mapTypeId),
+          options: [
+            { value: "roadmap",   label: "Roadmap" },
+            { value: "satellite", label: "Satellite" },
+            { value: "hybrid",    label: "Hybrid" },
+            { value: "terrain",   label: "Terrain" },
+          ],
         },
       ],
     },
@@ -178,6 +197,7 @@ export default function RouteMapStories() {
             <RouteMap
               points={activePoints}
               travelMode={travelMode}
+              mapTypeId={mapTypeId}
               className="w-full"
               style={{ height }}
               controls={{

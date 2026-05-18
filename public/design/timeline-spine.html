@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JapanGo · Timeline attività · Proposta A "Spine" (snapshot)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Snapshot · Timeline attività · Proposta A "Spine"
+   Vista del giorno corrente, blocco LIVE on top, eventi futuri in
+   spina verticale, spostamenti come ponti tratteggiati.
+   FROZEN il 2026-05-18 · iterazioni successive nel canvas React.
+───────────────────────────────────────────────────────────────── */
+body { padding: 36px 24px 80px; }
+.wrap { max-width: 600px; margin: 0 auto; }
+.intro-eyebrow { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.intro h1 { font-size: 24px; font-weight: 500; margin: 6px 0 8px; }
+.intro p.sub { font-size: 13px; color: var(--ink-soft); line-height: 1.6; }
+.intro .snap { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-warm); color: var(--orange-deep); font-weight: 500; margin-top: 10px; }
+.intro .snap i { font-size: 12px; }
+
+.tl { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 22px; color: var(--ink); margin-top: 28px; }
+
+.hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; font-size: 13px; }
+.hd .day { color: var(--ink); font-weight: 500; }
+.hd .day b { color: var(--orange); }
+.hd .mt { color: var(--ink-faint); font-size: 11px; letter-spacing: .04em; }
+
+/* LIVE card */
+.live { background: var(--surface); border: 1.5px solid var(--orange); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 14px; position: relative; box-shadow: 0 2px 12px rgba(244,123,58,0.10); }
+.live .now { position: absolute; top: -10px; left: 16px; background: var(--orange); color: #fff; font-size: 10px; font-weight: 500; letter-spacing: .10em; padding: 3px 10px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase; }
+.live .now .d { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.live .lrow { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.live .li { width: 40px; height: 40px; border-radius: 50%; background: #ddedde; display: inline-flex; align-items: center; justify-content: center; color: #557a45; flex-shrink: 0; }
+.live .li i { font-size: 20px; }
+.live .lm { flex: 1; min-width: 0; }
+.live .lm .nm { font-size: 18px; font-weight: 500; }
+.live .lm .tm { font-size: 11px; color: var(--ink-faint); letter-spacing: .06em; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.live .desc { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 10px; }
+.live .next { font-size: 12px; color: var(--orange-deep); padding-top: 10px; border-top: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.live .next i { font-size: 13px; }
+
+/* past collapsed */
+.past { padding: 6px 14px; color: var(--ink-faint); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.past .dots { display: inline-flex; gap: 3px; }
+.past .dots .d { width: 6px; height: 6px; border-radius: 50%; background: #c7c0b0; }
+.past .ex { margin-left: auto; color: var(--ink-soft); font-weight: 500; cursor: pointer; font-size: 11px; }
+.past .ex i { font-size: 11px; vertical-align: -1px; }
+
+.nowdiv { display: flex; align-items: center; gap: 8px; padding: 4px 0 10px; }
+.nowdiv .ln { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(244,123,58,0.4), transparent); }
+.nowdiv .lb { font-size: 10px; letter-spacing: .18em; color: var(--orange); font-weight: 500; }
+
+/* spine */
+.spine { position: relative; padding-left: 28px; }
+.spine::before { content: ""; position: absolute; left: 13px; top: 4px; bottom: 4px; width: 1.5px; background: rgba(13,44,61,0.14); }
+
+/* node */
+.nd { position: relative; padding: 6px 0; margin-bottom: 2px; }
+.nd::before { content: ""; position: absolute; left: -21px; top: 14px; width: 11px; height: 11px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--ink); }
+.row { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.top .ic { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.top .ic.place { background: #f5e8df; color: var(--orange-deep); }
+.top .ic.pause { background: #ddedde; color: #557a45; }
+.top .ic.meal { background: #fcecd0; color: #7a5e0e; }
+.top .ic.action { background: var(--surface-soft); color: var(--ink-soft); }
+.top .ic i { font-size: 14px; }
+.top .tm { font-size: 11px; color: var(--ink-faint); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.top .nm { font-size: 14px; font-weight: 500; flex: 1; }
+.top .pills { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.desc { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 2px 7px; border-radius: var(--radius-pill); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+.pill.book { background: #fef5cf; color: #7a5e0e; }
+.pill.affh { background: #fcebeb; color: #a32d2d; }
+.pill.affm { background: #fdf0d6; color: #a37809; }
+.pill.warn { background: #fef5cf; color: #a37809; }
+.pill.flex { background: #e6f1fb; color: #1d4ed8; }
+.pill i { font-size: 10px; }
+
+/* bridge closed */
+.br { position: relative; padding: 2px 0 2px 6px; margin: 0; color: var(--ink-faint); font-size: 11.5px; min-height: 22px; display: flex; align-items: center; gap: 6px; }
+.br::before { content: ""; position: absolute; left: -21px; top: 0; bottom: 0; width: 1.5px; background: repeating-linear-gradient(180deg, rgba(13,44,61,0.22) 0 3px, transparent 3px 7px); }
+.br i { font-size: 13px; color: var(--ink-soft); }
+.br b { color: var(--ink); font-weight: 500; }
+.br .chev { margin-left: auto; color: #c7c0b0; font-size: 13px; cursor: pointer; }
+
+/* bridge expanded */
+.brex { position: relative; padding: 4px 0; margin: 0; }
+.brex::before { content: ""; position: absolute; left: -21px; top: 0; bottom: 0; width: 1.5px; background: repeating-linear-gradient(180deg, var(--orange-border) 0 3px, transparent 3px 7px); }
+.brex .row { background: var(--surface-soft); border: 0.5px solid #e7e0d2; padding: 10px 12px; font-size: 11.5px; color: var(--ink-soft); }
+.brex .row .h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.brex .row .h i { font-size: 13px; color: var(--ink); }
+.brex .row .h .lb { font-weight: 500; color: var(--ink); font-size: 12.5px; }
+.brex .row .h .tot { margin-left: auto; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.brex .row .stops { line-height: 1.5; }
+.brex .row .stops .stop { display: flex; align-items: center; gap: 6px; }
+.brex .row .stops .stop::before { content: "·"; color: #c7c0b0; font-weight: 600; }
+
+/* notification inline */
+.alert { position: relative; padding: 4px 0 4px 18px; margin: 2px 0; }
+.alert::before { content: ""; position: absolute; left: -21px; top: 0; bottom: 0; width: 1.5px; background: #a32d2d; opacity: 0.5; }
+.alert .row { background: #fcebeb; color: #791f1f; border: 0.5px solid #f4c0c0; padding: 7px 12px; font-size: 11.5px; display: flex; align-items: center; gap: 7px; }
+.alert .row i { font-size: 13px; }
+.alert .row b { font-weight: 500; }
+
+/* legend / notes after the timeline */
+.notes { margin-top: 32px; padding: 20px 22px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); font-size: 13px; line-height: 1.7; color: var(--ink-soft); }
+.notes h3 { font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); margin: 0 0 10px; }
+.notes h3:not(:first-child) { margin-top: 18px; }
+.notes b { color: var(--ink); font-weight: 500; }
+.notes code { background: var(--surface-soft); padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: 'SF Mono', Menlo, monospace; color: var(--ink); }
+.notes ul { margin: 6px 0; padding-left: 20px; }
+.notes li { margin: 4px 0; }
+.notes a { color: var(--orange-deep); font-weight: 500; text-decoration: none; }
+.notes a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="intro">
+  <div class="intro-eyebrow">JapanGo · design · timeline attività</div>
+  <h1>Proposta A · "Spine"</h1>
+  <p class="sub">Vista del giorno corrente con il blocco <b style="color:var(--ink);font-weight:500">LIVE</b> sempre in cima, gli eventi futuri appesi a una <b style="color:var(--ink);font-weight:500">spina verticale</b> e gli spostamenti come <b style="color:var(--ink);font-weight:500">ponti tratteggiati</b> sulla stessa spina. Snapshot della direzione approvata il 2026-05-18, prima di passare al prototipo Next/React nel canvas.</p>
+  <div class="snap"><i class="ti ti-camera"></i>Snapshot frozen · 2026-05-18</div>
+</header>
+
+<!-- ── TIMELINE ────────────────────────────────────────────────── -->
+<div class="tl">
+
+  <div class="hd">
+    <div class="day"><b>Day 02</b> · Tokyo</div>
+    <div class="mt">Sat 1 Aug · 7 acts · 4 to go</div>
+  </div>
+
+  <!-- LIVE -->
+  <div class="live">
+    <div class="now"><span class="d"></span>Live now</div>
+    <div class="lrow">
+      <div class="li"><i class="ti ti-tree"></i></div>
+      <div class="lm">
+        <div class="nm">Parco Sumida</div>
+        <div class="tm">10:30 · 1h</div>
+      </div>
+    </div>
+    <div class="desc">Passeggiare e/o fare pausa al parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni. Prendere caffè a Leaves Coffee Apartment.</div>
+    <div class="next"><i class="ti ti-arrow-right"></i>Tra 30 min: 12 min a piedi → Kuramae</div>
+  </div>
+
+  <!-- past collapsed -->
+  <div class="past">
+    <span class="dots"><span class="d"></span><span class="d"></span></span>
+    <span>2 attività fatte stamattina</span>
+    <span class="ex">Mostra <i class="ti ti-chevron-down"></i></span>
+  </div>
+
+  <div class="nowdiv"><span class="ln"></span><span class="lb">Now · 10:30</span><span class="ln"></span></div>
+
+  <!-- spine -->
+  <div class="spine">
+
+    <div class="br"><i class="ti ti-walk"></i>12 min a piedi · 0,8 km<span class="chev"><i class="ti ti-chevron-down"></i></span></div>
+
+    <div class="nd">
+      <div class="row">
+        <div class="top">
+          <span class="ic place"><i class="ti ti-map-pin"></i></span>
+          <span class="tm">12:30</span>
+          <span class="nm">Kuramae</span>
+          <span class="pills"><span class="pill affh"><i class="ti ti-users"></i>Affluenza alta</span></span>
+        </div>
+        <div class="desc">girare per il quartiere Kuramae che è il quartiere degli artigiani: Kakimori, Ink Stand, Jiyucho…</div>
+      </div>
+    </div>
+
+    <div class="brex">
+      <div class="row">
+        <div class="h"><i class="ti ti-train"></i><span class="lb">Metro · Linea Ginza</span><span class="tot">~ 5 min · 2 fermate</span></div>
+        <div class="stops">
+          <div class="stop">Asakusa (4 min a piedi dall'imbocco)</div>
+          <div class="stop">Tawaramachi</div>
+          <div class="stop">Inaricho → uscita A2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nd">
+      <div class="row">
+        <div class="top">
+          <span class="ic pause"><i class="ti ti-tree"></i></span>
+          <span class="tm">14:30</span>
+          <span class="nm">Yanesen</span>
+          <span class="pills"><span class="pill flex"><i class="ti ti-route"></i>Libera</span></span>
+        </div>
+        <div class="desc">Passeggi per Yanaka Ginza, vedi l'atmosfera vintage e i gatti del quartiere.</div>
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="row"><i class="ti ti-alert-triangle"></i><b>Linea Chiyoda</b> · ritardi di ~10 min, considera taxi se sei stretto</div>
+    </div>
+
+    <div class="br"><i class="ti ti-train"></i>Metro · 1 ogni 4-5 min · ~ 18 min<span class="chev"><i class="ti ti-chevron-down"></i></span></div>
+
+    <div class="nd">
+      <div class="row">
+        <div class="top">
+          <span class="ic place"><i class="ti ti-pokeball"></i></span>
+          <span class="tm">17:00</span>
+          <span class="nm">Solamachi Pokemon Center</span>
+          <span class="pills"><span class="pill book"><i class="ti ti-bookmark"></i>Booked</span></span>
+        </div>
+        <div class="desc">Pokemon Center nel centro commerciale Solamachi (sotto la torre). Al secondo piano.</div>
+      </div>
+    </div>
+
+    <div class="br"><i class="ti ti-soup"></i>Cena qui (food court, flessibile)<span class="chev"><i class="ti ti-chevron-down"></i></span></div>
+
+    <div class="nd">
+      <div class="row">
+        <div class="top">
+          <span class="ic place"><i class="ti ti-building-broadcast-tower"></i></span>
+          <span class="tm">20:00</span>
+          <span class="nm">Tokyo Sky Tower Tree</span>
+          <span class="pills"><span class="pill warn"><i class="ti ti-clock-exclamation"></i>Last entry 21:00</span></span>
+        </div>
+        <div class="desc">ultimo ingresso ore 21. Salire e godere del panorama</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Note / legenda ──────────────────────────────────────────── -->
+<div class="notes">
+  <h3>Elementi del layout</h3>
+  <ul>
+    <li><b>LIVE card</b> in cima — sempre visibile (sticky quando si scrolla), bordo arancio, glow soft, pill "Live now" sopra. Mostra: blocco corrente + brevissimo "next" in fondo.</li>
+    <li><b>Past collapsed</b> — riga dimmed con N attività fatte e link "Mostra ▾" per espandere.</li>
+    <li><b>Divider Now</b> — linea sfumata arancia + etichetta "Now · HH:MM" per marcare il confine temporale.</li>
+    <li><b>Spina verticale</b> — linea continua leggera per i nodi, tratteggiata per i ponti, arancia tratteggiata per ponti espansi, rossa per alert/notifiche.</li>
+    <li><b>Nodi (blocchi)</b> — card bianca con icona colorata per tipo (Luogo / Pausa / Pasto / Azione operativa), orario, nome, pills di stato (Booked / Affluenza / Last entry / Libera).</li>
+    <li><b>Ponti chiusi</b> — riga minima: icona mezzo + frequenza + tempo + chevron per espandere.</li>
+    <li><b>Ponti espansi</b> — card grigia inline con linea, fermate, tempo totale, indicazioni puntuali.</li>
+    <li><b>Notifiche importanti</b> — banner inline rosso, non overlay, vivono dentro il flusso temporale dove servono.</li>
+  </ul>
+
+  <h3>Decisioni catturate</h3>
+  <ul>
+    <li>Atomi v1: Luogo · Spostamento (come ponti) · Pasto · Pausa/esplorazione libera · Azione operativa</li>
+    <li>Spostamenti chiusi = minimo informativo ("Metro · 1 ogni X min"), espandibili al click</li>
+    <li>Live block sempre on top (sticky)</li>
+    <li>Contesto livello 3: <b>affluenza</b> + <b>notifiche importanti</b></li>
+  </ul>
+
+  <h3>Stato</h3>
+  <ul>
+    <li>Spec viva con stato avanzamento: <a href="../../docs/design/activity-timeline.md">docs/design/activity-timeline.md</a></li>
+    <li>Prossimo passo: prototipo Next/React in <code>app/(dev)/dev/activity-timeline/page.tsx</code> con varianti per tipo di blocco + stati real-time + ponte espanso/chiuso + layout mobile.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

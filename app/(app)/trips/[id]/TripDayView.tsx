@@ -15,6 +15,7 @@ import { DayItem } from "@/features/day/DayItem";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { cn } from "@/lib/cn";
+import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
 import type { Trip, Day, Activity } from "@/lib/dal/trips";
 
 /* ─── helpers ─── */
@@ -337,7 +338,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   return (
     /* ── Replica esatta di .daybyday dal design ── */
     <div
-      className="grid gap-[18px] max-w-[1280px] mx-auto px-5 py-5 [grid-template-columns:1fr] md:[grid-template-columns:260px_1fr]"
+      className="grid gap-[18px] max-w-[1280px] mx-auto px-2 py-3 sm:px-5 sm:py-5 [grid-template-columns:1fr] md:[grid-template-columns:260px_1fr]"
     >
 
       {/* ══ SIDEBAR — .day-list ══════════════════════════════════ */}
@@ -489,7 +490,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           onNext={nextDay ? () => selectDay(nextDay.id) : undefined}
         />
 
-        <div className="px-4">
+        <div className="px-2 sm:px-4">
 
         {/* Quote — summary + practical note */}
         {(selectedDay.summary || selectedDay.notes) && (
@@ -508,6 +509,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           <Itinerary
             key={selectedDayId}
             activities={activities}
+            day={selectedDay}
             editMode={editMode}
             tripId={trip.id}
             externalShowAddForm={showAddForm}
@@ -611,27 +613,69 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           />
         </div>
 
-        {/* Debug — day + activities JSON */}
-        {debugMode && (
-          <div className="mt-8 flex flex-col gap-2">
-            <details className="rounded-lg border border-dashed border-border p-3">
-              <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
-                🐛 Debug · selectedDay
-              </summary>
-              <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
-                {JSON.stringify(selectedDay, null, 2)}
-              </pre>
-            </details>
-            <details className="rounded-lg border border-dashed border-border p-3">
-              <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
-                🐛 Debug · activities ({activities.length})
-              </summary>
-              <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
-                {JSON.stringify(activities, null, 2)}
-              </pre>
-            </details>
-          </div>
-        )}
+        {/* Debug — day + activities + OpenAI payload */}
+        {debugMode && (() => {
+          const aiRequest = {
+            dayId: selectedDay.id,
+            label: selectedDay.label ?? selectedDay.city ?? "Giorno",
+            zone: selectedDay.city ?? undefined,
+            type: selectedDay.day_type ?? undefined,
+            summary: selectedDay.summary ?? undefined,
+            activities: activities.map((a) => ({
+              id: a.id,
+              slot: a.slot,
+              time: a.time,
+              name: a.title,
+              description: a.short_desc,
+            })),
+          };
+          const prompt = buildDescribeDayPrompt(aiRequest);
+          const promptTokens = estimateTokens(prompt);
+          const maxTokens = 700;
+
+          return (
+            <div className="mt-8 flex flex-col gap-2">
+              <details className="rounded-lg border border-dashed border-border p-3">
+                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                  🐛 Debug · selectedDay
+                </summary>
+                <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(selectedDay, null, 2)}
+                </pre>
+              </details>
+              <details className="rounded-lg border border-dashed border-border p-3">
+                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                  🐛 Debug · activities ({activities.length})
+                </summary>
+                <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(activities, null, 2)}
+                </pre>
+              </details>
+              <details className="rounded-lg border border-dashed border-border p-3">
+                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                  🤖 Debug · OpenAI payload
+                  <span className="ml-2 text-orange font-mono">
+                    ~{promptTokens} prompt tokens · max {maxTokens} completion · ~{promptTokens + maxTokens} tot
+                  </span>
+                </summary>
+                <div className="mt-3 flex flex-col gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-faint mb-1">Request body (DescribeDayRequest)</div>
+                    <pre className="text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2">
+                      {JSON.stringify(aiRequest, null, 2)}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-faint mb-1">Prompt inviato al modello</div>
+                    <pre className="text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2 leading-relaxed">
+                      {prompt}
+                    </pre>
+                  </div>
+                </div>
+              </details>
+            </div>
+          );
+        })()}
 
         </div>{/* end px-4 */}
 

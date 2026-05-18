@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/Button";
 import { RouteMap } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
-import type { Activity } from "@/lib/dal/trips";
+import { DayViewModeToggle, type DayViewMode } from "@/features/day/DayViewModeToggle";
+import { DayMagazine } from "@/features/day/DayMagazine";
+import type { Activity, Day } from "@/lib/dal/trips";
 import type { PlaceResult } from "@/components/ui/AddressField";
+
+const LS_VIEW_MODE_KEY = "day-view-mode";
 
 type Props = {
   activities: Activity[];
+  /** The current day — required to enable the Racconto (magazine) view */
+  day?: Day | null;
   editMode?: boolean;
   tripId?: string;
   initialShowMap?: boolean;
@@ -27,6 +33,7 @@ type Props = {
 
 export function Itinerary({
   activities,
+  day,
   editMode = false,
   tripId,
   initialShowMap = true,
@@ -42,6 +49,19 @@ export function Itinerary({
   const t = useTranslations("Itinerary");
   const [showMap, setShowMap] = useState(initialShowMap);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // View mode: "lista" (default) | "racconto" — persisted in localStorage
+  const [viewMode, setViewMode] = useState<DayViewMode>("lista");
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LS_VIEW_MODE_KEY);
+      if (stored === "lista" || stored === "racconto") setViewMode(stored);
+    } catch { /* ignore */ }
+  }, []);
+  function handleViewMode(next: DayViewMode) {
+    setViewMode(next);
+    try { localStorage.setItem(LS_VIEW_MODE_KEY, next); } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     if (externalShowAddForm) setShowAddForm(true);
@@ -92,6 +112,8 @@ export function Itinerary({
     return acc;
   }, []);
 
+  const isRacconto = viewMode === "racconto";
+
   return (
     <div>
       {/* Header row */}
@@ -100,7 +122,12 @@ export function Itinerary({
           {t("title")}
         </div>
         <div className="flex items-center gap-2">
-          {editMode && (
+          {/* View mode toggle — only when a day is provided */}
+          {day && (
+            <DayViewModeToggle value={viewMode} onChange={handleViewMode} />
+          )}
+
+          {editMode && !isRacconto && (
             <Button
               variant="ghost"
               size="sm"
@@ -112,7 +139,7 @@ export function Itinerary({
               {showMap ? t("hideMap") : t("showMap")}
             </Button>
           )}
-          {editMode && (
+          {editMode && !isRacconto && (
             <Button
               variant="solid"
               tone="neutral"
@@ -127,32 +154,45 @@ export function Itinerary({
         </div>
       </div>
 
-      {showAddForm && (
-        <ActivityEditForm
-          isNew
-          onSave={handleCreateSave}
-          onCancel={handleCreateCancel}
-          onAskGo={onAskGo}
-          className="mb-4"
-        />
-      )}
+      {/* Racconto / magazine view */}
+      {isRacconto && day ? (
+        <div className="-mx-4 sm:mx-0">
+          <DayMagazine
+            day={day}
+            activities={activities}
+            enabled={isRacconto}
+          />
+        </div>
+      ) : (
+        <>
+          {showAddForm && (
+            <ActivityEditForm
+              isNew
+              onSave={handleCreateSave}
+              onCancel={handleCreateCancel}
+              onAskGo={onAskGo}
+              className="mb-4"
+            />
+          )}
 
-      {showMap && (
-        <RouteMap
-          points={mapPoints}
-          travelMode="WALKING"
-          className="w-full h-[280px] mb-4"
-        />
-      )}
+          {showMap && (
+            <RouteMap
+              points={mapPoints}
+              travelMode="WALKING"
+              className="w-full h-[280px] mb-4"
+            />
+          )}
 
-      <ActivityList
-        activities={sorted}
-        editMode={editMode}
-        tripId={tripId}
-        onActivitySave={onActivitySave}
-        onActivityDelete={onActivityDelete}
-        onAskGo={onAskGo}
-      />
+          <ActivityList
+            activities={sorted}
+            editMode={editMode}
+            tripId={tripId}
+            onActivitySave={onActivitySave}
+            onActivityDelete={onActivityDelete}
+            onAskGo={onAskGo}
+          />
+        </>
+      )}
     </div>
   );
 }
