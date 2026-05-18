@@ -50,7 +50,7 @@ export type Activity = {
   budget_amount: number | null;
   budget_currency: string | null;
   budget_paid: boolean;
-  booking: string | null;
+  booking: boolean | string | null;
   place_enriched: unknown | null;
 };
 

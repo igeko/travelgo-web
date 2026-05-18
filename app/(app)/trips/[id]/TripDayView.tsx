@@ -531,8 +531,11 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const hero_image = data.heroImage
                 ? data.heroImage.split("?")[0] || null
                 : null;
-              // Determine booking status based on status value
-              const booking = data.status === "booked" ? "yes" : null;
+
+              // Map ActivityStatus to database fields (booking stores all status info)
+              const budget_paid = data.status === "paid";
+              const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
+
               // Optimistic update
               setActivities((prev) =>
                 prev.map((a) =>
@@ -549,14 +552,14 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                         location_lng: data.place?.lng ?? null,
                         budget_amount: data.budgetAmount ?? null,
                         budget_currency: data.budgetCurrency,
-                        budget_paid: data.status === "paid",
+                        budget_paid,
                         booking,
                         hero_image,
                       }
                     : a
                 )
               );
-              await fetch(`/api/trips/activities/${id}`, {
+              const res = await fetch(`/api/trips/activities/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -570,12 +573,16 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   location_lng: data.place?.lng ?? null,
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
-                  budget_paid: data.status === "paid",
+                  budget_paid,
                   booking,
                   place_enriched: data.enrichedPlace ?? null,
                   hero_image,
                 }),
               });
+              // If save was successful, reload activities to ensure status persists from DB
+              if (res.ok && selectedDay?.id) {
+                await loadActivities(selectedDay.id);
+              }
             }}
             onActivityDelete={async (id) => {
               setActivities((prev) => prev.filter((a) => a.id !== id));
@@ -585,7 +592,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const time = (data.hour !== undefined && data.minute !== undefined)
                 ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
                 : null;
-              const booking = data.status === "booked" ? "yes" : null;
+              // Map ActivityStatus to database fields (booking stores all status info)
+              const budget_paid = data.status === "paid";
+              const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
+
               const res = await fetch(`/api/trips/days/${selectedDayId}/activities`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -600,7 +610,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   location_lng: data.place?.lng ?? null,
                   budget_amount: data.budgetAmount ?? null,
                   budget_currency: data.budgetCurrency,
-                  budget_paid: data.status === "paid",
+                  budget_paid,
                   booking,
                   place_enriched: data.enrichedPlace ?? null,
                 }),
