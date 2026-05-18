@@ -29,11 +29,14 @@ export function ActivityList({
 
   function renderRow(a: Activity) {
     // Determine status based on activity state
+    // Priority: budget_paid > booking (explicit status) > budget_amount
     let status: "paid" | "booked" | "todo" | undefined;
     if (a.budget_paid) {
       status = "paid";
-    } else if (a.booking) {
+    } else if (a.booking === "booked" || a.booking === true) {
       status = "booked";
+    } else if (a.booking === "todo") {
+      status = "todo";
     } else if (a.budget_amount) {
       status = "todo";
     }

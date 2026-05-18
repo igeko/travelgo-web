@@ -35,7 +35,7 @@ export async function POST(
   const allowed = [
     "title", "short_desc", "slot", "time",
     "location", "location_place_id", "location_lat", "location_lng",
-    "budget_amount", "budget_currency", "budget_paid",
+    "budget_amount", "budget_currency", "budget_paid", "booking",
     "place_enriched",
   ] as const;
 
@@ -52,7 +52,7 @@ export async function POST(
   const { data: created, error } = await supabase
     .from("activities")
     .insert(insert)
-    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, place_enriched")
+    .select("id, day_id, trip_id, slot, position, time, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, budget_amount, budget_currency, budget_paid, booking, place_enriched")
     .single();
 
   if (error) {

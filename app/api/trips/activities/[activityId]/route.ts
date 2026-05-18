@@ -38,7 +38,7 @@ export async function PATCH(
   const allowed = [
     "title", "short_desc", "slot", "time",
     "location", "location_place_id", "location_lat", "location_lng",
-    "budget_amount", "budget_currency", "budget_paid",
+    "budget_amount", "budget_currency", "budget_paid", "booking",
     "place_enriched", "hero_image",
   ] as const;
 
