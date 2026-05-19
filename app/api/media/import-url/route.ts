@@ -1,151 +1,288 @@
-import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
-import { getServerClient } from "@/lib/dal/supabase";
-import { requireTripEditor } from "@/lib/dal/auth";
-
 /**
  * POST /api/media/import-url
  *
- * Downloads an image from an external source (Google Places photo reference
- * or arbitrary HTTPS URL) and uploads it to Supabase Storage.
+ * Scarica un'immagine da URL esterno e la carica su Supabase Storage.
+ * Protegge da SSRF, content-type spoofing e DoS da payload giganti.
  *
- * Body:
- *   photoRef?    — Google Places photo_reference (preferred for Places images)
- *   sourceUrl?   — Any HTTPS URL to fetch (used for AI-suggested images, etc.)
- *   bucket       — Supabase Storage bucket name (e.g. "trip-media")
- *   storagePath  — Destination path inside the bucket (e.g. "trips/{id}/activities/{id}/hero.webp")
- *   tripId       — Used for authorization (user must be editor of this trip)
- *   compress?    — { maxWidth, maxHeight, quality } — defaults: 1200 × 900 @ 0.88 WebP
+ * Body JSON:
+ *   url         string   — URL pubblico dell'immagine (HTTPS obbligatorio)
+ *   tripId      string   — viaggio a cui associare la foto
+ *   dayId?      string   — giorno opzionale
+ *   activityId? string   — attività opzionale
+ *   caption?    string   — didascalia opzionale
  *
- * The image is always converted to WebP server-side via sharp (same behaviour as
- * the client-side Canvas compression in ImagePicker, but without browser round-trips).
+ * Risposta:
+ *   { storagePath, publicUrl, photoId }
  *
- * Response:
- *   { publicUrl, storagePath, width, height, originalBytes, compressedBytes }
+ * Difese implementate (tutte server-side, prima di qualsiasi fetch):
+ *   1. Auth  — sessione Supabase valida (+ il middleware la verifica in ingresso)
+ *   2. Permessi — l'utente deve essere owner/editor del tripId
+ *   3. SSRF  — assertSafeUrl() blocca RFC1918, loopback, IMDS (169.254.x),
+ *              IPv6 link-local/ULA, schema non-HTTPS, DNS rebinding
+ *   4. HEAD probe — controlla Content-Type e Content-Length prima del download
+ *   5. Tipo  — solo image/jpeg, image/png, image/webp, image/gif, image/avif
+ *   6. Dimensione — max 10 MB (controllata sia sull'header che sul body scaricato)
+ *   7. Re-check — il Content-Type del body scaricato viene ri-validato
+ *
+ * NOTA: usa dns.promises.lookup() → richiede Node.js runtime.
  */
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { photoRef, sourceUrl, bucket, storagePath, tripId, compress } = body as {
-    photoRef?: string;
-    sourceUrl?: string;
-    bucket?: string;
-    storagePath?: string;
-    tripId?: string;
-    compress?: { maxWidth?: number; maxHeight?: number; quality?: number };
-  };
 
-  /* ── Validate required fields ── */
-  if (!bucket || !storagePath || !tripId) {
-    return NextResponse.json(
-      { error: "bucket, storagePath and tripId are required" },
-      { status: 400 },
-    );
-  }
-  if (!photoRef && !sourceUrl) {
-    return NextResponse.json(
-      { error: "Either photoRef or sourceUrl is required" },
-      { status: 400 },
-    );
-  }
+export const runtime = "nodejs";
 
-  /* ── Auth: user must be editor of this trip ── */
-  const auth = await requireTripEditor(tripId);
-  if (!auth.ok) return auth.response;
+import crypto from "crypto";
+import { NextResponse } from "next/server";
 
-  /* ── Security: storagePath must be scoped to this trip ── */
-  if (!storagePath.startsWith(`trips/${tripId}/`)) {
-    return NextResponse.json(
-      { error: "storagePath must be scoped to the requesting trip" },
-      { status: 403 },
-    );
-  }
+import { assertSafeUrl, SsrfError } from "@/lib/api/ssrf-guard";
+import { requireTripEditor } from "@/lib/dal/auth";
+import { getServerClient } from "@/lib/dal/supabase";
 
-  /* ── Fetch image bytes ── */
-  let imageBuffer: ArrayBuffer;
-  let contentType: string;
+// ─── Costanti ─────────────────────────────────────────────────────
 
-  if (photoRef) {
-    /* Google Places photo — call the API directly with the server-side key */
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Google Maps API key not configured" }, { status: 500 });
-    }
-    const googleUrl = new URL("https://maps.googleapis.com/maps/api/place/photo");
-    googleUrl.searchParams.set("photo_reference", photoRef);
-    googleUrl.searchParams.set("maxwidth", "1200"); // good quality for storage
-    googleUrl.searchParams.set("key", apiKey);
+const STORAGE_BUCKET = "trip-media";
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
-    const res = await fetch(googleUrl.toString(), { redirect: "follow" });
-    if (!res.ok) {
-      return NextResponse.json({ error: "Failed to fetch photo from Google" }, { status: 502 });
-    }
-    contentType = res.headers.get("content-type") ?? "image/jpeg";
-    imageBuffer = await res.arrayBuffer();
-  } else {
-    /* Generic URL — only allow HTTPS to prevent SSRF against internal services */
-    if (!sourceUrl!.startsWith("https://")) {
-      return NextResponse.json(
-        { error: "sourceUrl must use HTTPS" },
-        { status: 400 },
-      );
-    }
-    const res = await fetch(sourceUrl!, { redirect: "follow" });
-    if (!res.ok) {
-      return NextResponse.json({ error: `Failed to fetch image: ${res.status}` }, { status: 502 });
-    }
-    contentType = res.headers.get("content-type") ?? "image/jpeg";
-    // Only accept image content types
-    if (!contentType.startsWith("image/")) {
-      return NextResponse.json(
-        { error: "sourceUrl must point to an image" },
-        { status: 400 },
-      );
-    }
-    imageBuffer = await res.arrayBuffer();
-  }
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
 
-  /* ── Compress → WebP via sharp ── */
-  const maxWidth  = compress?.maxWidth  ?? 1200;
-  const maxHeight = compress?.maxHeight ?? 900;
-  const quality   = Math.round((compress?.quality ?? 0.88) * 100); // sharp uses 1-100
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png":  "png",
+  "image/webp": "webp",
+  "image/gif":  "gif",
+  "image/avif": "avif",
+};
 
-  const originalBytes = imageBuffer.byteLength;
+// ─── Helpers ──────────────────────────────────────────────────────
 
-  const pipeline = sharp(Buffer.from(imageBuffer))
-    .rotate()                            // auto-orient from EXIF
-    .resize(maxWidth, maxHeight, {
-      fit: "inside",
-      withoutEnlargement: true,          // never upscale
-    })
-    .webp({ quality });
+function normalizeMime(contentType: string | null): string | null {
+  if (!contentType) return null;
+  // Rimuove parametri tipo "image/jpeg; charset=..." → "image/jpeg"
+  return contentType.split(";")[0].trim().toLowerCase();
+}
 
-  const { data: webpBuffer, info } = await pipeline.toBuffer({ resolveWithObject: true });
+// ─── Handler ──────────────────────────────────────────────────────
 
-  /* ── Upload to Supabase Storage ── */
+type RequestBody = {
+  url?: unknown;
+  tripId?: unknown;
+  dayId?: unknown;
+  activityId?: unknown;
+  caption?: unknown;
+};
+
+export async function POST(req: Request) {
+  // 1. Auth — getUser() verifica il JWT lato server
   const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // 2. Parse body
+  let body: RequestBody;
+  try {
+    body = (await req.json()) as RequestBody;
+  } catch {
+    return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
+  }
+
+  const rawUrl = typeof body.url === "string" ? body.url.trim() : null;
+  const tripId = typeof body.tripId === "string" ? body.tripId.trim() : null;
+  const dayId =
+    typeof body.dayId === "string" ? body.dayId.trim() : undefined;
+  const activityId =
+    typeof body.activityId === "string" ? body.activityId.trim() : undefined;
+  const caption =
+    typeof body.caption === "string"
+      ? body.caption.trim().slice(0, 500)
+      : undefined;
+
+  if (!rawUrl) {
+    return NextResponse.json({ error: "url è obbligatorio" }, { status: 400 });
+  }
+  if (!tripId) {
+    return NextResponse.json(
+      { error: "tripId è obbligatorio" },
+      { status: 400 },
+    );
+  }
+
+  // 3. SSRF guard — lancia SsrfError se l'URL non è sicuro.
+  //    Questo blocca: 169.254.169.254, loopback, RFC1918, IPv6 ULA/link-local,
+  //    http://, file://, e hostname che risolvono a IP privati (DNS rebinding).
+  try {
+    await assertSafeUrl(rawUrl);
+  } catch (err) {
+    if (err instanceof SsrfError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
+  }
+
+  // 4. Permessi — l'utente deve essere owner/editor del viaggio
+  const authResult = await requireTripEditor(tripId);
+  if (!authResult.ok) return authResult.response;
+
+  // 5. HEAD probe — verifica Content-Type e Content-Length PRIMA di scaricare
+  //    il corpo. Se il server non supporta HEAD, procediamo (fallback al GET).
+  try {
+    const headRes = await fetch(rawUrl, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(8_000),
+      redirect: "follow",
+    });
+
+    if (headRes.ok) {
+      const mime = normalizeMime(headRes.headers.get("content-type"));
+      if (mime && !ALLOWED_MIME_TYPES.has(mime)) {
+        return NextResponse.json(
+          { error: `Tipo di file non consentito: ${mime}. Usa JPEG, PNG, WebP, GIF o AVIF.` },
+          { status: 415 },
+        );
+      }
+
+      const length = headRes.headers.get("content-length");
+      if (length && parseInt(length, 10) > MAX_BYTES) {
+        return NextResponse.json(
+          { error: "Il file supera la dimensione massima di 10 MB." },
+          { status: 413 },
+        );
+      }
+    }
+  } catch {
+    // HEAD non supportato o timeout — continuiamo con il GET
+  }
+
+  // 6. Download — con timeout e limite di dimensione
+  let imageBuffer: Buffer;
+  let finalMime: string;
+
+  try {
+    const getRes = await fetch(rawUrl, {
+      method: "GET",
+      signal: AbortSignal.timeout(30_000),
+      redirect: "follow",
+    });
+
+    if (!getRes.ok) {
+      return NextResponse.json(
+        { error: `Impossibile scaricare l'immagine (HTTP ${getRes.status}).` },
+        { status: 502 },
+      );
+    }
+
+    // Re-check Content-Type sul body reale (può differire dall'HEAD)
+    const mime = normalizeMime(getRes.headers.get("content-type"));
+    if (!mime || !ALLOWED_MIME_TYPES.has(mime)) {
+      return NextResponse.json(
+        {
+          error: `Tipo di file non consentito: ${mime ?? "sconosciuto"}. Usa JPEG, PNG, WebP, GIF o AVIF.`,
+        },
+        { status: 415 },
+      );
+    }
+    finalMime = mime;
+
+    // Lettura con limite di dimensione — non carichiamo tutto in memoria
+    // se il file è troppo grande.
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    const reader = getRes.body?.getReader();
+
+    if (!reader) {
+      return NextResponse.json(
+        { error: "Impossibile leggere il corpo della risposta." },
+        { status: 502 },
+      );
+    }
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_BYTES) {
+        reader.cancel();
+        return NextResponse.json(
+          { error: "Il file supera la dimensione massima di 10 MB." },
+          { status: 413 },
+        );
+      }
+      chunks.push(Buffer.from(value));
+    }
+
+    imageBuffer = Buffer.concat(chunks);
+  } catch (err) {
+    if (err instanceof SsrfError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    console.error("[media/import-url] fetch error:", err);
+    return NextResponse.json(
+      { error: "Impossibile scaricare il file dall'URL fornito." },
+      { status: 502 },
+    );
+  }
+
+  // 7. Upload su Supabase Storage
+  const ext = MIME_TO_EXT[finalMime] ?? "bin";
+  const uniqueName = `${crypto.randomUUID()}.${ext}`;
+  const storagePath = `trips/${tripId}/imported/${uniqueName}`;
 
   const { error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(storagePath, webpBuffer, {
-      contentType: "image/webp",
-      upsert: true,
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, imageBuffer, {
+      contentType: finalMime,
+      upsert: false,
     });
 
   if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    console.error("[media/import-url] storage upload error:", uploadError);
+    return NextResponse.json(
+      { error: "Errore durante il salvataggio del file." },
+      { status: 500 },
+    );
   }
 
-  /* ── Build public URL ── */
+  // 8. URL pubblico
   const { data: urlData } = supabase.storage
-    .from(bucket)
+    .from(STORAGE_BUCKET)
     .getPublicUrl(storagePath);
 
+  const publicUrl = urlData.publicUrl;
+
+  // 9. Metadati foto nel DB
+  const { data: photoRow, error: dbError } = await supabase
+    .from("photos")
+    .insert({
+      trip_id: tripId,
+      storage_path: storagePath,
+      day_id: dayId ?? null,
+      activity_id: activityId ?? null,
+      caption: caption ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (dbError) {
+    // Upload riuscito ma metadati falliti — pulizia orphan file
+    await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+    console.error("[media/import-url] db insert error:", dbError);
+    return NextResponse.json(
+      { error: "Errore durante il salvataggio dei metadati." },
+      { status: 500 },
+    );
+  }
+
   return NextResponse.json({
-    publicUrl: urlData.publicUrl,
     storagePath,
-    width: info.width,
-    height: info.height,
-    originalBytes,
-    compressedBytes: info.size,
+    publicUrl,
+    photoId: (photoRow as { id: string }).id,
   });
 }

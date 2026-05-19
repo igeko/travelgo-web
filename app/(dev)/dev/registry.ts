@@ -136,6 +136,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Activity",
     description: "Day itinerary · map + sorted activity list, show/hide map, edit mode",
   },
+  {
+    slug: "activity-timeline",
+    title: "ActivityTimeline",
+    group: "Features",
+    subgroup: "Activity",
+    description: "Day editor spine view · blocchi tipizzati, bridge, add affordance, AI organize, fuzzy variant",
+  },
   // Trips subgroup
   {
     slug: "create-trip",
