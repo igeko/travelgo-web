@@ -19,39 +19,23 @@ import {
 // ── Input types ───────────────────────────────────────────────────
 
 export type CreateActivityInput = {
-  day_id: string;
   trip_id: string;
   title: string;
-  slot?: ActivitySlot;
-  position?: number;
-  time?: string;
   short_desc?: string;
   details?: string;
-  notes?: string;
+  category?: string;
+  icon?: string;
   location?: string;
   location_place_id?: string;
   location_lat?: number;
   location_lng?: number;
-  icon?: string;
-  category?: string;
   hero_image?: string;
-  booking?: string;
   url?: string;
-  budget_amount?: number;
-  budget_currency?: string;
-  budget_paid?: boolean;
-  budget_category?: string;
 };
 
 export type UpdateActivityInput = Partial<
-  Omit<CreateActivityInput, "day_id" | "trip_id">
+  Omit<CreateActivityInput, "trip_id">
 >;
-
-export type ReorderActivityInput = {
-  id: string;
-  slot: ActivitySlot;
-  position: number;
-};
 
 // ── Full activity with relations ──────────────────────────────────
 
@@ -65,33 +49,19 @@ export type ActivityWithSections = DbActivity & {
 export class ActivityRepository {
   constructor(private readonly db: SupabaseClient) {}
 
-  /** All activities for a day, ordered by slot then position. */
-  async listByDay(dayId: string): Promise<DalResult<DbActivity[]>> {
-    const { data, error } = await this.db
-      .from("activities")
-      .select("*")
-      .eq("day_id", dayId)
-      .order("slot", { ascending: true, nullsFirst: false })
-      .order("position", { ascending: true });
-
-    if (error) return { data: null, error: new DalError(error.message, error.code) };
-    return { data: data as DbActivity[], error: null };
-  }
-
-  /** All activities for an entire trip. */
+  /** All activities for an entire trip (entities, independent of days). */
   async listByTrip(tripId: string): Promise<DalResult<DbActivity[]>> {
     const { data, error } = await this.db
       .from("activities")
       .select("*")
       .eq("trip_id", tripId)
-      .order("day_id", { ascending: true })
-      .order("position", { ascending: true });
+      .order("created_at", { ascending: true });
 
     if (error) return { data: null, error: new DalError(error.message, error.code) };
     return { data: data as DbActivity[], error: null };
   }
 
-  /** Single activity with its sections and sidebar blocks. */
+  /** Single activity with its sections, sidebar blocks, and instances (day_activities). */
   async findById(id: string): Promise<DalResult<ActivityWithSections>> {
     const { data, error } = await this.db
       .from("activities")
@@ -143,28 +113,6 @@ export class ActivityRepository {
     return { data: true, error: null };
   }
 
-  /**
-   * Bulk-update slot + position for drag-and-drop reordering.
-   * Uses individual updates — Supabase does not support bulk CASE WHEN yet.
-   */
-  async reorder(items: ReorderActivityInput[]): Promise<DalResult<true>> {
-    const updates = items.map((item) =>
-      this.db
-        .from("activities")
-        .update({ slot: item.slot, position: item.position })
-        .eq("id", item.id),
-    );
-
-    const results = await Promise.all(updates);
-    const failed = results.find((r) => r.error);
-    if (failed?.error) {
-      return {
-        data: null,
-        error: new DalError(failed.error.message, failed.error.code),
-      };
-    }
-    return { data: true, error: null };
-  }
 
   // ── Sections ─────────────────────────────────────────────────────
 

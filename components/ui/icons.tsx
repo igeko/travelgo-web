@@ -21,6 +21,7 @@ export {
   IconBookmark,
   IconBug,
   IconBulb,
+  IconCalendarTime,
   IconCheck,
   IconCheckbox,
   IconChevronDown,

@@ -6,8 +6,7 @@ import { useAltLabel } from "@/lib/hooks/useOS";
 import { useShortcuts } from "@/lib/hooks/useShortcut";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
-import { IconArrowRightCircle, IconChevronRight } from "@/components/ui/icons";
-import { IconSparkles } from "@tabler/icons-react";
+import { IconArrowRightCircle, IconChevronRight, IconSparkles } from "@/components/ui/icons";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { Quote } from "@/components/ui/Quote";
 import { Itinerary } from "@/features/activity/Itinerary";
@@ -230,7 +229,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     [selectedDay?.day_number],
   );
 
-  const { context: tripContext } = useTripContext(trip.id, goFocus);
+  const { context: tripContext } = useTripContext(trip.id, goFocus, goHasBeenOpened);
 
   // Update Go context when the selected day changes or the context is ready
   useEffect(() => {
@@ -534,6 +533,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const budget_paid = data.status === "paid";
               const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
 
+              // Find activity to get activity_id
+              const activity = activities.find((a) => a.id === id);
+              if (!activity) return;
+
               setActivities((prev) =>
                 prev.map((a) =>
                   a.id === id
@@ -556,33 +559,58 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                     : a
                 )
               );
-              const res = await fetch(`/api/trips/activities/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: data.title,
-                  short_desc: data.description,
-                  slot: data.period,
-                  time,
-                  location: data.place?.formatted ?? null,
-                  location_place_id: data.place?.placeId ?? null,
-                  location_lat: data.place?.lat ?? null,
-                  location_lng: data.place?.lng ?? null,
-                  budget_amount: data.budgetAmount ?? null,
-                  budget_currency: data.budgetCurrency,
-                  budget_paid,
-                  booking,
-                  place_enriched: data.enrichedPlace ?? null,
-                  hero_image,
-                }),
-              });
-              if (res.ok && selectedDay?.id) {
-                await loadActivities(selectedDay.id);
+
+              // Split into entity and instance fields
+              // Entity fields (title, location, etc.) go to /api/trips/activities/{activity_id}
+              const entityPatch = {
+                title: data.title,
+                short_desc: data.description,
+                location: data.place?.formatted ?? null,
+                location_place_id: data.place?.placeId ?? null,
+                location_lat: data.place?.lat ?? null,
+                location_lng: data.place?.lng ?? null,
+                place_enriched: data.enrichedPlace ?? null,
+                hero_image,
+              };
+
+              // Instance fields (slot, time, notes, booking, budget) go to /api/trips/day-activities/{day_activity_id}
+              const instancePatch = {
+                slot: data.period,
+                time,
+                booking,
+                budget_amount: data.budgetAmount ?? null,
+                budget_currency: data.budgetCurrency,
+                budget_paid,
+              };
+
+              try {
+                // Update entity
+                const entityRes = await fetch(`/api/trips/activities/${activity.activity_id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(entityPatch),
+                });
+
+                // Update instance
+                const instanceRes = await fetch(`/api/trips/day-activities/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(instancePatch),
+                });
+
+                if ((entityRes.ok || entityRes.status === 304) && (instanceRes.ok || instanceRes.status === 304)) {
+                  if (selectedDay?.id) {
+                    await loadActivities(selectedDay.id);
+                  }
+                }
+              } catch (error) {
+                console.error("Error saving activity:", error);
               }
             }}
             onActivityDelete={async (id) => {
               setActivities((prev) => prev.filter((a) => a.id !== id));
-              await fetch(`/api/trips/activities/${id}`, { method: "DELETE" });
+              // Delete the day_activity instance (not the entity)
+              await fetch(`/api/trips/day-activities/${id}`, { method: "DELETE" });
             }}
             onCreateActivity={async (data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)

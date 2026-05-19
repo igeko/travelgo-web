@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { browserDal } from "@/lib/dal";
+import type { Activity } from "@/lib/dal/trips";
 import { getGoContext, type GoFocus, type TripInfo } from "./context";
 
 type UseTripContextResult = {
@@ -23,13 +23,14 @@ type UseTripContextResult = {
 export function useTripContext(
   tripId: string | null | undefined,
   focus?: GoFocus,
+  enabled = true,
 ): UseTripContextResult {
   const [context, setContext] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tripId) {
+    if (!enabled || !tripId) {
       setContext(undefined);
       setError(null);
       return;
@@ -40,38 +41,24 @@ export function useTripContext(
     setError(null);
 
     async function load() {
-      const dal = browserDal();
-
-      const [tripRes, daysRes, activitiesRes, membersRes] = await Promise.all([
-        dal.trips.findById(tripId!),
-        dal.days.listByTrip(tripId!),
-        dal.activities.listByTrip(tripId!),
-        dal.members.listByTrip(tripId!),
-      ]);
-
+      const res = await fetch(`/api/trips/${tripId}`);
       if (cancelled) return;
 
-      if (tripRes.error || !tripRes.data) {
-        setError(tripRes.error?.message ?? "Trip not found");
-        setLoading(false);
-        return;
-      }
-      if (daysRes.error) {
-        setError(daysRes.error.message);
-        setLoading(false);
-        return;
-      }
-      if (activitiesRes.error) {
-        setError(activitiesRes.error.message);
+      if (!res.ok) {
+        setError(`Failed to load trip (${res.status})`);
         setLoading(false);
         return;
       }
 
+      const snapshot = await res.json();
+      if (cancelled) return;
+
+      const activities: Activity[] = snapshot.days.flatMap((d: any) => d.activities);
+
       const info: TripInfo = {
-        trip: tripRes.data,
-        days: daysRes.data ?? [],
-        activities: activitiesRes.data ?? [],
-        travelersCount: membersRes.data?.length ?? undefined,
+        trip: snapshot.trip,
+        days: snapshot.days,
+        activities,
       };
 
       setContext(getGoContext(info, focus));
@@ -80,7 +67,7 @@ export function useTripContext(
 
     void load();
     return () => { cancelled = true; };
-  }, [tripId, focus]);
+  }, [tripId, focus, enabled]);
 
   return { context, loading, error };
 }

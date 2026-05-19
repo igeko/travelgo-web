@@ -35,11 +35,11 @@ export async function PATCH(
 
   const body = await req.json();
 
+  // Only entity-level fields (no slot, time, position, notes, booking, budget_*)
   const allowed = [
-    "title", "short_desc", "slot", "time",
+    "title", "short_desc", "details", "category", "icon",
     "location", "location_place_id", "location_lat", "location_lng",
-    "budget_amount", "budget_currency", "budget_paid", "booking",
-    "place_enriched", "hero_image",
+    "hero_image", "url",
   ] as const;
 
   const patch: Record<string, unknown> = {};
@@ -52,14 +52,16 @@ export async function PATCH(
   }
 
   const supabase = await getServerClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("activities")
-    .update(patch)
-    .eq("id", activityId);
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", activityId)
+    .select()
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(data);
 }

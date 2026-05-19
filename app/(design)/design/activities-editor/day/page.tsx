@@ -25,6 +25,7 @@ import {
   IconCircleDashed,
   IconBookmark,
 } from "@/components/ui/icons";
+import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { cn } from "@/lib/cn";
 
 // ─────────────────────────────────────────────────────────────────
@@ -796,22 +797,11 @@ function Toolbar({ view, onViewChange }: { view: View; onViewChange: (v: View) =
         </button>
 
         {/* View toggle */}
-        <div className="flex items-center bg-zinc-100 rounded-full border border-zinc-200 p-[3px] gap-[2px]">
-          {VIEWS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => onViewChange(key)}
-              className={cn(
-                "px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150",
-                view === key
-                  ? "bg-white text-ink shadow-sm"
-                  : "text-ink-soft hover:text-ink"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <TabSwitcher
+          value={view}
+          onChange={onViewChange}
+          tabs={VIEWS}
+        />
       </div>
     </div>
   );

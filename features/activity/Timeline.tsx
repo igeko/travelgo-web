@@ -19,12 +19,13 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
-import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { ActivityAutocomplete } from "./ActivityAutocomplete";
+import { Button } from "@/components/ui/Button";
+import { PeriodBar } from "@/components/ui/PeriodBar";
 import {
   IconMapPin, IconSoup, IconTree, IconKey, IconTrain,
   IconWalk, IconBus, IconCar, IconBike,
-  IconPencil, IconTrash, IconPlus, IconX, IconCircleMinus,
+  IconPencil, IconCalendarTime, IconPlus, IconX, IconCircleMinus,
 } from "@/components/ui/icons";
 import type {
   TimelineBlock as Block,
@@ -75,39 +76,6 @@ type AddState =
 function isSameAdd(a: AddState, afterBlockId: string | undefined, slot: SlotKey): boolean {
   if (!a) return false;
   return a.afterBlockId === afterBlockId && a.slot === slot;
-}
-
-/* ─── Convert TimelineBlock to ActivityData ──────────────────────── */
-function blockToActivityData(block: Block): Partial<ActivityData> {
-  const timeMatch = block.time?.match(/^(\d{1,2}):(\d{2})$/);
-  const hour = timeMatch ? parseInt(timeMatch[1], 10) : undefined;
-  const minute = timeMatch ? parseInt(timeMatch[2], 10) : undefined;
-
-  return {
-    title: block.title,
-    description: block.short_desc ?? "",
-    status: block.booking_status,
-    period: block.slot as SlotKey,
-    hour,
-    minute,
-    place:
-      block.location &&
-      block.location_place_id &&
-      block.location_lat !== null &&
-      block.location_lng !== null
-        ? {
-            formatted: block.location,
-            name: block.location,
-            placeId: block.location_place_id,
-            lat: block.location_lat,
-            lng: block.location_lng,
-          }
-        : null,
-    budgetAmount: block.budget_amount ?? undefined,
-    budgetCurrency: block.budget_currency ?? "EUR",
-    enrichedPlace: (block.place_enriched as any) ?? null,
-    heroImage: block.hero_image ?? null,
-  };
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -325,6 +293,77 @@ function BridgeEditor({
   );
 }
 
+/* ─── ScheduleStrip ──────────────────────────────────────────────── */
+/**
+ * Strip per programmare l'istanza di un'attività nella giornata.
+ * SCOPE: la Timeline è un organizer, non un editor — qui si tocca solo
+ * lo scheduling (periodo + fuzzy). I dati dell'attività (titolo, descrizione,
+ * luogo, budget…) si modificano sulla scheda /activities/[id].
+ */
+function ScheduleStrip({
+  block,
+  onSave,
+  onClose,
+}: {
+  block:   Block;
+  onSave:  (patch: import("./types").InstancePatch) => void;
+  onClose: () => void;
+}) {
+  const [slot,  setSlot]  = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
+  const [fuzzy, setFuzzy] = useState<boolean>(!!block.fuzzy);
+
+  function handleSave() {
+    onSave({
+      slot,
+      fuzzy,
+      // se diventa fuzzy, azzeriamo l'ora; altrimenti la lasciamo invariata
+      ...(fuzzy ? { time: null } : {}),
+    });
+    onClose();
+  }
+
+  return (
+    <div className="rounded-[var(--radius-md)] border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
+      {/* Head */}
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
+        <IconCalendarTime size={11} />
+        <span>Programma</span>
+        <button
+          className="ml-auto text-ink-faint hover:text-ink transition-colors"
+          onClick={onClose}
+          aria-label="Chiudi"
+        >
+          <IconX size={13} />
+        </button>
+      </div>
+
+      {/* PeriodBar — gestisce sia il periodo sia la visualizzazione dell'ora attiva */}
+      <PeriodBar
+        value={slot}
+        onChange={(id) => setSlot(id as SlotKey)}
+        activeTime={!fuzzy && block.time ? block.time : undefined}
+        size="slim"
+      />
+
+      {/* Footer */}
+      <div className="flex justify-between items-center mt-2.5 text-[11px] text-ink-soft">
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={fuzzy}
+            onChange={(e) => setFuzzy(e.target.checked)}
+            className="accent-[var(--color-orange)] cursor-pointer"
+          />
+          <span>Senza ora precisa</span>
+        </label>
+        <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
+          OK
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── AddZone ────────────────────────────────────────────────────── */
 function AddZone({
   onAddBlock,
@@ -515,19 +554,6 @@ function SingleBlock({
   const isFuzzy  = block.fuzzy;
   const showActs = editMode && (hovered || popoverOpen);
 
-  const handleSaveActivity = (data: ActivityData) => {
-    onPatchInstance({
-      time: data.hour !== undefined && data.minute !== undefined
-        ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
-        : null,
-      fuzzy: data.period === "night" ? true : false, // Simple logic: night = fuzzy-like
-      instance_note: null,
-      booking_status: data.status,
-      slot: data.period as SlotKey,
-    });
-    onClosePopover();
-  };
-
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       {/* ── Main row ─────────────────────────────────────────────── */}
@@ -625,37 +651,53 @@ function SingleBlock({
               showActs ? "opacity-100" : "opacity-0",
             )}
           >
-            <button
+            <Button
+              size="sm"
+              variant="ghost"
+              tone="neutral"
+              iconOnly
               onClick={onOpenPopover}
-              title="Modifica istanza"
+              title="Programma nel giorno"
+              aria-label="Programma nel giorno"
               className={cn(
-                "w-6 h-6 flex items-center justify-center rounded-[6px] text-ink-faint transition-colors",
-                popoverOpen
-                  ? "bg-orange/10 text-orange"
-                  : "hover:bg-surface-soft hover:text-ink",
+                popoverOpen && "bg-orange/10 text-orange hover:bg-orange/10",
               )}
             >
-              <IconPencil size={12} />
-            </button>
-            <button
+              <IconCalendarTime />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              tone="neutral"
+              iconOnly
               onClick={onDelete}
-              title="Rimuovi dal giorno"
-              className="w-6 h-6 flex items-center justify-center rounded-[6px] text-ink-faint hover:bg-red-50 hover:text-red-700 transition-colors"
+              title="Scollega dal giorno"
+              aria-label="Scollega dal giorno"
             >
-              <IconTrash size={12} />
-            </button>
+              <IconCircleMinus />
+            </Button>
           </div>
         )}
       </div>
 
-      {/* ── Activity edit form ──────────────────────────────────────── */}
+      {/* ── Schedule strip (period + fuzzy) ─────────────────────────── */}
       {popoverOpen && editMode && (
-        <div style={{ paddingLeft: 0, marginBottom: 4 }}>
-          <ActivityEditForm
-            initialData={blockToActivityData(block)}
-            isNew={false}
-            onSave={handleSaveActivity}
-            onCancel={onClosePopover}
+        <div className="relative" style={{ paddingLeft: 0, marginBottom: 4 }}>
+          {/* Dashed orange spine segment — a sinistra della spine principale,
+              alta quanto lo schedule */}
+          <div
+            className="absolute top-0 bottom-0 w-[1.5px] pointer-events-none"
+            style={{
+              left: -19,
+              background:
+                "repeating-linear-gradient(180deg, var(--color-orange) 0 3px, transparent 3px 7px)",
+            }}
+            aria-hidden
+          />
+          <ScheduleStrip
+            block={block}
+            onSave={(patch) => onPatchInstance(patch)}
+            onClose={onClosePopover}
           />
         </div>
       )}

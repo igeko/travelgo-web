@@ -7,8 +7,9 @@ import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { ActivityList } from "@/features/activity/ActivityList";
 import type { Activity } from "@/lib/dal/trips";
 
-const STUB: Pick<Activity, "trip_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng" | "place_enriched" | "booking" | "type" | "fuzzy" | "instance_note" | "booking_status" | "bridge_in_json" | "bridge_out_json" | "entity_id"> = {
+const STUB: Pick<Activity, "trip_id" | "activity_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng" | "place_enriched" | "booking" | "type" | "fuzzy" | "instance_note" | "booking_status" | "bridge_in_json" | "bridge_out_json" | "entity_id"> = {
   trip_id: "trip-1",
+  activity_id: "activity-stub",
   position: 0,
   icon: null,
   url: null,

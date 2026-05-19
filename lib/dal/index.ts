@@ -19,20 +19,23 @@
 export * from "./types";
 export * from "./supabase";
 
-export { TripRepository }    from "./TripRepository";
-export { DayRepository }     from "./DayRepository";
-export { ActivityRepository } from "./ActivityRepository";
-export { BudgetRepository }  from "./BudgetRepository";
-export { MemberRepository }  from "./MemberRepository";
-export { InviteRepository }  from "./InviteRepository";
-export { PhotoRepository }   from "./PhotoRepository";
-export { JournalRepository } from "./JournalRepository";
-export { UserRepository }    from "./UserRepository";
+export { TripRepository }      from "./TripRepository";
+export { DayRepository }       from "./DayRepository";
+export { ActivityRepository }  from "./ActivityRepository";
+export { DayActivityRepository } from "./DayActivityRepository";
+export { BudgetRepository }    from "./BudgetRepository";
+export { MemberRepository }    from "./MemberRepository";
+export { InviteRepository }    from "./InviteRepository";
+export { PhotoRepository }     from "./PhotoRepository";
+export { JournalRepository }   from "./JournalRepository";
+export { UserRepository }      from "./UserRepository";
 
 export type { CreateTripInput, UpdateTripInput }               from "./TripRepository";
 export type { CreateDayInput, UpdateDayInput }                 from "./DayRepository";
 export type { CreateActivityInput, UpdateActivityInput,
-              ReorderActivityInput, ActivityWithSections }     from "./ActivityRepository";
+              ActivityWithSections }                           from "./ActivityRepository";
+export type { CreateDayActivityInput, UpdateDayActivityInput,
+              ReorderDayActivityInput }                        from "./DayActivityRepository";
 export type { CreateBudgetItemInput, UpdateBudgetItemInput,
               BudgetSummary }                                   from "./BudgetRepository";
 export type { CreateInviteInput }                              from "./InviteRepository";
@@ -43,39 +46,42 @@ export type { UserProfile, UpdateProfileInput }                from "./UserRepos
 // ── DAL factory types ─────────────────────────────────────────────
 
 import { getBrowserClient, getServerClient } from "./supabase";
-import { TripRepository }     from "./TripRepository";
-import { DayRepository }      from "./DayRepository";
-import { ActivityRepository } from "./ActivityRepository";
-import { BudgetRepository }   from "./BudgetRepository";
-import { MemberRepository }   from "./MemberRepository";
-import { InviteRepository }   from "./InviteRepository";
-import { PhotoRepository }    from "./PhotoRepository";
-import { JournalRepository }  from "./JournalRepository";
-import { UserRepository }     from "./UserRepository";
+import { TripRepository }       from "./TripRepository";
+import { DayRepository }        from "./DayRepository";
+import { ActivityRepository }   from "./ActivityRepository";
+import { DayActivityRepository } from "./DayActivityRepository";
+import { BudgetRepository }     from "./BudgetRepository";
+import { MemberRepository }     from "./MemberRepository";
+import { InviteRepository }     from "./InviteRepository";
+import { PhotoRepository }      from "./PhotoRepository";
+import { JournalRepository }    from "./JournalRepository";
+import { UserRepository }       from "./UserRepository";
 
 export type Dal = {
-  trips:      TripRepository;
-  days:       DayRepository;
-  activities: ActivityRepository;
-  budget:     BudgetRepository;
-  members:    MemberRepository;
-  invites:    InviteRepository;
-  photos:     PhotoRepository;
-  journal:    JournalRepository;
-  users:      UserRepository;
+  trips:        TripRepository;
+  days:         DayRepository;
+  activities:   ActivityRepository;
+  dayActivities: DayActivityRepository;
+  budget:       BudgetRepository;
+  members:      MemberRepository;
+  invites:      InviteRepository;
+  photos:       PhotoRepository;
+  journal:      JournalRepository;
+  users:        UserRepository;
 };
 
 function buildDal(client: Awaited<ReturnType<typeof getBrowserClient>>): Dal {
   return {
-    trips:      new TripRepository(client),
-    days:       new DayRepository(client),
-    activities: new ActivityRepository(client),
-    budget:     new BudgetRepository(client),
-    members:    new MemberRepository(client),
-    invites:    new InviteRepository(client),
-    photos:     new PhotoRepository(client),
-    journal:    new JournalRepository(client),
-    users:      new UserRepository(client),
+    trips:        new TripRepository(client),
+    days:         new DayRepository(client),
+    activities:   new ActivityRepository(client),
+    dayActivities: new DayActivityRepository(client),
+    budget:       new BudgetRepository(client),
+    members:      new MemberRepository(client),
+    invites:      new InviteRepository(client),
+    photos:       new PhotoRepository(client),
+    journal:      new JournalRepository(client),
+    users:        new UserRepository(client),
   };
 }
 

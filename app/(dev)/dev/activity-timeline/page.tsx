@@ -26,6 +26,7 @@ import type { Activity } from "@/lib/dal/trips";
 
 const STUB: Omit<Activity, "id" | "day_id" | "title" | "slot" | "position"> = {
   trip_id: "sandbox-trip",
+  activity_id: "activity-stub",
   time: null,
   short_desc: null,
   location: null,

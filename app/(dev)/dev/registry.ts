@@ -26,6 +26,12 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Atoms",
     description: "Blockquote with orange left border · lead (serif italic) + optional note",
   },
+  {
+    slug: "tabs",
+    title: "TabSwitcher",
+    group: "Atoms",
+    description: "Generic tab/view switcher · pill-shaped toggle with active state styling",
+  },
   // Fields subgroup
   {
     slug: "address-field",

@@ -10,7 +10,8 @@
  *  - GoFocus      — optional, narrows to the current page (day or activity)
  */
 
-import type { DbTrip, DbDay, DbActivity, ActivitySlot } from "@/lib/dal/types";
+import type { DbTrip, DbDay, ActivitySlot } from "@/lib/dal/types";
+import type { Activity } from "@/lib/dal/trips";
 
 /* ─────────────────────────────────────────────────────────────────
    Input types
@@ -19,7 +20,7 @@ import type { DbTrip, DbDay, DbActivity, ActivitySlot } from "@/lib/dal/types";
 export type TripInfo = {
   trip: DbTrip;
   days: DbDay[];
-  activities: DbActivity[];
+  activities: Activity[];  // Now uses merged Activity type with day_id and slot
   /** Number of travelers (from trip_members count). */
   travelersCount?: number;
 };

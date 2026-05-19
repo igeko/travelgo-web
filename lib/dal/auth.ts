@@ -65,3 +65,22 @@ export async function requireDayEditor(dayId: string) {
 
   return requireTripEditor(day.trip_id);
 }
+
+/**
+ * Risolve il trip_id di una day_activity e verifica il ruolo editor.
+ */
+export async function requireDayActivityEditor(dayActivityId: string) {
+  const supabase = await getServerClient();
+
+  const { data: dayActivity } = await supabase
+    .from("day_activities")
+    .select("day_id")
+    .eq("id", dayActivityId)
+    .maybeSingle();
+
+  if (!dayActivity) {
+    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+
+  return requireDayEditor(dayActivity.day_id);
+}
