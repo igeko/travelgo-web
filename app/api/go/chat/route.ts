@@ -13,10 +13,14 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { runDeepDive } from "../_deepDive";
+import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted, sanitizeUntrustedText } from "@/lib/api/go-untrusted";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
+
+const MAX_MESSAGES = 30;
+const MAX_MESSAGE_LENGTH = 4_000;
 
 /* ─────────────────────────────────────────────────────────────────
    System prompts
@@ -26,7 +30,9 @@ const BASE_SYSTEM_PROMPT = `You are Go, TravelGo's travel assistant.
 Your tone is warm, direct, and slightly witty. Never bureaucratic.
 You help users plan trips in a concrete and personal way.
 Reply in the same language the user writes in.
-Keep answers concise — 1-3 sentences for simple questions, more only when truly needed.`;
+Keep answers concise — 1-3 sentences for simple questions, more only when truly needed.
+
+${UNTRUSTED_DATA_INSTRUCTION}`;
 
 const SUGGESTIONS_SYSTEM_PROMPT = `You are Go, TravelGo's travel assistant.
 Your tone is warm, direct, and slightly witty.
@@ -50,7 +56,9 @@ Respond ONLY with a valid JSON object in this exact format — no markdown, no c
   ]
 }
 
-Return 4-5 suggestions. Be specific and concrete — real place names, real tips.`;
+Return 4-5 suggestions. Be specific and concrete — real place names, real tips.
+
+${UNTRUSTED_DATA_INSTRUCTION}`;
 
 /* ─────────────────────────────────────────────────────────────────
    Intent classifier — chiede a gpt-4o-mini di scegliere il mode
@@ -86,9 +94,15 @@ async function classifyIntent(
 ): Promise<IntentResult> {
   const recent = messages.slice(-4).map((m) => ({ role: m.role, content: m.content }));
 
-  // Se c'è una suggestion selezionata, lo aggiungiamo come contesto esplicito
-  const systemWithContext = selectedTitle
-    ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${selectedTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${selectedTitle}" }.`
+  // Sanitize selectedTitle: it ends up inside a JSON template literal in the
+  // system prompt, so an attacker could otherwise close the JSON and inject
+  // instructions through their suggestion title.
+  const safeTitle = selectedTitle
+    ? sanitizeUntrustedText(selectedTitle, 120).replace(/["\\]/g, "")
+    : undefined;
+
+  const systemWithContext = safeTitle
+    ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${safeTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${safeTitle}" }.`
     : CLASSIFIER_SYSTEM;
 
   const completion = await getOpenAI().chat.completions.create({
@@ -126,7 +140,13 @@ export async function POST(req: Request): Promise<Response> {
       forceSuggestions?: boolean;
       selectedSuggestion?: typeof selectedSuggestion;
     };
-    messages = body.messages;
+    if (!Array.isArray(body.messages)) {
+      return new Response("messages must be an array", { status: 400 });
+    }
+    messages = body.messages
+      .slice(-MAX_MESSAGES)
+      .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_LENGTH) }));
     tripContext = body.tripContext;
     forceSuggestions = body.forceSuggestions ?? false;
     selectedSuggestion = body.selectedSuggestion;
@@ -168,18 +188,21 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
+  // Trip context is user-supplied — wrap it as untrusted data in a user message
+  // (never concatenate into the system prompt).
+  const tripContextMessage: ChatCompletionMessageParam | null = tripContext
+    ? { role: "user", content: wrapUntrusted("trip-context", tripContext) }
+    : null;
+
   /* ── Mode: suggestions ── */
   if (intent.mode === "suggestions") {
-    const systemPrompt = tripContext
-      ? `${SUGGESTIONS_SYSTEM_PROMPT}\n\n${tripContext}`
-      : SUGGESTIONS_SYSTEM_PROMPT;
-
     try {
       const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: SUGGESTIONS_SYSTEM_PROMPT },
+          ...(tripContextMessage ? [tripContextMessage] : []),
           ...messages,
         ],
       });
@@ -197,15 +220,12 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   /* ── Mode: chat (streaming) ── */
-  const systemPrompt = tripContext
-    ? `${BASE_SYSTEM_PROMPT}\n\n${tripContext}`
-    : BASE_SYSTEM_PROMPT;
-
   const stream = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     stream: true,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: BASE_SYSTEM_PROMPT },
+      ...(tripContextMessage ? [tripContextMessage] : []),
       ...messages,
     ],
   });

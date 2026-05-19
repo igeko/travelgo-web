@@ -1,17 +1,13 @@
 /**
- * POST /api/go
+ * POST /api/go  —  DEPRECATED widget-mock endpoint.
  *
- * Body: { context: GoContext, step: 1 | 2, userChoice?: string }
- *
- * Costruisce il prompt e interpella l'LLM con function calling forzato
- * verso uno dei widget registrati.
- * Restituisce GoApiResponse { text: string, widget: GoResponse }.
+ * The canonical assistant entry point is `/api/go/chat`.
+ * This route still serves the `GoPanel` sandbox at `/dev/go-panel` with a
+ * hand-written mock; production callers receive 410 Gone.
  */
 
 import { NextResponse } from "next/server";
 import type { GoContext, GoResponse } from "@/features/go/types";
-import { WIDGET_TOOL_DEFINITIONS } from "@/features/go/widgets/tool-definitions";
-import { buildPromptPayload } from "@/features/go/prompt";
 
 export type GoApiResponse = {
   text: string;
@@ -19,6 +15,16 @@ export type GoApiResponse = {
 };
 
 export async function POST(req: Request): Promise<NextResponse> {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      {
+        error: "Endpoint deprecated. Use /api/go/chat instead.",
+        canonical: "/api/go/chat",
+      },
+      { status: 410 },
+    );
+  }
+
   let body: { context: GoContext; step: 1 | 2; userChoice?: string };
 
   try {
@@ -28,38 +34,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   const { context, step = 1, userChoice } = body;
-
-  // Costruisce il prompt (visibile anche nel debug panel della sandbox)
-  const promptPayload = buildPromptPayload(
-    context,
-    WIDGET_TOOL_DEFINITIONS,
-    step,
-    userChoice,
-  );
-
-  // ── TODO: sostituire il mock con la chiamata OpenAI reale ──────
-  //
-  // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  // const completion = await openai.chat.completions.create({
-  //   model: "gpt-4o-mini",
-  //   messages: [
-  //     { role: "system", content: promptPayload.system },
-  //     { role: "user",   content: promptPayload.userMessage },
-  //   ],
-  //   tools: promptPayload.tools,
-  //   tool_choice: promptPayload.tool_choice,
-  // });
-  // const call = completion.choices[0].message.tool_calls?.[0];
-  // const response: GoApiResponse = {
-  //   text: completion.choices[0].message.content ?? "",
-  //   widget: {
-  //     widget: call.function.name,
-  //     payload: JSON.parse(call.function.arguments),
-  //   },
-  // };
-  // return NextResponse.json(response);
-  // ──────────────────────────────────────────────────────────────
-
   const response = await mockGoResponse(context, step, userChoice);
   return NextResponse.json(response);
 }

@@ -19,11 +19,11 @@
 
 import { NextRequest }        from 'next/server';
 import { createClient }       from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies }            from 'next/headers';
 import OpenAI                 from 'openai';
 import { searchPlaces, buildEmbedText, PlaceBasic } from '@/lib/overpass';
 import { enrichFromWiki }     from '@/lib/wikipedia';
+import { requirePlatformAdmin } from '@/lib/dal/auth';
+import { getServerClient }    from '@/lib/dal/supabase';
 
 // ── SSE helper ────────────────────────────────────────────────
 
@@ -44,24 +44,18 @@ function adminDb() {
 // ── Route handler ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // ── Auth ─────────────────────────────────────────────────
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
-  );
+  const adminAuth = await requirePlatformAdmin();
+  if (!adminAuth.ok) {
+    const msg = adminAuth.response.status === 401 ? 'Unauthorized' : 'Forbidden';
+    return new Response(sseEvent({ type: 'error', message: msg }), {
+      status: adminAuth.response.status, headers: { 'Content-Type': 'text/event-stream' },
+    });
+  }
+  const supabase = await getServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return new Response(sseEvent({ type: 'error', message: 'Unauthorized' }), {
       status: 401, headers: { 'Content-Type': 'text/event-stream' },
-    });
-  }
-  const { data: admin } = await supabase
-    .from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle();
-  if (!admin) {
-    return new Response(sseEvent({ type: 'error', message: 'Forbidden' }), {
-      status: 403, headers: { 'Content-Type': 'text/event-stream' },
     });
   }
 

@@ -27,8 +27,21 @@ import { createServerClient } from "@supabase/ssr";
 const PROTECTED_PAGE_PREFIXES = ["/trips", "/account"];
 const AUTH_ONLY_ROUTES = ["/login", "/signup"];
 
-// ─── API rate-limit config ────────────────────────────────────────
-const API_PROTECTED_PREFIXES = ["/api/places", "/api/ai", "/api/go", "/api/routes", "/api/media"];
+// ─── API auth config ──────────────────────────────────────────────
+// All authenticated trip-data routes go through here; route handlers
+// add membership/role checks on top.
+const API_PROTECTED_PREFIXES = [
+  "/api/places",
+  "/api/ai",
+  "/api/go",
+  "/api/routes",
+  "/api/media",
+  "/api/activities",
+  "/api/trips",
+  "/api/days",
+  "/api/blocks",
+  "/api/catalog",
+];
 
 type RLConfig = { max: number; windowMs: number };
 

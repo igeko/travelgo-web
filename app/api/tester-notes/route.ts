@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient } from "@/lib/dal/supabase";
 import { createClient } from "@supabase/supabase-js";
+import { TESTER_ROLES, ADMIN_ROLES } from "@/lib/dal/auth";
+import { isUuid, parseJsonBody, safeHttpUrl } from "@/lib/api/validation";
 
 function getServiceClient() {
   return createClient(
@@ -10,8 +12,7 @@ function getServiceClient() {
   );
 }
 
-const TESTER_ROLES = ["tester", "dev", "admin"];
-const ADMIN_ROLES  = ["dev", "admin"];
+const NOTE_TYPES = new Set(["bug", "suggestion", "other"]);
 
 export async function POST(req: NextRequest) {
   const supabase = await getServerClient();
@@ -20,24 +21,49 @@ export async function POST(req: NextRequest) {
 
   const db = getServiceClient();
 
-  // Verifica ruolo tester via service client (bypassa RLS)
   const { data: roles } = await db
     .from("user_platform_roles")
     .select("role")
     .eq("user_id", user.id)
-    .in("role", TESTER_ROLES);
+    .in("role", TESTER_ROLES as unknown as string[]);
 
   if (!roles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
-  const { type, note, page_url, trip_id } = body;
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body as Record<string, unknown>;
 
-  if (!note?.trim()) return NextResponse.json({ error: "Note required" }, { status: 400 });
-  if (!["bug", "suggestion", "other"].includes(type)) return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  const type = typeof body.type === "string" ? body.type : "";
+  const note = typeof body.note === "string" ? body.note.trim() : "";
+  if (!note) return NextResponse.json({ error: "Note required" }, { status: 400 });
+  if (!NOTE_TYPES.has(type)) return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+
+  // page_url: must be an HTTP(S) URL if provided; reject javascript: etc.
+  let pageUrl: string | null = null;
+  if (body.page_url) {
+    const safe = safeHttpUrl(body.page_url, { maxLength: 1000 });
+    if (!safe) return NextResponse.json({ error: "Invalid page_url" }, { status: 400 });
+    pageUrl = safe;
+  }
+
+  // trip_id: must be a UUID if provided.
+  let tripId: string | null = null;
+  if (body.trip_id) {
+    if (!isUuid(body.trip_id)) {
+      return NextResponse.json({ error: "Invalid trip_id" }, { status: 400 });
+    }
+    tripId = body.trip_id;
+  }
 
   const { data, error } = await db
     .from("tester_notes")
-    .insert({ user_id: user.id, type, note: note.trim(), page_url: page_url || null, trip_id: trip_id || null })
+    .insert({
+      user_id: user.id,
+      type,
+      note: note.slice(0, 4000),
+      page_url: pageUrl,
+      trip_id: tripId,
+    })
     .select("id")
     .single();
 
@@ -52,19 +78,22 @@ export async function GET() {
 
   const db = getServiceClient();
 
-  // Controlla se è admin/dev — vede tutto, altrimenti solo le sue
-  const { data: adminRoles } = await db
+  // Anyone with a tester role can see their own notes; admins/devs see everything.
+  const { data: roles } = await db
     .from("user_platform_roles")
     .select("role")
     .eq("user_id", user.id)
-    .in("role", ADMIN_ROLES);
+    .in("role", TESTER_ROLES as unknown as string[]);
 
-  const isAdmin = !!adminRoles?.length;
+  if (!roles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const isAdmin = roles.some((r) => (ADMIN_ROLES as readonly string[]).includes(r.role as string));
 
   let query = db
     .from("tester_notes")
     .select("id, type, note, fix_notes, page_url, trip_id, created_at, user_id, status")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (!isAdmin) query = query.eq("user_id", user.id);
 
@@ -73,17 +102,18 @@ export async function GET() {
 
   const notes = data ?? [];
 
-  // Arricchisce con il nome dell'autore via auth.users (solo service client può farlo)
-  const userIds = [...new Set(notes.map((n) => n.user_id))];
-  const { data: authUsers } = await db.auth.admin.listUsers({ perPage: 200 });
+  // Resolve author names only for the user_ids actually present — no full listUsers().
+  const userIds = [...new Set(notes.map((n) => n.user_id).filter((id): id is string => !!id))];
   const userMap: Record<string, string> = {};
-  if (authUsers?.users) {
-    for (const u of authUsers.users) {
-      if (userIds.includes(u.id)) {
-        userMap[u.id] = (u.user_metadata?.full_name as string) || u.email || u.id;
+  await Promise.all(
+    userIds.map(async (id) => {
+      const { data: u } = await db.auth.admin.getUserById(id);
+      if (u?.user) {
+        const fullName = u.user.user_metadata?.full_name;
+        userMap[id] = (typeof fullName === "string" && fullName) ? fullName : "Unknown";
       }
-    }
-  }
+    }),
+  );
 
   const enriched = notes.map((n) => ({ ...n, author_name: userMap[n.user_id] ?? "Unknown" }));
   return NextResponse.json(enriched);

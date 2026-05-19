@@ -44,9 +44,10 @@ export async function GET(req: NextRequest) {
   const data = await res.json();
 
   if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-    console.error("[places/autocomplete] Google error:", data.status, data.error_message, JSON.stringify(data));
+    // Log internally only — never echo Google's raw payload back to the client.
+    console.error("[places/autocomplete] Google status:", data.status);
     return NextResponse.json(
-      { error: data.error_message ?? data.status, googleStatus: data.status, raw: data },
+      { error: "Places lookup failed", googleStatus: data.status },
       { status: 502 },
     );
   }

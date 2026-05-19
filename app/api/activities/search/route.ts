@@ -14,19 +14,29 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient } from "@/lib/dal/supabase";
+import { requireTripMember } from "@/lib/dal/auth";
 
 const SEARCH_SELECT = "id, title, short_desc, location, hero_image, type, slot, day_id, trip_id, fuzzy";
+
+// Escape LIKE wildcards in user input to avoid blind enumeration via `%`/`_`.
+function escapeLikePattern(input: string): string {
+  return input.replace(/([\\%_])/g, "\\$1");
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const tripId = searchParams.get("trip_id");
   const dayId  = searchParams.get("day_id") ?? null;
-  const q      = (searchParams.get("q") ?? "").trim();
+  const q      = (searchParams.get("q") ?? "").trim().slice(0, 100);
 
   if (!tripId) {
     return NextResponse.json({ error: "trip_id required" }, { status: 400 });
   }
 
+  const auth = await requireTripMember(tripId);
+  if (!auth.ok) return auth.response;
+
+  const safeQ = q ? escapeLikePattern(q) : "";
   const supabase = await getServerClient();
 
   // ── Gruppo 1: wishlist (tutte le attività del trip) ─────────────
@@ -38,33 +48,28 @@ export async function GET(req: NextRequest) {
     .order("position", { ascending: true })
     .limit(30);
 
-  if (q) {
-    wishlistQuery = wishlistQuery.ilike("title", `%${q}%`);
+  if (safeQ) {
+    wishlistQuery = wishlistQuery.ilike("title", `%${safeQ}%`);
   }
 
   const { data: wishlistRaw } = await wishlistQuery;
 
-  // Arricchisci con badge "Dn" se l'attività è già nel giorno corrente
   const wishlist = (wishlistRaw ?? []).map((a) => ({
     ...a,
     in_current_day: dayId ? a.day_id === dayId : false,
   }));
 
   // ── Gruppo 2: platform (attività da altri trip, full-text) ───────
-  let platformQuery = supabase
-    .from("activities")
-    .select(SEARCH_SELECT)
-    .neq("trip_id", tripId) // esclude il trip corrente
-    .limit(20);
-
-  if (q) {
-    platformQuery = platformQuery.ilike("title", `%${q}%`);
-  } else {
-    // Senza query: non restituiamo nulla per platform (evita rumore)
+  if (!safeQ) {
     return NextResponse.json({ wishlist, platform: [] });
   }
 
-  const { data: platform } = await platformQuery;
+  const { data: platform } = await supabase
+    .from("activities")
+    .select(SEARCH_SELECT)
+    .neq("trip_id", tripId)
+    .ilike("title", `%${safeQ}%`)
+    .limit(20);
 
   return NextResponse.json({
     wishlist,

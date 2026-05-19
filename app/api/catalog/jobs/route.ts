@@ -13,8 +13,6 @@
 
 import { NextRequest, NextResponse }  from 'next/server';
 import { createClient }               from '@supabase/supabase-js';
-import { createServerClient }         from '@supabase/ssr';
-import { cookies }                    from 'next/headers';
 import { countPlaces }                from '@/lib/overpass';
 import type { OverpassRetryEvent }    from '@/lib/overpass';
 
@@ -30,18 +28,15 @@ function adminDb() {
 
 // ── Auth helper ───────────────────────────────────────────────
 
+import { requirePlatformAdmin } from '@/lib/dal/auth';
+import { getServerClient } from '@/lib/dal/supabase';
+
 async function requireAdmin() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
-  );
+  const auth = await requirePlatformAdmin();
+  if (!auth.ok) return null;
+  const supabase = await getServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: admin } = await supabase
-    .from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle();
-  return admin ? user : null;
+  return user;
 }
 
 // ── SSE helper ────────────────────────────────────────────────

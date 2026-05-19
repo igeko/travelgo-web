@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient } from "@/lib/dal/supabase";
-import { requireDayEditor } from "@/lib/dal/auth";
+import { requireDayEditor, requireDayMember } from "@/lib/dal/auth";
 import { ACTIVITY_SELECT } from "@/lib/dal/trips";
+import { parseJsonBody, safeHttpUrl } from "@/lib/api/validation";
 
 type Params = { params: Promise<{ id: string }> };
 
 const SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
+const SLOT_VALUES = new Set(["morning", "afternoon", "evening", "night"]);
+const URL_FIELDS = new Set(["url", "hero_image"]);
 
 /* ── GET /api/days/[id]/blocks ─────────────────────────────────── */
 export async function GET(_req: Request, { params }: Params) {
   const { id: dayId } = await params;
+
+  const auth = await requireDayMember(dayId);
+  if (!auth.ok) return auth.response;
+
   const supabase = await getServerClient();
 
   const { data, error } = await supabase
@@ -41,7 +48,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const auth = await requireDayEditor(dayId);
   if (!auth.ok) return auth.response;
 
-  const body = await req.json();
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body as Record<string, unknown>;
+
   const supabase = await getServerClient();
 
   const { data: day } = await supabase
@@ -52,7 +62,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!day) return NextResponse.json({ error: "Day not found" }, { status: 404 });
 
-  // Calcola la prossima position nel giorno
+  const slot = typeof body.slot === "string" && SLOT_VALUES.has(body.slot) ? body.slot : "morning";
+
   const { data: last } = await supabase
     .from("activities")
     .select("position")
@@ -66,11 +77,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const insert: Record<string, unknown> = {
     day_id: dayId,
     trip_id: day.trip_id,
-    title:    body.title ?? "Nuovo blocco",
-    type:     body.type  ?? "place",
-    fuzzy:    body.fuzzy ?? false,
-    slot:     body.slot  ?? "morning",
-    position: body.position ?? nextPosition,
+    title:    typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 200) : "Nuovo blocco",
+    type:     typeof body.type === "string" ? body.type : "place",
+    fuzzy:    body.fuzzy === true,
+    slot,
+    position: typeof body.position === "number" ? body.position : nextPosition,
   };
 
   const optionalFields = [
@@ -81,7 +92,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   ] as const;
 
   for (const key of optionalFields) {
-    if (key in body) insert[key] = body[key];
+    if (!(key in body)) continue;
+    const value = body[key];
+    if (URL_FIELDS.has(key) && value != null && value !== "") {
+      const safe = safeHttpUrl(value);
+      if (!safe) {
+        return NextResponse.json({ error: `Invalid URL in ${key}` }, { status: 400 });
+      }
+      insert[key] = safe;
+    } else {
+      insert[key] = value;
+    }
   }
 
   const { data: created, error } = await supabase

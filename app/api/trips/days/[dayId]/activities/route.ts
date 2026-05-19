@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDayActivities } from "@/lib/dal/trips";
 import { getServerClient } from "@/lib/dal/supabase";
-import { requireDayEditor } from "@/lib/dal/auth";
+import { requireDayEditor, requireDayMember } from "@/lib/dal/auth";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ dayId: string }> }) {
   const { dayId } = await params;
 
-  // Now queries day_activities with activity JOIN
+  const auth = await requireDayMember(dayId);
+  if (!auth.ok) return auth.response;
+
   const activities = await getDayActivities(dayId);
   return NextResponse.json(activities);
 }

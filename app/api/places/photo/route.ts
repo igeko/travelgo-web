@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clampInt } from "@/lib/api/validation";
 
 /**
  * GET /api/places/photo?ref=<photo_reference>&maxwidth=<n>
@@ -7,11 +8,16 @@ import { NextRequest, NextResponse } from "next/server";
  * Google redirects to the actual image URL — we follow the redirect
  * and return the final URL to the client (avoids exposing the API key).
  */
+const REF_RE = /^[A-Za-z0-9_-]{1,500}$/;
+
 export async function GET(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get("ref")?.trim();
-  const maxwidth = req.nextUrl.searchParams.get("maxwidth") ?? "800";
+  // Clamp maxwidth so users can't request 99999px and burn billing.
+  const maxwidth = String(clampInt(req.nextUrl.searchParams.get("maxwidth"), 80, 1600, 800));
 
-  if (!ref) return NextResponse.json({ error: "ref is required" }, { status: 400 });
+  if (!ref || !REF_RE.test(ref)) {
+    return NextResponse.json({ error: "Invalid ref" }, { status: 400 });
+  }
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Not configured" }, { status: 500 });

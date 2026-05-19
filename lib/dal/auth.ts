@@ -1,16 +1,25 @@
 import { getServerClient } from "@/lib/dal/supabase";
 import { NextResponse } from "next/server";
 
-/**
- * Verifica che l'utente loggato sia editor o owner del viaggio indicato.
- * Ritorna { ok: true } oppure { ok: false, response: NextResponse 401/403 }.
- */
-export async function requireTripEditor(tripId: string) {
+export const ADMIN_ROLES = ["admin"] as const;
+export const TESTER_ROLES = ["admin", "dev", "tester"] as const;
+
+const EDITOR_ROLES = ["owner", "editor"] as const;
+const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
+
+type AuthOk = { ok: true; userId: string };
+type AuthErr = { ok: false; response: NextResponse };
+type AuthResult = AuthOk | AuthErr;
+
+async function checkTripRole(
+  tripId: string,
+  allowed: readonly string[],
+): Promise<AuthResult> {
   const supabase = await getServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false as const, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
 
   const { data } = await supabase
@@ -18,69 +27,120 @@ export async function requireTripEditor(tripId: string) {
     .select("role")
     .eq("trip_id", tripId)
     .eq("user_id", user.id)
-    .in("role", ["owner", "editor"])
+    .in("role", allowed as unknown as string[])
     .maybeSingle();
 
   if (!data) {
-    return { ok: false as const, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 
-  return { ok: true as const };
+  return { ok: true, userId: user.id };
 }
 
 /**
- * Risolve il trip_id di una activity e verifica il ruolo editor.
+ * Verifica che l'utente loggato sia editor o owner del viaggio indicato.
+ * Ritorna { ok: true } oppure { ok: false, response: NextResponse 401/403 }.
  */
-export async function requireActivityEditor(activityId: string) {
-  const supabase = await getServerClient();
+export function requireTripEditor(tripId: string): Promise<AuthResult> {
+  return checkTripRole(tripId, EDITOR_ROLES);
+}
 
-  const { data: activity } = await supabase
+/**
+ * Verifica che l'utente loggato sia membro (owner/editor/viewer) del viaggio.
+ * Da usare nelle GET trip-scoped per impedire IDOR.
+ */
+export function requireTripMember(tripId: string): Promise<AuthResult> {
+  return checkTripRole(tripId, MEMBER_ROLES);
+}
+
+async function resolveActivityTripId(activityId: string): Promise<string | null> {
+  const supabase = await getServerClient();
+  const { data } = await supabase
     .from("activities")
     .select("trip_id")
     .eq("id", activityId)
     .maybeSingle();
-
-  if (!activity) {
-    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  }
-
-  return requireTripEditor(activity.trip_id);
+  return data?.trip_id ?? null;
 }
 
-/**
- * Risolve il trip_id di un day e verifica il ruolo editor.
- */
-export async function requireDayEditor(dayId: string) {
+async function resolveDayTripId(dayId: string): Promise<string | null> {
   const supabase = await getServerClient();
-
-  const { data: day } = await supabase
+  const { data } = await supabase
     .from("days")
     .select("trip_id")
     .eq("id", dayId)
     .maybeSingle();
-
-  if (!day) {
-    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  }
-
-  return requireTripEditor(day.trip_id);
+  return data?.trip_id ?? null;
 }
 
-/**
- * Risolve il trip_id di una day_activity e verifica il ruolo editor.
- */
-export async function requireDayActivityEditor(dayActivityId: string) {
+async function resolveDayActivityDayId(dayActivityId: string): Promise<string | null> {
   const supabase = await getServerClient();
-
-  const { data: dayActivity } = await supabase
+  const { data } = await supabase
     .from("day_activities")
     .select("day_id")
     .eq("id", dayActivityId)
     .maybeSingle();
+  return data?.day_id ?? null;
+}
 
-  if (!dayActivity) {
-    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+function notFound(): AuthErr {
+  return { ok: false, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+}
+
+export async function requireActivityEditor(activityId: string): Promise<AuthResult> {
+  const tripId = await resolveActivityTripId(activityId);
+  if (!tripId) return notFound();
+  return requireTripEditor(tripId);
+}
+
+export async function requireActivityMember(activityId: string): Promise<AuthResult> {
+  const tripId = await resolveActivityTripId(activityId);
+  if (!tripId) return notFound();
+  return requireTripMember(tripId);
+}
+
+export async function requireDayEditor(dayId: string): Promise<AuthResult> {
+  const tripId = await resolveDayTripId(dayId);
+  if (!tripId) return notFound();
+  return requireTripEditor(tripId);
+}
+
+export async function requireDayMember(dayId: string): Promise<AuthResult> {
+  const tripId = await resolveDayTripId(dayId);
+  if (!tripId) return notFound();
+  return requireTripMember(tripId);
+}
+
+export async function requireDayActivityEditor(dayActivityId: string): Promise<AuthResult> {
+  const dayId = await resolveDayActivityDayId(dayActivityId);
+  if (!dayId) return notFound();
+  return requireDayEditor(dayId);
+}
+
+export async function requireDayActivityMember(dayActivityId: string): Promise<AuthResult> {
+  const dayId = await resolveDayActivityDayId(dayActivityId);
+  if (!dayId) return notFound();
+  return requireDayMember(dayId);
+}
+
+/**
+ * Returns ok if the current user has the `admin` platform role.
+ * Replaces the legacy `platform_admins` lookup.
+ */
+export async function requirePlatformAdmin(): Promise<AuthResult> {
+  const supabase = await getServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
-
-  return requireDayEditor(dayActivity.day_id);
+  const { data } = await supabase
+    .from("user_platform_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!data) {
+    return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { ok: true, userId: user.id };
 }

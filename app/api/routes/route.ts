@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isLatLng, parseJsonBody } from "@/lib/api/validation";
 
 /* ─────────────────────────────────────────────────────────────────
    POST /api/routes
@@ -13,14 +14,9 @@ import { NextRequest, NextResponse } from "next/server";
      { error: string }      — on failure
 ───────────────────────────────────────────────────────────────── */
 
-type LatLng = { lat: number; lng: number };
+// Google Routes accepts up to 25 waypoints (origin + 23 intermediates + dest).
+const MAX_POINTS = 25;
 
-type RequestBody = {
-  points: LatLng[];
-  travelMode?: string;
-};
-
-// Maps our prop values to Routes API travel mode strings
 const TRAVEL_MODE_MAP: Record<string, string> = {
   WALKING:   "WALK",
   DRIVING:   "DRIVE",
@@ -34,19 +30,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Routes API not configured" }, { status: 500 });
   }
 
-  let body: RequestBody;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body as { points?: unknown; travelMode?: unknown };
 
-  const { points, travelMode = "WALKING" } = body;
-
-  if (!points || points.length < 2) {
+  if (!Array.isArray(body.points) || body.points.length < 2) {
     return NextResponse.json({ error: "At least 2 points required" }, { status: 400 });
   }
+  if (body.points.length > MAX_POINTS) {
+    return NextResponse.json({ error: `Too many points (max ${MAX_POINTS})` }, { status: 400 });
+  }
+  if (!body.points.every(isLatLng)) {
+    return NextResponse.json({ error: "Invalid lat/lng in points" }, { status: 400 });
+  }
+  const points = body.points as Array<{ lat: number; lng: number }>;
 
+  const travelMode = typeof body.travelMode === "string" ? body.travelMode : "WALKING";
   const routesTravelMode = TRAVEL_MODE_MAP[travelMode] ?? "WALK";
 
   // Build intermediates (all points except first and last)
@@ -84,8 +83,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    console.error("[routes] Google Routes API error:", res.status, text);
+    // Avoid logging the raw Google response (may include query params / key fragments)
+    console.error("[routes] Google Routes API error status:", res.status);
     return NextResponse.json(
       { error: `Routes API error: ${res.status}` },
       { status: 502 },
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
   const encodedPolyline = data?.routes?.[0]?.polyline?.encodedPolyline;
 
   if (!encodedPolyline) {
-    console.error("[routes] No polyline in response:", JSON.stringify(data));
+    console.error("[routes] No polyline in response");
     return NextResponse.json({ error: "No route found" }, { status: 404 });
   }
 
