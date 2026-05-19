@@ -9,6 +9,7 @@ import {
   type ActivityData,
 } from "@/features/activity/ActivityEditForm";
 import { ActivityRow } from "@/features/activity/ActivityRow";
+import { TripGoProvider } from "@/features/go/TripGoContext";
 
 export default function ActivityEditFormStories() {
   // ── Debugger controls ──
@@ -64,7 +65,7 @@ export default function ActivityEditFormStories() {
   }
 
   return (
-    <>
+    <TripGoProvider>
       <SandboxRightPanel>
         <ControlsPanel groups={groups} />
       </SandboxRightPanel>
@@ -166,6 +167,6 @@ export default function ActivityEditFormStories() {
           </div>
         </StoryFrame>
       </StoryPage>
-    </>
+    </TripGoProvider>
   );
 }

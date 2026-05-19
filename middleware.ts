@@ -1,11 +1,12 @@
 /**
  * middleware.ts — API Security Guard
  *
- * Protegge tutti gli endpoint proxy verso Google e OpenAI:
+ * Protegge tutti gli endpoint proxy verso Google e OpenAI, e le route media:
  *   /api/places/*  — Google Places / Photo
  *   /api/ai/*      — OpenAI (assistente Go v2)
  *   /api/go/*      — OpenAI (assistente Go v1 + deep-dive)
  *   /api/routes    — Google Routes
+ *   /api/media/*   — import/upload media (SSRF + quota protection)
  *
  * Due livelli di difesa:
  *   1. AUTH  — verifica la sessione Supabase; 401 se non autenticato.
@@ -51,13 +52,14 @@ function maybePrune() {
 }
 
 // ─── Configurazione ──────────────────────────────────────────────
-const PROTECTED_PREFIXES = ["/api/places", "/api/ai", "/api/go", "/api/routes"];
+const PROTECTED_PREFIXES = ["/api/places", "/api/ai", "/api/go", "/api/routes", "/api/media"];
 
 const RL_CONFIGS: Array<[prefix: string, cfg: RLConfig]> = [
   ["/api/ai",     { max: 20,  windowMs: 60_000 }], // OpenAI — costoso
   ["/api/go",     { max: 20,  windowMs: 60_000 }], // OpenAI — costoso
   ["/api/places", { max: 120, windowMs: 60_000 }], // Google Places
   ["/api/routes", { max: 60,  windowMs: 60_000 }], // Google Routes
+  ["/api/media",  { max: 30,  windowMs: 60_000 }], // Upload/import media
 ];
 
 function getRLEntry(pathname: string): [string, RLConfig] | null {
@@ -136,5 +138,6 @@ export const config = {
     "/api/ai/:path*",
     "/api/go/:path*",
     "/api/routes",
+    "/api/media/:path*",
   ],
 };

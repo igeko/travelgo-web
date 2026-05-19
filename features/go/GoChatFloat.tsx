@@ -386,7 +386,7 @@ function SuggestionCard({
                   <IconStar size={12} style={{ fill: "#f4a800", color: "#f4a800" }} />
                   <span style={{ fontWeight: 600 }}>{place.rating.toFixed(1)}</span>
                   {place.userRatingsTotal != null && (
-                    <span style={{ color: "var(--color-ink-faint)" }}> ({place.userRatingsTotal.toLocaleString()})</span>
+                    <span style={{ color: "var(--color-ink-faint)" }}> ({place.userRatingsTotal.toLocaleString("en-US")})</span>
                   )}
                 </span>
               )}

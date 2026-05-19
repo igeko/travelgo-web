@@ -49,7 +49,7 @@ export function ActivityList({
         description={a.short_desc ?? undefined}
         location={a.location ?? undefined}
         thumb={a.hero_image ?? undefined}
-        cost={a.budget_amount ? `¥${a.budget_amount.toLocaleString()}` : undefined}
+        cost={a.budget_amount ? `¥${a.budget_amount.toLocaleString("en-US")}` : undefined}
         status={status}
         href={a.url ?? "#"}
         editMode={editMode}

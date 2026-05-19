@@ -413,7 +413,7 @@ export function ActivityEditForm({
                         <b className="text-ink font-semibold">{enriched.rating.toFixed(1)}</b>
                         {enriched.userRatingsTotal !== undefined && (
                           <span className="text-ink-faint">
-                            {" "}({enriched.userRatingsTotal.toLocaleString()})
+                            {" "}({enriched.userRatingsTotal.toLocaleString("en-US")})
                           </span>
                         )}
                       </span>
