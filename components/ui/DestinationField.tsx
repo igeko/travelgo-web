@@ -70,6 +70,8 @@ type CommonProps = {
    *   placeTypes={["geocode", "establishment"]}
    */
   placeTypes?: PlaceTypes | PlaceTypes[];
+  /** When true the floating label is always visible (not just on hover/focus) */
+  labelAlwaysVisible?: boolean;
 };
 
 export type DestinationFieldProps = (SingleProps | MultipleProps) & CommonProps;
@@ -82,6 +84,7 @@ export function DestinationField(props: DestinationFieldProps) {
     className,
     autoFocus,
     placeTypes = "(regions)",
+    labelAlwaysVisible,
   } = props;
 
   const typesString = Array.isArray(placeTypes) ? placeTypes.join("|") : placeTypes;
@@ -158,6 +161,7 @@ export function DestinationField(props: DestinationFieldProps) {
         }
         placeholder={activePlaceholder}
         label={label}
+        labelAlwaysVisible={labelAlwaysVisible}
         disabled={isDisabled}
         autoComplete="off"
         inputProps={{

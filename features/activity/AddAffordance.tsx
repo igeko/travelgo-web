@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IconPlus, IconX } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { SoftField } from "@/components/ui/SoftField";
 import { ActivityAutocomplete } from "./ActivityAutocomplete";
 import type { BlockType, SlotKey, SearchResult } from "./types";
 
@@ -122,18 +123,20 @@ export function AddAffordance({
           </div>
 
           <div className="flex gap-2">
-            <input
-              type="text"
-              autoFocus
-              value={blockTitle}
-              onChange={(e) => setBlockTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitBlock();
-                if (e.key === "Escape") reset();
-              }}
-              placeholder="Descrivi il blocco…"
-              className="flex-1 border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors"
-            />
+            <div className="flex-1">
+              <SoftField
+                value={blockTitle}
+                onChange={setBlockTitle}
+                placeholder="Descrivi il blocco…"
+                inputProps={{
+                  autoFocus: true,
+                  onKeyDown: (e: any) => {
+                    if (e.key === "Enter") submitBlock();
+                    if (e.key === "Escape") reset();
+                  },
+                } as any}
+              />
+            </div>
             <button
               onClick={submitBlock}
               disabled={!blockTitle.trim()}

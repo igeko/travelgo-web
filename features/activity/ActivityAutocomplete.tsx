@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { IconMapPin, IconX, IconPlus } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { SoftField } from "@/components/ui/SoftField";
 import type { SearchResult, SearchResponse } from "./types";
 
 type Props = {
@@ -73,23 +74,28 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
   return (
     <div className="rounded-xl border-2 border-orange/40 bg-white shadow-md overflow-hidden">
       {/* Input */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
-        <IconMapPin size={14} className="text-orange shrink-0" />
-        <input
+      <div className="px-3 py-2.5 border-b border-border">
+        <SoftField
           ref={inputRef}
-          type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onChange={setQuery}
           placeholder="Cerca attività…"
-          className="flex-1 text-[13px] text-ink placeholder:text-ink-faint outline-none bg-transparent"
-        />
-        {loading && (
-          <span className="w-3 h-3 rounded-full border-2 border-orange border-t-transparent animate-spin shrink-0" />
-        )}
-        <button onClick={onClose} className="text-ink-faint hover:text-ink shrink-0 p-0.5 transition-colors">
-          <IconX size={13} />
-        </button>
+          inputProps={{
+            onKeyDown: handleKeyDown,
+          }}
+        >
+          <SoftField.Prefix>
+            <IconMapPin size={14} className="text-orange" />
+          </SoftField.Prefix>
+          <SoftField.Suffix>
+            {loading && (
+              <span className="w-3 h-3 rounded-full border-2 border-orange border-t-transparent animate-spin" />
+            )}
+            <button onClick={onClose} className="text-ink-faint hover:text-ink p-0.5 transition-colors">
+              <IconX size={13} />
+            </button>
+          </SoftField.Suffix>
+        </SoftField>
       </div>
 
       {/* Gruppo 1: wishlist */}

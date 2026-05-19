@@ -45,6 +45,8 @@ export type AddressFieldProps = {
   className?: string;
   /** Show the "map" button in the suffix. Visual only for now. */
   showMapButton?: boolean;
+  /** When true the floating label is always visible (not just on hover/focus) */
+  labelAlwaysVisible?: boolean;
 };
 
 export function AddressField({
@@ -55,6 +57,7 @@ export function AddressField({
   disabled,
   className,
   showMapButton = false,
+  labelAlwaysVisible,
 }: AddressFieldProps) {
   const {
     inputText,
@@ -97,6 +100,7 @@ export function AddressField({
         onChange={(text) => handleInputChange(text, () => onChange(null))}
         placeholder={placeholder}
         label={label}
+        labelAlwaysVisible={labelAlwaysVisible}
         disabled={disabled || isLoadingDetails}
         autoComplete="off"
         inputProps={{

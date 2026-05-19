@@ -32,6 +32,8 @@ type CommonProps = {
   maxLength?: number;
   /** Hide the counter even when maxLength is set */
   hideCounter?: boolean;
+  /** When true the floating label is always visible (not just on hover/focus) */
+  labelAlwaysVisible?: boolean;
   /** Slots: <SoftField.Prefix /> and/or <SoftField.Suffix /> */
   children?: ReactNode;
   /** Extra classes on the outer pill wrapper */
@@ -167,6 +169,7 @@ const SoftFieldBase = forwardRef<
     disabled,
     maxLength,
     hideCounter,
+    labelAlwaysVisible,
     children,
     className,
     autoComplete,
@@ -206,14 +209,16 @@ const SoftFieldBase = forwardRef<
           disabled && "opacity-50 pointer-events-none",
         )}
       >
-        {/* Floating ghost label (only visible when wrapper has focus-within) */}
+        {/* Floating ghost label (visible on hover/focus, or always when labelAlwaysVisible) */}
         {label && (
           <span
             className={cn(
               "absolute -top-2 left-4 px-1.5 bg-surface",
               "text-[9px] uppercase tracking-[0.08em] text-ink-faint font-medium",
-              "opacity-0 pointer-events-none transition-opacity",
-              "group-hover/sf:opacity-100 group-focus-within/sf:opacity-100",
+              "pointer-events-none transition-opacity",
+              labelAlwaysVisible
+                ? "opacity-100"
+                : "opacity-0 group-hover/sf:opacity-100 group-focus-within/sf:opacity-100",
             )}
           >
             {label}

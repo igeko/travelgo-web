@@ -509,13 +509,6 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             tripId={trip.id}
             initialBlocks={activities}
             editMode={editMode}
-            onShowMap={async () => {
-              await fetch(`/api/trips/days/${selectedDayId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ show_map: true }),
-              });
-            }}
           />
         </div>
 

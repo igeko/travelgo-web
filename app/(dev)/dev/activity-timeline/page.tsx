@@ -4,6 +4,9 @@
  * Sandbox — ActivityTimeline
  * URL: /dev/activity-timeline
  *
+ * Pure timeline component — no chrome (Show Map, View Toggle, AI Organize
+ * are provided by the host page).
+ *
  * Nota: useTimeline fa fetch reali verso /api/days/[id]/blocks.
  * Con dayId = "sandbox" le chiamate ritornano 404 e i blocchi restano
  * quelli passati in initialBlocks (optimistic updates visibili, no persistenza).
@@ -133,16 +136,13 @@ const INITIAL_BLOCKS: TimelineBlock[] = [
    Sandbox page
 ───────────────────────────────────────────────────────────────── */
 
-type View = "lista" | "timeline" | "racconto";
-
 export default function ActivityTimelineSandbox() {
   const [editMode, setEditMode] = useState(true);
-  const [view, setView]         = useState<View>("timeline");
   const [resetKey, setResetKey] = useState(0);
 
   const groups: ControlGroup[] = [
     {
-      title: "Modalità",
+      title: "Mode",
       controls: [
         {
           kind: "toggle",
@@ -154,29 +154,12 @@ export default function ActivityTimelineSandbox() {
       ],
     },
     {
-      title: "Vista",
-      controls: [
-        {
-          kind: "radio",
-          id: "view",
-          label: "View",
-          options: [
-            { value: "lista",    label: "Lista"    },
-            { value: "timeline", label: "Timeline" },
-            { value: "racconto", label: "Racconto" },
-          ],
-          value: view,
-          onChange: (v) => setView(v as View),
-        },
-      ],
-    },
-    {
       title: "Reset",
       controls: [
         {
           kind: "toggle",
           id: "reset",
-          label: "Reset blocchi",
+          label: "Reset blocks",
           value: false,
           onChange: () => setResetKey((k) => k + 1),
         },
@@ -192,12 +175,12 @@ export default function ActivityTimelineSandbox() {
 
       <StoryPage
         title="ActivityTimeline"
-        description="Day editor spine view. Gestisce internamente stato + optimistic updates tramite useTimeline. In questa sandbox le chiamate API ritornano 404 (dayId = 'sandbox') ma il componente rimane funzionale in locale."
+        description="Pure timeline component (embedded). Show Map + AI Organize + View Toggle are provided by the host page, not by this component."
       >
-        {/* ── Story: Timeline view ── */}
+        {/* ── Story: Timeline spine ── */}
         <StoryFrame
-          name="Spine view — giorno a Tokyo"
-          description="3 sezioni (Morning / Afternoon / Evening), blocchi tipizzati (place/meal/pause/action), variante fuzzy, bridge espandibili. In edit mode: hover per vedere pencil + trash + drag handle. Pencil apre l'InstancePopover."
+          name="Spine view — Tokyo day"
+          description="3 sections (Morning / Afternoon / Evening), typed blocks (place/meal/pause/action), fuzzy variant, expandable bridges. In edit mode: hover to see pencil + trash. Pencil opens InstancePopover."
         >
           <div className="w-full max-w-[680px]">
             <ActivityTimeline
@@ -206,16 +189,14 @@ export default function ActivityTimelineSandbox() {
               tripId="sandbox-trip"
               initialBlocks={INITIAL_BLOCKS}
               editMode={editMode}
-              view={view}
-              onViewChange={setView}
             />
           </div>
         </StoryFrame>
 
-        {/* ── Story: Solo fuzzy blocks ── */}
+        {/* ── Story: Fuzzy blocks variant ── */}
         <StoryFrame
-          name="Variante fuzzy"
-          description="Blocchi senza location precisa: bordo tratteggiato, dot grigio sulla spine, testo italic uppercase. Usata per pasti/pause/azioni senza indirizzo."
+          name="Fuzzy variant"
+          description="Blocks without precise location: dashed border, gray dot on spine, italic uppercase text. Used for meals/pauses/actions without address."
         >
           <div className="w-full max-w-[680px]">
             <ActivityTimeline
@@ -223,21 +204,19 @@ export default function ActivityTimelineSandbox() {
               dayId="sandbox-fuzzy"
               tripId="sandbox-trip"
               initialBlocks={[
-                { ...STUB, id: "f1", day_id: "sandbox-fuzzy", position: 1, slot: "morning", title: "COLAZIONE IN HOTEL", type: "meal", fuzzy: true },
-                { ...STUB, id: "f2", day_id: "sandbox-fuzzy", position: 2, slot: "morning", title: "TEMPO LIBERO", type: "pause", fuzzy: true },
-                { ...STUB, id: "f3", day_id: "sandbox-fuzzy", position: 3, slot: "afternoon", title: "CERCA SOUVENIR", type: "action", fuzzy: true, instance_note: "Budget max ¥5,000" },
+                { ...STUB, id: "f1", day_id: "sandbox-fuzzy", position: 1, slot: "morning", title: "BREAKFAST AT HOTEL", type: "meal", fuzzy: true },
+                { ...STUB, id: "f2", day_id: "sandbox-fuzzy", position: 2, slot: "morning", title: "FREE TIME", type: "pause", fuzzy: true },
+                { ...STUB, id: "f3", day_id: "sandbox-fuzzy", position: 3, slot: "afternoon", title: "BUY SOUVENIRS", type: "action", fuzzy: true, instance_note: "Budget max ¥5,000" },
               ]}
               editMode={editMode}
-              view={view}
-              onViewChange={setView}
             />
           </div>
         </StoryFrame>
 
-        {/* ── Story: Lista vuota ── */}
+        {/* ── Story: Empty timeline ── */}
         <StoryFrame
-          name="Timeline vuota"
-          description="Stato empty — nessun blocco. In edit mode l'add affordance è sempre visibile in basso."
+          name="Empty timeline"
+          description="Empty state — no blocks. In edit mode the add affordance is always visible."
         >
           <div className="w-full max-w-[680px]">
             <ActivityTimeline
@@ -246,8 +225,6 @@ export default function ActivityTimelineSandbox() {
               tripId="sandbox-trip"
               initialBlocks={[]}
               editMode={editMode}
-              view={view}
-              onViewChange={setView}
             />
           </div>
         </StoryFrame>
@@ -256,13 +233,10 @@ export default function ActivityTimelineSandbox() {
         <StoryFrame name="Props API" description="">
           <PropsTable
             rows={[
-              { prop: "dayId",          type: "string",          required: true,  description: "ID del giorno — usato per fetch /api/days/[id]/blocks" },
-              { prop: "tripId",         type: "string",          required: true,  description: "ID del trip — per autocomplete e auth" },
-              { prop: "initialBlocks",  type: "TimelineBlock[]", required: true,  description: "Blocchi iniziali server-fetched — evita flash" },
-              { prop: "editMode",       type: "boolean",         defaultValue: "false", description: "Se true mostra hover actions, add affordance, AI organize" },
-              { prop: "view",           type: '"lista" | "timeline" | "racconto"', defaultValue: '"timeline"', description: "Vista attiva — Timeline è la spine view" },
-              { prop: "onViewChange",   type: "(v: View) => void", description: "Callback cambio vista — usato dal ViewToggle in toolbar" },
-              { prop: "onShowMap",      type: "() => void",      description: "Callback pulsante Show map — se omesso il pulsante non appare" },
+              { prop: "dayId",          type: "string",          required: true,  description: "Day ID — used for fetch /api/days/[id]/blocks" },
+              { prop: "tripId",         type: "string",          required: true,  description: "Trip ID — for autocomplete and auth" },
+              { prop: "initialBlocks",  type: "TimelineBlock[]", required: true,  description: "Initial blocks server-fetched — avoids flash" },
+              { prop: "editMode",       type: "boolean",         defaultValue: "false", description: "If true shows hover actions, add affordance" },
             ]}
           />
         </StoryFrame>

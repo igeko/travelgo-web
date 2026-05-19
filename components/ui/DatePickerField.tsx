@@ -52,6 +52,8 @@ type CommonProps = {
   className?: string;
   fromDate?: Date;
   toDate?: Date;
+  /** When true the floating label is always visible (not just on hover/focus) */
+  labelAlwaysVisible?: boolean;
 };
 
 export type DatePickerFieldProps = (SingleProps | RangeProps) & CommonProps;
@@ -182,6 +184,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
     className,
     fromDate,
     toDate,
+    labelAlwaysVisible,
   } = props;
 
   const isRange = props.mode === "range";
@@ -423,9 +426,10 @@ export function DatePickerField(props: DatePickerFieldProps) {
             <span className={cn(
               "absolute -top-2 left-4 px-1.5 bg-surface",
               "text-[9px] uppercase tracking-[0.08em] text-ink-faint font-medium",
-              "opacity-0 pointer-events-none transition-opacity",
-              "group-hover/sf:opacity-100",
-              isOpen && "opacity-100",
+              "pointer-events-none transition-opacity",
+              labelAlwaysVisible
+                ? "opacity-100"
+                : cn("opacity-0 group-hover/sf:opacity-100", isOpen && "opacity-100"),
             )}>
               {label}
             </span>
@@ -442,6 +446,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
           onChange={(text) => { setInputText(text); if (!isOpen) setIsOpen(true); }}
           placeholder={effectivePlaceholder}
           label={label}
+          labelAlwaysVisible={labelAlwaysVisible}
           disabled={disabled}
           autoComplete="off"
           inputProps={{

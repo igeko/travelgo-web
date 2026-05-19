@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IconChevronRight, IconX } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { SoftField } from "@/components/ui/SoftField";
 import type { BridgeData } from "./types";
 
 type Transport = BridgeData["transport"];
@@ -98,59 +99,46 @@ export function BridgeCard({ bridge, onSave }: Props) {
       {/* Duration + linea */}
       <div className="flex gap-2 mb-3">
         <div className="flex-1">
-          <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-            Durata
-          </label>
-          <div className="flex items-center gap-1 border border-border rounded-lg px-3 py-2 bg-white focus-within:border-orange/50 transition-colors">
-            <input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="w-full text-[13px] text-ink outline-none bg-transparent"
-              min={1}
-            />
-            <span className="text-[12px] text-ink-faint shrink-0">min</span>
-          </div>
+          <SoftField
+            label="Durata"
+            value={duration}
+            onChange={setDuration}
+            placeholder="es. 15"
+            type="text"
+            inputProps={{ min: 1 }}
+          >
+            <SoftField.Suffix>
+              <span className="text-[12px] text-ink-faint">min</span>
+            </SoftField.Suffix>
+          </SoftField>
         </div>
         <div className="flex-1">
-          <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-            Linea
-          </label>
-          <input
-            type="text"
+          <SoftField
+            label="Linea"
             value={line}
-            onChange={(e) => setLine(e.target.value)}
+            onChange={setLine}
             placeholder="es. Hibiya Line"
-            className="w-full border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white"
           />
         </div>
       </div>
 
       {/* Fermate */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-          Fermate
-        </label>
-        <input
-          type="text"
+        <SoftField
+          label="Fermate"
           value={stops}
-          onChange={(e) => setStops(e.target.value)}
+          onChange={setStops}
           placeholder="es. Toyosu → Shibuya"
-          className="w-full border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white"
         />
       </div>
 
       {/* Nota libera */}
       <div className="mb-4">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-          Nota libera
-        </label>
-        <input
-          type="text"
+        <SoftField
+          label="Nota libera"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={setNote}
           placeholder="es. Biglietto incluso nel pass"
-          className="w-full border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white"
         />
       </div>
 

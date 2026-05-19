@@ -15,7 +15,7 @@ npm run lint         # ESLint
 
 ## Git Workflow
 
-After every meaningful change: `git add -A && git commit -m "..." && git push`. The working branch is `debug`; push there unless told otherwise.
+After every meaningful change: `git add -A && git commit -m "..." && git push`. The working branch is `main`; push there unless told otherwise.
 
 ## Architecture
 
