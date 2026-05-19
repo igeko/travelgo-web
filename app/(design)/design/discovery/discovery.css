@@ -1,0 +1,494 @@
+/* ─────────────────────────────────────────────────────────────────
+   Discovery zone · CSS co-locato
+   Stile editoriale Wanderlust-inspired adattato al brand TravelGo
+───────────────────────────────────────────────────────────────── */
+
+.dz-page {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: "General Sans", -apple-system, system-ui, sans-serif;
+  min-height: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  border-left: 0.5px solid var(--color-border);
+  border-right: 0.5px solid var(--color-border);
+}
+
+/* Top nav */
+.dz-tb {
+  padding: 14px 24px;
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 11px;
+}
+.dz-tb .back { color: var(--color-ink-faint); display: inline-flex; align-items: center; gap: 4px; }
+.dz-tb .back i { font-size: 12px; }
+.dz-tb .nav {
+  display: flex;
+  gap: 14px;
+  margin: 0 auto;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  font-size: 10.5px;
+}
+.dz-tb .nav .on {
+  color: var(--color-orange);
+  border-bottom: 1px solid var(--color-orange);
+  padding-bottom: 2px;
+}
+.dz-tb .nav span { color: var(--color-ink); cursor: pointer; }
+.dz-tb .right {
+  color: var(--color-orange-deep);
+  font-weight: 500;
+  font-size: 11px;
+  border-bottom: 1px solid var(--color-orange);
+  padding-bottom: 1px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* HERO destination */
+.w-hero {
+  padding: 48px 24px 36px;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 32px;
+  align-items: center;
+}
+.w-hero .left { padding-left: 16px; }
+.w-hero .eb {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-orange);
+  font-weight: 500;
+  margin-bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.w-hero .go-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  font-weight: 300;
+}
+.w-hero h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 54px;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+  color: var(--color-ink);
+}
+.w-hero .deck {
+  font-size: 13px;
+  color: var(--color-ink-soft);
+  line-height: 1.55;
+  margin: 0 0 28px;
+  max-width: 280px;
+}
+.w-hero .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-orange);
+  color: #fff;
+  padding: 10px 26px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+}
+.w-hero .photo {
+  height: 280px;
+}
+
+/* Section header (riusato da widget multipli) */
+.dz-sec { padding: 28px 24px 12px; }
+.dz-sec-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 14px;
+  border-bottom: 0.5px solid #d4ae6e;
+}
+.dz-sec-h h2 {
+  font-family: Georgia, serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.dz-pill-out {
+  border: 0.5px solid #d4ae6e;
+  color: var(--color-ink);
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+}
+.dz-pill-out:hover { background: var(--color-surface-soft); }
+
+/* REGION TILE GRID */
+.w-regions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; }
+.w-regions .tile {
+  position: relative;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  cursor: pointer;
+}
+.w-regions .tile .img { position: absolute; inset: 0; }
+.w-regions .tile .img::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+}
+.w-regions .tile .label {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* GO BANNER */
+.w-go-banner {
+  margin: 36px 24px 12px;
+  padding: 32px 36px;
+  background: var(--color-ink);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.w-go-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 90% 50%, rgba(244, 123, 58, 0.20) 0%, transparent 60%);
+  pointer-events: none;
+}
+.w-go-banner .orb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #1a3a52;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 28px;
+  font-weight: 300;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+  animation: gb-pulse 2.6s ease-in-out infinite;
+}
+@keyframes gb-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(244, 123, 58, 0); }
+}
+.w-go-banner .body { flex: 1; position: relative; z-index: 1; }
+.w-go-banner .eb {
+  font-size: 9.5px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--color-orange);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.w-go-banner h3 {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0 0 6px;
+  color: #fff;
+  letter-spacing: -0.005em;
+}
+.w-go-banner p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 360px;
+}
+.w-go-banner .cta {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  color: var(--color-ink);
+  padding: 11px 22px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 0;
+  font-family: inherit;
+}
+.w-go-banner .cta i { font-size: 11px; color: var(--color-orange); }
+
+/* EDITORS CHOICE */
+.w-editors { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 18px; margin-top: 6px; }
+.w-editors .ed-tile { cursor: pointer; }
+.w-editors .ed-tile .img { height: 180px; background-size: cover; background-position: center; margin-bottom: 14px; }
+.w-editors .ed-tile.lg .img { height: 300px; }
+.w-editors .ed-tile .eb {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-orange-deep);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.w-editors .ed-tile h3 {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+  margin: 0;
+}
+.w-editors .ed-tile.sm h3 { font-size: 16px; line-height: 1.22; }
+.w-editors .ed-tile .deck {
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  line-height: 1.5;
+  margin-top: 8px;
+  font-family: Georgia, serif;
+  font-style: italic;
+}
+
+/* STARTER PACKS · image left + text right */
+.w-packs { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 6px; }
+.w-packs .card { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; cursor: pointer; }
+.w-packs .card .img { height: 140px; background-size: cover; background-position: center; }
+.w-packs .card .eb {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-orange-deep);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.w-packs .card h3 {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.18;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* TRENDING CARDS (Wanderlust travel news) */
+.w-trending { padding: 28px 24px 32px; }
+.w-trending .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 0.5px solid #d4ae6e;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+.w-trending .head h2 {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--color-ink);
+}
+.w-trending .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.w-trending .item { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.w-trending .item .ph { width: 72px; height: 72px; flex-shrink: 0; background-size: cover; background-position: center; }
+.w-trending .item .body { flex: 1; min-width: 0; }
+.w-trending .item .eb {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-orange-deep);
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+.w-trending .item h4 {
+  font-family: Georgia, serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--color-ink);
+}
+
+/* GO PANEL HINT (sottile inline note al fondo) */
+.w-go-hint {
+  position: relative;
+  margin: 0 24px 24px;
+  padding: 14px 18px;
+  background: var(--color-surface);
+  border: 0.5px solid #d4ae6e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--color-ink-soft);
+}
+.w-go-hint > i { color: var(--color-orange); font-size: 14px; flex-shrink: 0; }
+.w-go-hint b { color: var(--color-ink); font-weight: 500; }
+.w-go-hint .right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-orange-deep);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RESPONSIVE · tablet (≤ 1024px) → fonts compatti, grid leggermente meno
+───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .w-hero { padding: 36px 20px 28px; gap: 24px; }
+  .w-hero .left { padding-left: 0; }
+  .w-hero h1 { font-size: 44px; }
+  .w-hero .photo { height: 240px; }
+
+  .dz-sec, .w-trending { padding-left: 20px; padding-right: 20px; }
+  .dz-sec-h h2, .w-trending .head h2 { font-size: 26px; }
+
+  .w-regions { grid-template-columns: repeat(3, 1fr); }
+
+  .w-editors { grid-template-columns: 1fr 1fr; }
+  .w-editors .ed-tile.lg { grid-column: span 2; }
+  .w-editors .ed-tile.lg .img { height: 240px; }
+
+  .w-go-banner { margin-left: 20px; margin-right: 20px; padding: 26px 28px; }
+  .w-go-banner h3 { font-size: 21px; }
+
+  .w-go-hint { margin-left: 20px; margin-right: 20px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RESPONSIVE · mobile (≤ 768px) → single column, stack, fonts editoriali ridotti
+───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .dz-page { border-left: 0; border-right: 0; }
+
+  /* Top nav: solo back + right action, nascondi middle nav */
+  .dz-tb { padding: 12px 16px; gap: 12px; }
+  .dz-tb .nav { display: none; }
+  .dz-tb .right { font-size: 10.5px; }
+
+  /* HERO stack */
+  .w-hero {
+    grid-template-columns: 1fr;
+    padding: 24px 16px 28px;
+    gap: 20px;
+  }
+  .w-hero h1 { font-size: 36px; }
+  .w-hero .deck { font-size: 13px; margin-bottom: 22px; max-width: 100%; }
+  .w-hero .photo { height: 200px; order: -1; }
+  .w-hero .btn { padding: 9px 22px; font-size: 10px; }
+
+  /* Section header */
+  .dz-sec, .w-trending { padding-left: 16px; padding-right: 16px; padding-top: 24px; }
+  .dz-sec-h, .w-trending .head { padding-bottom: 10px; margin-bottom: 14px; }
+  .dz-sec-h h2, .w-trending .head h2 { font-size: 22px; }
+  .dz-pill-out { padding: 6px 12px; font-size: 9.5px; }
+
+  /* Regions: 2 colonne su mobile */
+  .w-regions { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .w-regions .tile .label { font-size: 18px; left: 12px; bottom: 12px; }
+
+  /* Go banner stack */
+  .w-go-banner {
+    margin: 24px 16px 8px;
+    padding: 22px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .w-go-banner h3 { font-size: 19px; }
+  .w-go-banner p { font-size: 12px; }
+  .w-go-banner .cta { width: 100%; justify-content: center; padding: 11px 18px; }
+  .w-go-banner .orb { width: 52px; height: 52px; font-size: 23px; }
+
+  /* Editors: single column */
+  .w-editors { grid-template-columns: 1fr; gap: 22px; }
+  .w-editors .ed-tile.lg { grid-column: auto; }
+  .w-editors .ed-tile.lg .img { height: 220px; }
+  .w-editors .ed-tile .img { height: 180px; margin-bottom: 12px; }
+  .w-editors .ed-tile h3 { font-size: 18px; }
+  .w-editors .ed-tile.sm h3 { font-size: 16px; }
+
+  /* Starter packs: 1 col, stack inside card */
+  .w-packs { grid-template-columns: 1fr; gap: 18px; }
+  .w-packs .card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .w-packs .card .img { height: 160px; width: 100%; }
+
+  /* Trending: single column su mobile */
+  .w-trending .grid { grid-template-columns: 1fr; gap: 14px; }
+
+  /* Go panel hint */
+  .w-go-hint {
+    margin: 0 16px 20px;
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .w-go-hint .right { margin-left: 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Very small phones (≤ 380px) — solo qualche micro-aggiustamento
+───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 380px) {
+  .w-hero h1 { font-size: 30px; }
+  .dz-sec-h h2, .w-trending .head h2 { font-size: 20px; }
+  .w-regions { grid-template-columns: 1fr; }
+  .w-regions .tile { aspect-ratio: 16/9; }
+}

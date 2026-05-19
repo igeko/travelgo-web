@@ -1,8 +1,66 @@
-# Safari · scoperta attività · spec di design
+# Discovery zone · scoperta attività · spec di design
 
 **Ultimo aggiornamento:** 2026-05-18
-**Stato:** ⏸️ **parcheggiato** — brainstorm iniziale fatto, ripreso dopo che il Timeline builder è stabile. Per ora la Wishlist è considerata "popolata" (mock data) nel design del Timeline builder.
-**Doc correlato:** [activity-timeline.md](./activity-timeline.md) — la Wishlist popolata qui alimenta il Timeline builder
+**Stato:** 🟢 **attivo** — riavviato come "Discovery zone": landing post-creazione trip in stile editoriale Wanderlust-inspired, composta come **sequenza di DiscoveryWidget** pescati da una libreria.
+**Sketch React:** `app/(design)/design/discovery/page.tsx` + `discovery.css`
+**Doc correlato:** [activities-editor.md](./activities-editor.md) — la Wishlist popolata in Discovery alimenta il Builder e il Day Editor
+
+---
+
+## Direzione visiva · Wanderlust-inspired (2026-05-18)
+
+Catalogo turistico editoriale, **niente UI tecnica** (counter, badge, pill di stato). Linguaggio:
+
+- **Display serif gigante** (Georgia, 32-54px) per titoli di sezione e nomi destinazione
+- **Eyebrow uppercase arancio letterspaced** sopra ogni elemento ("GO SUGGESTS", "EATER · FOOD", "TOKYO · CULTURE")
+- **Foto dominanti** senza bordi pronunciati, overlay scuro per testo
+- **Linee gold/arancio sottili** come section dividers
+- **Mix di formati** (4-tile grid, 3-card spread con 1 big, image-left text-right, news inline)
+- **Inserti Go**: kanji 五 nei posti dove Wanderlust mette il wordmark gold; **GoChat banner inline scuro** mid-page come "pull editoriale" (al posto del subscribe banner); **GoPanel hint** sottile bottom-bordato gold per richiamare il pannello floating.
+
+Riferimento visivo: [Wanderlust Magazine](https://www.wanderlustmagazine.com/). Mantenuto brand TravelGo (arancio #f47b3a, ink #0d2c3d, surface warm).
+
+---
+
+## Libreria DiscoveryWidget · v1
+
+Ogni riga della Discovery è un widget atomico. La home si compone come **`WidgetSpec[]`** — manifest editabile per destinazione, stagione, profilo utente, A/B test.
+
+| Widget | Cosa fa | Dove brilla |
+|---|---|---|
+| `HeroDestination` | Nome destinazione in serif gigante + foto + CTA primaria + eyebrow "Go suggests" con kanji 五 | Apertura della Discovery |
+| `RegionTileGrid` | Grid 4×N di quartieri/regioni con foto + label overlay (stile Wanderlust region tiles) | "Where to start" |
+| `GoBanner` | Banner scuro mid-page con orb 五 pulsante + question italica + Talk to Go CTA | Pull editoriale, sostituisce subscribe banner |
+| `EditorsChoice` | 1 big + N small editorial cards con eyebrow source ("Eater · Food", "Atlas Obscura · Hidden") | Curation di terze parti / starter pack featured |
+| `StarterPacks` | Card image-left + testo-right per bundle pronti | "What kind of traveler?" |
+| `TrendingCards` | 3-up cards inline piccole (thumb 72px + eyebrow + title) stile Travel news | "Trending this week" |
+| `GoPanelHint` | Riga sottile bordata gold a fondo pagina che richiama il pannello Go floating | Closure |
+
+Widget candidati per v1.5+: `ThemeChips`, `MapPreview`, `WanderSleeps` (hotel featured), `Quiz`, `EditorialList`, `InstagramFeed`, `LocalVoice` ("From Tokyoites").
+
+---
+
+## Implementazione · due righe
+
+1. **Composabile**: la pagina `app/(app)/trips/[id]/discover/page.tsx` legge `DiscoveryWidget[]` dal manifest del trip (cached da Supabase, default curato per destinazione + override personalizzato dall'utente o da Go) e mappa ogni elemento al componente della libreria tramite un dispatcher (`DiscoveryRow`).
+2. **Stack**: tutti i widget vivono in `features/discovery/widgets/` (un file `.tsx` per widget + un `types.ts` con la discriminated union `WidgetSpec` + un `Registry.ts` che esporta il dispatcher). Lo sketch è in `app/(design)/design/discovery/` con la stessa struttura inline; quando il design è approvato si "promuovono" i widget alla libreria di produzione.
+
+---
+
+## Domande aperte (post-Wanderlust direction)
+
+- **Personalizzazione del manifest**: editabile dall'utente (drag-to-reorder widget) o sempre curato dal sistema?
+- **Cache + refresh**: ogni quanto si rigenera il manifest? Quando si invalida (nuovo trip, cambio preferenze, evento stagionale)?
+- **Widget AI-generated**: alcuni widget (es. `GoBanner` con domande contestuali, `EditorsChoice` con quote AI-personalized) richiedono AI calls. Quando? Al primo render? On-demand?
+- **Sorgenti dati per widget editoriali**: `EditorsChoice` con "Eater" / "Lonely Planet" / "Atlas Obscura" — partnership? Scraping? Curato a mano da editor TravelGo?
+- **Multi-language**: i titoli editoriali sono in italiano nel mock ("Mille volti, un solo nome"); in produzione i18n con next-intl?
+
+---
+
+## Changelog
+
+- **2026-05-18** · Apertura come "Safari" — fase di collezione del workflow. Brainstorm in 6 sezioni, 10 domande aperte, parcheggiato.
+- **2026-05-18** · **Riaperto come Discovery zone**. Direzione editoriale Wanderlust-inspired adottata dopo confronto con screenshots di [wanderlustmagazine.com](https://www.wanderlustmagazine.com/). Definita libreria di 7 DiscoveryWidget v1 + pattern di composizione via manifest `WidgetSpec[]`. Sketch React in `app/(design)/design/discovery/` (single page con widgets inline + dispatcher + manifest Tokyo). Tutte le sezioni del brainstorm originale Safari (15 sorgenti, 7 modalità di esplorazione, anatomia card scoperta, Wishlist, arricchimento, sharing) restano valide ma diventano widget candidati per v1.5+.
 
 ---
 

@@ -29,9 +29,18 @@ export default function DesignLayout({
     <>
       <link
         rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css"
+        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.21.0/dist/tabler-icons.min.css"
       />
-      <div className="min-h-screen bg-bg flex flex-col">
+      <link rel="preconnect" href="https://api.fontshare.com" />
+      <link
+        rel="stylesheet"
+        href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap"
+      />
+      <style>{`
+        .design-pages, .design-pages * { font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif; font-feature-settings: "ss01", "cv11"; }
+        .design-pages .ti { line-height: 1; vertical-align: -1px; }
+      `}</style>
+      <div className="design-pages min-h-screen bg-bg flex flex-col">
         <div className="sticky top-0 z-50 bg-bg/90 backdrop-blur-sm border-b border-border px-4 py-2 text-[11px] text-ink-faint flex items-center gap-2">
           <Link
             href="/design"

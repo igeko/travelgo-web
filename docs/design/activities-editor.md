@@ -1,7 +1,7 @@
 # Activities Editor · spec di design
 
 **Ultimo aggiornamento:** 2026-05-18
-**Stato:** Activities Editor (Builder + Day) con scope v1 definito · separazione entità/istanza definita · Activity Detail (IDENTITY) ancora da disegnare · 23 decisioni · sketch React in `app/(design)/design/activities-editor/`
+**Stato:** Activities Editor (Builder + Day) con scope v1 definito · separazione entità/istanza · **2 AI moments** distinti (trip-level nel Builder, day-level nel Day Editor) · Day Editor embedded · activity autocomplete + 2 affordance · 27 decisioni · sketch React in `app/(design)/design/activities-editor/`
 **Snapshot HTML frozen (display Spine):** `public/design/timeline-spine.html`
 **Doc correlato:** [safari.md](./safari.md) — Safari/Scoperta, la fase di collezione che alimenta la Wishlist
 **Sketch React:**
@@ -96,8 +96,8 @@ Matrice esaustiva di **cosa si fa dove**, per evitare di sparpagliare funzionali
 |---|---|---|---|
 | Drag dalla wishlist a un giorno | ✓ | — | — |
 | Spostare un'attività da un giorno a un altro | ✓ (drag) | — (escape "Apri nel builder") | — |
-| AI organize l'intero viaggio | ✓ (hero CTA al primo open) | — | — |
-| AI riempi / rigenera un singolo giorno | ✓ (per-day btn) | ✓ (per-day btn nel topbar) | — |
+| AI organize l'intero viaggio (trip-level: distribuisce wishlist nei giorni + prima passata orari) | ✓ (hero CTA al primo open) | — | — |
+| AI organize this day (day-level: rifinisce orari, ordine, ponti di un singolo giorno) | — | ✓ (toolbar "Organize this day") | — |
 | Aggiungere un blocco free-form (fuzzy o no) | — | ✓ (`+ aggiungi blocco` hover-reveal) | — |
 | Riordinare blocchi dentro un giorno | — | ✓ (drag handle) | — |
 | Editare orario / durata / fuzzy flag di una istanza | — | ✓ (pencil → instance popover) | — |
@@ -358,6 +358,10 @@ Cosa chiedo a Go quando voglio una mano:
 | 21 | architettura | **Modello entità vs istanza**. Wishlist contiene **entità** (Sensō-ji come "posto nel mondo" con nome, foto, indirizzo, descrizione lunga, hours). Timeline contiene **istanze** (Sensō-ji alle 08:00 del giorno 2 con time, fuzzy, note di istanza, ponte, booking). Le istanze hanno FK opzionale all'entità (null = blocco free-form tipo "uscita albergo"). Vedi sezione "Modello concettuale" sopra. | 2026-05-18 | ✓ |
 | 22 | architettura | **Matrice responsabilità editing**: Builder = ASSIGNMENT (quale attività in quale giorno) · Day editor = SCHEDULING (quando, come, ponti, note di istanza) · Activity Detail = IDENTITY (entità: nome, foto, descrizione lunga, hours, indirizzo). Drill-down naturale Builder → Day → Activity Detail. Vedi sezione "Suddivisione delle responsabilità" sopra. | 2026-05-18 | ✓ |
 | 23 | day editor | **Due affordance diverse per due intenti diversi**: pencil su blocco → popover di **istanza** (time, fuzzy, note di istanza, booking_status); click sul **nome** del blocco → naviga ad **Activity Detail** (entità). Niente confusione su "dove edito cosa". | 2026-05-18 | ✓ |
+| 24 | architettura | ~~AI vive solo nel Day Editor~~ → **rivisto in decisione 27**: due AI moments distinti, uno trip-level (Builder) e uno day-level (Day Editor). | 2026-05-18 | ↻ revisionata |
+| 25 | architettura | **Day Editor embedded nella pagina giorno**. La pagina giorno fornisce il chrome (banner foto, lodging, deck, intro Go, ecc.). Il Day Editor è solo la sezione "Day itinerary": toolbar (Lista \| Racconto · Show map · AI organize · + Add activity) + timeline editabile. Niente day banner, niente edit toggle, niente sticky footer Done/Cancel nello sketch — quel chrome appartiene alla pagina ospite. | 2026-05-18 | ✓ |
+| 26 | day editor | **Add zone con 2 affordance distinte** (hover-reveal): "**+ aggiungi blocco**" (arancio) = composer fuzzy/free-form (Luogo · Spostamento · Pasto · Pausa · Azione); "**+ aggiungi attività**" (ink-soft) = **activity autocomplete inline** che cerca in 2 gruppi (nella wishlist del viaggio + nella piattaforma TravelGo), con highlighting del termine cercato e fallback **"Crea {testo} come nuova attività"** che aggiunge anche alla wishlist. Toggle vista a 3 stati: **Lista \| Timeline \| Racconto** (Timeline = spine view). | 2026-05-18 | ✓ |
+| 27 | architettura | **Due AI moments distinti** (revisione della 24). **Trip-level AI** nel Builder = "Organizza il mio viaggio" — hero CTA al primo open (wishlist popolata, giorni vuoti), distribuisce le attività nei giorni + prima passata di orari, restituisce un workshop popolato con banner "Organizzato da Go". Visibile solo al primo open o dopo reset. **Day-level AI** nel Day Editor = "Organize this day" — rifinisce un singolo giorno (orari, ordine, ponti) on demand, non tocca gli altri. Sono due AI con scope diverso: trip-level = dove vanno le cose, day-level = come si incastrano in un giorno. Tutto rimane editabile manualmente in entrambi i contesti. | 2026-05-18 | ✓ |
 
 ---
 
@@ -490,3 +494,18 @@ Non ancora prioritizzate, non scartate. Le riprendiamo quando arriva il momento.
   2. **Suddivisione responsabilità di editing** in matrice esaustiva: Builder = ASSIGNMENT, Day editor = SCHEDULING, Activity Detail = IDENTITY. Niente più funzionalità sparse tra Builder e Day editor. (Decisione 22)
   3. **Modello entità vs istanza**: Wishlist = entità (Sensō-ji come "posto nel mondo"), Timeline = istanze (Sensō-ji alle 08:00 del giorno 2). Pencil su blocco apre instance popover, click sul nome naviga ad Activity Detail. (Decisioni 21, 23)
   Activity Detail (IDENTITY level) ancora da disegnare — è il prossimo passo.
+- **2026-05-18** · **Recupero della "creazione del viaggio"** (decisione 27, revisione di 24): il trip-level AI moment era stato eliminato per errore quando avevamo deciso "AI solo nel Day Editor". In realtà i due AI moments sono distinti per scope: trip-level (Builder, distribuzione wishlist → giorni) vs day-level (Day Editor, organizzazione di un singolo giorno). Recuperati i 4 stati del Builder (hero CTA → loading → workshop con banner → workshop normale). Decisione 24 marcata come revisionata.
+- **2026-05-18** · **Import da Claude Design** (decisione 26): sketch del Day Editor rifinito esternamente in Claude Design e re-importato in `app/(design)/design/activities-editor/day/`. Novità strutturali:
+  - **2 affordance distinte** sull'add-zone hover-reveal: "+ aggiungi blocco" (composer fuzzy/free-form) e "+ aggiungi attività" (autocomplete inline).
+  - **ActivityAutocomplete** nuovo componente: input arancio bordato + dropdown a 2 gruppi (wishlist viaggio · piattaforma TravelGo) + highlighting `<mark>` + fallback "Crea nuova attività".
+  - **Toggle a 3 stati** Lista \| Timeline \| Racconto (Timeline = vista spine).
+  - **Block-row containerless** di default, hover → white card con orange glow shadow. Icone con halo che mascherano la spine line.
+  - **Fuzzy block** in stile uppercase piccolo (più "loose placeholder" feel).
+  - **Spine continua** tra sezioni (Morning/Afternoon/Evening), con `.spine--first` e `.spine--last` per gli estremi.
+  - **Tabler webfont** aggiornato a 3.21.0 nel layout `/design/`.
+  - **General Sans** font caricato da Fontshare nel layout `/design/` per estetica modern grotesk (scoped solo agli sketch design, non al prodotto).
+- **2026-05-18** · **Affinamento responsabilità** (decisioni 24-25):
+  - **AI vive nel Day Editor, non nel Builder** (decisione 24). Builder torna puro assignment manuale (drag wishlist ↔ giorni). Day Editor prende AI organize this day in toolbar.
+  - **Day Editor embedded nella pagina giorno** (decisione 25). Rimosso dal sketch tutto il chrome che apparterrebbe alla pagina ospite (day banner, edit toggle pill, sticky footer). Aggiunta toolbar in stile screenshot reale (Lista \| Racconto · Show map · AI organize · + Add) + section divider Morning/Afternoon/Evening.
+  - Builder sketch riscritto: rimossi hero CTA "Organizza con AI", loading, banner "Organizzato da Go", pulsanti AI riempi/rigenera per giorno. Resta wishlist sx + day cards dx con preview compatta + link "Open" per saltare alla pagina giorno (Day Editor embedded).
+  Matrice responsabilità aggiornata di conseguenza.

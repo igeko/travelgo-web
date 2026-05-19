@@ -1,81 +1,87 @@
 /**
- * Day Editor · design sketch
+ * Day Editor · design sketch (importato da Claude Design 2026-05-18)
  *
- * Edit mode inline (decisioni 15-19 in docs/design/activities-editor.md):
- *   - Stessa view del consumption, toggle "Edit day" → "Editing" in cima
- *   - Affordance pencil/trash/drag handle per blocco
- *   - `+ aggiungi blocco` hover-reveal sulla spina (CSS :hover, niente JS)
- *   - Composer inline con type-chip · niente zona = blocco fuzzy
- *   - Bridge editor inline · selettore mezzo + tempo libero
- *   - Auto-save · sticky footer Done/Cancel
- *   - Escape "Apri nel builder" verso /design/activities-editor/builder
+ * Architettura (decisioni 15-19, 24-25 in docs/design/activities-editor.md):
+ *   - **Embedded nella pagina giorno** (decisione 25): niente day banner, niente
+ *     edit toggle, niente sticky footer Done.
+ *   - **AI vive qui** (decisione 24): "Organize this day" in toolbar.
+ *   - Toolbar: Show map · Organize this day · 3-toggle (Lista | Timeline | Racconto)
+ *   - **Add zone hover-reveal con 2 affordance**: "aggiungi blocco" (orange) e
+ *     "aggiungi attività" (ink-soft).
+ *   - **ActivityAutocomplete** inline: search wishlist + database con highlighting
+ *     e fallback "Crea nuova attività".
+ *   - Block-row containerless, hover → white card + orange glow.
+ *   - Spine continua tra le sezioni; icone con halo che mascherano la linea.
  *
- * Tutto inline in questo file. Modificare liberamente.
+ * Tutto inline. Modificare liberamente.
  */
 
 import "./day-editor.css";
 
-const DAY_BLOCKS = [
-  { id: "exit",     time: "07:40", icon: "ti-key",                       name: "Uscita albergo",       type: "action", fuzzy: false },
-  { id: "sensoji",  time: "08:00", icon: "ti-map-pin",                   name: "Sensō-ji",             type: "place",  fuzzy: false },
-  { id: "sumida",   time: "10:30", icon: "ti-map-pin",                   name: "Parco Sumida",         type: "place",  fuzzy: false },
-  { id: "skytree",  time: "20:00", icon: "ti-building-broadcast-tower",  name: "Tokyo Sky Tower Tree", type: "place",  fuzzy: false },
+const MORNING_BLOCKS = [
+  { id: "exit",     time: "07:40", icon: "ti-key",       name: "Uscita albergo", type: "action" as const, fuzzy: false },
+  { id: "sensoji",  time: "08:00", icon: "ti-map-pin",   name: "Sensō-ji",       type: "place"  as const, fuzzy: false },
+  { id: "sumida",   time: "10:30", icon: "ti-map-pin",   name: "Parco Sumida",   type: "place"  as const, fuzzy: false },
 ];
 
-const BRIDGE_BEFORE_SENSOJI = { mezzo: "walk",  label: "8 min a piedi · 0,6 km" };
-const BRIDGE_BEFORE_SUMIDA  = { mezzo: "metro", label: "Metro · ~5 min · Linea Ginza", lineDetails: "uscita A2, vicino al konbini" };
+const BRIDGE_BEFORE_SENSOJI = { mezzo: "walk", label: "8 min a piedi · 0,6 km" };
 
 /* ─────────────────────────────────────────────────────────────────
-   Sub-components inline (ephemeral)
+   Sub-components inline
 ───────────────────────────────────────────────────────────────── */
 
 function BlockRow({
   icon,
-  type,
   time,
   name,
   fuzzy = false,
+  filledIcon = false,
+  parenSuffix,
 }: {
   icon: string;
-  type: "place" | "action" | "pause" | "meal";
   time: string;
   name: string;
   fuzzy?: boolean;
+  filledIcon?: boolean;
+  parenSuffix?: string;
 }) {
-  const iconBg =
-    type === "place" ? "bg-[#f5e8df] text-orange-deep" :
-    type === "pause" ? "bg-[#ddedde] text-[#557a45]" :
-    type === "meal"  ? "bg-[#fcecd0] text-[#7a5e0e]" :
-                       "bg-surface-soft text-ink-soft";
-
   return (
-    <div className={`group/row bg-surface border ${fuzzy ? "border-dashed border-border-strong bg-[#faf6ef]" : "border-border"} rounded-[10px] px-3 py-2 flex items-center gap-2 relative`}>
-      <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <i className={`ti ${icon} text-[12px]`} />
+    <div className={`block-row ${fuzzy ? "fuzzy" : ""}`}>
+      <span className={`ico ${filledIcon ? "filled" : ""}`}>
+        <i className={`ti ${icon}`} />
       </span>
-      <span className="text-[10.5px] text-ink-faint tabular-nums shrink-0">{time}</span>
-      <span className={`text-[12.5px] flex-1 ${fuzzy ? "italic text-ink-soft" : "font-medium text-ink"}`}>{name}</span>
-      <span className="inline-flex gap-0.5 shrink-0">
-        <button className="w-[22px] h-[22px] rounded-md bg-transparent text-ink-faint hover:bg-surface-soft hover:text-ink transition-colors inline-flex items-center justify-center">
-          <i className="ti ti-pencil text-[12px]" />
+      <span className="time">{time}</span>
+      <span className="name" title="Click sul nome → Activity Detail (entità)">
+        {name}
+        {parenSuffix && <span className="paren"> {parenSuffix}</span>}
+      </span>
+      <span className="row-actions">
+        <button title="Edit instance (time, fuzzy, note, booking)">
+          <i className="ti ti-pencil" style={{ fontSize: "12px" }} />
         </button>
-        <button className="w-[22px] h-[22px] rounded-md bg-transparent text-ink-faint hover:bg-[#fcebeb] hover:text-[#a32d2d] transition-colors inline-flex items-center justify-center">
-          <i className="ti ti-trash text-[12px]" />
+        <button className="danger" title="Rimuovi dal giorno (l'entità resta in wishlist)">
+          <i className="ti ti-trash" style={{ fontSize: "12px" }} />
         </button>
       </span>
     </div>
   );
 }
 
-function AddZone() {
+function AddZone({ alwaysOn = false }: { alwaysOn?: boolean }) {
   return (
-    <div className="add-zone group/add">
+    <div className={`add-zone ${alwaysOn ? "always-on" : ""}`}>
       <div className="add-dot">
-        <i className="ti ti-plus text-[11px]" />
+        <i className="ti ti-plus" style={{ fontSize: "11px" }} />
       </div>
       <div className="add-affordance">
-        <div className="add-line" />
-        <span className="add-label">aggiungi blocco</span>
+        <div className="add-affordance-item kind-block">
+          <div className="add-line" />
+          <span className="add-label">aggiungi blocco</span>
+        </div>
+        <div className="add-affordance-item kind-activity">
+          <div className="add-line" />
+          <span className="add-label">aggiungi attività</span>
+        </div>
       </div>
     </div>
   );
@@ -86,8 +92,8 @@ function BridgeClosed({ icon, label }: { icon: string; label: string }) {
     <div className="bridge-closed">
       <i className={`ti ${icon}`} />
       <span>{label}</span>
-      <span className="ml-auto text-[#c7c0b0]">
-        <i className="ti ti-pencil text-[11.5px]" />
+      <span className="edit-hint">
+        <i className="ti ti-pencil" style={{ fontSize: "11.5px" }} />
       </span>
     </div>
   );
@@ -98,13 +104,12 @@ function BridgeExpanded() {
     <div className="bridge-expanded">
       <div className="be-card">
         <div className="be-head">
-          <i className="ti ti-pencil text-[11px]" />
+          <i className="ti ti-pencil" style={{ fontSize: "11px" }} />
           <span>Modifica spostamento</span>
-          <span className="ml-auto text-ink-faint cursor-pointer">
-            <i className="ti ti-x text-[13px]" />
+          <span className="close">
+            <i className="ti ti-x" style={{ fontSize: "13px" }} />
           </span>
         </div>
-
         <div className="be-row">
           <span className="be-lbl">Mezzo</span>
           {[
@@ -120,25 +125,14 @@ function BridgeExpanded() {
             </span>
           ))}
         </div>
-
         <div className="be-fields">
-          <div className="be-field">
-            <span className="be-key">Tempo</span>
-            ~ 5 min · 2 fermate
-          </div>
-          <div className="be-field">
-            <span className="be-key">Linea</span>
-            Ginza Line
-          </div>
+          <div className="be-field"><span className="be-key">Tempo</span>~ 5 min · 2 fermate</div>
+          <div className="be-field"><span className="be-key">Linea</span>Ginza Line</div>
         </div>
-
-        <div className="be-note">
-          Nota: <b className="text-ink font-medium">uscita A2, vicino al konbini</b>
-        </div>
-
+        <div className="be-note">Nota: <b>uscita A2, vicino al konbini</b></div>
         <div className="be-foot">
           <span className="be-free">
-            <i className="ti ti-circle-minus text-[11.5px]" />
+            <i className="ti ti-circle-minus" style={{ fontSize: "11.5px" }} />
             Marca come tempo libero
           </span>
           <button className="be-ok">OK</button>
@@ -161,13 +155,12 @@ function AddExpandedFuzzy() {
     <div className="add-expanded">
       <div className="ae-card">
         <div className="ae-head">
-          <i className="ti ti-plus text-[11px]" />
+          <i className="ti ti-plus" style={{ fontSize: "11px" }} />
           <span>Nuovo blocco</span>
-          <span className="ml-auto text-ink-faint cursor-pointer">
-            <i className="ti ti-x text-[13px]" />
+          <span className="close">
+            <i className="ti ti-x" style={{ fontSize: "13px" }} />
           </span>
         </div>
-
         <div className="ae-type-chips">
           {types.map((t) => (
             <span key={t.id} className={`ae-type-chip ${t.id === "pause" ? "on" : ""}`}>
@@ -176,29 +169,121 @@ function AddExpandedFuzzy() {
             </span>
           ))}
         </div>
-
         <div className="ae-fields">
-          <div className="ae-field time">
-            <span className="ae-key">Ora</span>
-            <span className="ae-val">16:00</span>
-          </div>
-          <div className="ae-field flex-1">
-            <span className="ae-key">Titolo</span>
-            <span className="ae-val">giro intorno all'hotel</span>
-          </div>
-          <div className="ae-field zone">
-            <span className="ae-key">Zona (opz.)</span>
-            <span className="ae-val italic text-ink-faint">(decidi sul posto)</span>
-          </div>
+          <div className="ae-field time"><span className="ae-key">Ora</span><span className="ae-val">16:00</span></div>
+          <div className="ae-field flex-1"><span className="ae-key">Titolo</span><span className="ae-val">giro intorno all'hotel</span></div>
+          <div className="ae-field zone"><span className="ae-key">Zona (opz.)</span><span className="ae-val italic">(decidi sul posto)</span></div>
         </div>
-
         <div className="ae-foot">
-          <span className="italic text-ink-faint">
-            Niente zona = fuzzy <i className="ti ti-info-circle text-[10.5px] align-[-1px]" />
+          <span style={{ fontStyle: "italic" }}>
+            Niente zona = fuzzy <i className="ti ti-info-circle" style={{ fontSize: "10.5px" }} />
           </span>
           <button className="ae-ok">Aggiungi</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Activity Autocomplete (NEW) ─────────────────────────────────
+   Stato live dopo click su "aggiungi attività". Cerca nella wishlist
+   del viaggio + nel database TravelGo + offre "crea nuova".
+─────────────────────────────────────────────────────────────────── */
+function ActivityAutocomplete() {
+  return (
+    <div className="activity-autocomplete">
+      <div className="aa-input-row">
+        <span className="ico-ring">
+          <i className="ti ti-search" style={{ fontSize: "12px" }} />
+        </span>
+        <span className="time-placeholder">16:00</span>
+        <span className="aa-input">
+          <span className="typed">tsukiji</span>
+          <span className="caret" />
+        </span>
+        <span className="esc-hint">
+          <kbd>esc</kbd> annulla
+        </span>
+      </div>
+
+      <div className="aa-dropdown">
+        <div className="aa-group-label">
+          <span>nella wishlist</span>
+          <span className="aa-group-count">2</span>
+        </div>
+        <div className="aa-option focused">
+          <span className="aa-thumb" style={{ backgroundImage: "linear-gradient(160deg,#d4a674,#4c3a2a)" }} />
+          <div className="aa-main">
+            <div className="aa-name">
+              Mercato <mark>Tsukiji</mark>
+            </div>
+            <div className="aa-meta">Chuo · 2h · 3 km da Yanaka</div>
+          </div>
+          <span className="aa-zone-tag">D3</span>
+        </div>
+        <div className="aa-option">
+          <span className="aa-thumb" style={{ backgroundImage: "linear-gradient(160deg,#e0c590,#7a5c2a)" }} />
+          <div className="aa-main">
+            <div className="aa-name">
+              <mark>Tsukiji</mark> Hongan-ji temple
+            </div>
+            <div className="aa-meta">Chuo · 45 min · vicino al mercato</div>
+          </div>
+        </div>
+
+        <div className="aa-group-label">
+          <span>nella piattaforma</span>
+          <span className="aa-group-count">3</span>
+        </div>
+        <div className="aa-option">
+          <span className="aa-thumb" style={{ backgroundImage: "linear-gradient(160deg,#8aaab8,#1f3b4a)" }} />
+          <div className="aa-main">
+            <div className="aa-name">
+              <mark>Tsukiji</mark> Outer Market food tour
+            </div>
+            <div className="aa-meta">Chuo · esperienza guidata · 2h 30</div>
+          </div>
+        </div>
+        <div className="aa-option">
+          <span className="aa-thumb" style={{ backgroundImage: "linear-gradient(160deg,#c8a072,#5a3a1a)" }} />
+          <div className="aa-main">
+            <div className="aa-name">
+              Sushi Dai (<mark>Tsukiji</mark>)
+            </div>
+            <div className="aa-meta">Chuo · ristorante · ⏱ coda media 45 min</div>
+          </div>
+        </div>
+        <div className="aa-option">
+          <span className="aa-thumb" style={{ backgroundImage: "linear-gradient(160deg,#b8a890,#4a3528)" }} />
+          <div className="aa-main">
+            <div className="aa-name">
+              <mark>Tsukiji</mark> Namiyoke-jinja
+            </div>
+            <div className="aa-meta">Chuo · santuario · 20 min</div>
+          </div>
+        </div>
+
+        <div className="aa-create">
+          <span className="aa-create-ico">
+            <i className="ti ti-plus" style={{ fontSize: "12px", color: "var(--color-orange-deep)" }} />
+          </span>
+          <div className="aa-create-main">
+            <div><b>Crea "tsukiji"</b> come nuova attività</div>
+            <div className="aa-create-sub">la aggiungi anche alla wishlist del viaggio</div>
+          </div>
+          <span className="aa-create-cta">Crea</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionDivider({ name, count }: { name: string; count: number }) {
+  return (
+    <div className="sec-div">
+      <span className="sec-lbl">{name}</span>
+      <span className="sec-line" />
+      <span className="sec-count">{count} acts</span>
     </div>
   );
 }
@@ -209,92 +294,93 @@ function AddExpandedFuzzy() {
 
 export default function DayEditorSketch() {
   return (
-    <div className="max-w-[760px] mx-auto px-6 py-8">
+    <div className="max-w-[820px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <header className="mb-4">
-        <div className="text-orange text-[11px] font-medium tracking-[0.12em] uppercase mb-1">Sketch</div>
-        <h1 className="text-[22px] font-medium leading-tight">Day Editor (inline edit mode)</h1>
+        <div className="text-orange text-[11px] font-medium tracking-[0.12em] uppercase mb-1">
+          Sketch · embedded · importato da Claude Design
+        </div>
+        <h1 className="text-[22px] font-medium leading-tight">Day Editor</h1>
         <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed">
-          Stessa view della consumption, toggle inline · `+ aggiungi blocco` hover-reveal sulla spina · composer fuzzy · ponte clickabile.
+          La vista timeline <b className="text-ink font-medium">embedded nella pagina giorno</b>. Niente day banner, niente edit toggle. <b className="text-ink font-medium">L'AI vive qui</b> (decisione 24): "Organize this day" sta in toolbar. Add zone con <b className="text-ink font-medium">2 affordance</b>: <code className="bg-surface-soft px-1 py-0.5 rounded text-[11px]">+ aggiungi blocco</code> (free-form) e <code className="bg-surface-soft px-1 py-0.5 rounded text-[11px]">+ aggiungi attività</code> (ricerca wishlist + database).
           <br />
           <span className="text-ink-faint">
             Spec viva:{" "}
             <a className="text-orange-deep hover:underline" href="/dev/docs/activities-editor">
               docs/design/activities-editor.md
             </a>{" "}
-            · decisioni 15-19.
+            · decisioni 15-19, 24-25.
           </span>
         </p>
       </header>
 
-      <div className="day-frame">
-        {/* Day header con pill Edit attiva */}
-        <div className="day-h">
-          <div className="left">
-            <div className="text-[10px] tracking-[0.08em] uppercase text-ink-faint">
-              Day 02 · <b className="text-orange">TOKYO</b>
-            </div>
-            <h2 className="text-[17px] font-medium mt-0.5">Asakusa e Sumida-Gawa</h2>
-          </div>
-          <div className="flex gap-1.5 items-center">
-            <button className="pill-ghost">
-              <i className="ti ti-external-link text-[11.5px]" />
-              Apri nel builder
-            </button>
-            <button className="pill-edit">
-              <i className="ti ti-pencil text-[12px]" />
-              Editing
-            </button>
-          </div>
-        </div>
-
-        {/* Edit mode banner */}
-        <div className="em-banner">
-          <i className="ti ti-pencil text-[12px] text-orange" />
-          <span>
-            <b className="font-medium">Edit mode</b> · passa fra due blocchi per aggiungere · clicca un blocco per modificare
-          </span>
-          <span className="ml-auto text-ink-faint text-[10.5px] italic inline-flex items-center gap-1">
-            <i className="ti ti-check text-[11px] text-[#3d6e0e]" />
-            auto-salvato
-          </span>
-        </div>
-
-        {/* Body con spine */}
-        <div className="px-4 py-3.5">
-          <div className="spine">
-            <AddZone />
-            <BlockRow {...DAY_BLOCKS[0]} type="action" />
-            <AddZone />
-            <BridgeClosed icon={`ti-${BRIDGE_BEFORE_SENSOJI.mezzo}`} label={BRIDGE_BEFORE_SENSOJI.label} />
-            <AddZone />
-            <BlockRow {...DAY_BLOCKS[1]} type="place" />
-            <AddZone />
-            <BridgeExpanded />
-            <BlockRow {...DAY_BLOCKS[2]} type="place" />
-            <AddExpandedFuzzy />
-            <AddZone />
-            <BridgeClosed icon="ti-soup" label="Cena qui (food court, flessibile)" />
-            <AddZone />
-            <BlockRow {...DAY_BLOCKS[3]} type="place" />
-            <AddZone />
-          </div>
-        </div>
-
-        {/* Sticky bottom bar */}
-        <div className="foot-bar">
-          <span className="text-ink-faint inline-flex items-center gap-1.5 text-[11px]">
-            <i className="ti ti-check text-[12px] text-[#3d6e0e]" />
-            3 modifiche · auto-salvate
-          </span>
-          <span className="flex gap-1.5">
-            <button className="text-ink-soft text-[11px] px-2.5 py-1">Annulla</button>
-            <button className="bg-ink text-white rounded-full px-3.5 py-1 text-[11px] font-medium">Done</button>
-          </span>
+      {/* Faux day page context */}
+      <div className="border border-dashed border-border rounded-xl bg-bg/40 p-2 mb-4">
+        <div className="text-[10px] uppercase tracking-[0.10em] text-ink-faint text-center py-1">
+          ↑ pagina giorno: banner, lodging, deck, Go intro · sopra il Day Editor ↑
         </div>
       </div>
 
-      <footer className="mt-4 pt-4 border-t border-border text-[11px] text-ink-faint">
-        <b className="text-ink-soft font-medium">Iterazione libera</b> — hover su qualsiasi gap tra blocchi per vedere l'affordance `+`. Mock inline, niente API. Bridge espanso e composer fuzzy mostrati statici per la demo, in produzione si aprono al click.
+      {/* Toolbar */}
+      <div className="day-toolbar">
+        <span className="dt-eyebrow">Day itinerary</span>
+        <div className="dt-actions">
+          <button className="dt-pill">
+            <i className="ti ti-map" style={{ fontSize: "12.5px" }} />
+            Show map
+          </button>
+          <button className="dt-pill dt-ai">
+            <i className="ti ti-sparkles" style={{ fontSize: "12.5px" }} />
+            Organize this day
+          </button>
+          <div className="dt-toggle">
+            <button>Lista</button>
+            <button className="on">Timeline<span className="dt-dot" /></button>
+            <button>Racconto<span className="dt-dot" /></button>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="mt-3">
+        {/* MORNING */}
+        <SectionDivider name="Morning" count={3} />
+
+        <div className="spine spine--first">
+          <AddZone />
+          <BlockRow {...MORNING_BLOCKS[0]} />
+          <AddZone alwaysOn />
+          <BridgeClosed icon={`ti-${BRIDGE_BEFORE_SENSOJI.mezzo}`} label={BRIDGE_BEFORE_SENSOJI.label} />
+          <BlockRow {...MORNING_BLOCKS[1]} />
+          <AddZone />
+          <BridgeExpanded />
+          <BlockRow {...MORNING_BLOCKS[2]} />
+          <AddZone />
+        </div>
+
+        {/* AFTERNOON */}
+        <SectionDivider name="Afternoon" count={2} />
+
+        <div className="spine">
+          <AddZone />
+          <BlockRow icon="ti-soup" time="12:30" name="Pranzo" parenSuffix="(zona Kuramae)" fuzzy filledIcon />
+          <AddExpandedFuzzy />
+          <BlockRow icon="ti-tree" time="14:30" name="Yanesen wander" />
+          <ActivityAutocomplete />
+          <AddZone />
+        </div>
+
+        {/* EVENING */}
+        <SectionDivider name="Evening" count={1} />
+
+        <div className="spine spine--last">
+          <BridgeClosed icon="ti-soup" label="Cena qui (food court, flessibile)" />
+          <BlockRow icon="ti-building-broadcast-tower" time="20:00" name="Tokyo Sky Tower Tree" />
+          <AddZone />
+        </div>
+      </div>
+
+      <footer className="mt-4 pt-4 border-t border-border text-[11px] text-ink-faint leading-relaxed">
+        <b className="text-ink-soft font-medium">Hover sui gap</b> tra blocchi → 2 affordance: <code className="bg-surface-soft px-1 py-0.5 rounded text-[11px]">+ aggiungi blocco</code> (composer fuzzy/free-form) e <code className="bg-surface-soft px-1 py-0.5 rounded text-[11px]">+ aggiungi attività</code> (autocomplete wishlist + database con "crea nuova"). <b className="text-ink-soft font-medium">Click sul nome</b> di un blocco → Activity Detail. <b className="text-ink-soft font-medium">Pencil</b> → popover istanza (time, fuzzy, note, booking). <b className="text-ink-soft font-medium">Trash</b> → rimuove dal giorno. <b className="text-ink-soft font-medium">AI Organize this day</b> in toolbar.
       </footer>
     </div>
   );

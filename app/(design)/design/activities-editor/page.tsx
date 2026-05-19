@@ -7,12 +7,12 @@ const SECTION_DIR_REL = "app/(design)/design/activities-editor";
 const META: Record<string, { title: string; desc: string; icon: string }> = {
   builder: {
     title: "Builder",
-    desc: "Two-pane workshop · Wishlist a sinistra, giorni a destra. ASSIGNMENT level: drag dalla wishlist al giorno, AI organize, swap tra giorni.",
+    desc: "Trip-level workspace — wishlist sx + giorni dx. 4 stati: Hero CTA al primo open con AI 'Organizza il mio viaggio' (distribuisce wishlist nei giorni) → loading → workshop con banner → workshop normale. Drag manuale sempre disponibile.",
     icon: "ti-layout-columns",
   },
   day: {
     title: "Day editor",
-    desc: "Inline edit del singolo giorno · SCHEDULING level: + Add block (hover), pencil/trash/drag handle, bridge editor inline, auto-save.",
+    desc: "Day-level — embedded nella pagina giorno. Toolbar Lista|Timeline|Racconto · Show map · 'Organize this day' (AI day-level) · 2 affordance per add zone (blocco fuzzy / autocomplete attività wishlist+platform).",
     icon: "ti-pencil",
   },
 };
@@ -83,10 +83,10 @@ export default async function ActivitiesEditorOverview() {
       </div>
 
       <div className="mt-8 text-[11px] text-ink-faint leading-relaxed">
-        <b className="text-ink-soft font-medium">Suddivisione delle responsabilità</b> (decisione recente):
+        <b className="text-ink-soft font-medium">Suddivisione delle responsabilità</b>:
         <ul className="mt-1.5 space-y-0.5">
-          <li>• <b className="text-ink-soft">Builder</b> = ASSIGNMENT · quale attività in quale giorno</li>
-          <li>• <b className="text-ink-soft">Day editor</b> = SCHEDULING · quando, ordine, ponti, note di istanza</li>
+          <li>• <b className="text-ink-soft">Builder</b> = trip-level · drag wishlist ↔ giorni + AI "Organizza il mio viaggio" (distribuisce, prima passata orari)</li>
+          <li>• <b className="text-ink-soft">Day editor</b> (embedded in pagina giorno) = day-level · orari/ordine/ponti + AI "Organize this day"</li>
           <li>• <b className="text-ink-soft">Activity Detail</b> (TBD) = IDENTITY · nome, foto, indirizzo, descrizione del posto</li>
         </ul>
       </div>

@@ -1,0 +1,17 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Go</title>
+  <desc>Logo Go — kanji 五 bianco su cerchio navy con ring arancione</desc>
+  <!-- Ring arancione (versione statica dell'alone animato) -->
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#f47b3a" stroke-width="3" opacity="0.5"/>
+  <!-- Cerchio principale -->
+  <circle cx="100" cy="100" r="88" fill="#0d2c3d"/>
+  <text
+    x="100" y="100"
+    text-anchor="middle"
+    dominant-baseline="central"
+    fill="#ffffff"
+    font-family="'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif"
+    font-size="64"
+    font-weight="500"
+  >五</text>
+</svg>
