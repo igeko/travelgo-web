@@ -36,8 +36,8 @@ import type { BridgeData, BlockType } from "@/lib/dal/trips";
 import { SLOT_ORDER, SLOT_LABEL } from "./types";
 
 /* ─── geometry ──────────────────────────────────────────────────── */
-const SPINE_LEFT = 74; // padding-left of spine container
-const SPINE_X    = 61; // x position of the vertical spine line
+const SPINE_LEFT = 110; // padding-left of spine container (allargata per ospitare le label periodo a sinistra)
+const SPINE_X    = 97;  // x position of the vertical spine line
 
 /* ─── type → icon / label ───────────────────────────────────────── */
 const TYPE_ICON: Record<string, React.ReactElement> = {
@@ -115,26 +115,41 @@ function blockToActivityData(block: Block): Partial<ActivityData> {
 ═══════════════════════════════════════════════════════════════════ */
 
 /* ─── SectionDivider ─────────────────────────────────────────────── */
-function SectionDivider({ slot, count, isFirst }: { slot: SlotKey; count: number; isFirst: boolean }) {
+/**
+ * Etichetta del periodo posizionata a SINISTRA della linea verticale,
+ * nello spazio tra l'ultimo orario del periodo precedente e il primo del
+ * successivo. La spine non viene mai interrotta: nelle sezioni successive
+ * la linea continua a scorrere dietro il divider.
+ */
+function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) {
   return (
     <div
-      className="relative flex items-center gap-2.5"
-      style={{ paddingLeft: SPINE_LEFT, marginTop: isFirst ? 0 : 18, marginBottom: 12 }}
+      className="relative"
+      style={{
+        height: isFirst ? 22 : 32,
+        paddingLeft: SPINE_LEFT,
+      }}
     >
-      {/* Connector line through the divider (skipped for first section) */}
+      {/* Connector line continuing the spine through the divider (skipped for first section) */}
       {!isFirst && (
         <div
           className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
-          style={{ left: SPINE_X, top: -18, bottom: -12 }}
+          style={{ left: SPINE_X, top: 0, bottom: 0 }}
           aria-hidden
         />
       )}
-      <span className="text-[10.5px] font-medium tracking-[0.14em] uppercase text-orange shrink-0">
+      {/* Period label — left of the spine line, right-aligned to align with time column */}
+      <span
+        className="absolute text-[10.5px] font-medium tracking-[0.14em] uppercase text-orange select-none whitespace-nowrap"
+        style={{
+          left: 0,
+          width: SPINE_X - 8,
+          textAlign: "right",
+          top: "50%",
+          transform: "translateY(-50%)",
+        }}
+      >
         {SLOT_LABEL[slot]}
-      </span>
-      <span className="flex-1 h-px bg-[rgba(13,44,61,0.2)]" />
-      <span className="text-[10px] font-medium tracking-[0.10em] uppercase text-ink-faint shrink-0">
-        {count} acts
       </span>
     </div>
   );
@@ -770,7 +785,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
 
         return (
           <div key={slot}>
-            <SectionDivider slot={slot} count={slotBlocks.length} isFirst={isFirstSection} />
+            <SectionDivider slot={slot} isFirst={isFirstSection} />
 
             {/* Spine section */}
             <div
