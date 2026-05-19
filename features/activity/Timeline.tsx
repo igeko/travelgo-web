@@ -24,9 +24,8 @@ import { ActivityAutocomplete } from "./ActivityAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { PeriodBar } from "@/components/ui/PeriodBar";
 import {
-  IconMapPin, IconSoup, IconTree, IconKey, IconTrain,
-  IconWalk, IconBus, IconCar, IconBike,
-  IconPencil, IconCalendarTime, IconPlus, IconX, IconCircleMinus,
+  IconCalendarTime, IconPlus, IconX, IconCircleMinus,
+  IconWalk, IconPencil, IconMapPin,
 } from "@/components/ui/icons";
 import type {
   TimelineBlock as Block,
@@ -36,37 +35,12 @@ import type {
 } from "./types";
 import type { BridgeData, BlockType } from "@/lib/dal/trips";
 import { SLOT_ORDER } from "./types";
+import { BridgeEditor } from "./Timeline/BridgeEditor";
+import { TYPE_ICON, TRANSPORT_ICON } from "./Timeline/icons";
 
 /* ─── geometry ──────────────────────────────────────────────────── */
 const SPINE_LEFT = 110; // padding-left of spine container (allargata per ospitare le label periodo a sinistra)
 const SPINE_X    = 97;  // x position of the vertical spine line
-
-/* ─── type → icon / label ───────────────────────────────────────── */
-const TYPE_ICON: Record<string, React.ReactElement> = {
-  place:  <IconMapPin size={12} />,
-  meal:   <IconSoup   size={12} />,
-  pause:  <IconTree   size={12} />,
-  action: <IconKey    size={12} />,
-  move:   <IconTrain  size={12} />,
-};
-const TYPE_LABEL: Record<string, string> = {
-  place: "Luogo", meal: "Pasto", pause: "Pausa", action: "Azione", move: "Spostamento",
-};
-
-/* ─── transport → icon / label ──────────────────────────────────── */
-const TRANSPORT_ICON: Record<string, React.ReactElement> = {
-  walk:  <IconWalk  size={12} />,
-  metro: <IconTrain size={12} />,
-  bus:   <IconBus   size={12} />,
-  taxi:  <IconCar   size={12} />,
-  car:   <IconCar   size={12} />,
-  bike:  <IconBike  size={12} />,
-  train: <IconTrain size={12} />,
-};
-const TRANSPORT_LABEL: Record<string, string> = {
-  walk: "A piedi", metro: "Metro", bus: "Bus", taxi: "Taxi",
-  car: "Auto", bike: "Bici", train: "Treno",
-};
 
 /* ─── add state ──────────────────────────────────────────────────── */
 type AddState =
@@ -133,13 +107,16 @@ function BridgeStrip({
   editMode: boolean;
   onClick:  () => void;
 }) {
+  const tTransport = useTranslations("Timeline.transport");
   const [hovered, setHovered] = useState(false);
   const durText = bridge.duration_min ? `${bridge.duration_min} min` : null;
-  const label = [
-    TRANSPORT_LABEL[bridge.transport] ?? bridge.transport,
-    durText,
-    bridge.stops,
-  ].filter(Boolean).join(" · ");
+  let transportLabel: string;
+  try {
+    transportLabel = tTransport(bridge.transport);
+  } catch {
+    transportLabel = bridge.transport;
+  }
+  const label = [transportLabel, durText, bridge.stops].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -162,131 +139,7 @@ function BridgeStrip({
   );
 }
 
-/* ─── BridgeEditor (expanded) ────────────────────────────────────── */
-type BridgeTransport = BridgeData["transport"];
-
-const BRIDGE_TRANSPORT_KEYS: BridgeTransport[] = ["walk", "metro", "bus", "taxi", "bike"];
-
-function BridgeEditor({
-  bridge,
-  onSave,
-  onClose,
-  onMarkFree,
-}: {
-  bridge: BridgeData | null;
-  onSave:     (b: BridgeData) => void;
-  onClose:    () => void;
-  onMarkFree: () => void;
-}) {
-  const tT = useTranslations("Timeline");
-  const [transport, setTransport] = useState<BridgeTransport>(bridge?.transport ?? "walk");
-  const [duration,  setDuration]  = useState(bridge?.duration_min?.toString() ?? "");
-  const [line,      setLine]      = useState(bridge?.line ?? "");
-  const [note,      setNote]      = useState(bridge?.note ?? "");
-
-  return (
-    <div className="relative py-1">
-      {/* Dashed orange spine segment */}
-      <div
-        className="absolute top-0 bottom-0 w-[1.5px] pointer-events-none"
-        style={{
-          left: -19,
-          background: "repeating-linear-gradient(180deg, var(--color-orange) 0 3px, transparent 3px 7px)",
-        }}
-        aria-hidden
-      />
-      <div className="rounded-[var(--radius-md)] border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
-        {/* Head */}
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
-          <IconPencil size={11} />
-          <span>{tT("edit.editTransfer")}</span>
-          <button aria-label={tT("edit.close")} className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
-            <IconX size={13} />
-          </button>
-        </div>
-
-        {/* Transport chips */}
-        <div className="mb-2">
-          <span className="block text-[10.5px] font-medium text-ink-soft mb-1.5">{tT("edit.mode")}</span>
-          <div className="flex gap-1 flex-wrap">
-            {BRIDGE_TRANSPORT_KEYS.map((key) => (
-              <button
-                key={key}
-                onClick={() => setTransport(key)}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-pill)] border text-[11px] font-medium transition-colors",
-                  transport === key
-                    ? "bg-ink text-white border-ink"
-                    : "bg-surface-soft border-border text-ink-soft hover:border-orange/40",
-                )}
-              >
-                {TRANSPORT_ICON[key]}
-                {tT(`transport.${key}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div className="grid grid-cols-2 gap-1.5 mb-2">
-          <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">{tT("edit.time")}</span>
-            <input
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink font-medium placeholder:text-ink-faint"
-              placeholder="~10 min"
-            />
-          </div>
-          <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">{tT("edit.line")}</span>
-            <input
-              value={line}
-              onChange={(e) => setLine(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink placeholder:text-ink-faint"
-              placeholder="opz."
-            />
-          </div>
-        </div>
-
-        {/* Note */}
-        <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px] mb-2">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="bg-transparent outline-none w-full text-ink-soft italic placeholder:text-ink-faint"
-            placeholder={tT("edit.note")}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center mt-2.5 text-[11px]">
-          <button
-            className="inline-flex items-center gap-1 text-red-700 hover:underline underline-offset-[3px] transition-colors"
-            onClick={onMarkFree}
-          >
-            <IconCircleMinus size={11} />
-            {tT("edit.markFreeTime")}
-          </button>
-          <button
-            className="bg-ink text-white rounded-[var(--radius-pill)] px-3 py-1 text-[11px] font-medium hover:opacity-90 transition-opacity"
-            onClick={() =>
-              onSave({
-                transport,
-                duration_min: parseInt(duration) || 0,
-                line:  line  || null,
-                note:  note  || null,
-                stops: null,
-              })
-            }
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// BridgeEditor moved to ./Timeline/BridgeEditor.tsx
 
 /* ─── ScheduleStrip ──────────────────────────────────────────────── */
 /**
