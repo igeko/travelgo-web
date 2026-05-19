@@ -61,7 +61,7 @@ export class ActivityRepository {
     return { data: data as DbActivity[], error: null };
   }
 
-  /** Single activity with its sections, sidebar blocks, and instances (day_activities). */
+  /** Single activity with its sections, sidebar blocks, and instances (scheduled_activities). */
   async findById(id: string): Promise<DalResult<ActivityWithSections>> {
     const { data, error } = await this.db
       .from("activities")

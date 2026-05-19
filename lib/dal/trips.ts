@@ -44,7 +44,7 @@ export type BridgeData = {
 
 export type Activity = {
   id: string;              // day_activity_id (instance)
-  activity_id: string;     // For accessing entity in day_activities
+  activity_id: string;     // For accessing entity in scheduled_activities
   day_id: string;
   trip_id: string;
   slot: "morning" | "afternoon" | "evening" | "night" | null;
@@ -111,7 +111,9 @@ const ACTIVITY_SELECT_TIMELINE = [
 
 export const ACTIVITY_SELECT = ACTIVITY_SELECT_TIMELINE;
 
-// Local row shapes for the joined activity ↔ day_activity query.
+// Local row shapes for the joined activity ↔ scheduled_activity query.
+// Instance-level fields (notes, booking, budget_*) live on `activities`;
+// `scheduled_activities` keeps only the scheduling join.
 type DaRow = {
   id: string;
   activity_id: string;
@@ -119,12 +121,6 @@ type DaRow = {
   slot: string | null;
   position: number | null;
   time: string | null;
-  notes: string | null;
-  booking: string | null;
-  budget_amount: number | null;
-  budget_currency: string | null;
-  budget_paid: boolean | null;
-  budget_category: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -142,48 +138,58 @@ type ActRow = {
   icon: string | null;
   hero_image: string | null;
   url: string | null;
+  booking?: string | null;
+  budget_amount?: number | null;
+  budget_currency?: string | null;
+  budget_paid?: boolean | null;
+  budget_category?: string | null;
+  notes?: string | null;
 };
 
 /**
  * Get all activities for a day.
- * Queries day_activities with activity JOIN for the new schema.
+ * Queries scheduled_activities with activity JOIN for the new schema.
  * Returns Activity[] for backward compatibility.
  */
 export async function getDayActivities(dayId: string): Promise<Activity[]> {
   const supabase = await getServerClient();
 
-  const { data } = await supabase
-    .from("day_activities")
-    .select("id, activity_id, day_id, slot, position, time, notes, booking, budget_amount, budget_currency, budget_paid, budget_category, created_at, updated_at")
+  const { data, error } = await supabase
+    .from("scheduled_activities")
+    .select("id, activity_id, day_id, slot, position, time, created_at, updated_at")
     .eq("day_id", dayId)
     .order("slot", { ascending: true, nullsFirst: false })
     .order("position", { ascending: true });
 
+  if (error) {
+    console.error("[getDayActivities] error:", error.message);
+    return [];
+  }
   const rows = (data ?? []) as DaRow[];
   if (rows.length === 0) return [];
 
-  const activityIds = [...new Set(rows.map((da) => da.activity_id))];
+  const activityIds = [...new Set(rows.map((sa) => sa.activity_id))];
   const { data: activitiesData } = await supabase
     .from("activities")
-    .select("id, trip_id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url")
+    .select("id, trip_id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes")
     .in("id", activityIds);
 
   const activitiesMap = new Map(((activitiesData ?? []) as ActRow[]).map((a) => [a.id, a]));
 
-  return rows.map((da) => {
-    const activity = activitiesMap.get(da.activity_id);
+  return rows.map((sa) => {
+    const activity = activitiesMap.get(sa.activity_id);
     return {
-      id: da.id,
-      activity_id: da.activity_id,
-      day_id: da.day_id,
+      id: sa.id,
+      activity_id: sa.activity_id,
+      day_id: sa.day_id,
       trip_id: activity?.trip_id,
-      slot: da.slot,
-      position: da.position,
-      time: da.time,
+      slot: sa.slot as Activity["slot"],
+      position: sa.position ?? 0,
+      time: sa.time,
       title: activity?.title,
       short_desc: activity?.short_desc,
       details: activity?.details,
-      notes: da.notes,
+      notes: activity?.notes,
       location: activity?.location,
       location_place_id: activity?.location_place_id,
       location_lat: activity?.location_lat,
@@ -191,14 +197,14 @@ export async function getDayActivities(dayId: string): Promise<Activity[]> {
       icon: activity?.icon,
       hero_image: activity?.hero_image,
       url: activity?.url,
-      booking: da.booking,
-      budget_amount: da.budget_amount,
-      budget_currency: da.budget_currency,
-      budget_paid: da.budget_paid,
-      budget_category: da.budget_category,
+      booking: activity?.booking,
+      budget_amount: activity?.budget_amount,
+      budget_currency: activity?.budget_currency,
+      budget_paid: activity?.budget_paid,
+      budget_category: activity?.budget_category,
       place_enriched: null,
-      created_at: da.created_at,
-      updated_at: da.updated_at,
+      created_at: sa.created_at,
+      updated_at: sa.updated_at,
     };
   }) as Activity[];
 }
@@ -240,37 +246,37 @@ export async function getTripSnapshot(tripId: string): Promise<TripSnapshot | nu
 
   const dayIds = days.map((d) => d.id);
 
-  const { data: dayActivities } = await supabase
-    .from("day_activities")
-    .select("id, activity_id, day_id, slot, position, time, notes, booking, budget_amount, budget_currency, budget_paid, budget_category")
+  const { data: scheduledActivities } = await supabase
+    .from("scheduled_activities")
+    .select("id, activity_id, day_id, slot, position, time")
     .in("day_id", dayIds)
     .order("slot", { ascending: true, nullsFirst: false })
     .order("position", { ascending: true });
 
-  if (!dayActivities || dayActivities.length === 0) {
+  if (!scheduledActivities || scheduledActivities.length === 0) {
     return { trip: tripRes.data, days: days.map((d) => ({ ...d, activities: [] })) };
   }
 
-  const daRows = dayActivities as DaRow[];
-  const activityIds = [...new Set(daRows.map((da) => da.activity_id))];
+  const saRows = scheduledActivities as DaRow[];
+  const activityIds = [...new Set(saRows.map((sa) => sa.activity_id))];
   const { data: activities } = await supabase
     .from("activities")
-    .select("id, trip_id, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url")
+    .select("id, trip_id, title, short_desc, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes")
     .in("id", activityIds);
 
   const actMap = new Map(((activities ?? []) as ActRow[]).map((a) => [a.id, a]));
 
   const byDay = new Map<string, Activity[]>();
-  for (const da of daRows) {
-    const act = actMap.get(da.activity_id);
+  for (const sa of saRows) {
+    const act = actMap.get(sa.activity_id);
     const item: Activity = {
-      id: da.id,
-      activity_id: da.activity_id,
-      day_id: da.day_id,
+      id: sa.id,
+      activity_id: sa.activity_id,
+      day_id: sa.day_id,
       trip_id: act?.trip_id ?? tripId,
-      slot: da.slot as Activity["slot"],
-      position: da.position ?? 0,
-      time: da.time,
+      slot: sa.slot as Activity["slot"],
+      position: sa.position ?? 0,
+      time: sa.time,
       title: act?.title ?? "",
       short_desc: act?.short_desc ?? null,
       location: act?.location ?? null,
@@ -280,15 +286,15 @@ export async function getTripSnapshot(tripId: string): Promise<TripSnapshot | nu
       icon: act?.icon ?? null,
       hero_image: act?.hero_image ?? null,
       url: act?.url ?? null,
-      booking: da.booking,
-      budget_amount: da.budget_amount,
-      budget_currency: da.budget_currency,
-      budget_paid: da.budget_paid ?? false,
+      booking: act?.booking ?? null,
+      budget_amount: act?.budget_amount ?? null,
+      budget_currency: act?.budget_currency ?? null,
+      budget_paid: act?.budget_paid ?? false,
       place_enriched: null,
     };
-    const list = byDay.get(da.day_id) ?? [];
+    const list = byDay.get(sa.day_id) ?? [];
     list.push(item);
-    byDay.set(da.day_id, list);
+    byDay.set(sa.day_id, list);
   }
 
   return {

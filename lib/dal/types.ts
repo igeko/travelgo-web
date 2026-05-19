@@ -97,36 +97,43 @@ export type DbActivity = {
   coords: string | null;       // Postgres point — serialised as "(x,y)"
   hero_image: string | null;
   url: string | null;
+  // Scheduling metadata (moved from scheduled_activities)
+  booking: string | null;
+  budget_amount: number | null;
+  budget_currency: string | null;
+  budget_paid: boolean;
+  budget_category: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type DbDayActivity = {
+export type DbScheduledActivity = {
   id: string;
   activity_id: string;
   day_id: string;
   slot: ActivitySlot | null;
   position: number;
   time: string | null;
-  notes: string | null;
-  booking: string | null;
-  budget_amount: number | null;
-  budget_currency: string | null;
-  budget_paid: boolean;
-  budget_category: string | null;
   created_at: string;
   updated_at: string;
 };
 
 // ── Composite types for queries with JOIN ─────────────────────────
 
-export type DayActivityWithDetails = DbDayActivity & {
+export type ScheduledActivityWithDetails = DbScheduledActivity & {
   activity: DbActivity;
 };
 
 export type ActivityWithInstances = DbActivity & {
-  day_activities: DbDayActivity[];
+  scheduled_activities: DbScheduledActivity[];
 };
+
+// Legacy aliases — remove once all consumers move to the new names.
+/** @deprecated use DbScheduledActivity */
+export type DbDayActivity = DbScheduledActivity;
+/** @deprecated use ScheduledActivityWithDetails */
+export type DayActivityWithDetails = ScheduledActivityWithDetails;
 
 export type DbActivitySection = {
   id: string;

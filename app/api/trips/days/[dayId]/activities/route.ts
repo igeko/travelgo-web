@@ -36,17 +36,17 @@ export async function POST(
     return NextResponse.json({ error: "Day not found" }, { status: 404 });
   }
 
-  // 1. CREATE activity entity
+  // 1. CREATE activity entity (instance fields booking/budget/notes now live here)
   const activityInsert: Record<string, unknown> = {
     trip_id: day.trip_id,
     title: body.title ?? "New activity",
   };
 
-  // Activity fields (entity-level)
   const activityFields = [
     "short_desc", "details", "category", "icon",
     "location", "location_place_id", "location_lat", "location_lng",
-    "hero_image", "url"
+    "hero_image", "url",
+    "booking", "budget_amount", "budget_currency", "budget_paid", "budget_category", "notes",
   ] as const;
 
   for (const key of activityFields) {
@@ -63,51 +63,44 @@ export async function POST(
     return NextResponse.json({ error: actError.message }, { status: 500 });
   }
 
-  // 2. CREATE day_activity instance
-  const dayActivityInsert: Record<string, unknown> = {
+  // 2. CREATE scheduled_activity instance (only slot/time/position)
+  const scheduledInsert: Record<string, unknown> = {
     activity_id: activity.id,
     day_id: dayId,
   };
 
-  // Day activity fields (instance-level)
-  const dayActivityFields = [
-    "slot", "time", "position",
-    "notes", "booking",
-    "budget_amount", "budget_currency", "budget_paid", "budget_category"
-  ] as const;
-
-  for (const key of dayActivityFields) {
-    if (key in body) dayActivityInsert[key] = body[key];
+  const scheduledFields = ["slot", "time", "position"] as const;
+  for (const key of scheduledFields) {
+    if (key in body) scheduledInsert[key] = body[key];
   }
 
-  const { data: dayActivity, error: daError } = await supabase
-    .from("day_activities")
-    .insert(dayActivityInsert)
-    .select("id, activity_id, day_id, slot, position, time, notes, booking, budget_amount, budget_currency, budget_paid, budget_category, created_at, updated_at")
+  const { data: scheduled, error: saError } = await supabase
+    .from("scheduled_activities")
+    .insert(scheduledInsert)
+    .select("id, activity_id, day_id, slot, position, time, created_at, updated_at")
     .single();
 
-  if (daError) {
-    // Cleanup: remove the created activity
+  if (saError) {
     await supabase.from("activities").delete().eq("id", activity.id);
-    return NextResponse.json({ error: daError.message }, { status: 500 });
+    return NextResponse.json({ error: saError.message }, { status: 500 });
   }
 
-  // Return combined view for backward compat
+  // Combined response for backward compat with the existing UI shape.
   const result = {
-    id: dayActivity.id,
-    activity_id: dayActivity.activity_id,
-    day_id: dayActivity.day_id,
-    slot: dayActivity.slot,
-    position: dayActivity.position,
-    time: dayActivity.time,
-    notes: dayActivity.notes,
-    booking: dayActivity.booking,
-    budget_amount: dayActivity.budget_amount,
-    budget_currency: dayActivity.budget_currency,
-    budget_paid: dayActivity.budget_paid,
-    budget_category: dayActivity.budget_category,
-    created_at: dayActivity.created_at,
-    updated_at: dayActivity.updated_at,
+    id: scheduled.id,
+    activity_id: scheduled.activity_id,
+    day_id: scheduled.day_id,
+    slot: scheduled.slot,
+    position: scheduled.position,
+    time: scheduled.time,
+    notes: activity.notes,
+    booking: activity.booking,
+    budget_amount: activity.budget_amount,
+    budget_currency: activity.budget_currency,
+    budget_paid: activity.budget_paid,
+    budget_category: activity.budget_category,
+    created_at: scheduled.created_at,
+    updated_at: scheduled.updated_at,
     trip_id: activity.trip_id,
     title: activity.title,
     short_desc: activity.short_desc,

@@ -75,12 +75,12 @@ async function resolveDayTripId(dayId: string): Promise<string | null> {
   return data?.trip_id ?? null;
 }
 
-async function resolveDayActivityDayId(dayActivityId: string): Promise<string | null> {
+async function resolveScheduledActivityDayId(scheduledActivityId: string): Promise<string | null> {
   const supabase = await getServerClient();
   const { data } = await supabase
-    .from("day_activities")
+    .from("scheduled_activities")
     .select("day_id")
-    .eq("id", dayActivityId)
+    .eq("id", scheduledActivityId)
     .maybeSingle();
   return data?.day_id ?? null;
 }
@@ -113,14 +113,14 @@ export async function requireDayMember(dayId: string): Promise<AuthResult> {
   return requireTripMember(tripId);
 }
 
-export async function requireDayActivityEditor(dayActivityId: string): Promise<AuthResult> {
-  const dayId = await resolveDayActivityDayId(dayActivityId);
+export async function requireScheduledActivityEditor(scheduledActivityId: string): Promise<AuthResult> {
+  const dayId = await resolveScheduledActivityDayId(scheduledActivityId);
   if (!dayId) return notFound();
   return requireDayEditor(dayId);
 }
 
-export async function requireDayActivityMember(dayActivityId: string): Promise<AuthResult> {
-  const dayId = await resolveDayActivityDayId(dayActivityId);
+export async function requireScheduledActivityMember(scheduledActivityId: string): Promise<AuthResult> {
+  const dayId = await resolveScheduledActivityDayId(scheduledActivityId);
   if (!dayId) return notFound();
   return requireDayMember(dayId);
 }

@@ -22,7 +22,9 @@ export * from "./supabase";
 export { TripRepository }      from "./TripRepository";
 export { DayRepository }       from "./DayRepository";
 export { ActivityRepository }  from "./ActivityRepository";
-export { DayActivityRepository } from "./DayActivityRepository";
+// ScheduledActivityRepository lives on `main` (work in progress) — wire it
+// up here when that work lands. The DAL still works without it; route
+// handlers query scheduled_activities directly through the server client.
 export { BudgetRepository }    from "./BudgetRepository";
 export { MemberRepository }    from "./MemberRepository";
 export { InviteRepository }    from "./InviteRepository";
@@ -34,8 +36,6 @@ export type { CreateTripInput, UpdateTripInput }               from "./TripRepos
 export type { CreateDayInput, UpdateDayInput }                 from "./DayRepository";
 export type { CreateActivityInput, UpdateActivityInput,
               ActivityWithSections }                           from "./ActivityRepository";
-export type { CreateDayActivityInput, UpdateDayActivityInput,
-              ReorderDayActivityInput }                        from "./DayActivityRepository";
 export type { CreateBudgetItemInput, UpdateBudgetItemInput,
               BudgetSummary }                                   from "./BudgetRepository";
 export type { CreateInviteInput }                              from "./InviteRepository";
@@ -49,7 +49,6 @@ import { getBrowserClient, getServerClient } from "./supabase";
 import { TripRepository }       from "./TripRepository";
 import { DayRepository }        from "./DayRepository";
 import { ActivityRepository }   from "./ActivityRepository";
-import { DayActivityRepository } from "./DayActivityRepository";
 import { BudgetRepository }     from "./BudgetRepository";
 import { MemberRepository }     from "./MemberRepository";
 import { InviteRepository }     from "./InviteRepository";
@@ -61,7 +60,6 @@ export type Dal = {
   trips:        TripRepository;
   days:         DayRepository;
   activities:   ActivityRepository;
-  dayActivities: DayActivityRepository;
   budget:       BudgetRepository;
   members:      MemberRepository;
   invites:      InviteRepository;
@@ -75,7 +73,6 @@ function buildDal(client: Awaited<ReturnType<typeof getBrowserClient>>): Dal {
     trips:        new TripRepository(client),
     days:         new DayRepository(client),
     activities:   new ActivityRepository(client),
-    dayActivities: new DayActivityRepository(client),
     budget:       new BudgetRepository(client),
     members:      new MemberRepository(client),
     invites:      new InviteRepository(client),
