@@ -6,6 +6,7 @@ import {
   PeriodBar,
   type Period,
   type PeriodBarSize,
+  type PeriodTime,
 } from "@/components/ui/PeriodBar";
 import { StoryFrame, StoryPage } from "../_components/StoryFrame";
 import {
@@ -37,6 +38,10 @@ export default function PeriodBarStories() {
   const [activeTime, setActiveTime] = useState("09:00");
   const [showActiveTime, setShowActiveTime] = useState(true);
   const [disabled, setDisabled] = useState(false);
+
+  // Interactive picker story — owns its own period + time.
+  const [pickerValue, setPickerValue] = useState("morning");
+  const [pickerTime, setPickerTime] = useState<PeriodTime>({ hour: undefined, minute: undefined });
 
   const periods = PRESETS[presetKey];
 
@@ -141,6 +146,29 @@ export default function PeriodBarStories() {
             size={size}
             disabled={disabled}
           />
+        </StoryFrame>
+
+        <StoryFrame
+          name="Interactive time picker"
+          description="Pass `time` + `onTimeChange` to switch into picker mode. Clicking the active cell toggles an hour/minute grid (hours filtered by the period's `hours`); the bar derives the active-cell time from `time`. Switching to a period that doesn't contain the picked hour clears the time."
+        >
+          <div className="flex flex-col gap-2">
+            <PeriodBar
+              value={pickerValue}
+              onChange={setPickerValue}
+              periods={DEFAULT_PERIODS}
+              time={pickerTime}
+              onTimeChange={setPickerTime}
+            />
+            <div className="text-[11px] tabular-nums text-ink-faint">
+              period: <b className="text-ink">{pickerValue}</b> · time:{" "}
+              <b className="text-ink">
+                {pickerTime.hour !== undefined && pickerTime.minute !== undefined
+                  ? `${String(pickerTime.hour).padStart(2, "0")}:${String(pickerTime.minute).padStart(2, "0")}`
+                  : "—"}
+              </b>
+            </div>
+          </div>
         </StoryFrame>
 
         <StoryFrame

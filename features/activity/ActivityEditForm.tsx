@@ -99,9 +99,6 @@ const DEFAULT_CURRENCIES: Currency[] = [
   { code: "USD", symbol: "$" },
 ];
 
-const ALL_HOURS = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
-const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
-
 const DEFAULT_THUMB = "/media/day-default-banner.png";
 /** Width of the left image column — must match ImagePicker thumbnailWidth */
 const IMG_COL_W = 120;
@@ -148,7 +145,6 @@ export function ActivityEditForm({
     initialData?.budgetAmount !== undefined && initialData.budgetAmount > 0
   );
   const [heroImage, setHeroImage] = useState<string>(initialData?.heroImage ?? "");
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   /* ── Place enrichment state ── */
@@ -272,32 +268,6 @@ export function ActivityEditForm({
   const enrichedPhotoUrl = showEnrichment && enriched?.photoRefs[0]
     ? `/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=400`
     : undefined;
-
-  const hasTime = hour !== undefined && minute !== undefined;
-  const activeTime = hasTime
-    ? `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
-    : undefined;
-  const currentPeriodHours = periods.find((p) => p.id === period)?.hours ?? ALL_HOURS;
-
-  function handlePeriodCellClick(id: string) {
-    if (id === period) {
-      setPickerOpen((v) => !v);
-    } else {
-      setPeriod(id);
-      setPickerOpen(true);
-      const newPeriodHours = periods.find((p) => p.id === id)?.hours;
-      if (newPeriodHours && hour !== undefined && !newPeriodHours.includes(hour)) {
-        setHour(undefined);
-        setMinute(undefined);
-      }
-    }
-  }
-
-  function handleClearTime() {
-    setHour(undefined);
-    setMinute(undefined);
-    setPickerOpen(false);
-  }
 
   function handleSave() {
     onSave({
@@ -565,75 +535,16 @@ export function ActivityEditForm({
       {/* ── ROW 3: spacer | period + time picker ── */}
       <div className="grid gap-x-4 items-start" style={gridCols}>
         <div /> {/* left spacer */}
-        <div className="flex flex-col gap-2 min-w-0">
-          <div
-            role="group"
-            aria-label={t("selectPeriodAndTime")}
-            className="grid rounded-pill bg-surface border border-border p-0.5 gap-0.5"
-            style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
-          >
-            {periods.map((p) => {
-              const isActive = p.id === period;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handlePeriodCellClick(p.id)}
-                  className={cn(
-                    "text-center rounded-pill cursor-pointer select-none transition-colors font-sans px-1 py-[5px]",
-                    isActive ? "bg-ink text-white" : "text-ink hover:bg-surface-soft",
-                  )}
-                >
-                  <div className="text-micro font-medium uppercase tracking-[0.08em]">{p.name}</div>
-                  {isActive && activeTime ? (
-                    <div className="text-meta font-medium tabular-nums tracking-[-0.01em] leading-none mt-px">{activeTime}</div>
-                  ) : (
-                    <div className={cn("text-[9px] tabular-nums tracking-meta mt-px", isActive ? "text-white/55" : "text-ink-faint")}>{p.range}</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {pickerOpen && (
-            <div className="bg-surface border border-border rounded-[18px] p-3.5 flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <div className="text-micro uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {currentPeriodHours.map((h) => (
-                      <button key={h} type="button" onClick={() => setHour(h)}
-                        className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
-                          h === hour ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
-                        {String(h).padStart(2, "0")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-micro uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {MINUTES.map((m) => (
-                      <button key={m} type="button"
-                        onClick={() => { setMinute(m); if (hour !== undefined) setPickerOpen(false); }}
-                        className={cn("text-center py-2 text-[14px] tabular-nums rounded-pill cursor-pointer select-none transition-colors font-sans",
-                          m === minute ? "bg-orange text-white font-medium" : "text-ink hover:bg-surface-soft")}>
-                        {String(m).padStart(2, "0")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {hasTime && (
-                <div className="flex justify-end">
-                  <button type="button" onClick={handleClearTime}
-                    className="text-tiny text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-danger-fg hover:decoration-danger-fg transition-colors">
-                    {t("clearTime")}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="min-w-0">
+          <PeriodBar
+            value={period}
+            onChange={setPeriod}
+            periods={periods}
+            time={{ hour, minute }}
+            onTimeChange={({ hour: h, minute: m }) => { setHour(h); setMinute(m); }}
+            ariaLabel={t("selectPeriodAndTime")}
+            pickerLabels={{ hour: t("hour"), minutes: t("minutes"), clearTime: t("clearTime") }}
+          />
         </div>
       </div>
 

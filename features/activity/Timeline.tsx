@@ -22,7 +22,7 @@ import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
 import { ActivityAutocomplete } from "./ActivityAutocomplete";
 import { Button } from "@/components/ui/Button";
-import { PeriodBar } from "@/components/ui/PeriodBar";
+import { PeriodBar, type PeriodTime } from "@/components/ui/PeriodBar";
 import {
   IconCalendarTime, IconPlus, IconX, IconCircleMinus,
   IconWalk, IconPencil, IconMapPin,
@@ -141,6 +141,16 @@ function BridgeStrip({
 
 // BridgeEditor moved to ./Timeline/BridgeEditor.tsx
 
+/** Parse a "HH:mm" clock string into the PeriodBar time shape. */
+function parseClock(clock?: string | null): PeriodTime {
+  if (!clock) return { hour: undefined, minute: undefined };
+  const [h, m] = clock.split(":").map((n) => Number(n));
+  return {
+    hour: Number.isFinite(h) ? h : undefined,
+    minute: Number.isFinite(m) ? m : undefined,
+  };
+}
+
 /* ─── ScheduleStrip ──────────────────────────────────────────────── */
 /**
  * Strip per programmare l'istanza di un'attività nella giornata.
@@ -161,12 +171,18 @@ function ScheduleStrip({
   const tCommon = useTranslations("Common");
   const [slot,  setSlot]  = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
   const [fuzzy, setFuzzy] = useState<boolean>(!!block.fuzzy);
+  const [time,  setTime]  = useState<PeriodTime>(parseClock(block.time));
+
+  const hasTime = time.hour !== undefined && time.minute !== undefined;
 
   function handleSave() {
+    const timeStr = hasTime
+      ? `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`
+      : null;
     onSave({
       slot,
       fuzzy,
-      ...(fuzzy ? { time: null } : {}),
+      time: fuzzy ? null : timeStr,
     });
     onClose();
   }
@@ -186,12 +202,17 @@ function ScheduleStrip({
         </button>
       </div>
 
-      {/* PeriodBar — gestisce sia il periodo sia la visualizzazione dell'ora attiva */}
+      {/* PeriodBar — periodo + picker dell'ora (il picker si chiude/apre al click sul periodo attivo) */}
       <PeriodBar
         value={slot}
         onChange={(id) => setSlot(id as SlotKey)}
-        activeTime={!fuzzy && block.time ? block.time : undefined}
+        time={fuzzy ? { hour: undefined, minute: undefined } : time}
+        onTimeChange={(t) => {
+          setTime(t);
+          if (t.hour !== undefined || t.minute !== undefined) setFuzzy(false);
+        }}
         size="slim"
+        pickerLabels={{ hour: tT("hour"), minutes: tT("minutes"), clearTime: tT("clearTime") }}
       />
 
       {/* Footer */}
@@ -203,7 +224,7 @@ function ScheduleStrip({
             onChange={(e) => setFuzzy(e.target.checked)}
             className="accent-[var(--color-orange)] cursor-pointer"
           />
-          <span>Senza ora precisa</span>
+          <span>{tT("noPreciseTime")}</span>
         </label>
         <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
           OK

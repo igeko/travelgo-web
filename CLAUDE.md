@@ -92,8 +92,9 @@ Use [`class-variance-authority`](https://cva.style/docs) for primitives in `comp
 
 1. Add to `@theme` in `app/globals.css` next to its family.
 2. Use it immediately as a utility — no rebuild config needed.
-3. If it replaces hardcoded values elsewhere, sweep the codebase (`grep -rn 'bg-\\[#xxx\\]' features/ components/ app/`).
-4. **Skip `app/(design)/design/**`** — those are static HTML prototypes that intentionally don't follow the design system.
+3. **If the utility overloads an ambiguous namespace, register it in `lib/cn.ts`.** `text-*`, `tracking-*`, `z-*`, `rounded-*` etc. are recognised by `tailwind-merge` only for known values. A custom `text-meta` is otherwise mistaken for a text-*color* and silently dropped when merged next to `text-ink-soft`. Add new names to the `extendTailwindMerge` class groups in `lib/cn.ts`, keeping it in sync with `globals.css`. (`bg-*`/`border-*` color tokens are safe and need no registration.)
+4. If it replaces hardcoded values elsewhere, sweep the codebase (`grep -rn 'bg-\\[#xxx\\]' features/ components/ app/`).
+5. **Skip `app/(design)/design/**`** — those are static HTML prototypes that intentionally don't follow the design system.
 
 #### Common patterns
 

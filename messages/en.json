@@ -273,6 +273,10 @@
       "markFreeTime": "Mark as free time"
     },
     "schedule": "Schedule",
+    "noPreciseTime": "No precise time",
+    "hour": "Hour",
+    "minutes": "Minutes",
+    "clearTime": "clear time",
     "noActivities": "No activities yet"
   },
   "Go": {

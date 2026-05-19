@@ -1,5 +1,22 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * twMerge extended with TravelGo's custom @theme tokens. Without this,
+ * tailwind-merge misreads e.g. `text-meta` as a text-color and drops it
+ * when merged alongside a real color like `text-ink-soft`.
+ * Keep in sync with the token names in app/globals.css.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["micro", "tiny", "mini", "meta"] }],
+      tracking: [{ tracking: ["meta", "eyebrow", "eyebrow-wide"] }],
+      z: [{ z: ["dropdown", "overlay", "modal", "toast"] }],
+      rounded: [{ rounded: ["pill"] }],
+    },
+  },
+});
 
 /**
  * Concatenates conditional classnames and resolves Tailwind conflicts

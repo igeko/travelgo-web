@@ -273,6 +273,10 @@
       "markFreeTime": "Marca come tempo libero"
     },
     "schedule": "Programma",
+    "noPreciseTime": "Senza ora precisa",
+    "hour": "Ora",
+    "minutes": "Minuti",
+    "clearTime": "rimuovi orario",
     "noActivities": "Nessuna attività ancora"
   },
   "Go": {
