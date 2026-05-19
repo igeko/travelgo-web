@@ -44,9 +44,9 @@ const LEAD_SIZE: Record<QuoteSize, string> = {
 };
 
 const NOTE_SIZE: Record<QuoteSize, string> = {
-  sm: "text-[11px]",
-  md: "text-[12px]",
-  lg: "text-[13px]",
+  sm: "text-tiny",
+  md: "text-mini",
+  lg: "text-meta",
 };
 
 export function Quote({

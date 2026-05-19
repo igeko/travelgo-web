@@ -5,6 +5,8 @@
  * Configure it by passing an array of groups with current values.
  */
 
+import { cn } from "@/lib/cn";
+
 export type RadioControl<T extends string = string> = {
   kind: "radio";
   id: string;
@@ -148,14 +150,12 @@ function RadioField({ control }: { control: RadioControl }) {
               key={opt.value}
               type="button"
               onClick={() => control.onChange(opt.value)}
-              className={`
-                px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border
-                ${
-                  active
-                    ? "bg-ink text-white border-ink"
-                    : "bg-surface text-ink border-border hover:border-border-strong"
-                }
-              `}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-tiny font-medium transition-colors border",
+                active
+                  ? "bg-ink text-white border-ink"
+                  : "bg-surface text-ink border-border hover:border-border-strong",
+              )}
             >
               {opt.label}
             </button>
@@ -177,16 +177,16 @@ function ToggleField({ control }: { control: ToggleControl }) {
         role="switch"
         aria-checked={control.value}
         onClick={() => control.onChange(!control.value)}
-        className={`
-          relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors
-          ${control.value ? "bg-orange" : "bg-border-strong"}
-        `}
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+          control.value ? "bg-orange" : "bg-border-strong",
+        )}
       >
         <span
-          className={`
-            inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm
-            ${control.value ? "translate-x-4" : "translate-x-0.5"}
-          `}
+          className={cn(
+            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+            control.value ? "translate-x-4" : "translate-x-0.5",
+          )}
         />
       </button>
     </label>
@@ -274,14 +274,12 @@ function MultiSelectField({ control }: { control: MultiSelectControl }) {
               key={opt.value}
               type="button"
               onClick={() => toggle(opt.value)}
-              className={`
-                px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border
-                ${
-                  active
-                    ? "bg-ink text-white border-ink"
-                    : "bg-surface text-ink border-border hover:border-border-strong"
-                }
-              `}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-tiny font-medium transition-colors border",
+                active
+                  ? "bg-ink text-white border-ink"
+                  : "bg-surface text-ink border-border hover:border-border-strong",
+              )}
             >
               {opt.label}
             </button>

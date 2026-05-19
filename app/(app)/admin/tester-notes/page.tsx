@@ -9,6 +9,8 @@ import {
   IconCircleDashed, IconThumbUp, IconHourglass, IconCircleCheck, IconArchive,
   IconTestPipe, IconPencil, IconCheck, IconX, IconTools,
 } from "@/components/ui/icons";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { cn } from "@/lib/cn";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,7 +124,7 @@ function InlineMd({ text }: { text: string }) {
     if (m[1] !== undefined) parts.push(<strong key={key++} className="font-semibold">{m[1]}</strong>);
     else if (m[2] !== undefined) parts.push(<em key={key++}>{m[2]}</em>);
     else if (m[3] !== undefined) parts.push(
-      <code key={key++} className="font-mono text-[11px] bg-black/5 px-1 rounded">{m[3]}</code>
+      <code key={key++} className="font-mono text-tiny bg-black/5 px-1 rounded">{m[3]}</code>
     );
     last = m.index + m[0].length;
   }
@@ -263,7 +265,7 @@ export default function TesterNotesPage() {
           <h1 className="text-[20px] font-semibold text-ink">
             {canManage ? "Tester feedback" : "My feedback"}
           </h1>
-          <p className="text-[13px] text-ink-soft mt-1">
+          <p className="text-meta text-ink-soft mt-1">
             {canManage
               ? "Reports and suggestions from testers."
               : "Your reports and suggestions."}
@@ -282,14 +284,15 @@ export default function TesterNotesPage() {
                   type="button"
                   title={f === "all" ? "All types" : TYPE_META[f].label}
                   onClick={() => setTypeFilter(f)}
-                  className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border text-[12px] transition-colors cursor-pointer ${
+                  className={cn(
+                    "inline-flex items-center justify-center w-7 h-7 rounded-lg border text-mini transition-colors cursor-pointer",
                     typeFilter === f
                       ? "bg-ink text-white border-ink"
-                      : "bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                  }`}
+                      : "bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink",
+                  )}
                 >
                   {f === "all"
-                    ? <span className="text-[10px] font-medium leading-none">All</span>
+                    ? <span className="text-micro font-medium leading-none">All</span>
                     : <span className={typeFilter === f ? "text-white" : TYPE_META[f].iconClass}>{TYPE_META[f].icon}</span>
                   }
                 </button>
@@ -300,66 +303,58 @@ export default function TesterNotesPage() {
 
             {/* Status filter */}
             <div className="flex items-center gap-1 flex-wrap">
-              <button
-                type="button"
+              <FilterPill
+                size="sm"
+                active={statusFilter === "all"}
                 onClick={() => setStatusFilter("all")}
-                className={`inline-flex items-center px-2.5 py-1 rounded-pill text-[11px] border transition-colors cursor-pointer font-sans ${
-                  statusFilter === "all"
-                    ? "bg-ink text-white border-ink font-medium"
-                    : "bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                }`}
               >
                 All
-              </button>
+              </FilterPill>
               {FILTER_STATUSES.map((s) => {
                 const count = countByStatus(s);
                 const meta  = STATUS_META[s];
+                const isActive = statusFilter === s;
                 return (
-                  <button
+                  <FilterPill
                     key={s}
-                    type="button"
+                    size="sm"
+                    active={isActive}
                     onClick={() => setStatusFilter(s)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[11px] border transition-colors cursor-pointer font-sans ${
-                      statusFilter === s
-                        ? "bg-ink text-white border-ink font-medium"
-                        : `bg-transparent ${meta.pillClass} hover:opacity-80`
-                    }`}
+                    className={cn(!isActive && meta.pillClass)}
                   >
-                    <span className={statusFilter === s ? "text-white" : ""}>{meta.icon}</span>
+                    <span className={isActive ? "text-white" : ""}>{meta.icon}</span>
                     {meta.label}
                     {count > 0 && (
-                      <span className={`text-[10px] px-1 rounded-full ${
-                        statusFilter === s ? "bg-white/20 text-white" : "bg-white/60 text-ink-faint"
-                      }`}>
+                      <span className={cn(
+                        "text-micro px-1 rounded-full",
+                        isActive ? "bg-white/20 text-white" : "bg-white/60 text-ink-faint",
+                      )}>
                         {count}
                       </span>
                     )}
-                  </button>
+                  </FilterPill>
                 );
               })}
             </div>
 
             {/* Archived toggle */}
             {archivedCount > 0 && (
-              <button
-                type="button"
+              <FilterPill
+                size="sm"
+                active={showArchived}
                 onClick={() => setShowArchived((v) => !v)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[11px] border transition-colors cursor-pointer font-sans ml-auto ${
-                  showArchived
-                    ? "bg-ink text-white border-ink font-medium"
-                    : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft"
-                }`}
+                className="ml-auto"
               >
                 <IconArchive size={11} />
                 {showArchived ? "Hide archived" : `${archivedCount} archived`}
-              </button>
+              </FilterPill>
             )}
           </div>
         )}
 
-        {fetching && <div className="text-[13px] text-ink-faint">Loading…</div>}
+        {fetching && <div className="text-meta text-ink-faint">Loading…</div>}
         {!fetching && filtered.length === 0 && (
-          <div className="text-[13px] text-ink-faint">No feedback found.</div>
+          <div className="text-meta text-ink-faint">No feedback found.</div>
         )}
 
         {/* Notes list */}
@@ -376,15 +371,16 @@ export default function TesterNotesPage() {
             return (
               <div
                 key={note.id}
-                className={`group/row flex flex-col px-4 py-3 bg-surface hover:bg-surface-soft transition-colors ${
-                  note.status === "archived" ? "opacity-40" : ""
-                }`}
+                className={cn(
+                  "group/row flex flex-col px-4 py-3 bg-surface hover:bg-surface-soft transition-colors",
+                  note.status === "archived" && "opacity-40",
+                )}
               >
                 {/* Main row */}
                 <div className="flex items-start gap-3">
 
                   {/* Type icon — allineato alla prima riga di testo */}
-                  <span className={`shrink-0 mt-[3px] ${typeMeta.iconClass}`} title={typeMeta.label}>
+                  <span className={cn("shrink-0 mt-[3px]", typeMeta.iconClass)} title={typeMeta.label}>
                     {typeMeta.icon}
                   </span>
 
@@ -394,13 +390,13 @@ export default function TesterNotesPage() {
                     {/* Prima riga: data | autore (sx) — status (dx) */}
                     <div className="flex items-center justify-between gap-3 mb-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[11px] text-ink-faint whitespace-nowrap shrink-0">
+                        <span className="text-tiny text-ink-faint whitespace-nowrap shrink-0">
                           {fmt(note.created_at)}
                         </span>
                         {canManage && (
                           <>
-                            <span className="text-[10px] text-ink-faint/40 shrink-0">|</span>
-                            <span className="text-[11px] text-ink-soft font-medium truncate">
+                            <span className="text-micro text-ink-faint/40 shrink-0">|</span>
+                            <span className="text-tiny text-ink-soft font-medium truncate">
                               {note.author_name}
                             </span>
                           </>
@@ -415,7 +411,10 @@ export default function TesterNotesPage() {
                               value={note.status}
                               disabled={updatingId === note.id}
                               onChange={(e) => updateStatus(note.id, e.target.value as FeedbackStatus)}
-                              className={`appearance-none text-[11px] font-medium pl-[22px] pr-5 py-0.5 rounded-pill border cursor-pointer transition-colors ${statusMeta.pillClass} disabled:opacity-50`}
+                              className={cn(
+                                "appearance-none text-tiny font-medium pl-[22px] pr-5 py-0.5 rounded-pill border cursor-pointer transition-colors disabled:opacity-50",
+                                statusMeta.pillClass,
+                              )}
                             >
                               {ALL_STATUSES.map((s) => (
                                 <option key={s} value={s}>{STATUS_META[s].label}</option>
@@ -430,7 +429,10 @@ export default function TesterNotesPage() {
                             </svg>
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-pill border ${statusMeta.pillClass}`}>
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-tiny font-medium px-2 py-0.5 rounded-pill border",
+                            statusMeta.pillClass,
+                          )}>
                             {statusMeta.icon}
                             {statusMeta.label}
                           </span>
@@ -477,7 +479,7 @@ export default function TesterNotesPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             title={note.page_url}
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-pill border border-border text-ink-soft hover:text-ink hover:border-border-strong transition-colors"
+                            className="inline-flex items-center gap-1 text-tiny px-2 py-0.5 rounded-pill border border-border text-ink-soft hover:text-ink hover:border-border-strong transition-colors"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="w-2.5 h-2.5 opacity-60">
                               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -493,11 +495,12 @@ export default function TesterNotesPage() {
                           <button
                             type="button"
                             onClick={() => toggleFix(note.id)}
-                            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-pill border transition-colors cursor-pointer ${
+                            className={cn(
+                              "inline-flex items-center gap-1 text-tiny px-2 py-0.5 rounded-pill border transition-colors cursor-pointer",
                               fixOpen
                                 ? "text-amber-600 border-amber-300 bg-amber-50"
-                                : "text-amber-500 border-amber-200 hover:border-amber-300 hover:text-amber-600"
-                            }`}
+                                : "text-amber-500 border-amber-200 hover:border-amber-300 hover:text-amber-600",
+                            )}
                           >
                             <IconTools size={11} />
                             {fixOpen ? "Hide dev note" : "Dev note"}
@@ -509,7 +512,7 @@ export default function TesterNotesPage() {
                           <button
                             type="button"
                             onClick={() => { setExpandedFix((p) => { const n = new Set(p); n.add(note.id); return n; }); }}
-                            className="inline-flex items-center gap-1 text-[11px] text-ink-faint hover:text-ink-soft focus:text-ink-soft transition-colors cursor-pointer opacity-30 hover:opacity-100 focus:opacity-100 py-1 px-1"
+                            className="inline-flex items-center gap-1 text-tiny text-ink-faint hover:text-ink-soft focus:text-ink-soft transition-colors cursor-pointer opacity-30 hover:opacity-100 focus:opacity-100 py-1 px-1"
                           >
                             <IconTools size={11} />
                             + Dev note
@@ -533,12 +536,12 @@ export default function TesterNotesPage() {
                         saving={saving}
                         rows={3}
                         placeholder="Developer note… supports **bold**, *italic*, `code`"
-                        className="text-[12px] border-amber-200 bg-amber-50/30 focus:border-amber-300"
+                        className="text-mini border-amber-200 bg-amber-50/30 focus:border-amber-300"
                       />
                     ) : hasFix ? (
                       <div className="group/fix flex items-start gap-2 bg-amber-50/60 border border-amber-100 rounded-lg px-3 py-2.5">
                         <IconTools size={12} className="shrink-0 mt-0.5 text-amber-500" />
-                        <p className="text-[12px] text-ink-soft leading-relaxed flex-1">
+                        <p className="text-mini text-ink-soft leading-relaxed flex-1">
                           <MarkdownText text={note.fix_notes!} />
                         </p>
                         {canManage && !editing && (
@@ -563,7 +566,7 @@ export default function TesterNotesPage() {
                           saving={saving}
                           rows={2}
                           placeholder="Developer note… supports **bold**, *italic*, `code`"
-                          className="text-[12px] border-amber-200 bg-amber-50/20 focus:border-amber-300"
+                          className="text-mini border-amber-200 bg-amber-50/20 focus:border-amber-300"
                           autoStart
                           onAutoStart={(v) => setEditing({ id: note.id, field: "fix_notes", value: v })}
                         />
@@ -631,14 +634,17 @@ function EditBlock({
         }}
         rows={rows}
         placeholder={placeholder}
-        className={`w-full leading-snug border rounded-lg px-3 py-2 bg-bg resize-none focus:outline-none ${className}`}
+        className={cn(
+          "w-full leading-snug border rounded-lg px-3 py-2 bg-bg resize-none focus:outline-none",
+          className,
+        )}
       />
       <div className="flex items-center gap-1.5">
         <button
           type="button"
           disabled={saving || !value.trim()}
           onClick={onSave}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[11px] font-medium bg-ink text-white border border-ink disabled:opacity-40 cursor-pointer hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-tiny font-medium bg-ink text-white border border-ink disabled:opacity-40 cursor-pointer hover:opacity-90 transition-opacity"
         >
           <IconCheck size={11} />
           Save
@@ -646,12 +652,12 @@ function EditBlock({
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[11px] border border-border text-ink-soft cursor-pointer hover:text-ink transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-tiny border border-border text-ink-soft cursor-pointer hover:text-ink transition-colors"
         >
           <IconX size={11} />
           Cancel
         </button>
-        <span className="text-[10px] text-ink-faint ml-1">⌘↵ to save</span>
+        <span className="text-micro text-ink-faint ml-1">⌘↵ to save</span>
       </div>
     </div>
   );

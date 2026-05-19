@@ -155,7 +155,7 @@ function LodgingTypePicker({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-2 bg-surface border rounded-pill px-4 py-2 text-[13px] text-ink font-sans cursor-pointer transition-colors",
+          "inline-flex items-center gap-2 bg-surface border rounded-pill px-4 py-2 text-meta text-ink font-sans cursor-pointer transition-colors",
           open ? "border-orange" : "border-border hover:border-border-strong",
         )}
       >
@@ -168,14 +168,14 @@ function LodgingTypePicker({
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+4px)] left-0 min-w-[200px] bg-surface border border-border rounded-[12px] p-1 shadow-[0_8px_24px_rgba(13,44,61,0.10)] z-20 flex flex-col gap-px">
+        <div className="absolute top-[calc(100%+4px)] left-0 min-w-[200px] bg-surface border border-border rounded-md p-1 shadow-[0_8px_24px_rgba(13,44,61,0.10)] z-20 flex flex-col gap-px">
           {LODGING_TYPES.map((t) => (
             <button
               key={t.k}
               type="button"
               onClick={() => { onChange(t.k as LodgingType); setOpen(false); }}
               className={cn(
-                "flex items-center gap-2 px-3 py-[7px] text-[13px] text-ink rounded-lg cursor-pointer font-sans transition-colors",
+                "flex items-center gap-2 px-3 py-[7px] text-meta text-ink rounded-lg cursor-pointer font-sans transition-colors",
                 t.k === value ? "bg-surface-warm" : "hover:bg-surface-soft",
               )}
             >
@@ -327,7 +327,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
       <div
         className={cn(
           "relative overflow-hidden bg-ink min-h-[220px] bg-cover bg-center",
-          heroFlat ? "rounded-t-[var(--radius-lg)]" : "rounded-[var(--radius-lg)]",
+          heroFlat ? "rounded-t-[var(--radius-lg)]" : "rounded-lg",
         )}
         style={{ backgroundImage: `url(${resolveHeroBanner(heroOpen ? draftHeroType : type, heroOpen ? draftImageUrl : imageUrl)})` }}
       >
@@ -343,7 +343,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             title={t("editDay")}
             className={cn(
               "absolute top-3 right-3 z-10 h-8 rounded-pill px-3",
-              "inline-flex items-center gap-1.5 cursor-pointer transition-colors duration-150 text-[12px] font-medium",
+              "inline-flex items-center gap-1.5 cursor-pointer transition-colors duration-150 text-mini font-medium",
               heroOpen
                 ? "bg-orange border border-orange text-white"
                 : "bg-white/20 border border-white/30 text-white hover:bg-orange hover:border-orange",
@@ -357,7 +357,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
         <div className="absolute inset-x-[18px] bottom-4 z-10 flex items-end justify-between gap-3 text-white">
           <div className="min-w-0">
             {(eyebrow || subtitle) && (
-              <div className="text-[11px] font-medium tracking-[0.08em] uppercase opacity-85 mb-1">
+              <div className="text-tiny font-medium tracking-[0.08em] uppercase opacity-85 mb-1">
                 {eyebrow}
                 {subtitle && (
                   <>
@@ -368,7 +368,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </div>
             )}
             <div className="text-[26px] font-semibold leading-[1.25] mb-1 truncate">{title}</div>
-            {meta && <div className="text-[10px] opacity-75 uppercase tracking-[0.06em]">{meta}</div>}
+            {meta && <div className="text-micro opacity-75 uppercase tracking-eyebrow">{meta}</div>}
           </div>
           {(onPrev || onNext) && (
             <div className="flex gap-1.5 shrink-0">
@@ -399,7 +399,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             !hasSubBanner ? "rounded-b-[var(--radius-lg)]" : "",
           )}
         >
-          <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
+          <div className="text-micro font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
             {t("hero.formTitle")}
           </div>
 
@@ -456,7 +456,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               {HERO_TYPE_CHIPS.map((chip) => (
                 <button key={chip} type="button" onClick={() => setDraftHeroType(chip)}
                   className={cn(
-                    "px-2.5 py-1 rounded-pill text-[11px] border cursor-pointer transition-colors font-sans",
+                    "px-2.5 py-1 rounded-pill text-tiny border cursor-pointer transition-colors font-sans",
                     draftHeroType === chip
                       ? "bg-ink text-white border-ink font-medium"
                       : "bg-surface text-ink-soft border-border hover:border-border-strong",
@@ -468,7 +468,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
-            <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
+            <span className="text-micro text-ink-faint">{t("pressEnterToSave")}</span>
             <div className="flex items-center gap-2">
               <Button variant="text-only" iconOnly={false} onClick={() => setHeroOpen(false)}>{t("cancel")}</Button>
               <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>{t("save")}</Button>
@@ -489,7 +489,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             className="absolute -bottom-[7px] left-[60px] w-3 h-3 bg-surface border-r border-b border-border-strong rotate-45 z-10"
           />
 
-          <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
+          <div className="text-micro font-medium uppercase tracking-[0.08em] text-ink-soft mb-1">
             {t("lodging.formTitle")}
           </div>
 
@@ -518,7 +518,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </div>
               <button type="button" onClick={() => { setDraftLodgingPlace(null); setShowLodgingAddress(false); }}
                 aria-label={t("lodging.removeAddress")}
-                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-danger-bg hover:text-danger-fg transition-colors">
                 <IconX size={14} />
               </button>
             </div>
@@ -538,7 +538,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </div>
               <button type="button" onClick={() => { setDraftLodgingHref(""); setShowLodgingLink(false); }}
                 aria-label={t("lodging.removeLink")}
-                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-danger-bg hover:text-danger-fg transition-colors">
                 <IconX size={14} />
               </button>
             </div>
@@ -558,7 +558,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </div>
               <button type="button" onClick={() => { setDraftLodgingBudget(undefined); setShowLodgingBudget(false); }}
                 aria-label={t("lodging.removeBudget")}
-                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+                className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-danger-bg hover:text-danger-fg transition-colors">
                 <IconX size={14} />
               </button>
             </div>
@@ -568,19 +568,19 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
             <div className="flex flex-wrap gap-3.5 items-center pt-1">
               {!showLodgingAddress && (
                 <button type="button" onClick={() => setShowLodgingAddress(true)}
-                  className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                  className="text-mini text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
                   {t("lodging.addAddress")}
                 </button>
               )}
               {!showLodgingLink && (
                 <button type="button" onClick={() => setShowLodgingLink(true)}
-                  className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                  className="text-mini text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
                   {t("lodging.addLink")}
                 </button>
               )}
               {!showLodgingBudget && (
                 <button type="button" onClick={() => setShowLodgingBudget(true)}
-                  className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                  className="text-mini text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
                   {t("lodging.addBudget")}
                 </button>
               )}
@@ -595,7 +595,7 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
               </Button>
             ) : <span />}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
+              <span className="text-micro text-ink-faint">{t("pressEnterToSave")}</span>
               <Button variant="text-only" iconOnly={false} onClick={() => setLodgingOpen(false)}>{t("cancel")}</Button>
               <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>{t("save")}</Button>
             </div>
@@ -610,14 +610,14 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           style={{ background: "#1a3a4f", color: "white" }}
         >
           <IconBed size={16} className="text-white/55 shrink-0" />
-          <span className="text-[13px] text-white/70">{t("lodging.empty")}</span>
+          <span className="text-meta text-white/70">{t("lodging.empty")}</span>
           {editMode && (
             <>
-              <span aria-hidden className="text-white/30 text-[13px]">·</span>
+              <span aria-hidden className="text-white/30 text-meta">·</span>
               <button
                 type="button"
                 onClick={onAddLodging ?? openLodgingEdit}
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-white/80 hover:text-white bg-white/[0.10] hover:bg-white/[0.18] border border-white/[0.18] rounded-pill px-3 py-1 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-mini font-medium text-white/80 hover:text-white bg-white/[0.10] hover:bg-white/[0.18] border border-white/[0.18] rounded-pill px-3 py-1 transition-colors cursor-pointer"
               >
                 <IconPlus size={13} className="text-orange" />
                 {t("lodging.addStay")}
@@ -645,19 +645,19 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
 
           <div className="min-w-0 flex flex-wrap items-baseline gap-x-1.5">
             {subBanner.label && (
-              <span className="text-[10px] font-semibold text-white/60 uppercase tracking-[0.08em]">
+              <span className="text-micro font-semibold text-white/60 uppercase tracking-[0.08em]">
                 {subBanner.label}
               </span>
             )}
             <span className="text-[14px] font-medium text-white truncate">{subBanner.name}</span>
             {subBanner.detail && (
-              <span className="text-[12px] text-white/65 truncate">· {subBanner.detail}</span>
+              <span className="text-mini text-white/65 truncate">· {subBanner.detail}</span>
             )}
           </div>
 
           {subBanner.href && (
             <a href={subBanner.href} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 text-[11px] font-medium text-white px-3 py-1.5 rounded-pill bg-white/[0.12] border border-white/[0.18] hover:bg-white/20 transition-colors whitespace-nowrap">
+              className="shrink-0 text-tiny font-medium text-white px-3 py-1.5 rounded-pill bg-white/[0.12] border border-white/[0.18] hover:bg-white/20 transition-colors whitespace-nowrap">
               {subBanner.ctaLabel ?? t("lodging.open")}
             </a>
           )}

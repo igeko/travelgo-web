@@ -76,8 +76,8 @@ const CELL_SIZE = {
 } satisfies Record<PeriodBarSize, string>;
 
 const NAME_SIZE = {
-  default: "text-[11px]",
-  slim: "text-[10px]",
+  default: "text-tiny",
+  slim: "text-micro",
 } satisfies Record<PeriodBarSize, string>;
 
 const RANGE_MARGIN = {
@@ -87,7 +87,7 @@ const RANGE_MARGIN = {
 
 const TIME_SIZE = {
   default: "text-lg mt-1",
-  slim: "text-[13px] mt-px",
+  slim: "text-meta mt-px",
 } satisfies Record<PeriodBarSize, string>;
 
 export function PeriodBar({
@@ -149,7 +149,7 @@ export function PeriodBar({
             ) : (
               <div
                 className={cn(
-                  "text-[9px] tabular-nums tracking-[0.04em]",
+                  "text-[9px] tabular-nums tracking-meta",
                   RANGE_MARGIN[size],
                   isActive ? "text-white/55" : "text-ink-faint",
                 )}

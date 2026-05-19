@@ -75,13 +75,13 @@ export default function TripsPage() {
         </div>
 
         {loading && (
-          <div className="text-[13px] text-ink-faint">{tCommon("loading")}</div>
+          <div className="text-meta text-ink-faint">{tCommon("loading")}</div>
         )}
 
         {!loading && trips.length === 0 && (
-          <div className="text-[13px] text-ink-soft">
+          <div className="text-meta text-ink-soft">
             {t("empty")}.{" "}
-            <button onClick={() => setShowCreate(true)} className="text-orange underline underline-offset-2 cursor-pointer bg-transparent border-0 font-sans text-[13px]">
+            <button onClick={() => setShowCreate(true)} className="text-orange underline underline-offset-2 cursor-pointer bg-transparent border-0 font-sans text-meta">
               {t("createOne")}
             </button>
           </div>
@@ -96,9 +96,9 @@ export default function TripsPage() {
             >
               <span className="text-[16px] font-semibold text-ink">{trip.title}</span>
               {trip.subtitle && (
-                <span className="text-[12px] text-ink-faint">{trip.subtitle}</span>
+                <span className="text-mini text-ink-faint">{trip.subtitle}</span>
               )}
-              <span className="text-[13px] text-ink-soft mt-0.5">
+              <span className="text-meta text-ink-soft mt-0.5">
                 {trip.day_count > 0 ? tShell("daysCount", { count: trip.day_count }) : tShell("empty.body")}
                 {trip.start_date && trip.end_date
                   ? ` · ${formatDate(trip.start_date, locale)} – ${formatDate(trip.end_date, locale)}`
@@ -120,7 +120,7 @@ export default function TripsPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
           onKeyDown={(e) => { if (e.key === "Escape") setShowCreate(false); }}
         >
-          <div className="bg-surface rounded-[var(--radius-lg)] border border-border shadow-xl w-full max-w-[520px] relative">
+          <div className="bg-surface rounded-lg border border-border shadow-xl w-full max-w-[520px] relative">
             {/* Close button */}
             <div className="absolute top-4 right-4 z-10">
               <Button variant="ghost" size="md" iconOnly onClick={() => setShowCreate(false)} aria-label={tCommon("close")}>

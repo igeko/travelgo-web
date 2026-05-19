@@ -121,7 +121,7 @@ function BridgeStrip({
   return (
     <div
       className={cn(
-        "relative flex items-center gap-1.5 text-ink-soft text-[11px] transition-colors rounded-[15px_15px_0_0]",
+        "relative flex items-center gap-1.5 text-ink-soft text-tiny transition-colors rounded-[15px_15px_0_0]",
         editMode ? "cursor-pointer hover:bg-[rgba(13,44,61,0.03)]" : "cursor-default",
       )}
       style={{ padding: "2px 8px", minHeight: 22, margin: "0 10px 0 5px" }}
@@ -172,9 +172,9 @@ function ScheduleStrip({
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
+    <div className="rounded-md border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
       {/* Head */}
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
+      <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
         <IconCalendarTime size={11} />
         <span>{tT("schedule")}</span>
         <button
@@ -195,7 +195,7 @@ function ScheduleStrip({
       />
 
       {/* Footer */}
-      <div className="flex justify-between items-center mt-2.5 text-[11px] text-ink-soft">
+      <div className="flex justify-between items-center mt-2.5 text-tiny text-ink-soft">
         <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -225,7 +225,7 @@ function AddZone({
     <div className="group relative flex items-center min-h-[14px] cursor-pointer pl-1 my-0">
       {/* Orange dot on spine */}
       <div
-        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pointer-events-none"
         style={{ left: -21, top: "50%", transform: "translateY(-50%)", width: 18, height: 18 }}
         aria-hidden
       >
@@ -233,13 +233,13 @@ function AddZone({
       </div>
 
       {/* Affordances */}
-      <div className="flex items-center gap-3.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
+      <div className="flex items-center gap-3.5 opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           className="inline-flex items-center gap-2 text-orange-deep group/item"
           onClick={(e) => { e.stopPropagation(); onAddBlock(); }}
         >
           <span className="w-7 h-px bg-current opacity-85" />
-          <span className="text-[11px] font-medium group-hover/item:underline underline-offset-[3px]">
+          <span className="text-tiny font-medium group-hover/item:underline underline-offset-[3px]">
             aggiungi blocco
           </span>
         </button>
@@ -248,7 +248,7 @@ function AddZone({
           onClick={(e) => { e.stopPropagation(); onAddActivity(); }}
         >
           <span className="w-7 h-px bg-current opacity-85" />
-          <span className="text-[11px] font-medium group-hover/item:underline underline-offset-[3px]">
+          <span className="text-tiny font-medium group-hover/item:underline underline-offset-[3px]">
             aggiungi attività
           </span>
         </button>
@@ -301,9 +301,9 @@ function BlockComposer({
         style={{ left: -19 }}
         aria-hidden
       />
-      <div className="rounded-[var(--radius-md)] border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
+      <div className="rounded-md border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
         {/* Head */}
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2.5">
+        <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-2.5">
           <IconPlus size={11} />
           <span>Nuovo blocco</span>
           <button className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
@@ -318,7 +318,7 @@ function BlockComposer({
               key={bt.key}
               onClick={() => setType(bt.key)}
               className={cn(
-                "inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-pill)] border text-[10.5px] font-medium cursor-pointer transition-colors",
+                "inline-flex items-center gap-1 px-2 py-1 rounded-pill border text-[10.5px] font-medium cursor-pointer transition-colors",
                 type === bt.key
                   ? "bg-[#ddedde] text-[#3d6e0e] border-[#9bbf9a]"
                   : "bg-surface-soft border-border text-ink-soft hover:border-orange/40",
@@ -335,7 +335,7 @@ function BlockComposer({
         {/* Fields */}
         <div className="flex gap-1.5 mb-2">
           <div className="w-[78px] shrink-0 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">Ora</span>
+            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Ora</span>
             <input
               type="time"
               value={time}
@@ -344,7 +344,7 @@ function BlockComposer({
             />
           </div>
           <div className="flex-1 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">Titolo</span>
+            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Titolo</span>
             <input
               autoFocus
               value={title}
@@ -355,7 +355,7 @@ function BlockComposer({
             />
           </div>
           <div className="w-[124px] shrink-0 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">Zona (opz.)</span>
+            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Zona (opz.)</span>
             <input
               value={zone}
               onChange={(e) => setZone(e.target.value)}
@@ -371,7 +371,7 @@ function BlockComposer({
           <button
             onClick={handleAdd}
             disabled={!title.trim()}
-            className="bg-ink text-white rounded-[var(--radius-pill)] px-3 py-1 text-[10.5px] font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+            className="bg-ink text-white rounded-pill px-3 py-1 text-[10.5px] font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
             Aggiungi
           </button>
@@ -408,17 +408,21 @@ function SingleBlock({
       {/* ── Main row ─────────────────────────────────────────────── */}
       <div
         className={cn(
-          "relative flex items-center gap-3 rounded-[8px] py-1.5 pr-2 pl-3 mb-[4px] transition-all duration-150",
+          "relative flex items-center gap-3 rounded-sm py-1.5 pr-2 pl-3 mb-[4px] transition-all duration-150",
           isFuzzy
             ? [
                 "bg-transparent",
-                (hovered || popoverOpen) &&
-                  "bg-white shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]",
+                popoverOpen
+                  ? "bg-white shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]"
+                  : hovered &&
+                    "bg-white shadow-[0_0_0_1.5px_var(--color-ink),0_4px_14px_rgba(13,44,61,0.10)]",
               ]
             : [
                 "bg-white",
-                (hovered || popoverOpen) &&
-                  "shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]",
+                popoverOpen
+                  ? "shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]"
+                  : hovered &&
+                    "shadow-[0_0_0_1.5px_var(--color-ink),0_4px_14px_rgba(13,44,61,0.10)]",
               ],
         )}
       >
@@ -443,13 +447,15 @@ function SingleBlock({
             isFuzzy
               ? [
                   "bg-[#d5d5ce] text-ink-soft border-2 border-[#e8e8e0]",
-                  (hovered || popoverOpen) &&
-                    "bg-white border-orange text-orange-deep",
+                  popoverOpen
+                    ? "bg-white border-orange text-orange-deep"
+                    : hovered && "bg-white border-ink text-ink",
                 ]
               : [
                   "bg-[#e8e8e0] text-ink-soft border-2 border-[#f5f5f0]",
-                  (hovered || popoverOpen) &&
-                    "bg-white border-orange text-orange-deep",
+                  popoverOpen
+                    ? "bg-white border-orange text-orange-deep"
+                    : hovered && "bg-white border-ink text-ink",
                 ],
           )}
           style={
@@ -481,7 +487,7 @@ function SingleBlock({
             "flex-1 min-w-0 text-left leading-snug transition-colors",
             isFuzzy
               ? "text-[10.5px] uppercase tracking-[0.08em] font-medium text-ink-soft hover:text-ink"
-              : "text-[13px] text-ink-soft hover:text-ink",
+              : "text-meta text-ink-soft hover:text-ink",
           )}
           onClick={() => {
             if (!isFuzzy && block.entity_id) {
@@ -590,6 +596,16 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
       const slot = (b.slot as SlotKey) ?? "morning";
       groups[slot].push(b);
     }
+    // Within each slot: sort by time ascending; fuzzy/no-time blocks go last,
+    // preserving their relative order via `position`.
+    for (const s of SLOT_ORDER) {
+      groups[s].sort((a, b) => {
+        if (a.time && b.time) return a.time.localeCompare(b.time);
+        if (a.time) return -1;
+        if (b.time) return 1;
+        return (a.position ?? 0) - (b.position ?? 0);
+      });
+    }
     return groups;
   }, [blocks]);
 
@@ -670,7 +686,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
     return (
       <div>
         <div
-          className="py-10 text-center text-[13px] text-ink-faint"
+          className="py-10 text-center text-meta text-ink-faint"
           style={{ paddingLeft: SPINE_LEFT + 16 }}
         >
           {tT("noActivities")}.

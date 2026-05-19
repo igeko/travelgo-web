@@ -51,7 +51,7 @@ function LoginForm() {
             五
           </span>
           <span
-            className="text-[13px] text-ink-faint font-normal leading-tight"
+            className="text-meta text-ink-faint font-normal leading-tight"
             style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}
           >
             Travel<b className="text-ink font-medium">Go</b>
@@ -63,13 +63,13 @@ function LoginForm() {
           <h1 className="text-[20px] font-semibold text-ink text-center mb-1">
             Welcome back
           </h1>
-          <p className="text-[13px] text-ink-soft text-center mb-8">
+          <p className="text-meta text-ink-soft text-center mb-8">
             Sign in to continue planning your trip
           </p>
 
           {/* Error banner */}
           {hasError && (
-            <div className="mb-6 px-4 py-3 rounded-lg bg-orange-soft border border-orange-border text-[13px] text-orange-deep text-center">
+            <div className="mb-6 px-4 py-3 rounded-lg bg-orange-soft border border-orange-border text-meta text-orange-deep text-center">
               Sign-in failed. Please try again.
             </div>
           )}
@@ -89,7 +89,7 @@ function LoginForm() {
             {loading ? "Redirecting…" : "Continue with Google"}
           </button>
 
-          <p className="mt-8 text-center text-[11px] text-ink-faint leading-relaxed">
+          <p className="mt-8 text-center text-tiny text-ink-faint leading-relaxed">
             By continuing you agree to our{" "}
             <a href="/terms" className="underline hover:text-ink-soft">Terms</a>{" "}
             and{" "}

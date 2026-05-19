@@ -415,7 +415,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
           aria-controls={isOpen ? popoverId : undefined}
           className={cn(
             "group/sf relative flex items-center gap-1.5 w-full px-[18px] py-[10px]",
-            "bg-[#fafaf6] border border-border rounded-pill text-left",
+            "bg-surface-input border border-border rounded-pill text-left",
             "transition-[background,border-color,box-shadow] duration-150",
             "hover:border-border-strong",
             isOpen && "border-orange bg-surface shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
@@ -496,7 +496,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
                   type="button"
                   onClick={() => applyShortcut(sc.id)}
                   className={cn(
-                    "text-[10px] px-2.5 py-1 rounded-pill border transition-colors font-medium",
+                    "text-micro px-2.5 py-1 rounded-pill border transition-colors font-medium",
                     activeShortcut===sc.id
                       ? "bg-ink text-white border-ink"
                       : "bg-surface-soft border-border text-ink-soft hover:border-border-strong hover:text-ink",
@@ -518,7 +518,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
             <button type="button"
               onClick={() => { setMyYear(viewYear); setMyPickerOpen(o=>!o); }}
               aria-label="Pick month and year"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-[12px] font-medium text-ink hover:bg-surface-soft transition-colors">
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-mini font-medium text-ink hover:bg-surface-soft transition-colors">
               <span>{MONTHS[viewMonth]} {viewYear}</span>
               <ChevronTinyIcon className={cn("transition-transform duration-150", myPickerOpen && "rotate-180")} />
             </button>
@@ -537,7 +537,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
                   className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-ink hover:bg-surface-soft transition-colors">
                   <IconChevronLeft className="size-3" />
                 </button>
-                <span className="text-[13px] font-medium text-ink tabular-nums">{myYear}</span>
+                <span className="text-meta font-medium text-ink tabular-nums">{myYear}</span>
                 <button type="button" onClick={()=>setMyYear(y=>y+1)} aria-label="Next year"
                   className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-ink hover:bg-surface-soft transition-colors">
                   <IconChevronRight className="size-3" />
@@ -554,7 +554,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
                     <button key={name} type="button"
                       onClick={() => !isDisabledM && pickMonthYear(i)} disabled={isDisabledM}
                       className={cn(
-                        "py-2 rounded-lg text-[11px] font-medium text-center transition-colors",
+                        "py-2 rounded-lg text-tiny font-medium text-center transition-colors",
                         isSelected ? "bg-ink text-white"
                           : isCurrent ? "border border-ink-soft text-ink hover:bg-surface-soft"
                           : "text-ink hover:bg-surface-soft",
@@ -571,7 +571,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
               {/* ── DOW headers ── */}
               <div className="grid grid-cols-7 mb-0.5">
                 {DOW.map((d,i) => (
-                  <span key={i} className="text-center text-[9px] tracking-[0.06em] uppercase text-ink-faint py-0.5">{d}</span>
+                  <span key={i} className="text-center text-[9px] tracking-eyebrow uppercase text-ink-faint py-0.5">{d}</span>
                 ))}
               </div>
 
@@ -617,7 +617,7 @@ export function DatePickerField(props: DatePickerFieldProps) {
                         aria-pressed={isHighlighted}
                         className={cn(
                           "aspect-square w-full flex items-center justify-center z-10 relative",
-                          "text-[11px] font-medium tabular-nums rounded-full transition-colors duration-75",
+                          "text-tiny font-medium tabular-nums rounded-full transition-colors duration-75",
                           !isHighlighted && !isDisabledD && "hover:bg-surface-soft",
                           !isCurrentMonth && "text-ink-faint",
                           isToday && !isHighlighted && "border border-ink-soft",
@@ -635,10 +635,10 @@ export function DatePickerField(props: DatePickerFieldProps) {
               {/* ── Footer ── */}
               <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border">
                 <button type="button" onClick={clearAll}
-                  className="text-[11px] text-[#9a3015] hover:underline transition-colors">
+                  className="text-tiny text-danger-fg hover:underline transition-colors">
                   Clear
                 </button>
-                <span className="text-[11px] text-ink-soft italic font-serif">
+                <span className="text-tiny text-ink-soft italic font-serif">
                   {isRange
                     ? rangePending
                       ? "Pick end date"

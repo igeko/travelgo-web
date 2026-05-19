@@ -80,9 +80,9 @@ export function TimelineBlock({
           style={{ left: 0, width: SPINE_LEFT - 10 }}
         >
           {block.time ? (
-            <span className="text-[11px] font-mono text-ink-soft tabular-nums">{block.time}</span>
+            <span className="text-tiny font-mono text-ink-soft tabular-nums">{block.time}</span>
           ) : (
-            <span className="text-[11px] text-ink-faint opacity-30">—</span>
+            <span className="text-tiny text-ink-faint opacity-30">—</span>
           )}
         </div>
 
@@ -98,7 +98,7 @@ export function TimelineBlock({
         {/* Card */}
         <div
           className={cn(
-            "flex-1 min-w-0 rounded-[var(--radius-md)] px-3 py-2.5 border transition-all duration-150",
+            "flex-1 min-w-0 rounded-md px-3 py-2.5 border transition-all duration-150",
             isFuzzy
               ? "border-dashed border-zinc-300 bg-zinc-50/70"
               : "border-border bg-white",
@@ -109,7 +109,7 @@ export function TimelineBlock({
           <div className="flex items-start gap-2 flex-wrap">
             <span
               className={cn(
-                "shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-[3px] rounded-[5px] border mt-[1px]",
+                "shrink-0 inline-flex items-center gap-1 text-micro font-semibold px-1.5 py-[3px] rounded-[5px] border mt-[1px]",
                 TYPE_BG[block.type ?? "place"] ?? TYPE_BG.place
               )}
             >
@@ -122,7 +122,7 @@ export function TimelineBlock({
               className={cn(
                 "flex-1 min-w-0 text-left leading-snug transition-colors",
                 isFuzzy
-                  ? "text-[11px] font-semibold italic uppercase tracking-[0.06em] text-ink-soft"
+                  ? "text-tiny font-semibold italic uppercase tracking-eyebrow text-ink-soft"
                   : "text-[14px] font-semibold text-ink hover:text-orange"
               )}
               onClick={() => {
@@ -138,7 +138,7 @@ export function TimelineBlock({
             {status && (
               <span
                 className={cn(
-                  "shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-[3px] rounded-full mt-[1px]",
+                  "shrink-0 inline-flex items-center gap-1 text-micro font-semibold px-2 py-[3px] rounded-full mt-[1px]",
                   STATUS_STYLE[status]
                 )}
               >
@@ -154,13 +154,13 @@ export function TimelineBlock({
           {block.location && (
             <div className="flex items-center gap-1 mt-1.5">
               <IconMapPin size={11} className="text-ink-faint shrink-0" />
-              <span className="text-[11px] text-ink-soft truncate">{block.location}</span>
+              <span className="text-tiny text-ink-soft truncate">{block.location}</span>
             </div>
           )}
 
           {/* Instance note */}
           {block.instance_note && (
-            <p className="mt-1.5 text-[11px] text-ink-faint italic">{block.instance_note}</p>
+            <p className="mt-1.5 text-tiny text-ink-faint italic">{block.instance_note}</p>
           )}
         </div>
 

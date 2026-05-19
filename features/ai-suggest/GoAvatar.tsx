@@ -25,7 +25,7 @@ export function GoAvatar({
   className?: string;
 }) {
   const dims =
-    size === "xs" ? "w-6 h-6 text-[12px]" :
+    size === "xs" ? "w-6 h-6 text-mini" :
     size === "sm" ? "w-7 h-7 text-[14px]" :
     size === "md" ? "w-8 h-8 text-[16px]" :
                    "w-10 h-10 text-[20px]";

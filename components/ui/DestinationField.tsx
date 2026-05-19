@@ -226,11 +226,11 @@ export function DestinationField(props: DestinationFieldProps) {
                 <IconMapPin />
               </span>
               <span className="flex flex-col min-w-0">
-                <span className="text-[13px] font-medium text-ink leading-snug truncate">
+                <span className="text-meta font-medium text-ink leading-snug truncate">
                   {s.mainText}
                 </span>
                 {s.secondaryText && (
-                  <span className="text-[11px] text-ink-soft leading-snug truncate">
+                  <span className="text-tiny text-ink-soft leading-snug truncate">
                     {s.secondaryText}
                   </span>
                 )}
@@ -257,7 +257,7 @@ function Chip({
   disabled?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 bg-ink text-white rounded-pill pl-2.5 pr-1.5 py-[3px] text-[12px] font-medium leading-none shrink-0">
+    <span className="inline-flex items-center gap-1 bg-ink text-white rounded-pill pl-2.5 pr-1.5 py-[3px] text-mini font-medium leading-none shrink-0">
       <span className="truncate max-w-[160px]">{label}</span>
       <button
         type="button"

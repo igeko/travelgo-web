@@ -23,6 +23,8 @@ import {
   IconPlayerStop, IconCircleCheck, IconAlertCircle,
   IconLoader2, IconDatabase, IconRefresh, IconTrash,
 } from "@/components/ui/icons";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { cn } from "@/lib/cn";
 import { OSM_PRESETS } from "@/lib/overpass";
 import { REGION_PRESETS, type RegionPreset } from "@/lib/region-presets";
 
@@ -82,7 +84,10 @@ function StatusBadge({ status }: { status: ImportJob['status'] }) {
   };
   const { label, cls } = map[status] ?? map.pending;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-medium ${cls}`}>
+    <span className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded border text-tiny font-medium",
+      cls,
+    )}>
       {status === 'running' && <IconLoader2 size={10} className="animate-spin" />}
       {label}
     </span>
@@ -364,12 +369,12 @@ export default function CatalogPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-[20px] font-semibold text-ink">Catalog Import</h1>
-              <p className="text-[13px] text-ink-soft mt-0.5">
+              <p className="text-meta text-ink-soft mt-0.5">
                 © OpenStreetMap contributors (ODbL)
               </p>
             </div>
             <button onClick={loadJobs}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-ink-soft hover:text-ink cursor-pointer">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-mini text-ink-soft hover:text-ink cursor-pointer">
               <IconRefresh size={13}/> Aggiorna
             </button>
           </div>
@@ -380,21 +385,21 @@ export default function CatalogPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      overpassStatus.best.status === 'ready' ? 'bg-emerald-500' :
-                      overpassStatus.best.status === 'busy' ? 'bg-amber-500' :
-                      'bg-red-500'
-                    }`}
+                    className={cn(
+                      "w-2.5 h-2.5 rounded-full",
+                      overpassStatus.best.status === 'ready' && 'bg-emerald-500',
+                      overpassStatus.best.status === 'busy' && 'bg-amber-500',
+                      overpassStatus.best.status === 'error' && 'bg-red-500',
+                    )}
                   />
-                  <span className="text-[13px] font-medium text-ink">Overpass API Status</span>
+                  <span className="text-meta font-medium text-ink">Overpass API Status</span>
                 </div>
-                <span className={`text-[11px] px-2 py-1 rounded-lg ${
-                  overpassStatus.best.status === 'ready'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : overpassStatus.best.status === 'busy'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                } border`}>
+                <span className={cn(
+                  "text-tiny px-2 py-1 rounded-lg border",
+                  overpassStatus.best.status === 'ready' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                  overpassStatus.best.status === 'busy' && 'bg-amber-50 text-amber-700 border-amber-200',
+                  overpassStatus.best.status === 'error' && 'bg-red-50 text-red-700 border-red-200',
+                )}>
                   {overpassStatus.best.status === 'ready' ? '✓ Pronto' :
                    overpassStatus.best.status === 'busy' ? '⏳ Occupato' :
                    '✕ Errore'}
@@ -404,29 +409,32 @@ export default function CatalogPage() {
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-bg rounded-lg p-2">
                   <p className="text-[20px] font-semibold text-ink">{overpassStatus.best.slots}</p>
-                  <p className="text-[10px] text-ink-faint mt-0.5">Slot disponibili</p>
+                  <p className="text-micro text-ink-faint mt-0.5">Slot disponibili</p>
                 </div>
                 <div className="bg-bg rounded-lg p-2">
-                  <p className="text-[11px] text-ink-soft font-mono break-all">
+                  <p className="text-tiny text-ink-soft font-mono break-all">
                     {overpassStatus.best.endpoint.split('/').slice(-3).join('/')}
                   </p>
-                  <p className="text-[10px] text-ink-faint mt-0.5">Endpoint attivo</p>
+                  <p className="text-micro text-ink-faint mt-0.5">Endpoint attivo</p>
                 </div>
                 <div className="bg-bg rounded-lg p-2">
-                  <p className="text-[11px] text-ink font-mono">
+                  <p className="text-tiny text-ink font-mono">
                     {new Date(overpassStatus.timestamp).toLocaleTimeString('it-IT')}
                   </p>
-                  <p className="text-[10px] text-ink-faint mt-0.5">Aggiornato</p>
+                  <p className="text-micro text-ink-faint mt-0.5">Aggiornato</p>
                 </div>
               </div>
 
               <div className="flex gap-1 flex-wrap">
                 {overpassStatus.all.map((ep, i) => (
-                  <span key={i} className={`text-[10px] px-2 py-1 rounded-lg border ${
-                    ep.slots > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    ep.slots === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    'bg-red-50 text-red-700 border-red-200'
-                  }`}>
+                  <span key={i} className={cn(
+                    "text-micro px-2 py-1 rounded-lg border",
+                    ep.slots > 0
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : ep.slots === 0
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-red-50 text-red-700 border-red-200',
+                  )}>
                     {ep.endpoint.split('/')[2]}: {ep.slots >= 0 ? ep.slots : '✕'}
                   </span>
                 ))}
@@ -442,19 +450,20 @@ export default function CatalogPage() {
 
             {/* Preset Regions */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
-              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
+              <h2 className="text-meta font-semibold text-ink flex items-center gap-2">
                 <IconWorld size={14} className="text-ink-soft"/> Template Rapidi
               </h2>
               <div className="space-y-2">
                 {REGION_PRESETS.slice(0, 5).map((preset) => (
                   <button key={preset.id} onClick={() => applyPreset(preset)}
-                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors text-[12px] ${
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg border transition-colors text-mini",
                       selectedPresetId === preset.id
                         ? "border-ink bg-ink/5 text-ink font-medium"
-                        : "border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                    }`}>
+                        : "border-border text-ink-soft hover:border-border-strong hover:text-ink",
+                    )}>
                     <div className="font-medium">{preset.name}</div>
-                    <div className="text-[11px] text-ink-faint mt-0.5">{preset.description}</div>
+                    <div className="text-tiny text-ink-faint mt-0.5">{preset.description}</div>
                   </button>
                 ))}
               </div>
@@ -462,7 +471,7 @@ export default function CatalogPage() {
 
             {/* Destinazione */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
-              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
+              <h2 className="text-meta font-semibold text-ink flex items-center gap-2">
                 <IconWorld size={14} className="text-ink-soft"/> Destinazione
               </h2>
               <input type="text" value={location} onChange={(e) => setLocation(e.target.value)}
@@ -472,36 +481,36 @@ export default function CatalogPage() {
 
             {/* Categorie */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
-              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
+              <h2 className="text-meta font-semibold text-ink flex items-center gap-2">
                 <IconCategory size={14} className="text-ink-soft"/> Categorie OSM
               </h2>
               <div className="flex flex-wrap gap-2">
                 {OSM_PRESETS.map(({ id, label }) => (
-                  <button key={id} type="button" onClick={() => togglePreset(id)}
-                    className={`px-3 py-1.5 rounded-pill text-[12px] border transition-colors cursor-pointer ${
-                      selectedPresets.includes(id)
-                        ? "bg-ink text-white border-ink"
-                        : "border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                    }`}>
+                  <FilterPill
+                    key={id}
+                    size="md"
+                    active={selectedPresets.includes(id)}
+                    onClick={() => togglePreset(id)}
+                  >
                     {label}
-                  </button>
+                  </FilterPill>
                 ))}
               </div>
             </div>
 
             {/* Opzioni */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
-              <h2 className="text-[13px] font-semibold text-ink">Opzioni</h2>
+              <h2 className="text-meta font-semibold text-ink">Opzioni</h2>
 
               {/* Batch size */}
               <div>
-                <label className="block text-[11px] text-ink-soft mb-2">
+                <label className="block text-tiny text-ink-soft mb-2">
                   Elementi per batch: <span className="font-medium text-ink">{batchSize.toLocaleString()}</span>
                 </label>
                 <input type="range" min={100} max={2000} step={100} value={batchSize}
                   onChange={(e) => setBatchSize(parseInt(e.target.value))}
                   className="w-full accent-ink"/>
-                <div className="flex justify-between text-[10px] text-ink-faint mt-0.5">
+                <div className="flex justify-between text-micro text-ink-faint mt-0.5">
                   <span>100</span><span>2.000</span>
                 </div>
               </div>
@@ -511,8 +520,8 @@ export default function CatalogPage() {
                 <input type="checkbox" checked={notableOnly}
                   onChange={(e) => setNotableOnly(e.target.checked)} className="mt-0.5 accent-ink"/>
                 <div>
-                  <span className="text-[12px] text-ink block">Solo posti notevoli</span>
-                  <span className="text-[11px] text-ink-faint">Solo elementi con tag Wikipedia o Wikidata</span>
+                  <span className="text-mini text-ink block">Solo posti notevoli</span>
+                  <span className="text-tiny text-ink-faint">Solo elementi con tag Wikipedia o Wikidata</span>
                 </div>
               </label>
 
@@ -521,8 +530,8 @@ export default function CatalogPage() {
                 <input type="checkbox" checked={enrichWiki}
                   onChange={(e) => setEnrichWiki(e.target.checked)} className="mt-0.5 accent-ink"/>
                 <div>
-                  <span className="text-[12px] text-ink block">Arricchisci da Wikipedia + Wikidata</span>
-                  <span className="text-[11px] text-ink-faint">Descrizione e immagine (più lento)</span>
+                  <span className="text-mini text-ink block">Arricchisci da Wikipedia + Wikidata</span>
+                  <span className="text-tiny text-ink-faint">Descrizione e immagine (più lento)</span>
                 </div>
               </label>
 
@@ -531,15 +540,15 @@ export default function CatalogPage() {
                 <input type="checkbox" checked={autoContinue}
                   onChange={(e) => setAutoContinue(e.target.checked)} className="mt-0.5 accent-ink"/>
                 <div>
-                  <span className="text-[12px] text-ink block">Continua automaticamente</span>
-                  <span className="text-[11px] text-ink-faint">Passa al batch successivo senza fermarsi</span>
+                  <span className="text-mini text-ink block">Continua automaticamente</span>
+                  <span className="text-tiny text-ink-faint">Passa al batch successivo senza fermarsi</span>
                 </div>
               </label>
             </div>
 
             {/* CTA */}
             {createError && (
-              <p className="text-[12px] text-red-600 px-1">{createError}</p>
+              <p className="text-mini text-red-600 px-1">{createError}</p>
             )}
             <button type="button" onClick={handleCreate}
               disabled={creating || !location.trim() || selectedPresets.length === 0}
@@ -550,11 +559,11 @@ export default function CatalogPage() {
             </button>
             {creating && (
               <div className="space-y-1.5 -mt-1">
-                <p className="text-[11px] text-ink-faint text-center">
+                <p className="text-tiny text-ink-faint text-center">
                   {createMsg || 'Interrogo Overpass per il conteggio…'}
                 </p>
                 <button type="button" onClick={handleCancelCreate}
-                  className="w-full text-[11px] text-ink-soft hover:text-red-600 py-1 cursor-pointer transition-colors">
+                  className="w-full text-tiny text-ink-soft hover:text-red-600 py-1 cursor-pointer transition-colors">
                   Annulla
                 </button>
               </div>
@@ -568,7 +577,7 @@ export default function CatalogPage() {
               <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center">
                 <IconDatabase size={28} className="text-ink-faint mx-auto mb-3"/>
                 <p className="text-[14px] text-ink-soft">Nessun task creato.</p>
-                <p className="text-[12px] text-ink-faint mt-1">
+                <p className="text-mini text-ink-faint mt-1">
                   Configura i filtri e clicca <strong>Crea Task</strong> per iniziare.
                 </p>
               </div>
@@ -585,9 +594,10 @@ export default function CatalogPage() {
 
                 return (
                   <div key={job.id}
-                    className={`rounded-xl border bg-surface p-5 space-y-3 transition-colors ${
-                      isActive ? 'border-ink/20' : 'border-border'
-                    }`}>
+                    className={cn(
+                      "rounded-xl border bg-surface p-5 space-y-3 transition-colors",
+                      isActive ? 'border-ink/20' : 'border-border',
+                    )}>
 
                     {/* Header card */}
                     <div className="flex items-start justify-between gap-3">
@@ -598,7 +608,7 @@ export default function CatalogPage() {
                           </span>
                           <StatusBadge status={isActive ? 'running' : job.status}/>
                         </div>
-                        <p className="text-[11px] text-ink-faint mt-0.5 truncate">{presetLabels}</p>
+                        <p className="text-tiny text-ink-faint mt-0.5 truncate">{presetLabels}</p>
                       </div>
                       <button onClick={() => handleDelete(job.id)}
                         disabled={isActive}
@@ -616,7 +626,7 @@ export default function CatalogPage() {
                       ].map(({ label, value }) => (
                         <div key={label} className="rounded-lg bg-bg border border-border px-2 py-1.5">
                           <p className="text-[14px] font-semibold text-ink">{value}</p>
-                          <p className="text-[10px] text-ink-faint">{label}</p>
+                          <p className="text-micro text-ink-faint">{label}</p>
                         </div>
                       ))}
                     </div>
@@ -625,7 +635,7 @@ export default function CatalogPage() {
                     {job.total_found > 0 && (
                       <div className="space-y-1">
                         <ProgressBar value={isActive ? (batchProgress?.offset ?? job.import_offset) : job.import_offset} max={job.total_found}/>
-                        <div className="flex justify-between text-[10px] text-ink-faint">
+                        <div className="flex justify-between text-micro text-ink-faint">
                           <span>
                             {isActive
                               ? batchProgress?.message
@@ -638,11 +648,11 @@ export default function CatalogPage() {
 
                     {/* Errore */}
                     {!isActive && job.status === 'error' && batchError && job.id === activeJobId && (
-                      <p className="text-[11px] text-red-600">{batchError}</p>
+                      <p className="text-tiny text-red-600">{batchError}</p>
                     )}
 
                     {/* Opzioni batch */}
-                    <div className="flex items-center gap-3 text-[11px] text-ink-faint">
+                    <div className="flex items-center gap-3 text-tiny text-ink-faint">
                       <span>Batch: {job.batch_size}</span>
                       {job.auto_continue && <span>· Auto-continue</span>}
                       {job.filters.notableOnly && <span>· Solo notevoli</span>}
@@ -653,18 +663,18 @@ export default function CatalogPage() {
                     <div className="flex gap-2">
                       {isActive ? (
                         <button onClick={handleStop}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-[12px] font-medium hover:bg-red-100 cursor-pointer transition-colors">
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-mini font-medium hover:bg-red-100 cursor-pointer transition-colors">
                           <IconPlayerStop size={13}/> Stop
                         </button>
                       ) : (job.status === 'pending' || job.status === 'paused' || job.status === 'error') ? (
                         <button onClick={() => startBatch(job)}
                           disabled={!!activeJobId}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink text-white text-[12px] font-medium hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-opacity">
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink text-white text-mini font-medium hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-opacity">
                           <IconPlayerPlay size={13}/>
                           {job.status === 'pending' ? 'Avvia Import' : 'Riprendi'}
                         </button>
                       ) : job.status === 'done' ? (
-                        <div className="flex items-center gap-1.5 text-[12px] text-emerald-600">
+                        <div className="flex items-center gap-1.5 text-mini text-emerald-600">
                           <IconCircleCheck size={14}/> Completato
                         </div>
                       ) : null}

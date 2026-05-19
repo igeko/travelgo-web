@@ -97,7 +97,7 @@ export function ActivityTimeline({
       <div className="relative">
         {blocks.length === 0 && (
           <div
-            className="py-10 text-center text-[13px] text-ink-faint"
+            className="py-10 text-center text-meta text-ink-faint"
             style={{ paddingLeft: SPINE_LEFT + 16 }}
           >
             {t("ActivityTimeline.noActivities")}

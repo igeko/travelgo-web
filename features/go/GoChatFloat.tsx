@@ -1077,7 +1077,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
               className={cn(
                 "inline-flex items-center justify-center rounded-full border-0 shrink-0 transition-colors",
                 input.trim() && !loading
-                  ? "bg-ink hover:bg-[#1a3d52] text-white cursor-pointer"
+                  ? "bg-ink hover:bg-ink-hover text-white cursor-pointer"
                   : "bg-surface-soft text-ink-faint cursor-default",
               )}
               style={{ width: 28, height: 28, marginBottom: 2 }}

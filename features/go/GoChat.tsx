@@ -128,7 +128,7 @@ function GoTrigger({ onClick, className }: { onClick: () => void; className?: st
       />
       <span className="relative z-[2] shrink-0"><GoAvatar size="lg" pulse /></span>
       <div className="relative z-[2] flex-1 min-w-0">
-        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">Hi from Go</div>
+        <div className="text-micro font-medium uppercase tracking-[0.08em] text-orange leading-none">Hi from Go</div>
         <div className="text-[14px] font-medium text-ink mt-0.5 overflow-hidden">
           Want to find{" "}
           <span aria-hidden="true" className="inline-block h-[20px] overflow-hidden align-[-4px] min-w-[145px]">
@@ -140,11 +140,11 @@ function GoTrigger({ onClick, className }: { onClick: () => void; className?: st
             </ul>
           </span>
         </div>
-        <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">
+        <div className="text-tiny font-serif italic text-ink-soft mt-0.5">
           Two words from you, a handful of ideas from me.
         </div>
       </div>
-      <span className="relative z-[2] inline-flex items-center gap-1.5 bg-ink hover:bg-[#1a3d52] text-white rounded-pill text-[12px] font-medium shrink-0 pl-3 pr-4 py-2 transition-colors">
+      <span className="relative z-[2] inline-flex items-center gap-1.5 bg-ink hover:bg-ink-hover text-white rounded-pill text-mini font-medium shrink-0 pl-3 pr-4 py-2 transition-colors">
         <IconSparkles size={13} className="text-orange" />
         Ask me
       </span>
@@ -295,12 +295,12 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
       >
         <GoAvatar size="md" pulse />
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">
+          <div className="text-micro font-medium uppercase tracking-[0.08em] text-orange leading-none">
             {t("title")}
           </div>
         </div>
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-faint">
-          <span className="w-[7px] h-[7px] rounded-full bg-[#3d6e0e]" />
+        <span className="flex items-center gap-1.5 text-tiny text-ink-faint">
+          <span className="w-[7px] h-[7px] rounded-full bg-success-fg" />
           online
         </span>
         <button
@@ -355,7 +355,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
               onChange={(e) => setInput(e.target.value)}
               placeholder={t("placeholder")}
               disabled={loading}
-              className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] text-ink placeholder:text-ink-faint py-1.5 disabled:opacity-50"
+              className="flex-1 min-w-0 bg-transparent border-0 outline-none text-meta text-ink placeholder:text-ink-faint py-1.5 disabled:opacity-50"
               style={{ fontFamily: "inherit" }}
             />
             <button
@@ -365,7 +365,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
               className={cn(
                 "w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0 transition-colors border-0",
                 input.trim() && !loading
-                  ? "bg-ink hover:bg-[#1a3d52] text-white cursor-pointer"
+                  ? "bg-ink hover:bg-ink-hover text-white cursor-pointer"
                   : "bg-surface-soft text-ink-faint cursor-default",
               )}
             >
@@ -405,7 +405,7 @@ function GoBubble({ children, streaming }: { children: React.ReactNode; streamin
       }}
     >
       <span
-        className="block text-[10px] font-medium uppercase tracking-[0.08em] text-orange not-italic"
+        className="block text-micro font-medium uppercase tracking-[0.08em] text-orange not-italic"
         style={{ fontFamily: "var(--font-sans)", marginBottom: "2px" }}
       >
         Go
@@ -423,7 +423,7 @@ function UserRow({ children }: { children: React.ReactNode }) {
     <div className="flex justify-end gap-2.5 items-start" style={{ marginBottom: "14px" }}>
       {children}
       <span
-        className="rounded-full bg-surface-soft text-ink-soft inline-flex items-center justify-center text-[12px] font-medium shrink-0"
+        className="rounded-full bg-surface-soft text-ink-soft inline-flex items-center justify-center text-mini font-medium shrink-0"
         style={{ width: "36px", height: "36px" }}
       >
         tu

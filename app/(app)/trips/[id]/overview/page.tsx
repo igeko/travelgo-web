@@ -59,7 +59,7 @@ export default async function TripOverviewPage({
         tripId={id}
       />
       <main className="flex-1 max-w-[1280px] mx-auto w-full px-5 py-10">
-        <p className="text-[13px] text-ink-faint">Pagina in costruzione.</p>
+        <p className="text-meta text-ink-faint">Pagina in costruzione.</p>
       </main>
     </div>
   );

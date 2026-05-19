@@ -330,7 +330,7 @@ export function ActivityEditForm({
 
       {/* ── Header (full width) ── */}
       <div className="flex items-center justify-between pb-3 border-b border-border">
-        <span className="text-[10px] uppercase tracking-[0.08em] font-medium text-ink-soft">
+        <span className="text-micro uppercase tracking-[0.08em] font-medium text-ink-soft">
           {isNew ? t("titleNew") : t("titleEdit")}
         </span>
         <button
@@ -404,7 +404,7 @@ export function ActivityEditForm({
           {/* Enrichment meta — compact strip (no photo, shown in left col) */}
           {(enrichLoading || showEnrichment) && (
             <div className={cn(
-              "rounded-lg border text-[11px] transition-all duration-200",
+              "rounded-lg border text-tiny transition-all duration-200",
               showEnrichment ? "border-border bg-surface-soft" : "border-border/50 bg-surface-soft/50",
             )}>
               {enrichLoading && !showEnrichment ? (
@@ -417,7 +417,7 @@ export function ActivityEditForm({
                 <div className="p-2.5 flex gap-2.5">
                   {/* Google photo thumbnail */}
                   {enrichedPhotoUrl && (
-                    <div className="shrink-0 w-[52px] h-[52px] rounded-[8px] overflow-hidden bg-surface-soft">
+                    <div className="shrink-0 w-[52px] h-[52px] rounded-sm overflow-hidden bg-surface-soft">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={enrichedPhotoUrl}
@@ -463,7 +463,7 @@ export function ActivityEditForm({
                       </span>
                     )}
                     {enriched.openNow !== undefined && (
-                      <span className={cn("font-medium", enriched.openNow ? "text-[#4a9e5c]" : "text-[#9a3015]")}>
+                      <span className={cn("font-medium", enriched.openNow ? "text-[#4a9e5c]" : "text-danger-fg")}>
                         {enriched.openNow ? t("openNow") : t("closedNow")}
                       </span>
                     )}
@@ -539,7 +539,7 @@ export function ActivityEditForm({
                 <button
                   type="button"
                   onClick={() => onAskGo(title.trim(), effectiveEditId)}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-soft hover:text-ink transition-colors"
+                  className="inline-flex items-center gap-1.5 text-tiny font-medium text-ink-soft hover:text-ink transition-colors"
                 >
                   <IconMessage className="w-3.5 h-3.5 text-orange" />
                   {t("askGo")}
@@ -550,7 +550,7 @@ export function ActivityEditForm({
                 onClick={handleGoGetInfo}
                 disabled={descLoading}
                 className={cn(
-                  "inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-soft hover:text-ink transition-colors",
+                  "inline-flex items-center gap-1.5 text-tiny font-medium text-ink-soft hover:text-ink transition-colors",
                   descLoading && "opacity-60 cursor-wait",
                 )}
               >
@@ -584,11 +584,11 @@ export function ActivityEditForm({
                     isActive ? "bg-ink text-white" : "text-ink hover:bg-surface-soft",
                   )}
                 >
-                  <div className="text-[10px] font-medium uppercase tracking-[0.08em]">{p.name}</div>
+                  <div className="text-micro font-medium uppercase tracking-[0.08em]">{p.name}</div>
                   {isActive && activeTime ? (
-                    <div className="text-[13px] font-medium tabular-nums tracking-[-0.01em] leading-none mt-px">{activeTime}</div>
+                    <div className="text-meta font-medium tabular-nums tracking-[-0.01em] leading-none mt-px">{activeTime}</div>
                   ) : (
-                    <div className={cn("text-[9px] tabular-nums tracking-[0.04em] mt-px", isActive ? "text-white/55" : "text-ink-faint")}>{p.range}</div>
+                    <div className={cn("text-[9px] tabular-nums tracking-meta mt-px", isActive ? "text-white/55" : "text-ink-faint")}>{p.range}</div>
                   )}
                 </button>
               );
@@ -599,7 +599,7 @@ export function ActivityEditForm({
             <div className="bg-surface border border-border rounded-[18px] p-3.5 flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
+                  <div className="text-micro uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("hour")}</div>
                   <div className="grid grid-cols-4 gap-1">
                     {currentPeriodHours.map((h) => (
                       <button key={h} type="button" onClick={() => setHour(h)}
@@ -611,7 +611,7 @@ export function ActivityEditForm({
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
+                  <div className="text-micro uppercase tracking-[0.05em] text-ink-faint text-center mb-2 font-medium">{t("minutes")}</div>
                   <div className="grid grid-cols-4 gap-1">
                     {MINUTES.map((m) => (
                       <button key={m} type="button"
@@ -627,7 +627,7 @@ export function ActivityEditForm({
               {hasTime && (
                 <div className="flex justify-end">
                   <button type="button" onClick={handleClearTime}
-                    className="text-[11px] text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-[#9a3015] hover:decoration-[#9a3015] transition-colors">
+                    className="text-tiny text-ink-soft underline underline-offset-2 decoration-ink/20 hover:text-danger-fg hover:decoration-danger-fg transition-colors">
                     {t("clearTime")}
                   </button>
                 </div>
@@ -646,7 +646,7 @@ export function ActivityEditForm({
               <AddressField value={place} onChange={setPlace} label={t("addressLabel")} placeholder={t("addressPlaceholder")} showMapButton />
             </div>
             <button type="button" onClick={() => { setPlace(null); setShowAddress(false); }} aria-label={t("removeAddress")}
-              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-danger-bg hover:text-danger-fg transition-colors">
               <IconX className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -662,7 +662,7 @@ export function ActivityEditForm({
               <BudgetInput amount={budgetAmount} onAmountChange={setBudgetAmount} currency={budgetCurrency} onCurrencyChange={setBudgetCurrency} currencies={currencies} label={t("budgetLabel")} />
             </div>
             <button type="button" onClick={() => { setBudgetAmount(undefined); setShowBudget(false); }} aria-label={t("removeBudget")}
-              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-[#fcebeb] hover:text-[#9a3015] transition-colors">
+              className="shrink-0 w-[26px] h-[26px] rounded-full inline-flex items-center justify-center text-ink-soft hover:bg-danger-bg hover:text-danger-fg transition-colors">
               <IconX className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -676,13 +676,13 @@ export function ActivityEditForm({
           <div className="flex flex-wrap gap-3.5 items-center py-1 border-t border-dashed border-border">
             {!showAddress && (
               <button type="button" onClick={() => setShowAddress(true)}
-                className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                className="text-mini text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
                 {t("addAddress")}
               </button>
             )}
             {!showBudget && (
               <button type="button" onClick={() => setShowBudget(true)}
-                className="text-[12px] text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
+                className="text-mini text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans">
                 {t("addBudget")}
               </button>
             )}
@@ -695,7 +695,7 @@ export function ActivityEditForm({
         {!isNew && onDelete ? (
           confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[#9a3015]">{t("areYouSure")}</span>
+              <span className="text-mini text-danger-fg">{t("areYouSure")}</span>
               <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
                 <IconTrash />
                 {t("delete")}
@@ -714,7 +714,7 @@ export function ActivityEditForm({
           <span />
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-ink-faint">{t("pressEnterToSave")}</span>
+          <span className="text-micro text-ink-faint">{t("pressEnterToSave")}</span>
           <Button variant="text-only" iconOnly={false} onClick={onCancel}>{t("cancel")}</Button>
           <Button type="submit" variant="solid" tone="neutral" iconOnly={false}>
             {isNew ? t("createActivity") : t("saveActivity")}

@@ -3,6 +3,7 @@
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { cn } from "@/lib/cn";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, LOCALE_COOKIE } from "@/i18n/locales";
 
 type Props = {
@@ -30,11 +31,12 @@ export function LocaleSwitcher({ variant = "chip" }: Props) {
             key={l}
             type="button"
             onClick={() => switchLocale(l)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] border cursor-pointer transition-colors font-sans ${
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-meta border cursor-pointer transition-colors font-sans",
               l === locale
                 ? "border-ink bg-ink text-white font-medium"
-                : "border-border bg-transparent text-ink-soft hover:border-border-strong hover:text-ink"
-            }`}
+                : "border-border bg-transparent text-ink-soft hover:border-border-strong hover:text-ink",
+            )}
           >
             <span>{LOCALE_LABELS[l].flag}</span>
             {LOCALE_LABELS[l].name}
@@ -52,7 +54,7 @@ export function LocaleSwitcher({ variant = "chip" }: Props) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Change language"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] font-medium text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors border-0 bg-transparent cursor-pointer"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-mini font-medium text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors border-0 bg-transparent cursor-pointer"
       >
         {/* Globe icon */}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5 shrink-0">
@@ -74,11 +76,12 @@ export function LocaleSwitcher({ variant = "chip" }: Props) {
                 key={l}
                 type="button"
                 onClick={() => switchLocale(l)}
-                className={`flex items-center gap-2.5 w-full px-3.5 py-2.5 text-[13px] text-left cursor-pointer border-0 transition-colors font-sans ${
+                className={cn(
+                  "flex items-center gap-2.5 w-full px-3.5 py-2.5 text-meta text-left cursor-pointer border-0 transition-colors font-sans",
                   l === locale
                     ? "text-ink font-medium bg-surface-soft"
-                    : "text-ink-soft hover:bg-surface-soft hover:text-ink bg-transparent"
-                }`}
+                    : "text-ink-soft hover:bg-surface-soft hover:text-ink bg-transparent",
+                )}
               >
                 <span className="text-[16px]">{LOCALE_LABELS[l].flag}</span>
                 {LOCALE_LABELS[l].name}

@@ -61,7 +61,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
           <IconMessageReport size={16} className="text-ink-soft shrink-0" />
-          <span className="text-[13px] font-medium text-ink flex-1">{t("title")}</span>
+          <span className="text-meta font-medium text-ink flex-1">{t("title")}</span>
           <button
             type="button"
             onClick={onClose}
@@ -77,7 +77,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
               <IconCheck size={20} className="text-white" />
             </div>
             <p className="text-[14px] font-medium text-ink mt-1">{t("thankYou")}</p>
-            <p className="text-[12px] text-ink-soft">{t("saved")}</p>
+            <p className="text-mini text-ink-soft">{t("saved")}</p>
           </div>
         ) : (
           <div className="px-5 py-4 flex flex-col gap-4">
@@ -90,7 +90,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
                   type="button"
                   onClick={() => setType(item.id)}
                   className={cn(
-                    "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border text-[11px] font-medium transition-colors cursor-pointer",
+                    "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border text-tiny font-medium transition-colors cursor-pointer",
                     type === item.id
                       ? "border-ink bg-ink text-white"
                       : "border-border text-ink-soft hover:border-border-strong hover:text-ink",
@@ -110,7 +110,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
               placeholder={placeholder}
               className={cn(
                 "w-full resize-none rounded-xl bg-bg border border-border px-3.5 py-2.5",
-                "text-[13px] text-ink placeholder:text-ink-faint font-sans",
+                "text-meta text-ink placeholder:text-ink-faint font-sans",
                 "focus:outline-none focus:border-orange focus:shadow-[0_0_0_3px_rgba(244,123,58,0.10)]",
                 "transition-[border-color,box-shadow] duration-150",
               )}
@@ -118,7 +118,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
             />
 
             {/* Pagina auto-catturata */}
-            <div className="text-[11px] text-ink-faint">
+            <div className="text-tiny text-ink-faint">
               {t("page")} <span className="font-mono text-ink-soft">{pathname}</span>
             </div>
 
@@ -127,7 +127,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="text-[12px] text-ink-soft hover:text-ink underline decoration-ink/20 px-2 py-1.5 transition-colors"
+                className="text-mini text-ink-soft hover:text-ink underline decoration-ink/20 px-2 py-1.5 transition-colors"
               >
                 {t("cancel")}
               </button>
@@ -137,8 +137,8 @@ export function FeedbackModal({ tripId, onClose }: Props) {
                 disabled={!note.trim() || saving}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-4 py-2 rounded-pill",
-                  "text-[13px] font-medium text-white bg-ink",
-                  "hover:bg-[#1a3d52] transition-colors",
+                  "text-meta font-medium text-white bg-ink",
+                  "hover:bg-ink-hover transition-colors",
                   "disabled:opacity-40 disabled:pointer-events-none",
                 )}
               >

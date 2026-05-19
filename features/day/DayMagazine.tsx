@@ -89,7 +89,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
 
       {/* Stamp */}
       <div
-        className="absolute top-[18px] right-[22px] text-[11px] italic flex items-center gap-[5px]"
+        className="absolute top-[18px] right-[22px] text-tiny italic flex items-center gap-[5px]"
         style={{ color: "var(--color-ink-faint)" }}
       >
         <IconSparkles size={13} style={{ color: "var(--color-orange)" }} />
@@ -104,7 +104,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
           style={{ fontFamily: "var(--font-serif)", color: "var(--color-ink-soft)" }}
         >
           <span
-            className="inline-flex items-center gap-[3px] not-italic text-[11px] font-medium tracking-[0.04em] px-[7px] py-[1px] rounded-[var(--radius-pill)] mr-[8px] align-[3px]"
+            className="inline-flex items-center gap-[3px] not-italic text-tiny font-medium tracking-meta px-[7px] py-[1px] rounded-pill mr-[8px] align-[3px]"
             style={{ fontFamily: "var(--font-sans)", color: "var(--color-orange)", background: "rgba(244,123,58,0.10)" }}
           >
             <IconSparkles size={11} />
@@ -128,15 +128,15 @@ export function DayMagazine({ day, activities, enabled }: Props) {
             )}
           >
             <div
-              className="h-[200px] sm:h-[150px] rounded-[8px] bg-cover bg-center"
+              className="h-[200px] sm:h-[150px] rounded-sm bg-cover bg-center"
               style={{ backgroundImage: `url(${p.url})` }}
             />
             <figcaption
-              className="text-[11px] mt-[6px] flex items-center gap-[6px]"
+              className="text-tiny mt-[6px] flex items-center gap-[6px]"
               style={{ color: "var(--color-ink-faint)" }}
             >
               <span
-                className="w-[16px] h-[16px] rounded-full border-[0.5px] flex items-center justify-center text-[10px] font-medium shrink-0"
+                className="w-[16px] h-[16px] rounded-full border-[0.5px] flex items-center justify-center text-micro font-medium shrink-0"
                 style={{ background: "white", borderColor: "var(--color-border-strong)", color: "var(--color-ink)" }}
               >
                 {p.num}
@@ -175,7 +175,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
           "{narrative.pullQuote}"
           {pullQuoteAct && (
             <cite
-              className="block text-[11px] not-italic tracking-[0.06em] uppercase mt-[8px]"
+              className="block text-tiny not-italic tracking-eyebrow uppercase mt-[8px]"
               style={{ color: "var(--color-ink-faint)", fontFamily: "var(--font-sans)" }}
             >
               — {pullQuoteAct.title}
@@ -186,7 +186,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
 
       {/* Ornament */}
       <div
-        className="text-center text-[13px] tracking-[0.4em] my-[22px] clear-both select-none"
+        className="text-center text-meta tracking-[0.4em] my-[22px] clear-both select-none"
         style={{ color: "#c4baa3" }}
         aria-hidden
       >
@@ -198,7 +198,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
 
       {/* Footer */}
       <div
-        className="mt-[18px] flex justify-between items-center text-[11px]"
+        className="mt-[18px] flex justify-between items-center text-tiny"
         style={{ color: "var(--color-ink-faint)" }}
       >
         {narrative?.generatedAt && (
@@ -211,7 +211,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
         )}
         <button
           onClick={regenerate}
-          className="inline-flex items-center gap-[5px] font-medium cursor-pointer bg-transparent border-0 text-[11px] font-[inherit]"
+          className="inline-flex items-center gap-[5px] font-medium cursor-pointer bg-transparent border-0 text-tiny font-[inherit]"
           style={{ color: "var(--color-orange-deep)" }}
         >
           <IconRefresh size={12} />
@@ -233,7 +233,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
 function MagFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative overflow-hidden sm:rounded-[var(--radius-lg)] sm:border-[0.5px]"
+      className="relative overflow-hidden sm:rounded-lg sm:border-[0.5px]"
       style={{
         background:  "var(--color-surface)",
         borderColor: "var(--color-border)",
@@ -264,7 +264,7 @@ function ItineraryGrid({ acts, actNum }: { acts: Activity[]; actNum: Map<string,
   return (
     <div className="pt-[20px]" style={{ borderTop: "0.5px solid var(--color-border)" }}>
       <h3
-        className="text-[11px] tracking-[0.14em] uppercase font-medium mb-[14px]"
+        className="text-tiny tracking-[0.14em] uppercase font-medium mb-[14px]"
         style={{ color: "var(--color-ink-faint)" }}
       >
         Itinerario
@@ -273,11 +273,11 @@ function ItineraryGrid({ acts, actNum }: { acts: Activity[]; actNum: Map<string,
         {acts.map((a) => (
           <div
             key={a.id}
-            className="flex items-center gap-[10px] text-[13px]"
+            className="flex items-center gap-[10px] text-meta"
             style={{ color: "var(--color-ink)" }}
           >
             <span
-              className="w-[18px] h-[18px] rounded-full border-[0.5px] flex items-center justify-center text-[11px] font-medium shrink-0"
+              className="w-[18px] h-[18px] rounded-full border-[0.5px] flex items-center justify-center text-tiny font-medium shrink-0"
               style={{ background: "white", borderColor: "var(--color-border-strong)", color: "var(--color-ink)" }}
             >
               {actNum.get(a.id)}
@@ -286,7 +286,7 @@ function ItineraryGrid({ acts, actNum }: { acts: Activity[]; actNum: Map<string,
               {a.title}
             </span>
             {a.time && (
-              <span className="text-[11px] font-mono tabular-nums" style={{ color: "var(--color-ink-faint)" }}>
+              <span className="text-tiny font-mono tabular-nums" style={{ color: "var(--color-ink-faint)" }}>
                 {a.time}
               </span>
             )}
@@ -306,7 +306,7 @@ function LoadingShimmer() {
     <div className="px-4 py-5 sm:px-8 sm:py-7">
       <div className="mb-[22px]">
         <span
-          className="text-[10px] px-[9px] py-[3px] rounded-[var(--radius-pill)] tracking-[0.04em] uppercase font-medium inline-flex items-center gap-[4px]"
+          className="text-micro px-[9px] py-[3px] rounded-pill tracking-meta uppercase font-medium inline-flex items-center gap-[4px]"
           style={{ background: "rgba(244,123,58,0.10)", color: "var(--color-orange-deep)" }}
         >
           <IconSparkles size={11} className="animate-spin" style={{ animationDuration: "1.5s" }} />
@@ -348,14 +348,14 @@ function ErrorState({ onRetry, retryLabel }: { onRetry: () => void; retryLabel: 
   return (
     <div className="px-4 py-5 sm:px-8 sm:py-7">
       <div
-        className="flex items-center gap-[10px] px-[14px] py-[10px] rounded-[var(--radius-md)] text-[12px]"
+        className="flex items-center gap-[10px] px-[14px] py-[10px] rounded-md text-mini"
         style={{ background: "#fcebeb", color: "#791f1f" }}
       >
         <span className="text-[16px]">⚠</span>
         <span className="flex-1">Non è stato possibile generare il racconto.</span>
         <button
           onClick={onRetry}
-          className="font-medium underline cursor-pointer bg-transparent border-0 text-[12px] font-[inherit] ml-auto"
+          className="font-medium underline cursor-pointer bg-transparent border-0 text-mini font-[inherit] ml-auto"
           style={{ color: "#791f1f" }}
         >
           {retryLabel}
@@ -374,7 +374,7 @@ function EmptyState({ message }: { message: string }) {
       >
         📖
       </div>
-      <p className="text-[13px] leading-[1.55] max-w-[380px] mx-auto" style={{ color: "var(--color-ink-soft)" }}>
+      <p className="text-meta leading-[1.55] max-w-[380px] mx-auto" style={{ color: "var(--color-ink-soft)" }}>
         {message}
       </p>
     </div>

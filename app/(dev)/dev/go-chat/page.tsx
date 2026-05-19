@@ -283,7 +283,7 @@ export default function GoChatPage() {
                   />
                   <button
                     type="submit"
-                    className="px-3 py-2 rounded-lg bg-ink text-white text-[11px] font-medium hover:bg-[#1a3d52] transition-colors"
+                    className="px-3 py-2 rounded-lg bg-ink text-white text-[11px] font-medium hover:bg-ink-hover transition-colors"
                   >
                     Load
                   </button>
@@ -336,7 +336,7 @@ function GoChatFloatSandbox({ tripContext, onDebugCall }: { tripContext?: string
           "inline-flex items-center gap-2 px-4 py-2 rounded-pill text-[12px] font-medium border transition-colors",
           open
             ? "bg-surface text-ink-soft border-border cursor-default"
-            : "bg-ink text-white border-ink hover:bg-[#1a3d52] cursor-pointer",
+            : "bg-ink text-white border-ink hover:bg-ink-hover cursor-pointer",
         )}
       >
         {open ? "Go is open ↘" : "Open Go ↘"}

@@ -36,7 +36,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
   return (
     <div className="mt-1 mb-2 rounded-xl border border-border bg-white shadow-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[12px] font-semibold text-ink">{t("title")}</span>
+        <span className="text-mini font-semibold text-ink">{t("title")}</span>
         <button onClick={onClose} aria-label={tCommon("close")} className="text-ink-faint hover:text-ink transition-colors p-1">
           <IconX size={14} />
         </button>
@@ -44,7 +44,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
 
       {/* Slot */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
+        <label className="block text-micro font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
           {t("dayMoment")}
         </label>
         <div className="flex gap-1.5 flex-wrap">
@@ -53,7 +53,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
               key={s}
               onClick={() => setSlot(s)}
               className={cn(
-                "px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors",
+                "px-2.5 py-1 rounded-full text-tiny font-medium border transition-colors",
                 slot === s
                   ? "bg-orange text-white border-orange"
                   : "text-ink-soft border-border hover:border-orange/40"
@@ -67,22 +67,22 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
 
       {/* Time */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
+        <label className="block text-micro font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
           {t("time")}
         </label>
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="border border-border rounded-lg px-3 py-2 text-[13px] text-ink outline-none focus:border-orange/50 transition-colors bg-white"
+          className="border border-border rounded-lg px-3 py-2 text-meta text-ink outline-none focus:border-orange/50 transition-colors bg-white"
         />
       </div>
 
       {/* Fuzzy */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-[12px] text-ink">{t("fuzzyTitle")}</p>
-          <p className="text-[11px] text-ink-faint">{t("fuzzyHint")}</p>
+          <p className="text-mini text-ink">{t("fuzzyTitle")}</p>
+          <p className="text-tiny text-ink-faint">{t("fuzzyHint")}</p>
         </div>
         <button
           role="switch"
@@ -105,7 +105,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
 
       {/* Nota istanza */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
+        <label className="block text-micro font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
           {t("noteLabel")}
         </label>
         <textarea
@@ -113,13 +113,13 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
           onChange={(e) => setNote(e.target.value)}
           placeholder={t("notePlaceholder")}
           rows={2}
-          className="w-full border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white resize-none"
+          className="w-full border border-border rounded-lg px-3 py-2 text-meta text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white resize-none"
         />
       </div>
 
       {/* Booking status */}
       <div className="mb-4">
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
+        <label className="block text-micro font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
           {t("bookingStatus")}
         </label>
         <div className="flex gap-1.5">
@@ -128,7 +128,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
               key={s}
               onClick={() => setStatus((prev) => prev === s ? null : s)}
               className={cn(
-                "flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium border transition-colors",
+                "flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-tiny font-medium border transition-colors",
                 status === s
                   ? "bg-orange text-white border-orange"
                   : "bg-white text-ink-soft border-border hover:border-orange/30"
@@ -145,7 +145,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
 
       <button
         onClick={handleSave}
-        className="w-full bg-orange text-white rounded-lg py-2 text-[13px] font-semibold hover:bg-orange/90 transition-colors"
+        className="w-full bg-orange text-white rounded-lg py-2 text-meta font-semibold hover:bg-orange/90 transition-colors"
       >
         {tCommon("save")}
       </button>

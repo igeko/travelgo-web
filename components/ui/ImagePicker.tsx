@@ -267,9 +267,9 @@ export function ImagePickerDropZone({
         {isActive ? (
           <>
             <IconPhotoDown size={26} className="mx-auto text-orange" />
-            <p className="mt-2 text-[13px] font-medium text-orange">Drop to upload</p>
+            <p className="mt-2 text-meta font-medium text-orange">Drop to upload</p>
             {phase.fileName && (
-              <p className="mt-[3px] text-[11px]" style={{ color: "#9a9382" }}>
+              <p className="mt-[3px] text-tiny" style={{ color: "#9a9382" }}>
                 {phase.fileName}
               </p>
             )}
@@ -277,16 +277,16 @@ export function ImagePickerDropZone({
         ) : (
           <>
             <IconCloudUpload size={26} className="mx-auto" style={{ color: "#d8d1c1" }} />
-            <p className="mt-2 text-[13px] font-medium" style={{ color: "#e8e2d5" }}>
+            <p className="mt-2 text-meta font-medium" style={{ color: "#e8e2d5" }}>
               Drop a photo here
             </p>
-            <p className="mt-[3px] text-[11px]" style={{ color: "#9a9382" }}>
+            <p className="mt-[3px] text-tiny" style={{ color: "#9a9382" }}>
               JPG · PNG · HEIC · WebP — up to 50 MB
             </p>
             <button
               type="button"
               onClick={onBrowse}
-              className="mt-3 cursor-pointer rounded-[6px] px-3.5 py-[6px] text-[12px] font-medium"
+              className="mt-3 cursor-pointer rounded-[6px] px-3.5 py-[6px] text-mini font-medium"
               style={{ background: BG, color: INK, border: 0, fontFamily: "inherit" }}
             >
               Browse files
@@ -320,8 +320,8 @@ export function ImagePickerDropZone({
           }}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-white">{phase.file.name}</p>
-          <p className="mt-[2px] text-[11px]" style={{ color: "#9a9382" }}>
+          <p className="truncate text-meta font-medium text-white">{phase.file.name}</p>
+          <p className="mt-[2px] text-tiny" style={{ color: "#9a9382" }}>
             {fmtMb(phase.file.size)}
             {isUploading
               ? ` · uploading ${Math.round(progress)}%`
@@ -370,10 +370,10 @@ export function ImagePickerDropZone({
         {phase.type === "size" && (
           <>
             <IconAlertCircle size={26} className="mx-auto" style={{ color: "#faafaf" }} />
-            <p className="mt-2 text-[13px] font-medium" style={{ color: "#faafaf" }}>
+            <p className="mt-2 text-meta font-medium" style={{ color: "#faafaf" }}>
               File too large
             </p>
-            <p className="mt-[3px] text-[11px]" style={{ color: "#9a9382" }}>
+            <p className="mt-[3px] text-tiny" style={{ color: "#9a9382" }}>
               {phase.fileName}
               {phase.fileSizeMb !== undefined ? ` · ${phase.fileSizeMb} MB` : ""} — max 50 MB
             </p>
@@ -382,10 +382,10 @@ export function ImagePickerDropZone({
         {phase.type === "format" && (
           <>
             <IconFileAlert size={26} className="mx-auto" style={{ color: "#faafaf" }} />
-            <p className="mt-2 text-[13px] font-medium" style={{ color: "#faafaf" }}>
+            <p className="mt-2 text-meta font-medium" style={{ color: "#faafaf" }}>
               Unsupported format
             </p>
-            <p className="mt-[3px] text-[11px]" style={{ color: "#9a9382" }}>
+            <p className="mt-[3px] text-tiny" style={{ color: "#9a9382" }}>
               {phase.fileName} — use JPG, PNG, HEIC or WebP
             </p>
           </>
@@ -393,10 +393,10 @@ export function ImagePickerDropZone({
         {isUploadErr && (
           <>
             <IconWifiOff size={26} className="mx-auto" style={{ color: "#faafaf" }} />
-            <p className="mt-2 text-[13px] font-medium" style={{ color: "#faafaf" }}>
+            <p className="mt-2 text-meta font-medium" style={{ color: "#faafaf" }}>
               Upload failed
             </p>
-            <p className="mt-[3px] text-[11px]" style={{ color: "#9a9382" }}>
+            <p className="mt-[3px] text-tiny" style={{ color: "#9a9382" }}>
               {phase.fileName} — check your connection and try again
             </p>
           </>
@@ -641,7 +641,7 @@ export function ImagePicker({
   const renderFooter = () => {
     if (phase.kind === "complete") {
       return (
-        <div className="mt-3 flex items-center justify-between text-[11px]" style={{ color: "#9a9382" }}>
+        <div className="mt-3 flex items-center justify-between text-tiny" style={{ color: "#9a9382" }}>
           <button
             type="button"
             onClick={handleCancel}
@@ -682,7 +682,7 @@ export function ImagePicker({
 
     if (phase.kind === "error") {
       return (
-        <div className="mt-3 flex items-center justify-between text-[11px]" style={{ color: "#9a9382" }}>
+        <div className="mt-3 flex items-center justify-between text-tiny" style={{ color: "#9a9382" }}>
           <span />
           <button
             type="button"
@@ -698,7 +698,7 @@ export function ImagePicker({
 
     if (!onReset && !currentLabel) return null;
     return (
-      <div className="mt-3 flex items-center justify-between text-[11px]" style={{ color: "#9a9382" }}>
+      <div className="mt-3 flex items-center justify-between text-tiny" style={{ color: "#9a9382" }}>
         <span>{currentLabel ? `Current: ${currentLabel}` : ""}</span>
         {onReset && (
           <button
@@ -751,7 +751,7 @@ export function ImagePicker({
             style={{ background: "rgba(13,44,61,0.55)" }}
           >
             <IconPhotoEdit size={18} />
-            <span className="text-[11px] font-medium">Change image</span>
+            <span className="text-tiny font-medium">Change image</span>
           </div>
         )}
       </div>
@@ -759,7 +759,7 @@ export function ImagePicker({
       {/* Popover */}
       {open && (
         <div
-          className="absolute left-0 z-50 w-[380px] rounded-[14px] p-[14px] bg-ink"
+          className="absolute left-0 z-50 w-[380px] rounded-lg p-[14px] bg-ink"
           style={{ top: "calc(100% + 10px)", color: "#d8d1c1" }}
         >
           {/* Arrow */}
@@ -783,7 +783,7 @@ export function ImagePicker({
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-[7px] text-[12px] font-medium transition-colors",
+                  "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-[7px] text-mini font-medium transition-colors",
                   tab === t ? "text-ink" : "text-[#b8b0a0]",
                 )}
                 style={{
@@ -813,7 +813,7 @@ export function ImagePicker({
           )}
           {tab === "search" && (
             <div
-              className="rounded-[10px] px-4 py-8 text-center text-[13px]"
+              className="rounded-[10px] px-4 py-8 text-center text-meta"
               style={{ border: "1.5px dashed rgba(232,226,213,0.20)", color: "#9a9382" }}
             >
               Search — coming soon
@@ -821,7 +821,7 @@ export function ImagePicker({
           )}
           {tab === "default" && (
             <div
-              className="rounded-[10px] px-4 py-8 text-center text-[13px]"
+              className="rounded-[10px] px-4 py-8 text-center text-meta"
               style={{ border: "1.5px dashed rgba(232,226,213,0.20)", color: "#9a9382" }}
             >
               Default — coming soon

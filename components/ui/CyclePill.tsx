@@ -93,7 +93,7 @@ export function CyclePill<T>({
         style={{ backgroundColor: current.dotColor }}
       />
       {/* Label */}
-      <span className="text-[11px] font-medium tracking-[0.02em]">
+      <span className="text-tiny font-medium tracking-[0.02em]">
         {current.label}
       </span>
       {/* Chevron · only when there's something to cycle */}

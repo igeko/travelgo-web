@@ -78,9 +78,9 @@ function CarouselWidget({
     <div className="flex flex-col gap-3">
       {/* Header */}
       <div>
-        <div className="text-[13px] font-medium text-ink">{title}</div>
+        <div className="text-meta font-medium text-ink">{title}</div>
         {subtitle && (
-          <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">{subtitle}</div>
+          <div className="text-tiny font-serif italic text-ink-soft mt-0.5">{subtitle}</div>
         )}
       </div>
 
@@ -101,7 +101,7 @@ function CarouselWidget({
         <button
           type="button"
           onClick={onDismiss}
-          className="text-[11px] text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
+          className="text-tiny text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
         >
           Chiudi
         </button>
@@ -109,7 +109,7 @@ function CarouselWidget({
           <button
             type="button"
             onClick={handleConfirm}
-            className="text-[12px] font-medium bg-ink text-white px-4 py-1.5 rounded-pill hover:bg-ink/90 transition-colors"
+            className="text-mini font-medium bg-ink text-white px-4 py-1.5 rounded-pill hover:bg-ink/90 transition-colors"
           >
             {confirmLabel} ({selected.length})
           </button>
@@ -150,7 +150,7 @@ function CarouselCard({
         }}
       >
         {item.badge && (
-          <span className="absolute top-2 right-2 text-[10px] font-medium bg-white/90 text-ink px-1.5 py-0.5 rounded">
+          <span className="absolute top-2 right-2 text-micro font-medium bg-white/90 text-ink px-1.5 py-0.5 rounded">
             {item.badge}
           </span>
         )}
@@ -170,9 +170,9 @@ function CarouselCard({
             {item.tag}
           </div>
         )}
-        <div className="text-[12px] font-medium text-ink leading-snug line-clamp-2">{item.title}</div>
+        <div className="text-mini font-medium text-ink leading-snug line-clamp-2">{item.title}</div>
         {item.subtitle && (
-          <div className="text-[10px] text-ink-faint mt-0.5 truncate">{item.subtitle}</div>
+          <div className="text-micro text-ink-faint mt-0.5 truncate">{item.subtitle}</div>
         )}
       </div>
     </button>

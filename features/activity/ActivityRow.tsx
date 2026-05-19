@@ -92,7 +92,7 @@ export function ActivityRow({
   /* ── Row wrapper classes ── */
   const rowBase = cn(
     "group relative flex gap-3 items-start",
-    "rounded-[var(--radius-md)] px-4 py-3",
+    "rounded-md px-4 py-3",
     "transition-all duration-150 cursor-pointer select-none",
     // Past: desaturate + dim
     isPast && "opacity-50 grayscale-[60%]",
@@ -124,7 +124,7 @@ export function ActivityRow({
 
       {/* NOW badge */}
       {isNow && (
-        <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-[3px] bg-orange text-white px-1.5 py-[2px] rounded-pill text-[10px] font-semibold tracking-[0.05em] shadow-sm">
+        <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-[3px] bg-orange text-white px-1.5 py-[2px] rounded-pill text-micro font-semibold tracking-[0.05em] shadow-sm">
           <IconPlayerPlay className="w-2.5 h-2.5" />
           NOW
         </span>
@@ -132,7 +132,7 @@ export function ActivityRow({
 
       {/* Time */}
       {time && (
-        <span className="absolute bottom-1.5 left-2 z-10 text-white text-[13px] font-semibold tabular-nums leading-none [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
+        <span className="absolute bottom-1.5 left-2 z-10 text-white text-meta font-semibold tabular-nums leading-none [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
           {time}
         </span>
       )}
@@ -167,7 +167,7 @@ export function ActivityRow({
             tabIndex={-1}
             className={cn(
               "shrink-0 transition-opacity duration-100",
-              editOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+              editOpen ? "opacity-100" : "opacity-30 group-hover:opacity-100 focus-visible:opacity-100",
             )}
           >
             <IconPencil />
@@ -177,7 +177,7 @@ export function ActivityRow({
 
       {/* Description */}
       {description && (
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-soft line-clamp-2">
+        <p className="mt-1 text-meta leading-relaxed text-ink-soft line-clamp-2">
           {description}
         </p>
       )}
@@ -198,7 +198,7 @@ export function ActivityRow({
               }}
               title={location}
               className={cn(
-                "inline-flex items-center gap-1 text-[11px] font-medium transition-colors",
+                "inline-flex items-center gap-1 text-tiny font-medium transition-colors",
                 "px-2 py-[3px] rounded-pill border border-border",
                 "text-ink-soft bg-surface hover:bg-surface-soft hover:text-ink hover:border-border-strong",
               )}
@@ -214,7 +214,7 @@ export function ActivityRow({
             </button>
           )}
           {cost && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+            <span className="inline-flex items-center gap-1 text-tiny text-ink-soft">
               <IconCoin className="w-3 h-3 shrink-0" />
               <b className="font-semibold text-ink">{cost}</b>
               {costApprox && <span>· {costApprox}</span>}

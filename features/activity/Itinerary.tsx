@@ -8,8 +8,10 @@ import { RouteMap } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
-import { DayViewModeToggle, type DayViewMode } from "@/features/day/DayViewModeToggle";
+import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { DayMagazine } from "@/features/day/DayMagazine";
+
+type DayViewMode = "lista" | "timeline" | "racconto";
 import type { Activity, Day } from "@/lib/dal/trips";
 import type { PlaceResult } from "@/components/ui/AddressField";
 
@@ -51,6 +53,7 @@ export function Itinerary({
   onAskGo,
 }: Props) {
   const t = useTranslations("Itinerary");
+  const tMode = useTranslations("DayViewModeToggle");
   const [showMap, setShowMap] = useState(initialShowMap);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -123,7 +126,7 @@ export function Itinerary({
     <div>
       {/* Header row */}
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
+        <div className="text-micro font-medium uppercase tracking-eyebrow-wide text-ink-faint">
           {t("title")}
         </div>
         <div className="flex items-center gap-2">
@@ -154,7 +157,15 @@ export function Itinerary({
 
           {/* View mode toggle — always rightmost, shown when day context is available */}
           {day && (
-            <DayViewModeToggle value={viewMode} onChange={handleViewMode} />
+            <TabSwitcher
+              value={viewMode}
+              onChange={handleViewMode}
+              tabs={[
+                { key: "lista", label: tMode("lista") },
+                { key: "timeline", label: tMode("timeline") },
+                { key: "racconto", label: tMode("racconto") },
+              ]}
+            />
           )}
         </div>
       </div>

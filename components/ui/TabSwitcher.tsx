@@ -43,9 +43,9 @@ const containerVariants = cva(
   {
     variants: {
       size: {
-        sm: "text-[11px]",
+        sm: "text-tiny",
         md: "text-xs",
-        lg: "text-[13px]",
+        lg: "text-meta",
       },
       variant: {
         outline: "bg-surface border-border-strong",
@@ -77,9 +77,9 @@ const buttonVariants = cva(
   {
     variants: {
       size: {
-        sm: "h-6 px-2.5 text-[11px]",
+        sm: "h-6 px-2.5 text-tiny",
         md: "h-8 px-3.5 text-xs",
-        lg: "h-10 px-4.5 text-[13px]",
+        lg: "h-10 px-4.5 text-meta",
       },
       isActive: {
         true: "",
@@ -102,17 +102,17 @@ const buttonVariants = cva(
       {
         isActive: true,
         tone: "danger",
-        class: "bg-[#a32d2d] text-white border-[#a32d2d] shadow-sm",
+        class: "bg-danger-deep text-white border-danger-deep shadow-sm",
       },
       {
         isActive: true,
         tone: "warning",
-        class: "bg-[#e0a818] text-white border-[#e0a818] shadow-sm",
+        class: "bg-warning-deep text-white border-warning-deep shadow-sm",
       },
       {
         isActive: true,
         tone: "success",
-        class: "bg-[#3d6e0e] text-white border-[#3d6e0e] shadow-sm",
+        class: "bg-success-fg text-white border-success-fg shadow-sm",
       },
       // Inactive state (ghost style with neutral tone)
       {
@@ -125,19 +125,19 @@ const buttonVariants = cva(
         isActive: false,
         tone: "danger",
         class:
-          "bg-transparent text-[#a32d2d] border-transparent hover:bg-[#fcebeb] focus-visible:outline-[#a32d2d]",
+          "bg-transparent text-danger-deep border-transparent hover:bg-danger-bg focus-visible:outline-danger-deep",
       },
       {
         isActive: false,
         tone: "warning",
         class:
-          "bg-transparent text-[#a37809] border-transparent hover:bg-[#fef5cf] focus-visible:outline-[#a37809]",
+          "bg-transparent text-warning-fg border-transparent hover:bg-warning-bg focus-visible:outline-warning-fg",
       },
       {
         isActive: false,
         tone: "success",
         class:
-          "bg-transparent text-[#3d6e0e] border-transparent hover:bg-status-paid-bg focus-visible:outline-[#3d6e0e]",
+          "bg-transparent text-success-fg border-transparent hover:bg-success-bg focus-visible:outline-success-fg",
       },
     ],
     defaultVariants: {

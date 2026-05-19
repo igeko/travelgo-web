@@ -1,3 +1,4 @@
+import { cn } from "@/lib/cn";
 import { IconAlertTriangle, IconBookmark, IconCheck } from "./icons";
 
 export type ActivityStatus = "todo" | "booked" | "paid";
@@ -25,7 +26,7 @@ const STATUS_CONFIG: Record<
 
 export function StatusBadge({
   status,
-  className = "",
+  className,
 }: {
   status: ActivityStatus;
   className?: string;
@@ -33,7 +34,11 @@ export function StatusBadge({
   const { label, classes, Icon } = STATUS_CONFIG[status];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-pill px-2 py-[3px] text-[10px] font-medium uppercase tracking-[0.06em] shrink-0 ${classes} ${className}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-pill px-2 py-[3px] text-micro font-medium uppercase tracking-eyebrow shrink-0",
+        classes,
+        className,
+      )}
     >
       <Icon className="w-[11px] h-[11px]" />
       {label}

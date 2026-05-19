@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/dal/supabase";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
+import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +53,12 @@ export default async function ProfilePage() {
           )}
           <div>
             <div className="text-[22px] font-semibold text-ink leading-tight">{fullName}</div>
-            <div className="text-[13px] text-ink-soft mt-0.5">{email}</div>
+            <div className="text-meta text-ink-soft mt-0.5">{email}</div>
           </div>
         </div>
 
         {/* Info card */}
-        <div className="bg-surface rounded-[var(--radius-lg)] border border-border divide-y divide-border">
+        <div className="bg-surface rounded-lg border border-border divide-y divide-border">
           <Row label="Email" value={email} />
           <Row label="Membro dal" value={joinedAt} />
           <Row label="ID utente" value={user.id} mono />
@@ -66,14 +67,14 @@ export default async function ProfilePage() {
         {/* Roles */}
         {roles.length > 0 && (
           <div className="mt-6">
-            <div className="text-[10px] font-medium uppercase tracking-[0.10em] text-ink-faint mb-2">
+            <div className="text-micro font-medium uppercase tracking-[0.10em] text-ink-faint mb-2">
               Ruoli piattaforma
             </div>
             <div className="flex flex-wrap gap-2">
               {roles.map((role) => (
                 <span
                   key={role}
-                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border border-border bg-surface text-ink-soft font-mono"
+                  className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border border-border bg-surface text-ink-soft font-mono"
                 >
                   {role}
                 </span>
@@ -90,8 +91,11 @@ export default async function ProfilePage() {
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 gap-4">
-      <span className="text-[12px] text-ink-faint shrink-0">{label}</span>
-      <span className={`text-[13px] text-ink text-right truncate ${mono ? "font-mono text-[11px]" : ""}`}>
+      <span className="text-mini text-ink-faint shrink-0">{label}</span>
+      <span className={cn(
+        "text-meta text-ink text-right truncate",
+        mono && "font-mono text-tiny",
+      )}>
         {value}
       </span>
     </div>

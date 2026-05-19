@@ -80,14 +80,14 @@ export function AddAffordance({
 
           <button
             onClick={() => setMode("block")}
-            className="inline-flex items-center gap-1 bg-orange text-white text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-orange/90 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1 bg-orange text-white text-tiny font-semibold px-2.5 py-1 rounded-full hover:bg-orange/90 transition-colors shadow-sm"
           >
             <IconPlus size={9} />
             blocco
           </button>
           <button
             onClick={() => setMode("activity")}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-soft bg-white border border-border px-2.5 py-1 rounded-full hover:border-orange/50 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1 text-tiny font-medium text-ink-soft bg-white border border-border px-2.5 py-1 rounded-full hover:border-orange/50 hover:text-ink transition-colors"
           >
             <IconPlus size={9} />
             attività
@@ -99,14 +99,14 @@ export function AddAffordance({
       {mode === "block" && (
         <div className="my-1 rounded-xl border-2 border-orange/40 bg-white p-3 shadow-sm">
           <div className="flex items-center gap-2 mb-2.5">
-            <span className="text-[11px] font-bold text-ink shrink-0">Tipo</span>
+            <span className="text-tiny font-bold text-ink shrink-0">Tipo</span>
             <div className="flex gap-1 flex-wrap flex-1">
               {TYPE_OPTIONS.map(({ type, emoji, label }) => (
                 <button
                   key={type}
                   onClick={() => setBlockType(type)}
                   className={cn(
-                    "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors",
+                    "inline-flex items-center gap-1 text-micro font-medium px-2 py-0.5 rounded-full border transition-colors",
                     blockType === type
                       ? "bg-orange text-white border-orange"
                       : "text-ink-soft border-border hover:border-orange/40"
@@ -140,13 +140,13 @@ export function AddAffordance({
             <button
               onClick={submitBlock}
               disabled={!blockTitle.trim()}
-              className="bg-orange text-white rounded-lg px-3 py-2 text-[12px] font-semibold hover:bg-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-orange text-white rounded-lg px-3 py-2 text-mini font-semibold hover:bg-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Aggiungi
             </button>
           </div>
           {!blockTitle.trim() && (
-            <p className="mt-1.5 text-[11px] text-ink-faint italic">
+            <p className="mt-1.5 text-tiny text-ink-faint italic">
               Senza testo → blocco fuzzy
             </p>
           )}

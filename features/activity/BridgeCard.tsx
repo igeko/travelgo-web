@@ -53,10 +53,10 @@ export function BridgeCard({ bridge, onSave }: Props) {
         className="group flex items-center gap-2 w-full text-left rounded-lg px-3 py-1.5 hover:bg-surface-soft transition-colors"
       >
         <span className="text-base leading-none shrink-0">{TRANSPORT_EMOJI[transport]}</span>
-        <span className="text-[12px] text-ink-soft">
+        <span className="text-mini text-ink-soft">
           {TRANSPORT_LABEL[transport]} · {duration} min
         </span>
-        {line && <span className="text-[11px] text-ink-faint truncate">· {line}</span>}
+        {line && <span className="text-tiny text-ink-faint truncate">· {line}</span>}
         <IconChevronRight
           size={12}
           className="text-ink-faint ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0"
@@ -69,7 +69,7 @@ export function BridgeCard({ bridge, onSave }: Props) {
     <div className="my-1.5 rounded-xl border-2 border-orange/35 bg-orange/[0.03] p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-orange">
+        <span className="text-tiny font-bold uppercase tracking-eyebrow-wide text-orange">
           Spostamento
         </span>
         <button onClick={() => setExpanded(false)} className="text-ink-faint hover:text-ink p-1 transition-colors">
@@ -84,7 +84,7 @@ export function BridgeCard({ bridge, onSave }: Props) {
             key={t}
             onClick={() => setTransport(t)}
             className={cn(
-              "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all",
+              "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-tiny font-medium border transition-all",
               transport === t
                 ? "bg-orange text-white border-orange shadow-sm"
                 : "bg-white text-ink-soft border-border hover:border-orange/50 hover:text-ink"
@@ -108,7 +108,7 @@ export function BridgeCard({ bridge, onSave }: Props) {
             inputProps={{ min: 1 }}
           >
             <SoftField.Suffix>
-              <span className="text-[12px] text-ink-faint">min</span>
+              <span className="text-mini text-ink-faint">min</span>
             </SoftField.Suffix>
           </SoftField>
         </div>
@@ -146,13 +146,13 @@ export function BridgeCard({ bridge, onSave }: Props) {
       <div className="flex items-center justify-between">
         <button
           onClick={handleSave}
-          className="bg-orange text-white rounded-lg px-4 py-1.5 text-[12px] font-semibold hover:bg-orange/90 transition-colors"
+          className="bg-orange text-white rounded-lg px-4 py-1.5 text-mini font-semibold hover:bg-orange/90 transition-colors"
         >
           Salva
         </button>
         <button
           onClick={handleFreeBuffer}
-          className="text-[11px] text-ink-faint hover:text-ink underline transition-colors"
+          className="text-tiny text-ink-faint hover:text-ink underline transition-colors"
         >
           Converti in tempo libero
         </button>

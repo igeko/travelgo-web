@@ -45,7 +45,7 @@ function QuickReplyWidget({
           onClick={() => onAction({ kind: "select", itemId: opt.value, label: opt.label })}
           className={cn(
             "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-pill border transition-all duration-150",
-            "text-[12px] font-medium text-ink border-border-strong bg-surface",
+            "text-mini font-medium text-ink border-border-strong bg-surface",
             "hover:bg-ink hover:text-white hover:border-ink",
           )}
         >

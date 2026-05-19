@@ -48,7 +48,7 @@ function ConfirmWidget({
       <div>
         <div className="text-[14px] font-medium text-ink leading-snug">{question}</div>
         {detail && (
-          <div className="text-[12px] font-serif italic text-ink-soft mt-1">{detail}</div>
+          <div className="text-mini font-serif italic text-ink-soft mt-1">{detail}</div>
         )}
       </div>
 
@@ -58,7 +58,7 @@ function ConfirmWidget({
           type="button"
           onClick={() => onAction({ kind: "confirm", value: true, field })}
           className={cn(
-            "flex-1 py-2 rounded-pill text-[13px] font-medium transition-colors",
+            "flex-1 py-2 rounded-pill text-meta font-medium transition-colors",
             tone === "danger"
               ? "bg-red-600 text-white hover:bg-red-700"
               : "bg-ink text-white hover:bg-ink/90",
@@ -72,7 +72,7 @@ function ConfirmWidget({
             onAction({ kind: "confirm", value: false, field });
             onDismiss();
           }}
-          className="flex-1 py-2 rounded-pill text-[13px] font-medium border border-border-strong text-ink hover:bg-surface-soft transition-colors"
+          className="flex-1 py-2 rounded-pill text-meta font-medium border border-border-strong text-ink hover:bg-surface-soft transition-colors"
         >
           {labelNo}
         </button>

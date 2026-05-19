@@ -161,11 +161,11 @@ export function AddressField({
                 <IconMapPin />
               </span>
               <span className="flex flex-col min-w-0">
-                <span className="text-[13px] font-medium text-ink leading-snug truncate">
+                <span className="text-meta font-medium text-ink leading-snug truncate">
                   {s.mainText}
                 </span>
                 {s.secondaryText && (
-                  <span className="text-[11px] text-ink-soft leading-snug truncate">
+                  <span className="text-tiny text-ink-soft leading-snug truncate">
                     {s.secondaryText}
                   </span>
                 )}

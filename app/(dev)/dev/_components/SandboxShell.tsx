@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/cn";
 import { sandboxRegistry, type SandboxEntry } from "../registry";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -122,15 +123,16 @@ export function SandboxShell({ children }: { children: ReactNode }) {
                 {subgroup}
                 <svg
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"
-                  className={`w-3 h-3 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                  className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")}
                 >
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
               <ul
-                className={`flex flex-col pl-2 border-l border-border ml-2 overflow-hidden transition-all duration-200 ${
-                  isCollapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
-                }`}
+                className={cn(
+                  "flex flex-col pl-2 border-l border-border ml-2 overflow-hidden transition-all duration-200",
+                  isCollapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100",
+                )}
               >
                 {subEntries.map((entry) => (
                   <li key={entry.slug}>
@@ -184,7 +186,10 @@ export function SandboxShell({ children }: { children: ReactNode }) {
                     {needsDivider && (
                       <div className="mx-2 mb-5 -mt-1 h-px bg-border" />
                     )}
-                    <div className={`px-2 pb-2 text-[10px] font-medium tracking-[0.12em] uppercase ${isHighlighted ? "text-orange" : "text-ink-faint"}`}>
+                    <div className={cn(
+                      "px-2 pb-2 text-micro font-medium tracking-eyebrow-wide uppercase",
+                      isHighlighted ? "text-orange" : "text-ink-faint",
+                    )}>
                       {group}
                     </div>
                     <ul className="flex flex-col">
@@ -242,11 +247,12 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   return (
     <Link
       href={href}
-      className={`block rounded-md px-2 py-1.5 text-sm transition-colors ${
+      className={cn(
+        "block rounded-md px-2 py-1.5 text-sm transition-colors",
         active
           ? "bg-surface-soft text-ink font-medium"
-          : "text-ink-soft hover:bg-surface-soft hover:text-ink"
-      }`}
+          : "text-ink-soft hover:bg-surface-soft hover:text-ink",
+      )}
     >
       {children}
     </Link>
@@ -303,11 +309,11 @@ function CollapsedRail({
       type="button"
       onClick={onClick}
       title={`Open ${label}`}
-      className={`
-        w-9 shrink-0 bg-surface sticky top-0 h-screen flex flex-col items-center justify-start py-4 gap-3
-        ${side === "left" ? "border-r border-border" : "border-l border-border"}
-        hover:bg-surface-soft transition-colors
-      `}
+      className={cn(
+        "w-9 shrink-0 bg-surface sticky top-0 h-screen flex flex-col items-center justify-start py-4 gap-3",
+        side === "left" ? "border-r border-border" : "border-l border-border",
+        "hover:bg-surface-soft transition-colors",
+      )}
     >
       <svg
         viewBox="0 0 24 24"

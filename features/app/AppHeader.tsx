@@ -113,7 +113,7 @@ export function AppHeader({
               五
             </span>
             <span
-              className="text-[11px] text-ink-faint font-normal leading-tight"
+              className="text-tiny text-ink-faint font-normal leading-tight"
               style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}
             >
               Travel<b className="text-ink font-medium">Go</b>
@@ -121,7 +121,7 @@ export function AppHeader({
           </Link>
 
           {/* Main nav — hidden below @sm */}
-          <nav className="hidden md:flex items-center gap-[22px] text-[13px] text-ink-soft">
+          <nav className="hidden md:flex items-center gap-[22px] text-meta text-ink-soft">
             {ALL_NAV.filter((item) => !item.authRequired || isLoggedIn).map((item) => (
               <Link
                 key={item.id}
@@ -142,7 +142,7 @@ export function AppHeader({
           {isLoggedIn ? (
             <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
               {fullName && (
-                <span className="text-[13px] text-ink-soft">
+                <span className="text-meta text-ink-soft">
                   {t("greeting", { name: fullName.split(" ")[0] })}
                 </span>
               )}
@@ -156,7 +156,7 @@ export function AppHeader({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-[11px] font-semibold select-none">
+                  <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-tiny font-semibold select-none">
                     {initials}
                   </div>
                 )}
@@ -167,7 +167,7 @@ export function AppHeader({
               <LocaleSwitcher variant="chip" />
               <Link
                 href="/login"
-                className="inline-flex items-center px-4 py-1.5 rounded-pill border border-border text-[13px] text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors"
+                className="inline-flex items-center px-4 py-1.5 rounded-pill border border-border text-meta text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors"
               >
                 {t("signIn")}
               </Link>
@@ -193,7 +193,7 @@ export function AppHeader({
           <div className="md:hidden bg-surface border-t border-b border-border px-5 pt-[14px] pb-[18px]">
             {/* Section 1 — main nav */}
             <div>
-              <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-orange mb-2">
+              <div className="text-micro font-medium tracking-[0.10em] uppercase text-orange mb-2">
                 TravelGo
               </div>
               <nav className="flex flex-col">
@@ -216,7 +216,7 @@ export function AppHeader({
 
             {/* Language switcher */}
             <div className="mt-[14px] pt-[14px] border-t border-border">
-              <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-ink-faint mb-2">
+              <div className="text-micro font-medium tracking-[0.10em] uppercase text-ink-faint mb-2">
                 Language
               </div>
               <LocaleSwitcher variant="full" />
@@ -225,7 +225,7 @@ export function AppHeader({
             {/* Section 2 — trip tabs */}
             {hasTripContext && (
               <div className="mt-[14px] pt-[14px] border-t border-border">
-                <div className="text-[10px] font-medium tracking-[0.10em] uppercase text-orange mb-2">
+                <div className="text-micro font-medium tracking-[0.10em] uppercase text-orange mb-2">
                   {t("tripSection", { name: tripName })}
                 </div>
                 <nav className="flex flex-col">
@@ -272,13 +272,13 @@ export function AppHeader({
 
               {/* Trip name + progress */}
               <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
-                <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-orange truncate">
+                <span className="text-micro font-medium tracking-eyebrow uppercase text-orange truncate">
                   {tripName}
                 </span>
                 {tripProgress && (
                   <>
-                    <span className="text-ink-faint text-[12px] shrink-0">·</span>
-                    <span className="text-[12px] text-ink-soft whitespace-nowrap shrink-0">{tripProgress}</span>
+                    <span className="text-ink-faint text-mini shrink-0">·</span>
+                    <span className="text-mini text-ink-soft whitespace-nowrap shrink-0">{tripProgress}</span>
                   </>
                 )}
               </div>
@@ -291,7 +291,7 @@ export function AppHeader({
                       key={tab.id}
                       href={tab.href(tripId)}
                       className={cn(
-                        "px-3 py-[5px] rounded-pill text-[12px] font-sans cursor-pointer transition-colors whitespace-nowrap no-underline",
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap no-underline",
                         tab.id === activeTab
                           ? "bg-ink text-white font-medium"
                           : "bg-transparent text-ink-soft hover:text-ink",
@@ -305,7 +305,7 @@ export function AppHeader({
                       type="button"
                       onClick={() => onTabChange?.(tab.id)}
                       className={cn(
-                        "px-3 py-[5px] rounded-pill text-[12px] font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
                         tab.id === activeTab
                           ? "bg-ink text-white font-medium"
                           : "bg-transparent text-ink-soft hover:text-ink",
@@ -330,7 +330,7 @@ export function AppHeader({
                     onClick={onToggleDebugMode}
                     title={debugMode ? t("disableDebug") : t("enableDebug")}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans font-mono",
+                      "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans font-mono",
                       debugMode
                         ? "bg-[#1a1a2e] border-[#1a1a2e] text-[#7ee8a2] font-medium"
                         : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft",
@@ -347,7 +347,7 @@ export function AppHeader({
                   onClick={onToggleEditMode}
                   title={editMode ? t("disableEditMode") : t("enableEditMode")}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans",
+                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans",
                     editMode
                       ? "bg-orange border-orange text-white font-medium"
                       : "bg-transparent border-border text-ink-soft hover:border-border-strong",
@@ -363,7 +363,7 @@ export function AppHeader({
                     type="button"
                     onClick={() => setFeedbackOpen(true)}
                     title={t("leaveFeedback")}
-                    className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
+                    className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
                   >
                     <IconMessageReport size={13} />
                     {t("feedback")}
@@ -394,7 +394,7 @@ export function AppHeader({
                           <Link
                             href="/admin/tester-notes"
                             onClick={() => setKebabOpen(false)}
-                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
                           >
                             <IconNotes size={15} className="shrink-0" />
                             {t("allFeedback")}

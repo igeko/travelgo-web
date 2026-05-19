@@ -18,7 +18,7 @@ function EmptyTripState({ trip }: { trip: Trip }) {
       <p className="text-[14px] text-ink-soft max-w-[340px]">
         {t("empty.body")} {t("empty.hint")}
       </p>
-      <div className="mt-2 px-5 py-3 rounded-xl border border-dashed border-border bg-surface text-[13px] text-ink-soft">
+      <div className="mt-2 px-5 py-3 rounded-xl border border-dashed border-border bg-surface text-meta text-ink-soft">
         {t("empty.comingSoon")}
       </div>
     </div>

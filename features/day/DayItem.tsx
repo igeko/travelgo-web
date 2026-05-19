@@ -63,7 +63,7 @@ export function DayItem({
         <div className="text-center">
           <div
             className={cn(
-              "text-[10px] tracking-[0.05em] uppercase",
+              "text-micro tracking-[0.05em] uppercase",
               selected ? "text-white/70" : "text-ink-soft",
             )}
           >
@@ -83,7 +83,7 @@ export function DayItem({
         <div className="min-w-0">
           <div
             className={cn(
-              "text-[10px] tracking-[0.05em] uppercase font-medium",
+              "text-micro tracking-[0.05em] uppercase font-medium",
               selected ? "text-[#f9a87a]" : "text-orange",
               !zone && "italic opacity-70",
             )}
@@ -92,7 +92,7 @@ export function DayItem({
           </div>
           <div
             className={cn(
-              "text-[13px] truncate",
+              "text-meta truncate",
               selected ? "text-white" : "text-ink",
               !place && "italic opacity-60",
             )}

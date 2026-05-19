@@ -208,7 +208,7 @@ export default function GoChatFloatPage() {
                   <input type="text" value={tripIdInput} onChange={(e) => setTripIdInput(e.target.value)}
                     placeholder="uuid…"
                     className="flex-1 text-[12px] font-mono bg-surface border border-border rounded-lg px-3 py-2 text-ink placeholder:text-ink-faint outline-none focus:border-ink-soft" />
-                  <button type="submit" className="px-3 py-2 rounded-lg bg-ink text-white text-[11px] font-medium hover:bg-[#1a3d52] transition-colors">Load</button>
+                  <button type="submit" className="px-3 py-2 rounded-lg bg-ink text-white text-[11px] font-medium hover:bg-ink-hover transition-colors">Load</button>
                 </form>
                 {realLoading && <div className="mt-2 text-[11px] text-ink-faint font-serif italic">Loading…</div>}
                 {realError && <div className="mt-2 text-[11px] text-red-500 font-mono">{realError}</div>}
@@ -227,7 +227,7 @@ export default function GoChatFloatPage() {
                 "inline-flex items-center gap-2 px-4 py-2 rounded-pill text-[12px] font-medium border transition-colors",
                 open
                   ? "bg-surface text-ink-soft border-border cursor-default"
-                  : "bg-ink text-white border-ink hover:bg-[#1a3d52] cursor-pointer",
+                  : "bg-ink text-white border-ink hover:bg-ink-hover cursor-pointer",
               )}
             >
               {open ? "Go is open ↘" : "Open Go ↘"}

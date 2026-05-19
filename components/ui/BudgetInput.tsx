@@ -96,7 +96,7 @@ export function BudgetInput({
       className={cn(
         // `group` so the floating label can react to focus-within on this wrapper
         "group relative flex items-center gap-1.5 rounded-pill px-[18px] py-2",
-        "bg-[#fafaf6] border border-border",
+        "bg-surface-input border border-border",
         // Min-width — enough room for symbol, a 4-digit amount, and the currency pill
         "min-w-[180px]",
         // Interaction states
@@ -122,7 +122,7 @@ export function BudgetInput({
       )}
 
       {/* Symbol */}
-      <span className="text-[13px] font-medium text-ink-faint tabular-nums shrink-0">
+      <span className="text-meta font-medium text-ink-faint tabular-nums shrink-0">
         {current.symbol}
       </span>
 
@@ -137,7 +137,7 @@ export function BudgetInput({
         disabled={disabled}
         className={cn(
           "flex-1 min-w-0 border-0 outline-0 bg-transparent shadow-none p-0",
-          "text-[13px] font-medium tabular-nums text-ink font-sans",
+          "text-meta font-medium tabular-nums text-ink font-sans",
           "placeholder:text-ink-faint",
           // Remove number spinners for a cleaner look
           "[appearance:textfield]",
@@ -148,7 +148,7 @@ export function BudgetInput({
 
       {/* Inline conversion (optional) */}
       {conversion && (
-        <span className="text-[11px] text-ink-faint whitespace-nowrap shrink-0">
+        <span className="text-tiny text-ink-faint whitespace-nowrap shrink-0">
           {conversion}
         </span>
       )}
@@ -166,7 +166,7 @@ export function BudgetInput({
         }
         className={cn(
           "inline-flex items-center gap-[3px] rounded-pill bg-ink text-white shrink-0",
-          "pl-[9px] pr-[7px] py-[3px] text-[10px] font-medium tracking-[0.04em]",
+          "pl-[9px] pr-[7px] py-[3px] text-micro font-medium tracking-meta",
           "transition-opacity",
           currencies.length > 1
             ? "cursor-pointer hover:opacity-90"

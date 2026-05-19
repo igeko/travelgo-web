@@ -49,7 +49,7 @@ export function TripViewers({ viewers, isConnected }: Props) {
         )}
       </div>
 
-      <span className="text-[11px] text-ink-soft whitespace-nowrap">
+      <span className="text-tiny text-ink-soft whitespace-nowrap">
         {viewers.length === 1
           ? `${viewers[0].fullName.split(" ")[0]} è online`
           : `${viewers.length} online`}

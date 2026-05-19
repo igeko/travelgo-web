@@ -82,7 +82,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
           pointerEvents: "none",
         }}
       >
-        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">{t("go.hiLabel")}</div>
+        <div className="text-micro font-medium uppercase tracking-[0.08em] text-orange leading-none">{t("go.hiLabel")}</div>
         <div className="text-[14px] font-medium text-ink mt-0.5 overflow-hidden">
           {t("go.wantToFind")}{" "}
           <span className="inline-block h-[20px] overflow-hidden align-[-4px] min-w-[145px]">
@@ -94,7 +94,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
             </ul>
           </span>
         </div>
-        <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">
+        <div className="text-tiny font-serif italic text-ink-soft mt-0.5">
           {t("go.tagline")}
         </div>
       </div>
@@ -109,7 +109,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
           pointerEvents: "none",
         }}
       >
-        <span className="inline-flex items-center gap-1.5 bg-ink text-white rounded-pill text-[12px] font-medium pl-3 pr-4 py-2">
+        <span className="inline-flex items-center gap-1.5 bg-ink text-white rounded-pill text-mini font-medium pl-3 pr-4 py-2">
           <IconSparkles size={13} className="text-orange" />
           {t("go.askMe")}
         </span>
@@ -152,7 +152,7 @@ function GoLaunchTrigger({ onLaunch }: { onLaunch: () => void }) {
 /* ─── ShortcutBar ─── */
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[20px] h-[18px] px-1 rounded-[4px] bg-white/15 border border-white/20 text-[10px] font-medium font-sans leading-none">
+    <kbd className="inline-flex items-center justify-center min-w-[20px] h-[18px] px-1 rounded-[4px] bg-white/15 border border-white/20 text-micro font-medium font-sans leading-none">
       {children}
     </kbd>
   );
@@ -162,8 +162,8 @@ function ShortcutBar() {
   const t = useTranslations("TripDayView");
   const alt = useAltLabel();
   return (
-    <div className="flex items-center gap-4 px-3 py-2 mb-3 rounded-[var(--radius-md)] bg-ink text-white/70 text-[11px] flex-wrap">
-      <span className="text-white/40 text-[10px] uppercase tracking-[0.08em] font-medium shrink-0">{t("shortcuts.title")}</span>
+    <div className="flex items-center gap-4 px-3 py-2 mb-3 rounded-md bg-ink text-white/70 text-tiny flex-wrap">
+      <span className="text-white/40 text-micro uppercase tracking-[0.08em] font-medium shrink-0">{t("shortcuts.title")}</span>
       <span className="flex items-center gap-1.5"><Kbd>{alt}E</Kbd> {t("shortcuts.editDay")}</span>
       <span className="flex items-center gap-1.5"><Kbd>{alt}L</Kbd> {t("shortcuts.editLodging")}</span>
       <span className="flex items-center gap-1.5"><Kbd>{alt}A</Kbd> {t("shortcuts.addActivity")}</span>
@@ -342,7 +342,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
       {/* ══ SIDEBAR — .day-list ══════════════════════════════════ */}
       <aside
-        className="hidden md:flex flex-col bg-surface rounded-[var(--radius-lg)] border border-border overflow-hidden self-start"
+        className="hidden md:flex flex-col bg-surface rounded-lg border border-border overflow-hidden self-start"
         style={{
           position: "sticky",
           top: 94, /* header 52px + sub-bar 42px */
@@ -351,9 +351,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       >
         {/* .day-list-head */}
         <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0">
-          <div className="text-[10px] uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
+          <div className="text-micro uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
           <div className="text-[16px] font-semibold text-ink mt-0.5">{t("sidebar.dayByDay")}</div>
-          <div className="text-[12px] text-ink-soft mt-0.5">
+          <div className="text-mini text-ink-soft mt-0.5">
             {t("sidebar.summary", {
               count: localDays.length,
               start: trip.start_date ? formatDate(trip.start_date) : "",
@@ -669,23 +669,23 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           return (
             <div className="mt-8 flex flex-col gap-2">
               <details className="rounded-lg border border-dashed border-border p-3">
-                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                <summary className="text-tiny font-medium text-ink-faint cursor-pointer select-none">
                   🐛 Debug · selectedDay
                 </summary>
-                <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="mt-2 text-tiny text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(selectedDay, null, 2)}
                 </pre>
               </details>
               <details className="rounded-lg border border-dashed border-border p-3">
-                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                <summary className="text-tiny font-medium text-ink-faint cursor-pointer select-none">
                   🐛 Debug · activities ({activities.length})
                 </summary>
-                <pre className="mt-2 text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="mt-2 text-tiny text-ink-soft overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(activities, null, 2)}
                 </pre>
               </details>
               <details className="rounded-lg border border-dashed border-border p-3">
-                <summary className="text-[11px] font-medium text-ink-faint cursor-pointer select-none">
+                <summary className="text-tiny font-medium text-ink-faint cursor-pointer select-none">
                   🤖 Debug · OpenAI payload
                   <span className="ml-2 text-orange font-mono">
                     ~{promptTokens} prompt tokens · max {maxTokens} completion · ~{promptTokens + maxTokens} tot
@@ -693,14 +693,14 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 </summary>
                 <div className="mt-3 flex flex-col gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-faint mb-1">Request body (DescribeDayRequest)</div>
-                    <pre className="text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2">
+                    <div className="text-micro uppercase tracking-[0.1em] text-ink-faint mb-1">Request body (DescribeDayRequest)</div>
+                    <pre className="text-tiny text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2">
                       {JSON.stringify(aiRequest, null, 2)}
                     </pre>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-faint mb-1">Prompt inviato al modello</div>
-                    <pre className="text-[11px] text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2 leading-relaxed">
+                    <div className="text-micro uppercase tracking-[0.1em] text-ink-faint mb-1">Prompt inviato al modello</div>
+                    <pre className="text-tiny text-ink-soft overflow-x-auto whitespace-pre-wrap break-all bg-surface rounded p-2 leading-relaxed">
                       {prompt}
                     </pre>
                   </div>
@@ -716,11 +716,11 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         {nextDay && (
           <button
             onClick={() => selectDay(nextDay.id)}
-            className="mt-8 w-full flex items-center gap-3 px-4 py-3.5 rounded-[var(--radius-md)] bg-ink text-white text-left cursor-pointer transition-opacity hover:opacity-90"
+            className="mt-8 w-full flex items-center gap-3 px-4 py-3.5 rounded-md bg-ink text-white text-left cursor-pointer transition-opacity hover:opacity-90"
           >
             <IconArrowRightCircle className="w-7 h-7 text-orange shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] opacity-70 uppercase tracking-[0.08em]">
+              <div className="text-micro opacity-70 uppercase tracking-[0.08em]">
                 {t("nextDay", { number: nextDay.day_number, dow: nextDayDow })}
               </div>
               <div className="text-[14px] font-medium mt-0.5 truncate">

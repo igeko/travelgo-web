@@ -226,7 +226,7 @@ export function GoPanel({
         )}
 
         {step.name === "error" && (
-          <div className="text-[12px] text-ink-soft font-serif italic py-2">
+          <div className="text-mini text-ink-soft font-serif italic py-2">
             Qualcosa è andato storto.{" "}
             <button type="button" className="underline text-orange" onClick={handleOpen}>
               Riprova
@@ -286,7 +286,7 @@ function GoTriggerBanner({
       </span>
 
       <div className="relative z-[2] flex-1 min-w-0">
-        <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none mb-0.5">
+        <div className="text-micro font-medium uppercase tracking-[0.08em] text-orange leading-none mb-0.5">
           Go
         </div>
         {label ? (
@@ -315,11 +315,11 @@ function GoTriggerBanner({
             </span>
           </div>
         )}
-        <div className="text-[11px] font-serif italic text-ink-soft mt-0.5">{sub}</div>
+        <div className="text-tiny font-serif italic text-ink-soft mt-0.5">{sub}</div>
       </div>
 
       {/* Bottone dark con sparkle arancione — fedele al design HTML */}
-      <span className="relative z-[2] inline-flex items-center gap-1.5 bg-ink hover:bg-[#1a3d52] text-white rounded-pill text-[12px] font-medium shrink-0 pl-3 pr-4 py-2 transition-colors">
+      <span className="relative z-[2] inline-flex items-center gap-1.5 bg-ink hover:bg-ink-hover text-white rounded-pill text-mini font-medium shrink-0 pl-3 pr-4 py-2 transition-colors">
         <SparkleIcon className="text-orange" />
         Ask me
       </span>
@@ -337,7 +337,7 @@ function PanelHeader({ onClose }: { onClose: () => void }) {
       }}
     >
       <GoAvatar size="sm" />
-      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-orange flex-1">
+      <span className="text-tiny font-medium uppercase tracking-[0.08em] text-orange flex-1">
         Go
       </span>
       <button
@@ -360,7 +360,7 @@ function GoBalloonEl({ text }: { text: string }) {
     <div className="flex gap-2.5 items-start">
       <GoAvatar size="sm" />
       <div
-        className="bg-surface-soft border border-border px-3.5 py-2.5 text-[13px] text-ink leading-snug max-w-[85%]"
+        className="bg-surface-soft border border-border px-3.5 py-2.5 text-meta text-ink leading-snug max-w-[85%]"
         style={{ borderRadius: "16px 16px 16px 4px" }}
       >
         {text}

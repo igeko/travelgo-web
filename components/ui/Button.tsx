@@ -26,7 +26,7 @@ export const buttonVariants = cva(
     variants: {
       /* ── Size (icon-only by default) ── */ // unchanged
       size: {
-        sm: "w-6 h-6 text-[11px]",
+        sm: "w-6 h-6 text-tiny",
         md: "w-8 h-8 text-sm",
         lg: "w-10 h-10 text-base",
       },
@@ -64,9 +64,9 @@ export const buttonVariants = cva(
     /* ── size × iconOnly combinations ── */
     compoundVariants: [
       // SIZES with LABEL — auto width + horizontal padding
-      { size: "sm", iconOnly: false, class: "h-6 px-2.5 gap-1 text-[11px]" },
+      { size: "sm", iconOnly: false, class: "h-6 px-2.5 gap-1 text-tiny" },
       { size: "md", iconOnly: false, class: "h-8 px-3.5 gap-1.5 text-xs" },
-      { size: "lg", iconOnly: false, class: "h-10 px-4.5 gap-2 text-[13px]" },
+      { size: "lg", iconOnly: false, class: "h-10 px-4.5 gap-2 text-meta" },
 
       /* ── Variant: outline · tone neutral (default) ── */
       {
@@ -79,19 +79,19 @@ export const buttonVariants = cva(
         variant: "outline",
         tone: "danger",
         class:
-          "text-[#9a3015] border-[rgba(154,48,21,0.25)] hover:bg-[#9a3015] hover:border-[#9a3015] hover:text-white focus-visible:outline-[#9a3015]",
+          "text-danger-fg border-danger-border hover:bg-danger-fg hover:border-danger-fg hover:text-white focus-visible:outline-danger-fg",
       },
       {
         variant: "outline",
         tone: "warning",
         class:
-          "text-[#a37809] border-[rgba(163,120,9,0.25)] hover:bg-[#e0a818] hover:border-[#e0a818] hover:text-white focus-visible:outline-[#e0a818]",
+          "text-warning-fg border-warning-border hover:bg-warning-deep hover:border-warning-deep hover:text-white focus-visible:outline-warning-deep",
       },
       {
         variant: "outline",
         tone: "success",
         class:
-          "text-[#3d6e0e] border-[rgba(61,110,14,0.25)] hover:bg-[#3d6e0e] hover:border-[#3d6e0e] hover:text-white focus-visible:outline-[#3d6e0e]",
+          "text-success-fg border-success-border hover:bg-success-fg hover:border-success-fg hover:text-white focus-visible:outline-success-fg",
       },
 
       /* ── Variant: solid (filled, hover inverts) ── */
@@ -105,19 +105,19 @@ export const buttonVariants = cva(
         variant: "solid",
         tone: "danger",
         class:
-          "bg-[#a32d2d] text-white border-[#a32d2d] hover:bg-surface hover:text-[#a32d2d] hover:border-[#a32d2d] focus-visible:outline-[#a32d2d]",
+          "bg-danger-deep text-white border-danger-deep hover:bg-surface hover:text-danger-deep hover:border-danger-deep focus-visible:outline-danger-deep",
       },
       {
         variant: "solid",
         tone: "warning",
         class:
-          "bg-[#e0a818] text-white border-[#e0a818] hover:bg-surface hover:text-[#a37809] hover:border-[#e0a818] focus-visible:outline-[#e0a818]",
+          "bg-warning-deep text-white border-warning-deep hover:bg-surface hover:text-warning-fg hover:border-warning-deep focus-visible:outline-warning-deep",
       },
       {
         variant: "solid",
         tone: "success",
         class:
-          "bg-[#3d6e0e] text-white border-[#3d6e0e] hover:bg-surface hover:text-[#3d6e0e] hover:border-[#3d6e0e] focus-visible:outline-[#3d6e0e]",
+          "bg-success-fg text-white border-success-fg hover:bg-surface hover:text-success-fg hover:border-success-fg focus-visible:outline-success-fg",
       },
 
       /* ── Variant: ghost (transparent, hover surface-soft) ── */
@@ -131,19 +131,19 @@ export const buttonVariants = cva(
         variant: "ghost",
         tone: "danger",
         class:
-          "text-[#a32d2d] hover:bg-[#fcebeb] focus-visible:outline-[#a32d2d]",
+          "text-danger-deep hover:bg-danger-bg focus-visible:outline-danger-deep",
       },
       {
         variant: "ghost",
         tone: "warning",
         class:
-          "text-[#a37809] hover:bg-[#fef5cf] focus-visible:outline-[#a37809]",
+          "text-warning-fg hover:bg-warning-bg focus-visible:outline-warning-fg",
       },
       {
         variant: "ghost",
         tone: "success",
         class:
-          "text-[#3d6e0e] hover:bg-status-paid-bg focus-visible:outline-[#3d6e0e]",
+          "text-success-fg hover:bg-success-bg focus-visible:outline-success-fg",
       },
 
       /* ── Variant: text-only — like outline but spacious padding,
@@ -158,19 +158,19 @@ export const buttonVariants = cva(
         variant: "text-only",
         tone: "danger",
         class:
-          "text-[#9a3015] border-[rgba(154,48,21,0.25)] hover:bg-[#9a3015] hover:border-[#9a3015] hover:text-white focus-visible:outline-[#9a3015] gap-0",
+          "text-danger-fg border-danger-border hover:bg-danger-fg hover:border-danger-fg hover:text-white focus-visible:outline-danger-fg gap-0",
       },
       {
         variant: "text-only",
         tone: "warning",
         class:
-          "text-[#a37809] border-[rgba(163,120,9,0.25)] hover:bg-[#e0a818] hover:border-[#e0a818] hover:text-white focus-visible:outline-[#e0a818] gap-0",
+          "text-warning-fg border-warning-border hover:bg-warning-deep hover:border-warning-deep hover:text-white focus-visible:outline-warning-deep gap-0",
       },
       {
         variant: "text-only",
         tone: "success",
         class:
-          "text-[#3d6e0e] border-[rgba(61,110,14,0.25)] hover:bg-[#3d6e0e] hover:border-[#3d6e0e] hover:text-white focus-visible:outline-[#3d6e0e] gap-0",
+          "text-success-fg border-success-border hover:bg-success-fg hover:border-success-fg hover:text-white focus-visible:outline-success-fg gap-0",
       },
       // text-only has wider horizontal padding (from original CSS)
       { variant: "text-only", size: "sm", iconOnly: false, class: "px-3.5" },
@@ -181,12 +181,12 @@ export const buttonVariants = cva(
       {
         variant: "over-media",
         tone: "danger",
-        class: "hover:bg-[rgba(163,45,45,0.5)] hover:border-[rgba(163,45,45,0.7)]",
+        class: "hover:bg-danger-deep/50 hover:border-danger-deep/70",
       },
       {
         variant: "over-media",
         tone: "warning",
-        class: "hover:bg-[rgba(244,123,58,0.5)] hover:border-[rgba(244,123,58,0.7)]",
+        class: "hover:bg-primary/50 hover:border-primary/70",
       },
     ],
     defaultVariants: {

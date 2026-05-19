@@ -130,7 +130,7 @@ export function Map({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="w-6 h-6 rounded-full border-2 border-border border-t-orange animate-spin" />
-            <span className="text-[11px] text-ink-faint">Loading map…</span>
+            <span className="text-tiny text-ink-faint">Loading map…</span>
           </div>
         </div>
       )}
@@ -139,10 +139,10 @@ export function Map({
       {status === "error" && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="text-[13px] font-medium text-ink mb-1">Map unavailable</div>
-            <div className="text-[11px] text-ink-faint">
+            <div className="text-meta font-medium text-ink mb-1">Map unavailable</div>
+            <div className="text-tiny text-ink-faint">
               Set{" "}
-              <code className="bg-surface-soft px-1 rounded text-[10px]">
+              <code className="bg-surface-soft px-1 rounded text-micro">
                 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
               </code>{" "}
               in .env.local

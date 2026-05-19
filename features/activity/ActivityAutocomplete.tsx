@@ -101,7 +101,7 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
       {/* Gruppo 1: wishlist */}
       {hasWishlist && (
         <div>
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.10em] text-ink-faint bg-surface-soft border-b border-border">
+          <div className="px-3 py-1.5 text-micro font-bold uppercase tracking-[0.10em] text-ink-faint bg-surface-soft border-b border-border">
             Nella wishlist
           </div>
           {results.wishlist.map((item) => (
@@ -111,11 +111,11 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 hover:bg-surface-soft transition-colors border-b border-border/50"
             >
               <span className="text-sm leading-none shrink-0">📍</span>
-              <span className="flex-1 min-w-0 text-[13px] text-ink truncate">
+              <span className="flex-1 min-w-0 text-meta text-ink truncate">
                 {highlight(item.title, query)}
               </span>
               {item.in_current_day && (
-                <span className="shrink-0 text-[10px] font-bold text-orange bg-orange/10 px-1.5 py-0.5 rounded ml-auto">
+                <span className="shrink-0 text-micro font-bold text-orange bg-orange/10 px-1.5 py-0.5 rounded ml-auto">
                   Questo giorno
                 </span>
               )}
@@ -127,7 +127,7 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
       {/* Gruppo 2: piattaforma */}
       {hasPlatform && (
         <div>
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.10em] text-ink-faint bg-surface-soft border-b border-border">
+          <div className="px-3 py-1.5 text-micro font-bold uppercase tracking-[0.10em] text-ink-faint bg-surface-soft border-b border-border">
             Su TravelGo
           </div>
           {results.platform.map((item) => (
@@ -137,7 +137,7 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 hover:bg-surface-soft transition-colors border-b border-border/50"
             >
               <span className="text-sm leading-none shrink-0">🔍</span>
-              <span className="flex-1 min-w-0 text-[13px] text-ink truncate">
+              <span className="flex-1 min-w-0 text-meta text-ink truncate">
                 {highlight(item.title, query)}
               </span>
             </button>
@@ -147,7 +147,7 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
 
       {/* Empty state */}
       {!loading && !hasAny && query && (
-        <div className="px-3 py-3 text-[12px] text-ink-faint italic">
+        <div className="px-3 py-3 text-mini text-ink-faint italic">
           Nessun risultato per &ldquo;{query}&rdquo;
         </div>
       )}
@@ -157,7 +157,7 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
         <div className="px-3 py-2.5 border-t border-border">
           <button
             onClick={() => onCreateNew(query.trim())}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-orange hover:underline transition-colors"
+            className="inline-flex items-center gap-1.5 text-mini font-medium text-orange hover:underline transition-colors"
           >
             <IconPlus size={13} />
             Crea &ldquo;{query.trim()}&rdquo; come nuova attività

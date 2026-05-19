@@ -20,7 +20,7 @@ export function GoWidgetRenderer({ response, onAction, onDismiss }: GoWidgetRend
   if (!def) {
     console.error(`[GoWidgetRenderer] Widget sconosciuto: "${response.widget}"`);
     return (
-      <div className="text-[12px] text-ink-faint italic px-4 py-3 border border-dashed border-border rounded-xl">
+      <div className="text-mini text-ink-faint italic px-4 py-3 border border-dashed border-border rounded-xl">
         Widget non disponibile: <code>{response.widget}</code>
       </div>
     );
@@ -30,7 +30,7 @@ export function GoWidgetRenderer({ response, onAction, onDismiss }: GoWidgetRend
   if (!parsed.success) {
     console.error(`[GoWidgetRenderer] Payload non valido per "${response.widget}":`, parsed.error);
     return (
-      <div className="text-[12px] text-ink-faint italic px-4 py-3 border border-dashed border-border rounded-xl">
+      <div className="text-mini text-ink-faint italic px-4 py-3 border border-dashed border-border rounded-xl">
         Dati non validi per il widget <code>{response.widget}</code>.
       </div>
     );

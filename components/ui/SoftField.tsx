@@ -199,7 +199,7 @@ const SoftFieldBase = forwardRef<
           // Slot alignment: top in multiline (next to the first textarea line),
           // centered in single-line.
           multiline ? "items-start" : "items-center",
-          "bg-[#fafaf6] border border-border",
+          "bg-surface-input border border-border",
           // Shape: pill for input, generous radius for textarea
           multiline ? "rounded-[20px]" : "rounded-pill",
           // Interaction states
@@ -267,7 +267,7 @@ const SoftFieldBase = forwardRef<
 
       {/* Counter (auto, only when maxLength is set) */}
       {maxLength && !hideCounter && (
-        <div className="text-right mt-1 text-[10px] text-ink-faint opacity-60 tabular-nums">
+        <div className="text-right mt-1 text-micro text-ink-faint opacity-60 tabular-nums">
           {value.length}/{maxLength}
         </div>
       )}

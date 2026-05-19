@@ -32,6 +32,12 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Atoms",
     description: "Generic tab/view switcher · pill-shaped toggle with active state styling",
   },
+  {
+    slug: "filter-pill",
+    title: "FilterPill",
+    group: "Atoms",
+    description: "Filter / toggle pill · 3 sizes, 4 tones, active/inactive states — usato nelle admin pages",
+  },
   // Fields subgroup
   {
     slug: "address-field",

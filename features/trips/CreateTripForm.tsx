@@ -118,7 +118,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
           Alright, let's go!
         </h1>
       </div>
-      <p className="text-[12px] text-ink-faint ml-[38px] mb-4">
+      <p className="text-mini text-ink-faint ml-[38px] mb-4">
         A new trip starts with a place.
       </p>
 
@@ -136,7 +136,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
         <div className="mt-3.5 pt-4 border-t border-dashed border-orange-border">
 
           {/* Go suggests label */}
-          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.08em] text-orange mb-1.5">
+          <div className="flex items-center gap-2 text-micro font-medium uppercase tracking-[0.08em] text-orange mb-1.5">
             <GoAvatar size="xs" />
             Go suggests
           </div>
@@ -171,11 +171,11 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
                   <span className={cn("block mb-1.5 text-[18px]", isActive ? "text-ink" : "text-ink-soft")}>
                     {meta.icon}
                   </span>
-                  <div className="text-[12px] font-medium text-ink">{meta.title}</div>
+                  <div className="text-mini font-medium text-ink">{meta.title}</div>
                   {isFilled ? (
-                    <div className="text-[10px] font-medium text-ink mt-0.5">{meta.summary}</div>
+                    <div className="text-micro font-medium text-ink mt-0.5">{meta.summary}</div>
                   ) : (
-                    <div className="text-[10px] font-serif italic text-ink-faint mt-0.5">{meta.sub}</div>
+                    <div className="text-micro font-serif italic text-ink-faint mt-0.5">{meta.sub}</div>
                   )}
                 </button>
               );
@@ -196,13 +196,13 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
                 <span className="text-[15px] text-ink">
                   {openCard === "dates" ? <CalendarIcon /> : openCard === "travelers" ? <UsersIcon /> : <SmileIcon />}
                 </span>
-                <span className="text-[13px] font-medium text-ink">
+                <span className="text-meta font-medium text-ink">
                   {openCard === "dates" ? "Dates" : openCard === "travelers" ? "Travelers" : "Theme"}
                 </span>
                 <button
                   type="button"
                   onClick={() => setOpenCard(null)}
-                  className="ml-auto text-[11px] text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
+                  className="ml-auto text-tiny text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
                 >
                   Skip
                 </button>
@@ -228,8 +228,8 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
                   ].map((row) => (
                     <div key={row.key} className="flex items-center justify-between py-2.5">
                       <div>
-                        <div className="text-[13px] font-medium text-ink">{row.label}</div>
-                        <div className="text-[11px] font-serif italic text-ink-soft">{row.sub}</div>
+                        <div className="text-meta font-medium text-ink">{row.label}</div>
+                        <div className="text-tiny font-serif italic text-ink-soft">{row.sub}</div>
                       </div>
                       <div className="flex items-center gap-2.5">
                         <button
@@ -264,7 +264,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
                         type="button"
                         onClick={() => toggleTheme(t)}
                         className={cn(
-                          "text-[12px] px-3 py-1.5 rounded-pill border transition-colors font-medium",
+                          "text-mini px-3 py-1.5 rounded-pill border transition-colors font-medium",
                           themes.includes(t)
                             ? "bg-ink text-white border-ink"
                             : "bg-surface border-border text-ink-soft hover:border-border-strong",
@@ -281,7 +281,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
                     placeholder="Describe your ideal trip — anything Go should know…"
                     className={cn(
                       "w-full resize-none rounded-xl bg-surface border border-border px-3.5 py-2.5",
-                      "text-[13px] text-ink placeholder:text-ink-faint font-sans",
+                      "text-meta text-ink placeholder:text-ink-faint font-sans",
                       "focus:outline-none focus:border-orange focus:shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
                       "transition-[border-color,box-shadow] duration-150",
                     )}
@@ -299,7 +299,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
           <button
             type="button"
             onClick={onCancel}
-            className="text-[12px] text-ink-soft hover:text-ink underline decoration-ink/20 px-2 py-1.5 transition-colors"
+            className="text-mini text-ink-soft hover:text-ink underline decoration-ink/20 px-2 py-1.5 transition-colors"
           >
             Cancel
           </button>
@@ -310,7 +310,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
           disabled={!canSubmit}
           className={cn(
             "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-pill",
-            "text-[13px] font-medium text-white bg-orange",
+            "text-meta font-medium text-white bg-orange",
             "hover:bg-orange-deep transition-colors",
             "disabled:opacity-45 disabled:pointer-events-none",
           )}

@@ -149,14 +149,14 @@ function SuggestionsWidget({
           <span className="text-orange">
             <SparkleIcon />
           </span>
-          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-orange">
+          <span className="text-tiny font-medium uppercase tracking-[0.1em] text-orange">
             {title}
           </span>
           {subtitle && (
-            <span className="text-[12px] text-ink-faint">{subtitle}</span>
+            <span className="text-mini text-ink-faint">{subtitle}</span>
           )}
         </div>
-        <span className="text-[11px] font-serif italic text-ink-faint hidden sm:block">
+        <span className="text-tiny font-serif italic text-ink-faint hidden sm:block">
           Tocca per il dettaglio
         </span>
       </div>
@@ -209,25 +209,25 @@ function SuggestionsWidget({
                   <div className="flex items-center gap-2 mb-0.5">
                     {item.tag && (
                       <span className={cn(
-                        "text-[10px] font-medium uppercase tracking-[0.06em]",
+                        "text-micro font-medium uppercase tracking-eyebrow",
                         isOpen ? "text-orange-deep" : "text-orange",
                       )}>
                         {item.tag}
                       </span>
                     )}
                     {item.subtitle && (
-                      <span className="text-[10px] text-ink-faint">· {item.subtitle}</span>
+                      <span className="text-micro text-ink-faint">· {item.subtitle}</span>
                     )}
                   </div>
                   <div className="text-[14px] font-medium text-ink truncate">{item.title}</div>
                   {item.description && !isOpen && (
-                    <div className="text-[12px] text-ink-soft truncate mt-0.5">{item.description}</div>
+                    <div className="text-mini text-ink-soft truncate mt-0.5">{item.description}</div>
                   )}
                 </div>
 
                 {/* Distanza */}
                 {item.distance && (
-                  <span className="flex items-center gap-1 text-[11px] text-ink-soft whitespace-nowrap shrink-0">
+                  <span className="flex items-center gap-1 text-tiny text-ink-soft whitespace-nowrap shrink-0">
                     <span className="text-orange"><RouteIcon /></span>
                     {item.distance}
                   </span>
@@ -255,13 +255,13 @@ function SuggestionsWidget({
 
       {/* Footer */}
       <div className="px-4 py-3 flex justify-between items-center">
-        <span className="text-[11px] font-serif italic text-ink-faint">
+        <span className="text-tiny font-serif italic text-ink-faint">
           Nessuna ti convince?
         </span>
         <button
           type="button"
           onClick={onDismiss}
-          className="text-[11px] text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
+          className="text-tiny text-ink-soft underline decoration-ink/20 hover:text-ink transition-colors"
         >
           Chiudi
         </button>
@@ -314,7 +314,7 @@ function ItemDetail({
           {/* Section label con avatar */}
           <div className="flex items-center gap-2 mb-2">
             <GoAvatar size="xs" />
-            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange">
+            <span className="text-micro font-medium uppercase tracking-[0.08em] text-orange">
               Go ti spiega perché
             </span>
           </div>
@@ -333,12 +333,12 @@ function ItemDetail({
           {/* Bullets */}
           {item.bullets && item.bullets.length > 0 && (
             <>
-              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-soft mb-1.5">
+              <div className="text-micro font-medium uppercase tracking-[0.08em] text-ink-soft mb-1.5">
                 Cosa aspettarsi
               </div>
               <ul className="list-disc list-inside mb-3 flex flex-col gap-1">
                 {item.bullets.map((b, i) => (
-                  <li key={i} className="text-[13px] text-ink leading-[1.6]">{b}</li>
+                  <li key={i} className="text-meta text-ink leading-[1.6]">{b}</li>
                 ))}
               </ul>
             </>
@@ -347,7 +347,7 @@ function ItemDetail({
           {/* Facts */}
           {item.facts && item.facts.length > 0 && (
             <div
-              className="flex gap-3 flex-wrap px-3 py-2.5 rounded-xl text-[12px] text-ink-soft"
+              className="flex gap-3 flex-wrap px-3 py-2.5 rounded-xl text-mini text-ink-soft"
               style={{
                 background: "var(--color-surface-soft)",
                 border: "0.5px solid var(--color-border)",
@@ -355,7 +355,7 @@ function ItemDetail({
             >
               {item.facts.map((f, i) => (
                 <span key={i} className="flex items-center gap-1">
-                  <span className="text-orange text-[13px]">{factEmoji(f.icon)}</span>
+                  <span className="text-orange text-meta">{factEmoji(f.icon)}</span>
                   {f.label}
                 </span>
               ))}
@@ -400,7 +400,7 @@ function ItemDetail({
         className="flex items-center justify-between flex-wrap gap-2 mt-3.5 pt-3.5"
         style={{ borderTop: "1px dashed var(--color-border)" }}
       >
-        <span className="text-[11px] text-ink-faint font-serif italic">
+        <span className="text-tiny text-ink-faint font-serif italic">
           Ti ispira?
         </span>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -410,7 +410,7 @@ function ItemDetail({
             onClick={() => onAction({ kind: "select", itemId: item.id, label: `map:${item.id}` })}
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border transition-colors",
-              "text-[11px] font-medium text-ink border-border-strong bg-surface hover:bg-surface-soft",
+              "text-tiny font-medium text-ink border-border-strong bg-surface hover:bg-surface-soft",
             )}
           >
             <MapIcon /> Mappa
@@ -422,7 +422,7 @@ function ItemDetail({
             onClick={() => onAction({ kind: "add_to_wishlist", itemId: item.id, label: item.title })}
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border transition-colors",
-              "text-[11px] font-medium text-ink border-border-strong bg-surface hover:bg-surface-soft",
+              "text-tiny font-medium text-ink border-border-strong bg-surface hover:bg-surface-soft",
             )}
           >
             <BookmarkIcon /> Wishlist
@@ -434,7 +434,7 @@ function ItemDetail({
             onClick={handlePrimary}
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border transition-colors",
-              "text-[11px] font-medium text-white border-ink bg-ink hover:bg-[#1a3d52]",
+              "text-tiny font-medium text-white border-ink bg-ink hover:bg-ink-hover",
             )}
           >
             <PlusIcon /> {actionLabel}
