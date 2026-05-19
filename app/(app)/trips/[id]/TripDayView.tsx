@@ -10,7 +10,7 @@ import { IconArrowRightCircle, IconChevronRight } from "@/components/ui/icons";
 import { IconSparkles } from "@tabler/icons-react";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { Quote } from "@/components/ui/Quote";
-import { Timeline } from "@/features/activity/Timeline";
+import { Itinerary } from "@/features/activity/Itinerary";
 import { DayItem } from "@/features/day/DayItem";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
@@ -199,6 +199,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const [selectedDayId, setSelectedDayId] = useState(initialDayId);
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const heroBannerRef = useRef<HeroBannerHandle>(null);
 
@@ -206,6 +207,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   useShortcuts([
     { key: "e", onTrigger: () => heroBannerRef.current?.openEdit(), enabled: editMode },
     { key: "l", onTrigger: () => heroBannerRef.current?.openLodging(), enabled: editMode },
+    { key: "a", onTrigger: () => setShowAddForm(true), enabled: editMode },
+    { key: "Escape", alt: false, onTrigger: () => setShowAddForm(false) },
   ]);
 
   function selectDay(dayId: string) {
@@ -240,7 +243,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const loadActivities = useCallback(async (dayId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/blocks`);
+      const res = await fetch(`/api/trips/days/${dayId}/activities`);
       const data = await res.json();
       setActivities(data);
     } finally {
@@ -501,14 +504,116 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         {/* Go — trigger visibile solo se Go non è mai stato aperto */}
         {!goHasBeenOpened && <GoLaunchTrigger onLaunch={openGo} />}
 
-        {/* Timeline */}
+        {/* Itinerary */}
         <div className={cn("mt-8 transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
-          <Timeline
+          <Itinerary
             key={selectedDayId}
-            dayId={selectedDayId}
-            tripId={trip.id}
-            initialBlocks={activities}
+            activities={activities}
+            day={selectedDay}
             editMode={editMode}
+            tripId={trip.id}
+            externalShowAddForm={showAddForm}
+            onAddFormClose={() => setShowAddForm(false)}
+            onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
+            initialShowMap={selectedDay.show_map}
+            onToggleMap={async (show) => {
+              await fetch(`/api/trips/days/${selectedDayId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ show_map: show }),
+              });
+            }}
+            onActivitySave={async (id, data) => {
+              const time = (data.hour !== undefined && data.minute !== undefined)
+                ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+                : null;
+              const hero_image = data.heroImage
+                ? data.heroImage.split("?")[0] || null
+                : null;
+              const budget_paid = data.status === "paid";
+              const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
+
+              setActivities((prev) =>
+                prev.map((a) =>
+                  a.id === id
+                    ? {
+                        ...a,
+                        title: data.title,
+                        short_desc: data.description,
+                        slot: data.period as Activity["slot"],
+                        time,
+                        location: data.place?.formatted ?? null,
+                        location_place_id: data.place?.placeId ?? null,
+                        location_lat: data.place?.lat ?? null,
+                        location_lng: data.place?.lng ?? null,
+                        budget_amount: data.budgetAmount ?? null,
+                        budget_currency: data.budgetCurrency,
+                        budget_paid,
+                        booking,
+                        hero_image,
+                      }
+                    : a
+                )
+              );
+              const res = await fetch(`/api/trips/activities/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: data.title,
+                  short_desc: data.description,
+                  slot: data.period,
+                  time,
+                  location: data.place?.formatted ?? null,
+                  location_place_id: data.place?.placeId ?? null,
+                  location_lat: data.place?.lat ?? null,
+                  location_lng: data.place?.lng ?? null,
+                  budget_amount: data.budgetAmount ?? null,
+                  budget_currency: data.budgetCurrency,
+                  budget_paid,
+                  booking,
+                  place_enriched: data.enrichedPlace ?? null,
+                  hero_image,
+                }),
+              });
+              if (res.ok && selectedDay?.id) {
+                await loadActivities(selectedDay.id);
+              }
+            }}
+            onActivityDelete={async (id) => {
+              setActivities((prev) => prev.filter((a) => a.id !== id));
+              await fetch(`/api/trips/activities/${id}`, { method: "DELETE" });
+            }}
+            onCreateActivity={async (data) => {
+              const time = (data.hour !== undefined && data.minute !== undefined)
+                ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+                : null;
+              const budget_paid = data.status === "paid";
+              const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
+
+              const res = await fetch(`/api/trips/days/${selectedDayId}/activities`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: data.title,
+                  short_desc: data.description,
+                  slot: data.period,
+                  time,
+                  location: data.place?.formatted ?? null,
+                  location_place_id: data.place?.placeId ?? null,
+                  location_lat: data.place?.lat ?? null,
+                  location_lng: data.place?.lng ?? null,
+                  budget_amount: data.budgetAmount ?? null,
+                  budget_currency: data.budgetCurrency,
+                  budget_paid,
+                  booking,
+                  place_enriched: data.enrichedPlace ?? null,
+                }),
+              });
+              if (res.ok) {
+                const created = await res.json();
+                setActivities((prev) => [...prev, created]);
+              }
+            }}
           />
         </div>
 
