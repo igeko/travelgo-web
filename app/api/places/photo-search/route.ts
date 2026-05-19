@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   searchUrl.searchParams.set("key", apiKey);
   searchUrl.searchParams.set("language", "en");
 
-  const searchRes = await fetch(searchUrl.toString(), { cache: "no-store" });
+  const searchRes = await fetch(searchUrl.toString(), { next: { revalidate: 86400 } });
   if (!searchRes.ok) return NextResponse.json({ error: "Text Search upstream error" }, { status: 502 });
 
   const searchData = await searchRes.json();
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     ].join(","),
   );
 
-  const detailRes = await fetch(detailUrl.toString(), { cache: "no-store" });
+  const detailRes = await fetch(detailUrl.toString(), { next: { revalidate: 86400 } });
   if (!detailRes.ok) return NextResponse.json({ error: "Place Details upstream error" }, { status: 502 });
 
   const detailData = await detailRes.json();

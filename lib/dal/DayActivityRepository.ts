@@ -11,6 +11,7 @@ import type { SupabaseClient } from "./supabase";
 import {
   DalError,
   type DalResult,
+  type DbActivity,
   type DbDayActivity,
   type DayActivityWithDetails,
   type ActivitySlot,
@@ -71,12 +72,12 @@ export class DayActivityRepository {
     }
 
     const activitiesMap = new Map(
-      (activities ?? []).map((a: any) => [a.id, a])
+      ((activities ?? []) as DbActivity[]).map((a) => [a.id, a]),
     );
 
-    const merged = (data ?? []).map((da: any) => ({
+    const merged = ((data ?? []) as DbDayActivity[]).map((da) => ({
       ...da,
-      activity: activitiesMap.get(da.activity_id),
+      activity: activitiesMap.get(da.activity_id) as DbActivity,
     })) as DayActivityWithDetails[];
 
     return { data: merged, error: null };

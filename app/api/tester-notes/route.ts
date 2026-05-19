@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
 import { TESTER_ROLES, ADMIN_ROLES } from "@/lib/dal/auth";
 import { isUuid, parseJsonBody, safeHttpUrl } from "@/lib/api/validation";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 const NOTE_TYPES = new Set(["bug", "suggestion", "other"]);
 

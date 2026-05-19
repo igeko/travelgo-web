@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
 import { isCurrencyCode, parseJsonBody } from "@/lib/api/validation";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function safeIsoDate(value: unknown): string | null {

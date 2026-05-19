@@ -3,19 +3,20 @@
  * ─────────────────────────────────────────────────────────────────
  * Supabase client factory.
  *
- * Two clients:
- *  • createBrowserClient()  — for Client Components (uses anon key,
- *    respects RLS, auth state from cookies)
- *  • createServerClient()   — for Server Components, Route Handlers,
- *    and Server Actions (reads cookies server-side)
- *
- * The service-role client is NOT exported here — it should only be
- * instantiated inside Route Handlers that explicitly need it (e.g.
- * accepting an invite), keeping the blast radius small.
+ * Three clients:
+ *  • getBrowserClient()  — Client Components (anon key, respects RLS)
+ *  • getServerClient()   — Server Components / Route Handlers / Server
+ *                          Actions; reads the auth session from cookies
+ *  • getServiceClient()  — Route Handlers that need to bypass RLS after
+ *                          they've explicitly checked auth + authorization
+ *                          themselves (e.g. tester-notes admin views, trip
+ *                          create flow). Centralised here so only one
+ *                          place imports SUPABASE_SERVICE_ROLE_KEY.
  * ─────────────────────────────────────────────────────────────────
  */
 
 import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 function getEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -70,3 +71,18 @@ export async function getServerClient() {
 }
 
 export type SupabaseClient = Awaited<ReturnType<typeof getServerClient>>;
+
+/**
+ * Service-role client. Bypasses RLS — callers must verify auth and
+ * authorization BEFORE invoking this. Server-only.
+ */
+export function getServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY for service client",
+    );
+  }
+  return createClient(url, serviceKey, { auth: { persistSession: false } });
+}

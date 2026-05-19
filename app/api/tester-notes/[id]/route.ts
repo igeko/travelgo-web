@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
+import { ADMIN_ROLES } from "@/lib/dal/auth";
 
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
-
-const ADMIN_ROLES = ["dev", "admin"];
 const VALID_STATUSES = ["proposed", "approved", "in_progress", "to_be_tested", "done", "archived"];
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

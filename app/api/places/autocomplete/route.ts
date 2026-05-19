@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("types", types ?? "geocode|establishment");
   url.searchParams.set("language", "en");
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  // Autocomplete results are stable for a few minutes; cache to reduce billing.
+  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
 
   if (!res.ok) {
     return NextResponse.json(

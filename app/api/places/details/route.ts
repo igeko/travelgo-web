@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
     "formatted_address,geometry/location,address_components,name",
   );
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  // Place details (address, coords) are very stable — cache aggressively.
+  const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
 
   if (!res.ok) {
     return NextResponse.json(

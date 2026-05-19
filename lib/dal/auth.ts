@@ -1,7 +1,9 @@
 import { getServerClient } from "@/lib/dal/supabase";
 import { NextResponse } from "next/server";
 
-export const ADMIN_ROLES = ["admin"] as const;
+/** Highest-privilege platform roles — can edit fix_notes, change tester-notes status, etc. */
+export const ADMIN_ROLES = ["admin", "dev"] as const;
+/** Roles allowed to submit tester notes (also includes ADMIN_ROLES). */
 export const TESTER_ROLES = ["admin", "dev", "tester"] as const;
 
 const EDITOR_ROLES = ["owner", "editor"] as const;
