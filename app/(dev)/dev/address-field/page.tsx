@@ -13,6 +13,7 @@ export default function AddressFieldStories() {
   const [placeholder, setPlaceholder] = useState("Search address…");
   const [showMapButton, setShowMapButton] = useState(false);
   const [disabled, setDisabled] = useState(false);
+  const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
 
   // ── Static story state ──
   const [placeStatic, setPlaceStatic] = useState<PlaceResult | null>(null);
@@ -55,6 +56,13 @@ export default function AddressFieldStories() {
           value: disabled,
           onChange: setDisabled,
         },
+        {
+          kind: "toggle",
+          id: "labelAlwaysVisible",
+          label: "Label always visible",
+          value: labelAlwaysVisible,
+          onChange: setLabelAlwaysVisible,
+        },
       ],
     },
   ];
@@ -79,6 +87,7 @@ export default function AddressFieldStories() {
               value={place}
               onChange={setPlace}
               label={label || undefined}
+              labelAlwaysVisible={labelAlwaysVisible}
               placeholder={placeholder}
               showMapButton={showMapButton}
               disabled={disabled}

@@ -24,6 +24,7 @@ export default function DestinationFieldPage() {
   const [singleValue, setSingleValue] = useState<PlaceResult | null>(null);
   const [multiValue, setMultiValue] = useState<PlaceResult[]>([]);
   const [disabled, setDisabled] = useState(false);
+  const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
   const [label, setLabel] = useState("Destination");
   const [placeholder, setPlaceholder] = useState("Where would you like to go?");
 
@@ -97,6 +98,13 @@ export default function DestinationFieldPage() {
                   value: disabled,
                   onChange: setDisabled,
                 },
+                {
+                  kind: "toggle",
+                  id: "labelAlwaysVisible",
+                  label: "Label always visible",
+                  value: labelAlwaysVisible,
+                  onChange: setLabelAlwaysVisible,
+                },
               ],
             },
           ]}
@@ -129,6 +137,7 @@ export default function DestinationFieldPage() {
                   onChange={setSingleValue}
                   placeholder={placeholder || undefined}
                   label={label || undefined}
+                  labelAlwaysVisible={labelAlwaysVisible}
                   placeTypes={selectedTypes}
                   disabled={disabled}
                 />
@@ -139,6 +148,7 @@ export default function DestinationFieldPage() {
                   onChange={setMultiValue}
                   placeholder={placeholder || undefined}
                   label={label || undefined}
+                  labelAlwaysVisible={labelAlwaysVisible}
                   placeTypes={selectedTypes}
                   disabled={disabled}
                 />

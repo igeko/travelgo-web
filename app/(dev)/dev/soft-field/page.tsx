@@ -28,6 +28,7 @@ export default function SoftFieldStories() {
   const [mapButtonLabel, setMapButtonLabel] = useState("map");
   const [mapButtonVariant, setMapButtonVariant] = useState<MapButtonVariant>("outline");
   const [disabled, setDisabled] = useState(false);
+  const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
 
   const groups: ControlGroup[] = [
     {
@@ -145,6 +146,13 @@ export default function SoftFieldStories() {
           value: disabled,
           onChange: setDisabled,
         },
+        {
+          kind: "toggle",
+          id: "labelAlwaysVisible",
+          label: "Label always visible",
+          value: labelAlwaysVisible,
+          onChange: setLabelAlwaysVisible,
+        },
       ],
     },
   ];
@@ -201,6 +209,7 @@ export default function SoftFieldStories() {
               value={value}
               onChange={setValue}
               label={label || undefined}
+              labelAlwaysVisible={labelAlwaysVisible}
               placeholder={placeholder}
               maxLength={useMaxLength ? maxLength : undefined}
               disabled={disabled}
@@ -213,6 +222,7 @@ export default function SoftFieldStories() {
               value={value}
               onChange={setValue}
               label={label || undefined}
+              labelAlwaysVisible={labelAlwaysVisible}
               placeholder={placeholder}
               maxLength={useMaxLength ? maxLength : undefined}
               disabled={disabled}

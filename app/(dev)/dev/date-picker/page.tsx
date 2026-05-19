@@ -11,6 +11,7 @@ export default function DatePickerPage() {
   const [label, setLabel] = useState("Date");
   const [placeholder, setPlaceholder] = useState("");
   const [disabled, setDisabled] = useState(false);
+  const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
 
   const [singleValue, setSingleValue] = useState<Date | null>(null);
   const [rangeValue, setRangeValue] = useState<DateRange>({ start: null, end: null });
@@ -83,6 +84,13 @@ export default function DatePickerPage() {
                   value: disabled,
                   onChange: setDisabled,
                 },
+                {
+                  kind: "toggle",
+                  id: "labelAlwaysVisible",
+                  label: "Label always visible",
+                  value: labelAlwaysVisible,
+                  onChange: setLabelAlwaysVisible,
+                },
               ],
             },
           ]}
@@ -114,6 +122,7 @@ export default function DatePickerPage() {
                   onChange={setSingleValue}
                   displayFormat={displayFormat}
                   label={label || undefined}
+                  labelAlwaysVisible={labelAlwaysVisible}
                   placeholder={placeholder || undefined}
                   disabled={disabled}
                 />
@@ -124,6 +133,7 @@ export default function DatePickerPage() {
                   onChange={setRangeValue}
                   displayFormat={displayFormat}
                   label={label || undefined}
+                  labelAlwaysVisible={labelAlwaysVisible}
                   placeholder={placeholder || undefined}
                   disabled={disabled}
                 />
