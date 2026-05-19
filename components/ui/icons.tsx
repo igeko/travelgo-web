@@ -6,6 +6,7 @@
  * Add new icons as needed: find the name at https://tabler.io/icons
  */
 export {
+  IconAlertCircle,
   IconAlertTriangle,
   IconArrowRightCircle,
   IconArchive,
@@ -20,15 +21,21 @@ export {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconCategory,
   IconCircleDashed,
   IconCircleCheck,
   IconCoin,
+  IconDatabase,
   IconDeviceFloppy,
+  IconDownload,
   IconExternalLink,
+  IconEye,
   IconGripVertical,
   IconHeart,
   IconHourglass,
   IconLink,
+  IconList,
+  IconLoader2,
   IconMap,
   IconMapPin,
   IconMapSearch,
@@ -46,6 +53,7 @@ export {
   IconTools,
   IconTrash,
   IconUpload,
+  IconWorld,
   IconX,
 } from "@tabler/icons-react";
 

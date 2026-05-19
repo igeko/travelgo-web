@@ -180,7 +180,7 @@ export async function searchPlaces(params: {
 
       return {
         osmId:    el.id,
-        osmType:  el.type,
+        osmType:  el.type as string,
         name,
         lat,
         lng,
