@@ -184,5 +184,16 @@
     "goGetInfo": "Go dammi info",
     "gettingInfo": "Caricamento…",
     "dismiss": "Chiudi"
+  },
+  "ActivityTimeline": {
+    "dayItinerary": "Itinerario della giornata",
+    "noActivities": "Nessuna attività — aggiungi il primo blocco",
+    "section": {
+      "morning": "Mattina",
+      "afternoon": "Pomeriggio",
+      "evening": "Sera",
+      "night": "Notte"
+    },
+    "acts": "atti"
   }
 }

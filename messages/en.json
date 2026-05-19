@@ -184,5 +184,16 @@
     "goGetInfo": "Go give me info",
     "gettingInfo": "Getting info…",
     "dismiss": "Dismiss"
+  },
+  "ActivityTimeline": {
+    "dayItinerary": "Day itinerary",
+    "noActivities": "No activities — add the first block",
+    "section": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "night": "Night"
+    },
+    "acts": "acts"
   }
 }
