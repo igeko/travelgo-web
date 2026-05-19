@@ -42,10 +42,21 @@ type TripGoContextValue = {
 
 const TripGoContext = createContext<TripGoContextValue | null>(null);
 
+const NOOP_CONTEXT: TripGoContextValue = {
+  openGo: () => {},
+  openGoWith: () => {},
+  closeGo: () => {},
+  setTripContext: () => {},
+  isOpen: false,
+  hasBeenOpened: false,
+  registerActiveEdit: () => {},
+  unregisterActiveEdit: () => {},
+};
+
 export function useTripGo(): TripGoContextValue {
   const ctx = useContext(TripGoContext);
-  if (!ctx) throw new Error("useTripGo must be used inside TripGoProvider");
-  return ctx;
+  // Outside TripGoProvider (e.g. sandbox, tests): return silent no-ops
+  return ctx ?? NOOP_CONTEXT;
 }
 
 /* ─────────────────────────────────────────────────────────────────
