@@ -10,7 +10,7 @@ import { IconArrowRightCircle, IconChevronRight } from "@/components/ui/icons";
 import { IconSparkles } from "@tabler/icons-react";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { Quote } from "@/components/ui/Quote";
-import { ActivityTimeline } from "@/features/activity/ActivityTimeline";
+import { Timeline } from "@/features/activity/Timeline";
 import { DayItem } from "@/features/day/DayItem";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
@@ -501,9 +501,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         {/* Go — trigger visibile solo se Go non è mai stato aperto */}
         {!goHasBeenOpened && <GoLaunchTrigger onLaunch={openGo} />}
 
-        {/* ActivityTimeline */}
+        {/* Timeline */}
         <div className={cn("mt-8 transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
-          <ActivityTimeline
+          <Timeline
             key={selectedDayId}
             dayId={selectedDayId}
             tripId={trip.id}

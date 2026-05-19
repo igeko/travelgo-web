@@ -13,10 +13,6 @@ npm run lint         # ESLint
 
 > **Important:** Never run `npm install` inside mounted/user folders — `.bin/` symlinks fail in that context.
 
-## Git Workflow
-
-After every meaningful change: `git add -A && git commit -m "..." && git push`. The working branch is `main`; push there unless told otherwise.
-
 ## Architecture
 
 ### Route Groups
@@ -81,16 +77,6 @@ Conversational travel assistant built on `openai@6.37.0` + `gpt-4o-mini`. Entry 
 - `features/go/widget-registry.ts` — structured response widgets
 
 The Go context is hydrated with trip/day data via `features/go/TripGoContext.tsx`.
-
-## Catalog Import Pipeline
-
-Admin-only. Imports tourist places from OSM → enriches with Wikipedia → generates OpenAI embeddings → stores in Supabase with pgvector.
-
-Key files: `lib/overpass.ts`, `lib/wikipedia.ts`, `lib/region-presets.ts`, `lib/data-quality.ts`  
-API: `app/api/catalog/jobs/`, `app/api/catalog/import/`  
-UI: `app/(app)/admin/catalog/page.tsx`
-
-Both import endpoints stream progress via SSE.
 
 ## Auth & Roles
 
