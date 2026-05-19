@@ -135,6 +135,11 @@
     "showMap": "Mostra mappa",
     "addActivity": "Aggiungi attività"
   },
+  "DayViewModeToggle": {
+    "lista": "Lista",
+    "timeline": "Timeline",
+    "racconto": "Racconto"
+  },
   "ActivityList": {
     "empty": "Nessuna attività per questo giorno.",
     "slots": {

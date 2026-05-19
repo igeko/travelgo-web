@@ -1,10 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 
 /* ─────────────────────────────────────────────────────────────────
    DayViewModeToggle
-   Segmented control: Lista ↔ Racconto
+   Segmented control: Lista ↔ Timeline ↔ Racconto
    The orange dot on "Racconto" signals AI-generated content.
 ───────────────────────────────────────────────────────────────── */
 
@@ -16,19 +17,21 @@ type Props = {
   className?: string;
 };
 
-const MODES: { key: DayViewMode; label: string; dot?: boolean }[] = [
-  { key: "lista",     label: "Lista"    },
-  { key: "timeline",  label: "Timeline" },
-  { key: "racconto",  label: "Racconto", dot: true },
+const MODES: { key: DayViewMode; dot?: boolean }[] = [
+  { key: "lista"    },
+  { key: "timeline" },
+  { key: "racconto", dot: true },
 ];
 
 export function DayViewModeToggle({ value, onChange, className }: Props) {
+  const t = useTranslations("DayViewModeToggle");
+
   return (
     <div
       className={cn("inline-flex rounded-[var(--radius-pill)] p-[3px] gap-[2px]", className)}
       style={{ background: "rgba(13,44,61,0.06)" }}
     >
-      {MODES.map(({ key, label, dot }) => {
+      {MODES.map(({ key, dot }) => {
         const active = value === key;
         return (
           <button
@@ -43,7 +46,7 @@ export function DayViewModeToggle({ value, onChange, className }: Props) {
                 : "bg-transparent text-ink-soft hover:text-ink",
             )}
           >
-            {label}
+            {t(key)}
             {dot && (
               <span
                 aria-label="AI"

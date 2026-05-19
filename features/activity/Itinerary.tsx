@@ -127,11 +127,6 @@ export function Itinerary({
           {t("title")}
         </div>
         <div className="flex items-center gap-2">
-          {/* View mode toggle — only when a day is provided */}
-          {day && (
-            <DayViewModeToggle value={viewMode} onChange={handleViewMode} />
-          )}
-
           {editMode && !isRacconto && !isTimeline && (
             <Button
               variant="ghost"
@@ -155,6 +150,11 @@ export function Itinerary({
               <IconPlus />
               {t("addActivity")}
             </Button>
+          )}
+
+          {/* View mode toggle — always rightmost, shown when day context is available */}
+          {day && (
+            <DayViewModeToggle value={viewMode} onChange={handleViewMode} />
           )}
         </div>
       </div>
