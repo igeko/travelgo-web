@@ -246,7 +246,7 @@ function AddZone({
     <div className="group relative flex items-center min-h-[14px] cursor-pointer pl-1 my-0">
       {/* Orange dot on spine */}
       <div
-        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pointer-events-none"
+        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pointer-events-none"
         style={{ left: -21, top: "50%", transform: "translateY(-50%)", width: 18, height: 18 }}
         aria-hidden
       >
@@ -254,7 +254,7 @@ function AddZone({
       </div>
 
       {/* Affordances */}
-      <div className="flex items-center gap-3.5 opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+      <div className="flex items-center gap-3.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           className="inline-flex items-center gap-2 text-orange-deep group/item"
           onClick={(e) => { e.stopPropagation(); onAddBlock(); }}
