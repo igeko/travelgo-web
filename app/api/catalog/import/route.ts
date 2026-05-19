@@ -2,35 +2,38 @@
  * app/api/catalog/import/route.ts
  *
  * POST /api/catalog/import
- *   Body: { location, presetIds, limit, enrichWiki }
- *   Response: text/event-stream (SSE) con aggiornamenti di progresso
+ *   Body: { jobId }
+ *   Response: text/event-stream (SSE)
  *
- * Il client apre una connessione SSE e riceve eventi:
- *   { type: 'progress', saved, embedded, total, message }
- *   { type: 'done', saved, embedded, jobId, total }
- *   { type: 'error', message }
+ * Legge filters, batch_size e import_offset dal job record.
+ * Processa il batch corrente, aggiorna import_offset nel DB.
+ * Al termine del batch imposta status = 'paused' (o 'done' se finito).
  *
- * Dati OSM: © OpenStreetMap contributors, licenza ODbL (uso commerciale OK con attribuzione)
- * Enrichment Wikipedia: CC BY-SA 4.0 (uso commerciale OK con attribuzione)
+ * SSE events:
+ *   { type: 'progress', saved, embedded, batchSaved, total, offset, message }
+ *   { type: 'done',     saved, embedded, offset, total, jobId, complete }
+ *   { type: 'error',    message }
+ *
+ * Dati OSM: © OpenStreetMap contributors (ODbL)
  */
 
-import { NextRequest }         from 'next/server';
-import { createClient }        from '@supabase/supabase-js';
-import { cookies }             from 'next/headers';
-import { createServerClient }  from '@supabase/ssr';
-import OpenAI                  from 'openai';
+import { NextRequest }        from 'next/server';
+import { createClient }       from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies }            from 'next/headers';
+import OpenAI                 from 'openai';
 import { searchPlaces, buildEmbedText, PlaceBasic } from '@/lib/overpass';
-import { enrichFromWiki }      from '@/lib/wikipedia';
+import { enrichFromWiki }     from '@/lib/wikipedia';
 
-// ── Helpers SSE ──────────────────────────────────────────────
+// ── SSE helper ────────────────────────────────────────────────
 
 function sseEvent(data: Record<string, unknown>): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-// ── Supabase admin client ────────────────────────────────────
+// ── Supabase admin client ─────────────────────────────────────
 
-function getAdminClient() {
+function adminDb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -41,7 +44,7 @@ function getAdminClient() {
 // ── Route handler ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // ── Auth: solo admin ─────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,85 +65,93 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Body ─────────────────────────────────────────────────
-  const body = await req.json();
-  const {
-    location    = '',
-    presetIds   = ['attractions'],   // array di OsmPresetId
-    limit       = 500,
-    enrichWiki  = true,              // se true, arricchisce lazy da Wikipedia/Wikidata
-  } = body as {
-    location:   string;
-    presetIds:  string[];
-    limit:      number;
-    enrichWiki: boolean;
-  };
+  // ── Carica job ────────────────────────────────────────────
+  const { jobId } = await req.json() as { jobId: string };
+  const db = adminDb();
 
-  if (!location) {
-    return new Response(sseEvent({ type: 'error', message: 'location richiesto' }), {
-      status: 400, headers: { 'Content-Type': 'text/event-stream' },
+  const { data: job, error: jobErr } = await db
+    .from('import_jobs')
+    .select('*')
+    .eq('id', jobId)
+    .single();
+
+  if (jobErr || !job) {
+    return new Response(sseEvent({ type: 'error', message: 'Job non trovato' }), {
+      status: 404, headers: { 'Content-Type': 'text/event-stream' },
     });
   }
 
-  // ── SSE stream ───────────────────────────────────────────
+  if (job.status === 'running') {
+    return new Response(sseEvent({ type: 'error', message: 'Job già in esecuzione' }), {
+      status: 409, headers: { 'Content-Type': 'text/event-stream' },
+    });
+  }
+
+  // Estrae parametri dal job
+  const { location, presetIds, notableOnly, enrichWiki } = job.filters as {
+    location:    string;
+    presetIds:   string[];
+    notableOnly: boolean;
+    enrichWiki:  boolean;
+  };
+  const batchSize:    number  = job.batch_size    ?? 500;
+  const importOffset: number  = job.import_offset ?? 0;
+  const totalFound:   number  = job.total_found   ?? 0;
+
+  // ── SSE stream ────────────────────────────────────────────
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
 
   const send = async (data: Record<string, unknown>) => {
-    try { await writer.write(enc.encode(sseEvent(data))); } catch { /* client disconnesso */ }
+    try { await writer.write(enc.encode(sseEvent(data))); } catch { /* disconnesso */ }
   };
 
-  // Esegue l'import in background mentre streamma il progresso
+  // ── Import in background ─────────────────────────────────
   (async () => {
-    const db     = getAdminClient();
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const BATCH  = 100; // embedding batch size
+    const EMBED_BATCH = 100;
 
     try {
-      // 1. Fetch da Overpass
-      await send({ type: 'progress', message: `Ricerca "${location}" su OpenStreetMap…`, saved: 0, embedded: 0, total: 0 });
-
-      const allPlaces: PlaceBasic[] = await searchPlaces({
-        location,
-        presetIds,
-        limit: Math.min(limit, 2000),
-      });
+      // Segna running
+      await db.from('import_jobs')
+        .update({ status: 'running', started_at: new Date().toISOString() })
+        .eq('id', jobId);
 
       await send({
         type: 'progress',
-        message: `Trovati ${allPlaces.length} posti OSM.`,
-        saved: 0, embedded: 0, total: allPlaces.length,
+        message: `Scarico elementi ${importOffset + 1}–${importOffset + batchSize} da OpenStreetMap…`,
+        saved: 0, embedded: 0, batchSaved: 0, total: totalFound, offset: importOffset,
       });
 
-      // 2. Crea job record
-      const { data: job } = await db
-        .from('import_jobs')
-        .insert({
-          status:      'running',
-          filters:     { location, presetIds, limit, enrichWiki, source: 'osm' },
-          created_by:  user.id,
-          started_at:  new Date().toISOString(),
-          total_found: allPlaces.length,
-        })
-        .select('id')
-        .single();
+      // Fetch da Overpass: chiede importOffset + batchSize elementi,
+      // poi salta i primi importOffset già processati
+      const fetchLimit = Math.min(importOffset + batchSize, totalFound || importOffset + batchSize);
+      const allElements: PlaceBasic[] = await searchPlaces({
+        location, presetIds, notableOnly,
+        limit: fetchLimit,
+      });
 
-      const jobId = job?.id;
+      // Slice del batch corrente
+      const batch = allElements.slice(importOffset, importOffset + batchSize);
 
-      // 3. Per ogni posto: opzionalmente enrichment Wikipedia/Wikidata, upsert, embed
-      let saved    = 0;
-      let embedded = 0;
+      await send({
+        type: 'progress',
+        message: `${batch.length} elementi da processare in questo batch.`,
+        saved: 0, embedded: 0, batchSaved: 0, total: totalFound, offset: importOffset,
+      });
+
+      let batchSaved = 0;
+      let batchEmbedded = 0;
       const toEmbed: { id: string; text: string }[] = [];
 
-      for (let i = 0; i < allPlaces.length; i++) {
-        const p = allPlaces[i];
+      for (let i = 0; i < batch.length; i++) {
+        const p = batch[i];
 
         let description: string | undefined;
         let coverImage:  string | undefined;
         let wikipedia:   string | undefined;
 
-        // Enrichment lazy: solo se il posto ha wikidata o wikipedia tag
         if (enrichWiki && (p.tags.wikidata || p.tags.wikipedia)) {
           const wiki = await enrichFromWiki({
             wikipediaTag: p.tags.wikipedia,
@@ -149,90 +160,96 @@ export async function POST(req: NextRequest) {
           description = wiki.description;
           coverImage  = wiki.coverImage;
           wikipedia   = wiki.wikipedia;
-
-          // Piccola pausa per non martellare Wikipedia
           await new Promise((r) => setTimeout(r, 100));
         }
 
-        // Upsert in catalog_places
         const { data: inserted } = await db
           .from('catalog_places')
           .upsert({
             name:          p.name,
             country:       p.tags['addr:country'] ?? null,
             country_code:  null,
-            city:          p.tags['addr:city'] ?? null,
+            city:          p.tags['addr:city']    ?? null,
             address:       null,
             category:      p.category,
             kinds:         [p.mainTag, p.category].filter(Boolean),
             description:   description ?? null,
             rating:        null,
-            cover_image:   coverImage ?? null,
+            cover_image:   coverImage  ?? null,
             lat:           p.lat,
             lng:           p.lng,
             source:        'osm',
-            source_id:     String(p.osmId),
-            wikidata:      p.tags.wikidata ?? null,
-            wikipedia:     wikipedia ?? null,
+            source_id:     `${p.osmType}/${p.osmId}`,
+            wikidata:      p.tags.wikidata  ?? null,
+            wikipedia:     wikipedia        ?? null,
             import_job_id: jobId,
           }, { onConflict: 'source,source_id' })
           .select('id')
           .single();
 
         if (inserted?.id) {
-          saved++;
-          const embedText = buildEmbedText(p, description);
-          toEmbed.push({ id: inserted.id, text: embedText });
+          batchSaved++;
+          toEmbed.push({ id: inserted.id, text: buildEmbedText(p, description) });
         }
 
-        // Batch embedding ogni 100 o all'ultima iterazione
-        if (toEmbed.length >= BATCH || (i === allPlaces.length - 1 && toEmbed.length > 0)) {
-          await send({
-            type: 'progress',
-            message: `Generazione embeddings… (${embedded + toEmbed.length}/${saved})`,
-            saved, embedded, total: allPlaces.length,
-          });
-
+        // Batch embedding
+        if (toEmbed.length >= EMBED_BATCH || (i === batch.length - 1 && toEmbed.length > 0)) {
           try {
             const res = await openai.embeddings.create({
-              model:      'text-embedding-3-small',
-              input:      toEmbed.map((x) => x.text),
-              dimensions: 512,
+              model: 'text-embedding-3-small', input: toEmbed.map((x) => x.text), dimensions: 512,
             });
-
             for (let j = 0; j < toEmbed.length; j++) {
               await db.from('catalog_places').update({
-                embedding:   res.data[j].embedding,
-                embedded_at: new Date().toISOString(),
+                embedding: res.data[j].embedding, embedded_at: new Date().toISOString(),
               }).eq('id', toEmbed[j].id);
             }
-            embedded += toEmbed.length;
+            batchEmbedded += toEmbed.length;
           } catch (e) {
             console.warn('[catalog/import] embedding batch fallito:', e);
           }
-
           toEmbed.length = 0;
-          await db.from('import_jobs').update({ total_saved: saved, total_embedded: embedded }).eq('id', jobId);
         }
 
-        // Progresso ogni 10 posti
         if (i % 10 === 0) {
-          await send({ type: 'progress', message: `Importati ${saved}/${allPlaces.length}…`, saved, embedded, total: allPlaces.length });
+          await send({
+            type: 'progress',
+            message: `Importati ${batchSaved}/${batch.length} in questo batch…`,
+            saved: batchSaved, embedded: batchEmbedded,
+            batchSaved, total: totalFound, offset: importOffset,
+          });
         }
       }
 
-      // 4. Completa job
+      // Nuovo offset dopo questo batch
+      const newOffset = importOffset + batch.length;
+      const isComplete = newOffset >= totalFound || batch.length < batchSize;
+
+      // Aggiorna totali cumulativi
+      const prev = await db.from('import_jobs').select('total_saved,total_embedded').eq('id', jobId).single();
+      const prevSaved    = prev.data?.total_saved    ?? 0;
+      const prevEmbedded = prev.data?.total_embedded ?? 0;
+
       await db.from('import_jobs').update({
-        status:          'done',
-        total_saved:     saved,
-        total_embedded:  embedded,
-        completed_at:    new Date().toISOString(),
+        status:         isComplete ? 'done' : 'paused',
+        import_offset:  newOffset,
+        total_saved:    prevSaved    + batchSaved,
+        total_embedded: prevEmbedded + batchEmbedded,
+        completed_at:   isComplete ? new Date().toISOString() : null,
       }).eq('id', jobId);
 
-      await send({ type: 'done', saved, embedded, jobId, total: allPlaces.length });
+      await send({
+        type: 'done',
+        saved:    batchSaved,
+        embedded: batchEmbedded,
+        offset:   newOffset,
+        total:    totalFound,
+        jobId,
+        complete: isComplete,
+      });
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
+      await db.from('import_jobs').update({ status: 'error' }).eq('id', jobId);
       await send({ type: 'error', message: msg });
     } finally {
       writer.close();

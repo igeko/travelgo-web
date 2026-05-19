@@ -30,23 +30,24 @@ export async function GET(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   // ── Params ───────────────────────────────────────────────
-  const sp       = req.nextUrl.searchParams;
-  const location = sp.get('location') ?? '';
-  const presets  = (sp.get('presets') ?? 'attractions').split(',').map((s) => s.trim()).filter(Boolean);
-  const limit    = Math.min(parseInt(sp.get('limit') ?? '12'), 50);
+  const sp          = req.nextUrl.searchParams;
+  const location    = sp.get('location') ?? '';
+  const presets     = (sp.get('presets') ?? 'attractions').split(',').map((s) => s.trim()).filter(Boolean);
+  const limit       = Math.min(parseInt(sp.get('limit') ?? '12'), 50);
+  const notableOnly = sp.get('notableOnly') === 'true';
 
   if (!location) return NextResponse.json({ error: 'location richiesto' }, { status: 400 });
 
   // ── Fetch da Overpass ─────────────────────────────────────
   try {
-    const places = await searchPlaces({ location, presetIds: presets, limit });
+    const places = await searchPlaces({ location, presetIds: presets, limit, notableOnly });
 
     return NextResponse.json({
       location,
       total_found: places.length,
       attribution: '© OpenStreetMap contributors (ODbL)',
       places: places.map((p) => ({
-        osmId:     p.osmId,
+        osmId:     `${p.osmType}/${p.osmId}`,
         osmType:   p.osmType,
         name:      p.name,
         lat:       p.lat,

@@ -22,21 +22,26 @@ Riferimento visivo: [Wanderlust Magazine](https://www.wanderlustmagazine.com/). 
 
 ---
 
-## Libreria DiscoveryWidget · v1
+## Libreria DiscoveryWidget · v1 (12)
 
 Ogni riga della Discovery è un widget atomico. La home si compone come **`WidgetSpec[]`** — manifest editabile per destinazione, stagione, profilo utente, A/B test.
 
-| Widget | Cosa fa | Dove brilla |
-|---|---|---|
-| `HeroDestination` | Nome destinazione in serif gigante + foto + CTA primaria + eyebrow "Go suggests" con kanji 五 | Apertura della Discovery |
-| `RegionTileGrid` | Grid 4×N di quartieri/regioni con foto + label overlay (stile Wanderlust region tiles) | "Where to start" |
-| `GoBanner` | Banner scuro mid-page con orb 五 pulsante + question italica + Talk to Go CTA | Pull editoriale, sostituisce subscribe banner |
-| `EditorsChoice` | 1 big + N small editorial cards con eyebrow source ("Eater · Food", "Atlas Obscura · Hidden") | Curation di terze parti / starter pack featured |
-| `StarterPacks` | Card image-left + testo-right per bundle pronti | "What kind of traveler?" |
-| `TrendingCards` | 3-up cards inline piccole (thumb 72px + eyebrow + title) stile Travel news | "Trending this week" |
-| `GoPanelHint` | Riga sottile bordata gold a fondo pagina che richiama il pannello Go floating | Closure |
+| # | Widget | Texture | Cosa fa |
+|---|---|---|---|
+| 1 | `HeroDestination` | Apertura | Nome destinazione in serif gigante + foto + CTA + eyebrow "Go suggests" con kanji 五 |
+| 2 | `WhyHere` | Essenza | 4 ragioni editoriali (icona + h4 + paragrafo) — "perché questa città" |
+| 3 | `RegionTileGrid` | Spaziale | Grid 4×N di quartieri/regioni con foto + label overlay |
+| 4 | `PhotoMosaic` | Visivo puro | Grid asimmetrico (1 big + 4 small) stile rivista · save al hover |
+| 5 | `GoBanner` | Pull AI | Banner scuro mid-page con orb 五 pulsante + Talk to Go CTA |
+| 6 | `EditorsChoice` | Curato | 1 big + N small editorial cards con eyebrow source (Eater · Atlas · Lonely Planet) |
+| 7 | `LocalVoices` | Umano | Testimonial italici di altri viaggiatori (quote + avatar + meta + link al loro trip) |
+| 8 | `StarterPacks` | Azione | Card image-left + text-right per bundle pronti |
+| 9 | `ReadBeforeYouGo` | Lettura | 3 article cards curati (foto + eyebrow source + title + author + read time) |
+| 10 | `BeforeYouGo` | Pratico | FAQ accordion (icona + question + answer in italico serif) — domande operative |
+| 11 | `TrendingCards` | Now | 3-up cards inline piccole (thumb 72px + eyebrow + title) stile Travel news |
+| 12 | `GoPanelHint` | Closure | Riga sottile bordata gold a fondo pagina che richiama il pannello Go floating |
 
-Widget candidati per v1.5+: `ThemeChips`, `MapPreview`, `WanderSleeps` (hotel featured), `Quiz`, `EditorialList`, `InstagramFeed`, `LocalVoice` ("From Tokyoites").
+**Candidati per v1.5+**: `ThemeChips`, `MapPreview`, `WanderSleeps` (hotel featured), `Quiz`, `EditorialList`, `InstagramFeed`, `LocalGuides` ("Meet your storytellers"), `NewsletterCTA` (notifiche pre-trip), `DestinationMosaic` (varianti del PhotoMosaic per più destinazioni).
 
 ---
 
@@ -61,6 +66,7 @@ Widget candidati per v1.5+: `ThemeChips`, `MapPreview`, `WanderSleeps` (hotel fe
 
 - **2026-05-18** · Apertura come "Safari" — fase di collezione del workflow. Brainstorm in 6 sezioni, 10 domande aperte, parcheggiato.
 - **2026-05-18** · **Riaperto come Discovery zone**. Direzione editoriale Wanderlust-inspired adottata dopo confronto con screenshots di [wanderlustmagazine.com](https://www.wanderlustmagazine.com/). Definita libreria di 7 DiscoveryWidget v1 + pattern di composizione via manifest `WidgetSpec[]`. Sketch React in `app/(design)/design/discovery/` (single page con widgets inline + dispatcher + manifest Tokyo). Tutte le sezioni del brainstorm originale Safari (15 sorgenti, 7 modalità di esplorazione, anatomia card scoperta, Wishlist, arricchimento, sharing) restano valide ma diventano widget candidati per v1.5+.
+- **2026-05-18** · **Libreria estesa a 12 widget** dopo rilettura del template di riferimento (`design_pvt/_pages/page-01..08.png`, TripGlobe/Tourice). 5 widget nuovi: `WhyHere` (4 ragioni editoriali), `PhotoMosaic` (grid asimmetrico save-on-hover), `LocalVoices` (testimonial di altri viaggiatori), `ReadBeforeYouGo` (curated reading), `BeforeYouGo` (FAQ accordion pratiche). Aggiornato manifest Tokyo a 12 widget con nuovo ritmo: Hero · WhyHere · Regions · PhotoMosaic · GoBanner · Editors · LocalVoices · Packs · ReadBeforeYouGo · BeforeYouGo · Trending · GoHint. Responsive aggiornato per tutti.
 
 ---
 

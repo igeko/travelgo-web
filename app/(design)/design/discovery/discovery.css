@@ -382,6 +382,148 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   WhyHere · 4 ragioni editoriali
+───────────────────────────────────────────────────────────────── */
+.w-why { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 6px; }
+.w-why-card { padding: 14px 0; }
+.w-why-card .ic {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(244, 123, 58, 0.10); color: var(--color-orange-deep);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; margin-bottom: 12px;
+}
+.w-why-card h4 {
+  font-family: Georgia, serif; font-size: 16px; font-weight: 400;
+  margin: 0 0 6px; letter-spacing: -0.005em; color: var(--color-ink);
+}
+.w-why-card p {
+  font-size: 11.5px; color: var(--color-ink-soft); line-height: 1.5; margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PhotoMosaic · grid asimmetrico (1 big + 4 small)
+───────────────────────────────────────────────────────────────── */
+.w-mosaic {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 130px 130px;
+  gap: 6px;
+}
+.w-mosaic .tile { position: relative; overflow: hidden; cursor: pointer; }
+.w-mosaic .tile.big { grid-column: span 2; grid-row: span 2; }
+.w-mosaic .tile::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+}
+.w-mosaic .tile .img { position: absolute; inset: 0; }
+.w-mosaic .tile .save {
+  position: absolute; top: 7px; right: 7px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--color-ink); font-size: 11px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.w-mosaic .tile:hover .save { opacity: 1; }
+.w-mosaic .tile .cap {
+  position: absolute; left: 10px; bottom: 9px; color: #fff;
+  font-size: 11px; font-family: Georgia, serif; font-style: italic;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LocalVoices · testimonial cards (2-col)
+───────────────────────────────────────────────────────────────── */
+.w-voices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+.voice {
+  background: var(--color-surface-warm);
+  padding: 20px 22px; position: relative;
+  border-radius: 4px;
+}
+.voice::before {
+  content: "\201C"; position: absolute; top: 4px; left: 16px;
+  font-family: Georgia, serif; color: var(--color-orange);
+  font-size: 56px; line-height: 1;
+}
+.voice .quote {
+  font-family: Georgia, serif; font-size: 14.5px; font-style: italic;
+  color: var(--color-ink); line-height: 1.45;
+  margin: 22px 0 16px; padding-left: 8px;
+}
+.voice .author {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 12px; border-top: 0.5px solid var(--color-border);
+}
+.voice .avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 500; flex-shrink: 0;
+  background-size: cover;
+}
+.voice .meta .nm { font-size: 12px; font-weight: 500; color: var(--color-ink); }
+.voice .meta .when { font-size: 10.5px; color: var(--color-ink-faint); }
+.voice .read {
+  margin-left: auto; font-size: 10px;
+  color: var(--color-orange-deep);
+  letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 3px; cursor: pointer;
+}
+.voice .read i { font-size: 11px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   BeforeYouGo · FAQ accordion
+───────────────────────────────────────────────────────────────── */
+.w-faq { display: flex; flex-direction: column; }
+.faq-item {
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--color-border);
+  cursor: pointer;
+}
+.faq-item summary { list-style: none; cursor: pointer; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-q { display: flex; align-items: center; gap: 12px; }
+.faq-q .icon {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(244, 123, 58, 0.12); color: var(--color-orange-deep);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 12px;
+}
+.faq-q .text {
+  flex: 1; font-size: 14px; font-weight: 500; color: var(--color-ink);
+}
+.faq-q .chev {
+  color: var(--color-ink-faint); font-size: 14px;
+  transition: transform 0.15s;
+}
+.faq-item[open] .faq-q .chev { transform: rotate(90deg); color: var(--color-orange); }
+.faq-a {
+  font-size: 12.5px; color: var(--color-ink-soft); line-height: 1.55;
+  padding: 10px 0 4px 38px;
+  font-family: Georgia, serif; font-style: italic;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ReadBeforeYouGo · curated article cards
+───────────────────────────────────────────────────────────────── */
+.w-read { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-top: 6px; }
+.read-card { cursor: pointer; }
+.read-card .ph { height: 140px; background-size: cover; background-position: center; margin-bottom: 12px; }
+.read-card .eb {
+  font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--color-orange-deep); font-weight: 500; margin-bottom: 5px;
+}
+.read-card h4 {
+  font-family: Georgia, serif; font-size: 15px; font-weight: 400;
+  line-height: 1.22; color: var(--color-ink); margin: 0 0 6px;
+}
+.read-card .meta {
+  font-size: 10.5px; color: var(--color-ink-faint);
+  display: flex; gap: 8px;
+}
+.read-card .meta b { color: var(--color-ink-soft); font-weight: 500; }
+
+/* ─────────────────────────────────────────────────────────────────
    RESPONSIVE · tablet (≤ 1024px) → fonts compatti, grid leggermente meno
 ───────────────────────────────────────────────────────────────── */
 
@@ -404,6 +546,9 @@
   .w-go-banner h3 { font-size: 21px; }
 
   .w-go-hint { margin-left: 20px; margin-right: 20px; }
+
+  .w-why { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .w-mosaic { grid-template-rows: 110px 110px; }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -480,6 +625,32 @@
     gap: 8px;
   }
   .w-go-hint .right { margin-left: 0; }
+
+  /* WhyHere · 1 colonna */
+  .w-why { grid-template-columns: 1fr; gap: 14px; }
+  .w-why-card { padding: 8px 0; }
+
+  /* PhotoMosaic · uniforme su mobile, perde l'asimmetria */
+  .w-mosaic {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 130px 130px 130px;
+  }
+  .w-mosaic .tile.big { grid-column: span 2; grid-row: span 1; }
+  .w-mosaic .tile .save { opacity: 1; }
+
+  /* LocalVoices · 1 colonna */
+  .w-voices { grid-template-columns: 1fr; gap: 12px; }
+  .voice { padding: 16px 18px; }
+  .voice::before { font-size: 44px; top: 2px; left: 12px; }
+  .voice .quote { font-size: 13.5px; margin-top: 18px; }
+
+  /* BeforeYouGo · padding ridotto */
+  .faq-q .text { font-size: 13px; }
+  .faq-a { padding-left: 32px; font-size: 12px; }
+
+  /* ReadBeforeYouGo · 1 colonna */
+  .w-read { grid-template-columns: 1fr; gap: 22px; }
+  .read-card .ph { height: 180px; }
 }
 
 /* ─────────────────────────────────────────────────────────────────

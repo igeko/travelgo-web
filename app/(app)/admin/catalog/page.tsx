@@ -3,11 +3,15 @@
 /**
  * app/(app)/admin/catalog/page.tsx
  *
- * Pannello di import del catalogo posti da OpenStreetMap (Overpass API).
- * Permette di filtrare, vedere un'anteprima e lanciare l'import
- * con monitoring real-time via SSE.
+ * Pannello import catalogo posti da OpenStreetMap.
  *
- * Dati: © OpenStreetMap contributors, licenza ODbL
+ * Flusso:
+ *  1. Configura filtri → "Crea Task" → conta posti (~2s) → job pending
+ *  2. Ogni job mostra: location, stato, total_found, progresso
+ *  3. "Avvia" / "Riprendi" → SSE stream che processa un batch
+ *  4. Se auto_continue=true il client rilancia automaticamente
+ *
+ * Dati: © OpenStreetMap contributors (ODbL)
  */
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -15,62 +19,65 @@ import { AppHeader }  from "@/features/app/AppHeader";
 import { useUser }    from "@/features/app/UserContext";
 import { useRouter }  from "next/navigation";
 import {
-  IconWorld, IconCategory, IconDownload,
-  IconEye, IconCircleCheck, IconAlertCircle, IconLoader2,
-  IconDatabase, IconList,
+  IconWorld, IconCategory, IconPlus, IconPlayerPlay,
+  IconPlayerStop, IconCircleCheck, IconAlertCircle,
+  IconLoader2, IconDatabase, IconRefresh, IconTrash,
 } from "@/components/ui/icons";
 import { OSM_PRESETS } from "@/lib/overpass";
 
 // ── Tipi ────────────────────────────────────────────────────
 
-interface PreviewPlace {
-  osmId:     number;
-  osmType:   string;
-  name:      string;
-  lat:       number;
-  lng:       number;
-  category:  string;
-  mainTag:   string;
-  wikidata?: string;
-  wikipedia?: string;
+interface ImportJob {
+  id:             string;
+  status:         'pending' | 'running' | 'paused' | 'done' | 'error';
+  filters:        {
+    location:    string;
+    presetIds:   string[];
+    notableOnly: boolean;
+    enrichWiki:  boolean;
+  };
+  batch_size:     number;
+  auto_continue:  boolean;
+  import_offset:  number;
+  total_found:    number;
+  total_saved:    number;
+  total_embedded: number;
+  created_at:     string;
 }
 
-interface PreviewResult {
-  location:    string;
-  total_found: number;
-  attribution: string;
-  places:      PreviewPlace[];
-}
-
-interface ProgressState {
+interface BatchProgress {
   saved:    number;
   embedded: number;
   total:    number;
+  offset:   number;
   message:  string;
 }
 
-type ImportStatus = 'idle' | 'previewing' | 'ready' | 'importing' | 'done' | 'error';
+// ── Helpers ───────────────────────────────────────────────────
 
-// ── Helpers ──────────────────────────────────────────────────
-
-function WikiBadge({ place }: { place: PreviewPlace }) {
-  const hasWiki = place.wikidata || place.wikipedia;
-  if (!hasWiki) return null;
+function StatusBadge({ status }: { status: ImportJob['status'] }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    pending: { label: 'In attesa',  cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+    running: { label: 'In corso',   cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+    paused:  { label: 'In pausa',   cls: 'bg-ink/5 text-ink-soft border-border' },
+    done:    { label: 'Completato', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    error:   { label: 'Errore',     cls: 'bg-red-50 text-red-700 border-red-200' },
+  };
+  const { label, cls } = map[status] ?? map.pending;
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
-      W
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-medium ${cls}`}>
+      {status === 'running' && <IconLoader2 size={10} className="animate-spin" />}
+      {label}
     </span>
   );
 }
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
-    <div className="w-full bg-ink/5 rounded-full h-1.5 overflow-hidden">
-      <div
-        className="h-full bg-ink rounded-full transition-all duration-300"
-        style={{ width: `${pct}%` }}
-      />
+    <div className="w-full bg-ink/5 rounded-full h-1 overflow-hidden">
+      <div className="h-full bg-ink rounded-full transition-all duration-500"
+        style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -81,19 +88,25 @@ export default function CatalogPage() {
   const { isAdmin, isDev, isLoggedIn, loading, user } = useUser();
   const router = useRouter();
 
-  // Filters
-  const [location,        setLocation]        = useState("Japan");
-  const [selectedPresets, setSelectedPresets] = useState<string[]>(["attractions", "historic", "religion"]);
-  const [limit,           setLimit]           = useState(500);
-  const [enrichWiki,      setEnrichWiki]      = useState(true);
+  // ── Filtri ──────────────────────────────────────────────
+  const [location,       setLocation]       = useState("Japan");
+  const [selectedPresets,setSelectedPresets]= useState<string[]>(["attractions", "historic", "religion"]);
+  const [notableOnly,    setNotableOnly]     = useState(false);
+  const [batchSize,      setBatchSize]       = useState(500);
+  const [autoContinue,   setAutoContinue]    = useState(false);
+  const [enrichWiki,     setEnrichWiki]      = useState(true);
 
-  // UI state
-  const [status,   setStatus]   = useState<ImportStatus>('idle');
-  const [preview,  setPreview]  = useState<PreviewResult | null>(null);
-  const [progress, setProgress] = useState<ProgressState>({ saved: 0, embedded: 0, total: 0, message: '' });
-  const [errorMsg, setErrorMsg] = useState('');
-  const [doneInfo, setDoneInfo] = useState<{ saved: number; embedded: number } | null>(null);
+  // ── Task list ───────────────────────────────────────────
+  const [jobs,         setJobs]        = useState<ImportJob[]>([]);
+  const [creating,     setCreating]    = useState(false);
+  const [createMsg,    setCreateMsg]   = useState('');   // messaggio di stato durante la creazione
+  const [createError,  setCreateError] = useState('');
+  const createAbortRef = useRef<AbortController | null>(null);
 
+  // ── Progress per job in esecuzione ─────────────────────
+  const [activeJobId,  setActiveJobId]  = useState<string | null>(null);
+  const [batchProgress,setBatchProgress]= useState<BatchProgress | null>(null);
+  const [batchError,   setBatchError]   = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   // Auth guard
@@ -101,53 +114,105 @@ export default function CatalogPage() {
     if (!loading && !isAdmin && !isDev) router.replace("/trips");
   }, [loading, isAdmin, isDev, router]);
 
-  // ── Preview ────────────────────────────────────────────────
+  // ── Carica job ──────────────────────────────────────────
 
-  const handlePreview = useCallback(async () => {
-    if (!location.trim()) return;
-    setStatus('previewing');
-    setPreview(null);
-    setErrorMsg('');
+  const loadJobs = useCallback(async () => {
+    const res = await fetch('/api/catalog/jobs');
+    if (!res.ok) return;
+    const data = await res.json();
+    setJobs(data.jobs ?? []);
+  }, []);
 
-    const params = new URLSearchParams({
-      location,
-      presets: selectedPresets.join(',') || 'attractions',
-      limit:   '12',
-    });
+  useEffect(() => { loadJobs(); }, [loadJobs]);
+
+  // ── Crea task ───────────────────────────────────────────
+
+  const handleCreate = useCallback(async () => {
+    if (!location.trim() || selectedPresets.length === 0) return;
+    setCreating(true);
+    setCreateError('');
+    setCreateMsg('Interrogo Overpass…');
+
+    const ctrl = new AbortController();
+    createAbortRef.current = ctrl;
 
     try {
-      const res = await fetch(`/api/catalog/preview?${params}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Errore preview');
-      setPreview(data);
-      setStatus('ready');
+      const res = await fetch('/api/catalog/jobs', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          location, presetIds: selectedPresets,
+          notableOnly, batchSize, autoContinue, enrichWiki,
+        }),
+        signal: ctrl.signal,
+      });
+
+      if (!res.ok || !res.body) throw new Error('Errore connessione server');
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+
+            if (ev.type === 'retry') {
+              const secs = Math.round(ev.waitMs / 1000);
+              setCreateMsg(
+                `Server Overpass occupato — attendo ${secs}s (tentativo ${ev.attempt}/${ev.maxRetries})…`
+              );
+            } else if (ev.type === 'done') {
+              await loadJobs();
+            } else if (ev.type === 'error') {
+              throw new Error(ev.message);
+            }
+          } catch (parseErr) {
+            if ((parseErr as Error).message !== 'Unexpected token') throw parseErr;
+          }
+        }
+      }
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : 'Errore sconosciuto');
-      setStatus('error');
+      if ((e as Error).name === 'AbortError') return;
+      setCreateError(e instanceof Error ? e.message : 'Errore');
+    } finally {
+      setCreating(false);
+      setCreateMsg('');
+      createAbortRef.current = null;
     }
-  }, [location, selectedPresets]);
+  }, [location, selectedPresets, notableOnly, batchSize, autoContinue, enrichWiki, loadJobs]);
 
-  // ── Import ─────────────────────────────────────────────────
+  const handleCancelCreate = useCallback(() => {
+    createAbortRef.current?.abort();
+  }, []);
 
-  const handleImport = useCallback(async () => {
-    setStatus('importing');
-    setProgress({ saved: 0, embedded: 0, total: 0, message: 'Avvio import…' });
-    setErrorMsg('');
+  // ── Avvia / Riprendi batch ──────────────────────────────
+
+  const startBatch = useCallback(async (job: ImportJob) => {
+    setActiveJobId(job.id);
+    setBatchProgress({ saved: 0, embedded: 0, total: job.total_found, offset: job.import_offset, message: 'Avvio…' });
+    setBatchError('');
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+
+    // Ottimisticamente aggiorna lo stato in lista
+    setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: 'running' } : j));
 
     try {
       const res = await fetch('/api/catalog/import', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          location,
-          presetIds:  selectedPresets,
-          limit,
-          enrichWiki,
-        }),
-        signal: ctrl.signal,
+        body:    JSON.stringify({ jobId: job.id }),
+        signal:  ctrl.signal,
       });
 
       if (!res.ok || !res.body) throw new Error('Errore avvio import');
@@ -159,7 +224,6 @@ export default function CatalogPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop() ?? '';
@@ -167,29 +231,53 @@ export default function CatalogPage() {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === 'progress') {
-              setProgress({ saved: event.saved, embedded: event.embedded, total: event.total, message: event.message });
-            } else if (event.type === 'done') {
-              setDoneInfo({ saved: event.saved, embedded: event.embedded });
-              setStatus('done');
-            } else if (event.type === 'error') {
-              setErrorMsg(event.message);
-              setStatus('error');
+            const ev = JSON.parse(line.slice(6));
+
+            if (ev.type === 'progress') {
+              setBatchProgress({
+                saved: ev.saved, embedded: ev.embedded,
+                total: ev.total, offset: ev.offset, message: ev.message,
+              });
+            } else if (ev.type === 'done') {
+              await loadJobs();
+              setActiveJobId(null);
+              setBatchProgress(null);
+
+              // Auto-continue: riprendi se non completo
+              if (!ev.complete && job.auto_continue) {
+                const updated = await fetch('/api/catalog/jobs').then((r) => r.json());
+                const next = (updated.jobs as ImportJob[]).find((j) => j.id === job.id);
+                if (next && next.status === 'paused') {
+                  setTimeout(() => startBatch(next), 500);
+                }
+              }
+            } else if (ev.type === 'error') {
+              setBatchError(ev.message);
+              await loadJobs();
+              setActiveJobId(null);
             }
-          } catch { /* JSON parse error, ignora */ }
+          } catch { /* parse error */ }
         }
       }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return;
-      setErrorMsg(e instanceof Error ? e.message : 'Errore sconosciuto');
-      setStatus('error');
+      if ((e as Error).name === 'AbortError') {
+        await loadJobs();
+        setActiveJobId(null);
+        return;
+      }
+      setBatchError(e instanceof Error ? e.message : 'Errore');
+      await loadJobs();
+      setActiveJobId(null);
     }
-  }, [location, selectedPresets, limit, enrichWiki]);
+  }, [loadJobs]);
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
-    setStatus('ready');
+  }, []);
+
+  const handleDelete = useCallback(async (jobId: string) => {
+    await fetch(`/api/catalog/jobs?id=${jobId}`, { method: 'DELETE' }).catch(() => {});
+    setJobs((prev) => prev.filter((j) => j.id !== jobId));
   }, []);
 
   const togglePreset = useCallback((id: string) => {
@@ -198,258 +286,247 @@ export default function CatalogPage() {
     );
   }, []);
 
-  // ── Render ─────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
-      <AppHeader
-        activeNav="trips"
-        isLoggedIn={isLoggedIn}
-        initials={user?.initials ?? ""}
-        avatarUrl={user?.avatarUrl ?? ""}
-        fullName={user?.fullName ?? ""}
+      <AppHeader activeNav="trips" isLoggedIn={isLoggedIn}
+        initials={user?.initials ?? ""} avatarUrl={user?.avatarUrl ?? ""} fullName={user?.fullName ?? ""}
       />
 
-      <main className="flex-1 max-w-[1100px] mx-auto w-full px-5 py-10 space-y-8">
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-5 py-10 space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-[20px] font-semibold text-ink">Catalog Import</h1>
-          <p className="text-[13px] text-ink-soft mt-1">
-            Importa posti da OpenStreetMap nel catalogo TravelGo.{" "}
-            <span className="text-ink-faint">© OpenStreetMap contributors (ODbL)</span>
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[20px] font-semibold text-ink">Catalog Import</h1>
+            <p className="text-[13px] text-ink-soft mt-0.5">
+              © OpenStreetMap contributors (ODbL)
+            </p>
+          </div>
+          <button onClick={loadJobs}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-ink-soft hover:text-ink cursor-pointer">
+            <IconRefresh size={13}/> Aggiorna
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
 
-          {/* ── Colonna sinistra: filtri ── */}
-          <div className="space-y-5">
+          {/* ── Colonna sinistra: configurazione ── */}
+          <div className="space-y-4">
 
-            {/* Location */}
-            <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
-              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
-                <IconWorld size={15} className="text-ink-soft" />
-                Destinazione
-              </h2>
-              <div>
-                <label className="block text-[11px] text-ink-soft mb-1">
-                  Paese o città (nome come su OpenStreetMap)
-                </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="es. Japan, Tokyo, Italy…"
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[14px] text-ink placeholder:text-ink-faint focus:outline-none focus:border-ink/30"
-                />
-              </div>
-            </div>
-
-            {/* Categorie OSM */}
+            {/* Destinazione */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
               <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
-                <IconCategory size={15} className="text-ink-soft" />
-                Categorie OSM
+                <IconWorld size={14} className="text-ink-soft"/> Destinazione
+              </h2>
+              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)}
+                placeholder="es. Japan, Tokyo, Italy…"
+                className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[14px] text-ink placeholder:text-ink-faint focus:outline-none focus:border-ink/30"/>
+            </div>
+
+            {/* Categorie */}
+            <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
+                <IconCategory size={14} className="text-ink-soft"/> Categorie OSM
               </h2>
               <div className="flex flex-wrap gap-2">
                 {OSM_PRESETS.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => togglePreset(id)}
+                  <button key={id} type="button" onClick={() => togglePreset(id)}
                     className={`px-3 py-1.5 rounded-pill text-[12px] border transition-colors cursor-pointer ${
                       selectedPresets.includes(id)
                         ? "bg-ink text-white border-ink"
-                        : "bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                    }`}
-                  >
+                        : "border-border text-ink-soft hover:border-border-strong hover:text-ink"
+                    }`}>
                     {label}
                   </button>
                 ))}
               </div>
-              {selectedPresets.length === 0 && (
-                <p className="text-[11px] text-amber-500">Seleziona almeno una categoria</p>
-              )}
             </div>
 
-            {/* Volume e opzioni */}
+            {/* Opzioni */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
-              <h2 className="text-[13px] font-semibold text-ink">Volume e opzioni</h2>
+              <h2 className="text-[13px] font-semibold text-ink">Opzioni</h2>
 
-              {/* Max posti */}
+              {/* Batch size */}
               <div>
                 <label className="block text-[11px] text-ink-soft mb-2">
-                  Max posti da importare: <span className="font-medium text-ink">{limit.toLocaleString()}</span>
+                  Elementi per batch: <span className="font-medium text-ink">{batchSize.toLocaleString()}</span>
                 </label>
-                <input
-                  type="range"
-                  min={100}
-                  max={2000}
-                  step={100}
-                  value={limit}
-                  onChange={(e) => setLimit(parseInt(e.target.value))}
-                  className="w-full accent-ink"
-                />
+                <input type="range" min={100} max={2000} step={100} value={batchSize}
+                  onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                  className="w-full accent-ink"/>
                 <div className="flex justify-between text-[10px] text-ink-faint mt-0.5">
                   <span>100</span><span>2.000</span>
                 </div>
               </div>
 
-              {/* Enrichment Wikipedia */}
+              {/* Solo posti notevoli */}
               <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enrichWiki}
-                  onChange={(e) => setEnrichWiki(e.target.checked)}
-                  className="mt-0.5 accent-ink"
-                />
+                <input type="checkbox" checked={notableOnly}
+                  onChange={(e) => setNotableOnly(e.target.checked)} className="mt-0.5 accent-ink"/>
                 <div>
-                  <span className="text-[12px] text-ink leading-snug block">
-                    Arricchisci da Wikipedia + Wikidata
-                  </span>
-                  <span className="text-[11px] text-ink-faint">
-                    Aggiunge descrizione e immagine per i posti con tag Wikipedia/Wikidata (più lento)
-                  </span>
+                  <span className="text-[12px] text-ink block">Solo posti notevoli</span>
+                  <span className="text-[11px] text-ink-faint">Solo elementi con tag Wikipedia o Wikidata</span>
+                </div>
+              </label>
+
+              {/* Enrich Wikipedia */}
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={enrichWiki}
+                  onChange={(e) => setEnrichWiki(e.target.checked)} className="mt-0.5 accent-ink"/>
+                <div>
+                  <span className="text-[12px] text-ink block">Arricchisci da Wikipedia + Wikidata</span>
+                  <span className="text-[11px] text-ink-faint">Descrizione e immagine (più lento)</span>
+                </div>
+              </label>
+
+              {/* Auto-continue */}
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={autoContinue}
+                  onChange={(e) => setAutoContinue(e.target.checked)} className="mt-0.5 accent-ink"/>
+                <div>
+                  <span className="text-[12px] text-ink block">Continua automaticamente</span>
+                  <span className="text-[11px] text-ink-faint">Passa al batch successivo senza fermarsi</span>
                 </div>
               </label>
             </div>
 
-            {/* Azioni */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handlePreview}
-                disabled={!location.trim() || status === 'previewing' || status === 'importing'}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-[13px] text-ink-soft hover:text-ink hover:border-border-strong transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-              >
-                {status === 'previewing'
-                  ? <IconLoader2 size={14} className="animate-spin" />
-                  : <IconEye size={14} />}
-                Anteprima
-              </button>
-
-              <button
-                type="button"
-                onClick={status === 'importing' ? handleStop : handleImport}
-                disabled={!location.trim() || selectedPresets.length === 0 || status === 'previewing'}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed ${
-                  status === 'importing'
-                    ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                    : "bg-ink text-white hover:opacity-90"
-                }`}
-              >
-                {status === 'importing'
-                  ? <><IconLoader2 size={14} className="animate-spin" /> Stop</>
-                  : <><IconDownload size={14} /> Importa</>}
-              </button>
-            </div>
+            {/* CTA */}
+            {createError && (
+              <p className="text-[12px] text-red-600 px-1">{createError}</p>
+            )}
+            <button type="button" onClick={handleCreate}
+              disabled={creating || !location.trim() || selectedPresets.length === 0}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-ink text-white text-[14px] font-medium hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-opacity">
+              {creating
+                ? <><IconLoader2 size={15} className="animate-spin"/> Conteggio in corso…</>
+                : <><IconPlus size={15}/> Crea Task</>}
+            </button>
+            {creating && (
+              <div className="space-y-1.5 -mt-1">
+                <p className="text-[11px] text-ink-faint text-center">
+                  {createMsg || 'Interrogo Overpass per il conteggio…'}
+                </p>
+                <button type="button" onClick={handleCancelCreate}
+                  className="w-full text-[11px] text-ink-soft hover:text-red-600 py-1 cursor-pointer transition-colors">
+                  Annulla
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* ── Colonna destra: preview + progress ── */}
-          <div className="space-y-4">
+          {/* ── Colonna destra: lista task ── */}
+          <div className="space-y-3">
 
-            {/* Progress monitor */}
-            {(status === 'importing' || status === 'done') && (
-              <div className={`rounded-xl border p-4 space-y-3 ${
-                status === 'done' ? "border-emerald-200 bg-emerald-50" : "border-border bg-surface"
-              }`}>
-                <div className="flex items-center gap-2">
-                  {status === 'done'
-                    ? <IconCircleCheck size={16} className="text-emerald-600" />
-                    : <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
-                  <span className="text-[13px] font-medium text-ink">
-                    {status === 'done' ? "Import completato" : "Import in corso…"}
-                  </span>
-                </div>
+            {jobs.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center">
+                <IconDatabase size={28} className="text-ink-faint mx-auto mb-3"/>
+                <p className="text-[14px] text-ink-soft">Nessun task creato.</p>
+                <p className="text-[12px] text-ink-faint mt-1">
+                  Configura i filtri e clicca <strong>Crea Task</strong> per iniziare.
+                </p>
+              </div>
+            ) : (
+              jobs.map((job) => {
+                const isActive   = job.id === activeJobId;
+                const pct        = job.total_found > 0
+                  ? Math.round((job.import_offset / job.total_found) * 100)
+                  : 0;
+                const presetLabels = OSM_PRESETS
+                  .filter((p) => job.filters.presetIds?.includes(p.id))
+                  .map((p) => p.label)
+                  .join(' · ');
 
-                {status === 'done' && doneInfo ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white rounded-lg px-3 py-2 text-center border border-emerald-100">
-                      <p className="text-[18px] font-semibold text-ink">{doneInfo.saved.toLocaleString()}</p>
-                      <p className="text-[11px] text-ink-soft">Posti salvati</p>
-                    </div>
-                    <div className="bg-white rounded-lg px-3 py-2 text-center border border-emerald-100">
-                      <p className="text-[18px] font-semibold text-ink">{doneInfo.embedded.toLocaleString()}</p>
-                      <p className="text-[11px] text-ink-soft">Embeddings</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-[12px] text-ink-soft">{progress.message}</p>
-                    {progress.total > 0 && (
-                      <>
-                        <ProgressBar value={progress.saved} max={progress.total} />
-                        <div className="flex justify-between text-[11px] text-ink-faint">
-                          <span>{progress.saved.toLocaleString()} salvati</span>
-                          <span>{progress.embedded.toLocaleString()} embeddings</span>
-                          <span>{progress.total.toLocaleString()} totali</span>
+                return (
+                  <div key={job.id}
+                    className={`rounded-xl border bg-surface p-5 space-y-3 transition-colors ${
+                      isActive ? 'border-ink/20' : 'border-border'
+                    }`}>
+
+                    {/* Header card */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[15px] font-semibold text-ink">
+                            {job.filters.location}
+                          </span>
+                          <StatusBadge status={isActive ? 'running' : job.status}/>
                         </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Errore */}
-            {status === 'error' && errorMsg && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-2">
-                <IconAlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[13px] font-medium text-red-700">Errore</p>
-                  <p className="text-[12px] text-red-600 mt-0.5">{errorMsg}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Preview risultati */}
-            {preview && (
-              <div className="rounded-xl border border-border bg-surface overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <IconList size={14} className="text-ink-soft" />
-                    <span className="text-[13px] font-medium text-ink">
-                      Anteprima — {preview.location}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-ink-faint">
-                    {preview.total_found} trovati
-                  </span>
-                </div>
-                <div className="divide-y divide-border">
-                  {preview.places.map((p) => (
-                    <div key={p.osmId} className="px-4 py-2.5 flex items-center gap-3 hover:bg-surface-soft">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-ink truncate">
-                          {p.name || <span className="text-ink-faint italic">senza nome</span>}
-                        </p>
-                        <p className="text-[11px] text-ink-faint truncate mt-0.5">
-                          {p.mainTag} · {p.category}
-                        </p>
+                        <p className="text-[11px] text-ink-faint mt-0.5 truncate">{presetLabels}</p>
                       </div>
-                      <WikiBadge place={p} />
+                      <button onClick={() => handleDelete(job.id)}
+                        disabled={isActive}
+                        className="shrink-0 p-1.5 rounded-lg text-ink-faint hover:text-red-500 hover:bg-red-50 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed transition-colors">
+                        <IconTrash size={13}/>
+                      </button>
                     </div>
-                  ))}
-                </div>
-                <div className="px-4 py-2 border-t border-border">
-                  <p className="text-[10px] text-ink-faint">{preview.attribution}</p>
-                </div>
-              </div>
-            )}
 
-            {/* Idle state */}
-            {status === 'idle' && !preview && (
-              <div className="rounded-xl border border-dashed border-border bg-surface p-6 text-center">
-                <IconDatabase size={24} className="text-ink-faint mx-auto mb-2" />
-                <p className="text-[13px] text-ink-soft">
-                  Configura i filtri e clicca <strong>Anteprima</strong> per vedere un campione,
-                  poi <strong>Importa</strong> per aggiungere al catalogo.
-                </p>
-                <p className="text-[11px] text-ink-faint mt-2">
-                  I posti con tag Wikipedia/Wikidata riceveranno descrizione e immagine automaticamente.
-                </p>
-              </div>
+                    {/* Statistiche */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      {[
+                        { label: 'Totale',    value: job.total_found?.toLocaleString()   ?? '—' },
+                        { label: 'Importati', value: job.total_saved?.toLocaleString()   ?? '0' },
+                        { label: 'Embedded',  value: job.total_embedded?.toLocaleString() ?? '0' },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="rounded-lg bg-bg border border-border px-2 py-1.5">
+                          <p className="text-[14px] font-semibold text-ink">{value}</p>
+                          <p className="text-[10px] text-ink-faint">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    {job.total_found > 0 && (
+                      <div className="space-y-1">
+                        <ProgressBar value={isActive ? (batchProgress?.offset ?? job.import_offset) : job.import_offset} max={job.total_found}/>
+                        <div className="flex justify-between text-[10px] text-ink-faint">
+                          <span>
+                            {isActive
+                              ? batchProgress?.message
+                              : `${job.import_offset.toLocaleString()} / ${job.total_found.toLocaleString()} processati`}
+                          </span>
+                          <span>{pct}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Errore */}
+                    {!isActive && job.status === 'error' && batchError && job.id === activeJobId && (
+                      <p className="text-[11px] text-red-600">{batchError}</p>
+                    )}
+
+                    {/* Opzioni batch */}
+                    <div className="flex items-center gap-3 text-[11px] text-ink-faint">
+                      <span>Batch: {job.batch_size}</span>
+                      {job.auto_continue && <span>· Auto-continue</span>}
+                      {job.filters.notableOnly && <span>· Solo notevoli</span>}
+                      {job.filters.enrichWiki && <span>· Wikipedia</span>}
+                    </div>
+
+                    {/* Azioni */}
+                    <div className="flex gap-2">
+                      {isActive ? (
+                        <button onClick={handleStop}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-[12px] font-medium hover:bg-red-100 cursor-pointer transition-colors">
+                          <IconPlayerStop size={13}/> Stop
+                        </button>
+                      ) : (job.status === 'pending' || job.status === 'paused' || job.status === 'error') ? (
+                        <button onClick={() => startBatch(job)}
+                          disabled={!!activeJobId}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink text-white text-[12px] font-medium hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-opacity">
+                          <IconPlayerPlay size={13}/>
+                          {job.status === 'pending' ? 'Avvia Import' : 'Riprendi'}
+                        </button>
+                      ) : job.status === 'done' ? (
+                        <div className="flex items-center gap-1.5 text-[12px] text-emerald-600">
+                          <IconCircleCheck size={14}/> Completato
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
