@@ -138,7 +138,7 @@ export const sandboxRegistry: SandboxEntry[] = [
   },
   {
     slug: "activity-timeline",
-    title: "ActivityTimeline",
+    title: "Timeline",
     group: "Features",
     subgroup: "Activity",
     description: "Day editor spine view · blocchi tipizzati, bridge, add affordance, AI organize, fuzzy variant",
