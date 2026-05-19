@@ -8,23 +8,72 @@
  *  2. Protect authenticated routes — redirect unauthenticated users
  *     to /login, preserving the intended destination in ?next=
  *  3. Redirect already-authenticated users away from /login
+ *  4. Auth-check + rate-limit API proxy routes:
+ *       /api/places/*  — Google Places / Photo
+ *       /api/ai/*      — OpenAI (assistente Go v2)
+ *       /api/go/*      — OpenAI (assistente Go v1 + deep-dive)
+ *       /api/routes    — Google Routes
+ *       /api/media/*   — import/upload media (SSRF + quota protection)
+ *
+ * Rate-limit note: in-memory store works on single instances. For
+ * multi-region Vercel deployments, swap with Upstash Redis.
  * ─────────────────────────────────────────────────────────────────
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-// Routes that require authentication
-const PROTECTED_PREFIXES = ["/trips", "/account"];
-
-// Routes only for unauthenticated users (redirect away if logged in)
+// ─── Page-level auth config ───────────────────────────────────────
+const PROTECTED_PAGE_PREFIXES = ["/trips", "/account"];
 const AUTH_ONLY_ROUTES = ["/login", "/signup"];
 
+// ─── API rate-limit config ────────────────────────────────────────
+const API_PROTECTED_PREFIXES = ["/api/places", "/api/ai", "/api/go", "/api/routes", "/api/media"];
+
+type RLConfig = { max: number; windowMs: number };
+
+const RL_CONFIGS: Array<[prefix: string, cfg: RLConfig]> = [
+  ["/api/ai",     { max: 20,  windowMs: 60_000 }],
+  ["/api/go",     { max: 20,  windowMs: 60_000 }],
+  ["/api/places", { max: 120, windowMs: 60_000 }],
+  ["/api/routes", { max: 60,  windowMs: 60_000 }],
+  ["/api/media",  { max: 30,  windowMs: 60_000 }],
+];
+
+const rlStore = new Map<string, { count: number; resetAt: number }>();
+let lastPrune = 0;
+
+function checkRL(key: string, cfg: RLConfig): boolean {
+  const now = Date.now();
+  const rec = rlStore.get(key);
+  if (!rec || now > rec.resetAt) {
+    rlStore.set(key, { count: 1, resetAt: now + cfg.windowMs });
+    return true;
+  }
+  if (rec.count >= cfg.max) return false;
+  rec.count++;
+  return true;
+}
+
+function maybePrune() {
+  const now = Date.now();
+  if (now - lastPrune < 5 * 60_000) return;
+  lastPrune = now;
+  for (const [k, v] of rlStore) if (now > v.resetAt) rlStore.delete(k);
+}
+
+function getRLEntry(pathname: string): [string, RLConfig] | null {
+  for (const [prefix, cfg] of RL_CONFIGS) {
+    if (pathname.startsWith(prefix)) return [prefix, cfg];
+  }
+  return null;
+}
+
+// ─── Proxy handler ────────────────────────────────────────────────
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If env vars are missing, let the request through — the page itself will error clearly
   if (!supabaseUrl || !supabaseAnonKey) {
     return NextResponse.next({ request });
   }
@@ -48,22 +97,43 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Refresh session — must happen before checking auth state
+  // Refresh session — must happen before any auth check
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users away from protected routes
-  if (!user && PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
+  // ── API routes: auth + rate limit ──────────────────────────────
+  if (API_PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized — accesso riservato agli utenti autenticati." },
+        { status: 401 },
+      );
+    }
+    const rlEntry = getRLEntry(pathname);
+    if (rlEntry) {
+      maybePrune();
+      const [prefix, cfg] = rlEntry;
+      if (!checkRL(`${user.id}:${prefix}`, cfg)) {
+        return NextResponse.json(
+          { error: "Troppe richieste — riprova fra un minuto." },
+          { status: 429, headers: { "Retry-After": "60" } },
+        );
+      }
+    }
+    return response;
+  }
+
+  // ── Page routes: auth redirects ────────────────────────────────
+  if (!user && PROTECTED_PAGE_PREFIXES.some((p) => pathname.startsWith(p))) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect logged-in users away from auth-only pages
   if (user && AUTH_ONLY_ROUTES.includes(pathname)) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/trips";
@@ -76,6 +146,13 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|media/|design/|auth/callback|api/).*)",
+    // Page routes (exclude static assets, but include auth callback so session refreshes)
+    "/((?!_next/static|_next/image|favicon.ico|media/|design/).*)",
+    // API routes that need auth + rate limiting
+    "/api/places/:path*",
+    "/api/ai/:path*",
+    "/api/go/:path*",
+    "/api/routes",
+    "/api/media/:path*",
   ],
 };
