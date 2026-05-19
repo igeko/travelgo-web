@@ -16,7 +16,7 @@ import { useState } from "react";
 import { StoryPage, StoryFrame, PropsTable } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
-import { ActivityTimeline } from "@/features/activity/ActivityTimeline";
+import { Timeline } from "@/features/activity/Timeline";
 import type { TimelineBlock } from "@/features/activity/types";
 import type { Activity } from "@/lib/dal/trips";
 
@@ -174,16 +174,16 @@ export default function ActivityTimelineSandbox() {
       </SandboxRightPanel>
 
       <StoryPage
-        title="ActivityTimeline"
-        description="Pure timeline component (embedded). Show Map + AI Organize + View Toggle are provided by the host page, not by this component."
+        title="Timeline"
+        description="Pure timeline component (embedded, v2). Show Map + AI Organize + View Toggle are provided by the host page, not by this component. Replaces ActivityTimeline."
       >
         {/* ── Story: Timeline spine ── */}
         <StoryFrame
           name="Spine view — Tokyo day"
-          description="3 sections (Morning / Afternoon / Evening), typed blocks (place/meal/pause/action), fuzzy variant, expandable bridges. In edit mode: hover to see pencil + trash. Pencil opens InstancePopover."
+          description="3 sections (Morning / Afternoon / Evening), typed blocks (place/meal/pause/action), fuzzy variant, expandable bridges. In edit mode: hover gaps for add affordance, hover block for pencil + trash."
         >
           <div className="w-full max-w-[680px]">
-            <ActivityTimeline
+            <Timeline
               key={resetKey}
               dayId="sandbox"
               tripId="sandbox-trip"
@@ -196,10 +196,10 @@ export default function ActivityTimelineSandbox() {
         {/* ── Story: Fuzzy blocks variant ── */}
         <StoryFrame
           name="Fuzzy variant"
-          description="Blocks without precise location: dashed border, gray dot on spine, italic uppercase text. Used for meals/pauses/actions without address."
+          description="Blocks without precise time/location: small grey icon on spine, uppercase name. Used for meals/pauses/actions without a fixed address."
         >
           <div className="w-full max-w-[680px]">
-            <ActivityTimeline
+            <Timeline
               key={`fuzzy-${resetKey}`}
               dayId="sandbox-fuzzy"
               tripId="sandbox-trip"
@@ -216,10 +216,10 @@ export default function ActivityTimelineSandbox() {
         {/* ── Story: Empty timeline ── */}
         <StoryFrame
           name="Empty timeline"
-          description="Empty state — no blocks. In edit mode the add affordance is always visible."
+          description="Empty state — no blocks. In edit mode the add affordance is visible."
         >
           <div className="w-full max-w-[680px]">
-            <ActivityTimeline
+            <Timeline
               key={`empty-${resetKey}`}
               dayId="sandbox-empty"
               tripId="sandbox-trip"
