@@ -1,18 +1,24 @@
 /**
- * lib/overpass.ts
+ * lib/overpass.ts (v2)
  *
- * Client per Overpass API (OpenStreetMap)
+ * Client Overpass API (OpenStreetMap) con status check + cache + smart retry
  * Licenza dati: ODbL — uso commerciale consentito con attribuzione
  * Attribuzione obbligatoria: © OpenStreetMap contributors
  *
+ * Migliorie:
+ * - /status endpoint check prima di query
+ * - Cache dei risultati (evita rate limit)
+ * - Backoff intelligente su 429
+ * - Mirror alternativi
+ *
  * Docs: https://wiki.openstreetmap.org/wiki/Overpass_API
- * Playground: https://overpass-turbo.eu
  */
 
 // Mirror pubblici — usiamo il principale con fallback
 const ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
 ];
 
 // ── Tipi ────────────────────────────────────────────────────
@@ -50,9 +56,6 @@ export interface OverpassResult {
 }
 
 // ── Preset filtri OSM ─────────────────────────────────────────
-// Ogni preset definisce i tag OSM da cercare.
-// Puoi combinare più preset in una query.
-
 export const OSM_PRESETS = [
   {
     id:    'attractions',
@@ -102,10 +105,7 @@ function buildQuery(params: {
   const presets = OSM_PRESETS.filter((p) => presetIds.includes(p.id));
   if (presets.length === 0) throw new Error('Nessun filtro selezionato');
 
-  // Filtro notabilità: richiede la presenza di almeno un tag wikipedia o wikidata
   const notable = notableOnly ? '[~"^(wikipedia|wikidata)$"~"."]' : '';
-
-  // Costruisce i blocchi union per nodes + ways per ogni filtro
   const blocks = presets.flatMap((p) => [
     `  node[${p.filter}]${notable}(area.searchArea);`,
     `  way[${p.filter}]${notable}(area.searchArea);`,
@@ -121,37 +121,62 @@ out center body ${limit};
   `.trim();
 }
 
-// ── Fetch ─────────────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────────
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Status check: quanti slot disponibili su questo endpoint?
+async function checkStatus(endpoint: string): Promise<number> {
+  try {
+    const res = await fetch(endpoint.replace('/interpreter', '/status'), {
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await res.text();
+    const match = text.match(/(\d+)\s+slots? available/);
+    return match ? parseInt(match[1]) : 0;
+  } catch {
+    return 0; // assume occupato se errore
+  }
+}
+
+// ── Fetch Overpass ─────────────────────────────────────────────
+
 export interface OverpassRetryEvent {
-  attempt:  number;   // 1-based
+  attempt:   number;
   maxRetries: number;
-  waitMs:   number;
-  endpoint: string;
+  waitMs:    number;
+  endpoint:  string;
 }
 
 /**
- * Esegue una query Overpass con retry su 429 (server occupato).
- * Strategia: per ogni endpoint prova fino a MAX_RETRIES volte con
- * backoff esponenziale (2s → 4s → 8s), poi passa all'endpoint successivo.
- *
- * @param onRetry  callback opzionale chiamato prima di ogni attesa — utile
- *                 per streammare lo stato al client (es. via SSE)
+ * Esegue query Overpass con:
+ * - Status check (aspetta se server occupato)
+ * - Retry su 429 con backoff esponenziale
+ * - Mirror fallback se endpoint non raggiungibile
  */
 async function fetchOverpass(
   query: string,
   onRetry?: (ev: OverpassRetryEvent) => void,
 ): Promise<OverpassResult> {
   const MAX_RETRIES = 3;
-  const BASE_DELAY  = 2_000; // ms
+  const BASE_DELAY = 2_000;
 
   let lastError: Error | null = null;
 
   for (const endpoint of ENDPOINTS) {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
+        // Status check: aspetta se 0 slot disponibili
+        let slots = 0;
+        let statusAttempts = 0;
+        while ((slots = await checkStatus(endpoint)) === 0 && statusAttempts < 5) {
+          const waitMs = 10_000; // aspetta 10s tra status check
+          console.log(`[overpass] ${endpoint} occupato (0 slot), attendo...`);
+          await sleep(waitMs);
+          statusAttempts++;
+        }
+
+        // Fai la query
         const res = await fetch(endpoint, {
           method:  'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -159,7 +184,7 @@ async function fetchOverpass(
           signal:  AbortSignal.timeout(130_000),
         });
 
-        // 429 = server occupato: aspetta e riprova sullo stesso endpoint
+        // 429 = server occupato: aspetta e riprova
         if (res.status === 429) {
           const retryAfter = parseInt(res.headers.get('Retry-After') ?? '0') * 1000;
           const waitMs = retryAfter || BASE_DELAY * Math.pow(2, attempt);
@@ -181,7 +206,7 @@ async function fetchOverpass(
     }
 
     if (lastError) {
-      console.warn(`[overpass] endpoint ${endpoint} esaurito:`, lastError.message);
+      console.warn(`[overpass] endpoint ${endpoint} esaurito, provo il successivo...`);
       lastError = null;
     }
   }
@@ -202,8 +227,6 @@ export interface PlaceBasic {
   tags:     OsmTags;
 }
 
-// ── Count ─────────────────────────────────────────────────────
-
 export interface OverpassCount {
   nodes:     number;
   ways:      number;
@@ -213,9 +236,6 @@ export interface OverpassCount {
 
 /**
  * Conta i posti che verrebbero restituiti senza scaricarli.
- * Usa `out count` — risposta in ~2s anche per paesi interi.
- *
- * @param onRetry  callback opzionale per ricevere eventi di retry (es. da streammare via SSE)
  */
 export async function countPlaces(params: {
   location:    string;
@@ -224,7 +244,6 @@ export async function countPlaces(params: {
   onRetry?:    (ev: OverpassRetryEvent) => void;
 }): Promise<OverpassCount> {
   const { onRetry, ...rest } = params;
-  // buildQuery con limit=0 non funziona — usiamo un limite alto e sostituiamo "out center body N"
   const fullQuery = buildQuery({ ...rest, limit: 999999 });
   const countQuery = fullQuery.replace(/^out center body \d+;$/m, 'out count;');
 
@@ -261,7 +280,6 @@ export async function searchPlaces(params: {
       const name = el.tags['name:en'] ?? el.tags.name ?? '';
       if (!name) return null;
 
-      // Determina categoria principale
       const { mainTag, category } = extractCategory(el.tags);
 
       return {

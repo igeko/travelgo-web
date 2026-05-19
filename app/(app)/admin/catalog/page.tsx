@@ -24,6 +24,23 @@ import {
   IconLoader2, IconDatabase, IconRefresh, IconTrash,
 } from "@/components/ui/icons";
 import { OSM_PRESETS } from "@/lib/overpass";
+import { REGION_PRESETS, type RegionPreset } from "@/lib/region-presets";
+
+// ── Tipi Overpass Status ─────────────────────────────────────
+interface OverpassStatus {
+  timestamp: string;
+  best: {
+    endpoint: string;
+    slots: number;
+    available: boolean;
+    status: 'ready' | 'busy' | 'error';
+  };
+  all: Array<{
+    endpoint: string;
+    slots: number;
+    statusUrl: string;
+  }>;
+}
 
 // ── Tipi ────────────────────────────────────────────────────
 
@@ -95,6 +112,18 @@ export default function CatalogPage() {
   const [batchSize,      setBatchSize]       = useState(500);
   const [autoContinue,   setAutoContinue]    = useState(false);
   const [enrichWiki,     setEnrichWiki]      = useState(true);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+
+  // ── Apply a region preset ────────────────────────────────
+  const applyPreset = useCallback((preset: RegionPreset) => {
+    setLocation(preset.location);
+    setSelectedPresets(preset.presetIds);
+    setNotableOnly(preset.notableOnly);
+    setBatchSize(preset.batchSize);
+    setAutoContinue(preset.autoContinue);
+    setEnrichWiki(preset.enrichWiki);
+    setSelectedPresetId(preset.id);
+  }, []);
 
   // ── Task list ───────────────────────────────────────────
   const [jobs,         setJobs]        = useState<ImportJob[]>([]);
@@ -109,10 +138,43 @@ export default function CatalogPage() {
   const [batchError,   setBatchError]   = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
+  // ── Overpass Status Monitor ──────────────────────────────
+  const [overpassStatus, setOverpassStatus] = useState<OverpassStatus | null>(null);
+  const [statusLoading,  setStatusLoading]  = useState(false);
+  const statusRefreshRef = useRef<NodeJS.Timeout | null>(null);
+
+  const refreshOverpassStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch('/api/overpass/status');
+      const data = await res.json();
+      setOverpassStatus(data);
+    } catch (e) {
+      console.error('[status] errore:', e);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
+
   // Auth guard
   useEffect(() => {
     if (!loading && !isAdmin && !isDev) router.replace("/trips");
   }, [loading, isAdmin, isDev, router]);
+
+  // ── Carica status Overpass ───────────────────────────────
+  useEffect(() => {
+    // Prima richiesta subito
+    refreshOverpassStatus();
+
+    // Poi ogni 30 secondi (non bannare)
+    statusRefreshRef.current = setInterval(() => {
+      refreshOverpassStatus();
+    }, 30000);
+
+    return () => {
+      if (statusRefreshRef.current) clearInterval(statusRefreshRef.current);
+    };
+  }, [refreshOverpassStatus]);
 
   // ── Carica job ──────────────────────────────────────────
 
@@ -168,12 +230,13 @@ export default function CatalogPage() {
             if (ev.type === 'retry') {
               const secs = Math.round(ev.waitMs / 1000);
               setCreateMsg(
-                `Server Overpass occupato — attendo ${secs}s (tentativo ${ev.attempt}/${ev.maxRetries})…`
+                `Server ${ev.endpoint} occupato — attendo ${secs}s (tentativo ${ev.attempt}/${ev.maxRetries})…`
               );
             } else if (ev.type === 'done') {
               await loadJobs();
             } else if (ev.type === 'error') {
-              throw new Error(ev.message);
+              const errorDetail = (ev as any).details ? `\n\n${(ev as any).details}` : '';
+              throw new Error(ev.message + errorDetail);
             }
           } catch (parseErr) {
             if ((parseErr as Error).message !== 'Unexpected token') throw parseErr;
@@ -297,23 +360,105 @@ export default function CatalogPage() {
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-5 py-10 space-y-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[20px] font-semibold text-ink">Catalog Import</h1>
-            <p className="text-[13px] text-ink-soft mt-0.5">
-              © OpenStreetMap contributors (ODbL)
-            </p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[20px] font-semibold text-ink">Catalog Import</h1>
+              <p className="text-[13px] text-ink-soft mt-0.5">
+                © OpenStreetMap contributors (ODbL)
+              </p>
+            </div>
+            <button onClick={loadJobs}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-ink-soft hover:text-ink cursor-pointer">
+              <IconRefresh size={13}/> Aggiorna
+            </button>
           </div>
-          <button onClick={loadJobs}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-ink-soft hover:text-ink cursor-pointer">
-            <IconRefresh size={13}/> Aggiorna
-          </button>
+
+          {/* Overpass Status Monitor */}
+          {overpassStatus && (
+            <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      overpassStatus.best.status === 'ready' ? 'bg-emerald-500' :
+                      overpassStatus.best.status === 'busy' ? 'bg-amber-500' :
+                      'bg-red-500'
+                    }`}
+                  />
+                  <span className="text-[13px] font-medium text-ink">Overpass API Status</span>
+                </div>
+                <span className={`text-[11px] px-2 py-1 rounded-lg ${
+                  overpassStatus.best.status === 'ready'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : overpassStatus.best.status === 'busy'
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                } border`}>
+                  {overpassStatus.best.status === 'ready' ? '✓ Pronto' :
+                   overpassStatus.best.status === 'busy' ? '⏳ Occupato' :
+                   '✕ Errore'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-bg rounded-lg p-2">
+                  <p className="text-[20px] font-semibold text-ink">{overpassStatus.best.slots}</p>
+                  <p className="text-[10px] text-ink-faint mt-0.5">Slot disponibili</p>
+                </div>
+                <div className="bg-bg rounded-lg p-2">
+                  <p className="text-[11px] text-ink-soft font-mono break-all">
+                    {overpassStatus.best.endpoint.split('/').slice(-3).join('/')}
+                  </p>
+                  <p className="text-[10px] text-ink-faint mt-0.5">Endpoint attivo</p>
+                </div>
+                <div className="bg-bg rounded-lg p-2">
+                  <p className="text-[11px] text-ink font-mono">
+                    {new Date(overpassStatus.timestamp).toLocaleTimeString('it-IT')}
+                  </p>
+                  <p className="text-[10px] text-ink-faint mt-0.5">Aggiornato</p>
+                </div>
+              </div>
+
+              <div className="flex gap-1 flex-wrap">
+                {overpassStatus.all.map((ep, i) => (
+                  <span key={i} className={`text-[10px] px-2 py-1 rounded-lg border ${
+                    ep.slots > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    ep.slots === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                    'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {ep.endpoint.split('/')[2]}: {ep.slots >= 0 ? ep.slots : '✕'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
 
           {/* ── Colonna sinistra: configurazione ── */}
           <div className="space-y-4">
+
+            {/* Preset Regions */}
+            <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+              <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
+                <IconWorld size={14} className="text-ink-soft"/> Template Rapidi
+              </h2>
+              <div className="space-y-2">
+                {REGION_PRESETS.slice(0, 5).map((preset) => (
+                  <button key={preset.id} onClick={() => applyPreset(preset)}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors text-[12px] ${
+                      selectedPresetId === preset.id
+                        ? "border-ink bg-ink/5 text-ink font-medium"
+                        : "border-border text-ink-soft hover:border-border-strong hover:text-ink"
+                    }`}>
+                    <div className="font-medium">{preset.name}</div>
+                    <div className="text-[11px] text-ink-faint mt-0.5">{preset.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Destinazione */}
             <div className="rounded-xl border border-border bg-surface p-5 space-y-3">

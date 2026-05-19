@@ -142,7 +142,12 @@ export async function POST(req: NextRequest) {
       await send({ type: 'done', job, count });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Errore creazione task';
-      await send({ type: 'error', message: msg });
+      console.error('[catalog/jobs] Errore countPlaces:', err);
+      await send({
+        type: 'error',
+        message: msg,
+        details: err instanceof Error ? err.stack : undefined,
+      });
     } finally {
       writer.close();
     }

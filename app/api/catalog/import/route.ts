@@ -14,7 +14,7 @@
  *   { type: 'done',     saved, embedded, offset, total, jobId, complete }
  *   { type: 'error',    message }
  *
- * Dati OSM: © OpenStreetMap contributors (ODbL)
+ * Dati: © OpenStreetMap contributors (ODbL)
  */
 
 import { NextRequest }        from 'next/server';

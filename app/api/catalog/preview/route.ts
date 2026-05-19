@@ -3,10 +3,10 @@
  *
  * GET /api/catalog/preview?location=Japan&presets=attractions,historic&limit=12
  *
- * Restituisce un campione di posti da Overpass/OSM senza importare nulla.
+ * Restituisce un campione di posti da Wikidata senza importare nulla.
  * Usato dal pannello admin per mostrare un'anteprima prima dell'import.
  *
- * Dati: © OpenStreetMap contributors, licenza ODbL
+ * Dati: © OpenStreetMap contributors (ODbL)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
