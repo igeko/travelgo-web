@@ -23,7 +23,8 @@ export interface DataQualityReport {
   scores: {
     enrichment:  number; // % di posti con descrizione
     completeness: number; // % di posti con immagine + descrizione + embedding
-    geographic:  number;  // Copertura geografica spread (0-100)  }
+    geographic:  number;  // Copertura geografica spread (0-100)
+  };
   metrics: {
     avgDescriptionLength: number;
     avgDescriptionWords: number;

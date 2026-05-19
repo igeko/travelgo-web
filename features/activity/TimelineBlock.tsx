@@ -110,11 +110,11 @@ export function TimelineBlock({
             <span
               className={cn(
                 "shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-[3px] rounded-[5px] border mt-[1px]",
-                TYPE_BG[block.type] ?? TYPE_BG.place
+                TYPE_BG[block.type ?? "place"] ?? TYPE_BG.place
               )}
             >
-              <span>{TYPE_EMOJI[block.type] ?? "📍"}</span>
-              <span className="uppercase tracking-[0.05em]">{TYPE_LABEL[block.type] ?? block.type}</span>
+              <span>{TYPE_EMOJI[block.type ?? "place"] ?? "📍"}</span>
+              <span className="uppercase tracking-[0.05em]">{TYPE_LABEL[block.type ?? "place"] ?? block.type}</span>
             </span>
 
             {/* Nome → click naviga ad Activity Detail */}

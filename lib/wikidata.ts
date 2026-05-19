@@ -392,7 +392,7 @@ export async function searchPlaces(params: {
           },
         } satisfies PlaceBasic;
       })
-      .filter((p): p is PlaceBasic => p !== null);
+      .filter((p: PlaceBasic | null): p is PlaceBasic => p !== null);
   } catch (e) {
     console.error('[wikidata] searchPlaces error:', e);
     throw e;

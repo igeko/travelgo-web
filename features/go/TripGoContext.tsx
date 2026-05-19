@@ -64,6 +64,8 @@ const NOOP_CONTEXT: TripGoContextValue = {
   hasBeenOpened: false,
   registerActiveEdit: () => {},
   unregisterActiveEdit: () => {},
+  registerAddToDay: () => {},
+  unregisterAddToDay: () => {},
 };
 
 export function useTripGo(): TripGoContextValue {
