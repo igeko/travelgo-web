@@ -200,5 +200,92 @@
       "night": "Notte"
     },
     "acts": "atti"
+  },
+  "Common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "delete": "Elimina",
+    "retry": "Riprova",
+    "loading": "Caricamento…",
+    "send": "Invia"
+  },
+  "Trips": {
+    "title": "I tuoi viaggi",
+    "newTrip": "Nuovo viaggio",
+    "loading": "Caricamento…",
+    "empty": "Nessun viaggio ancora",
+    "emptyHint": "Creane uno per iniziare.",
+    "createOne": "Creane uno",
+    "createTrip": "Crea viaggio"
+  },
+  "InstancePopover": {
+    "title": "Modifica istanza",
+    "close": "Chiudi",
+    "dayMoment": "Momento del giorno",
+    "time": "Orario",
+    "fuzzyTitle": "Orario approssimativo",
+    "fuzzyHint": "Nessun orario preciso → bordo tratteggiato",
+    "noteLabel": "Nota istanza",
+    "notePlaceholder": "Note specifiche per questo giorno…",
+    "bookingStatus": "Stato prenotazione",
+    "status": {
+      "todo": "Da fare",
+      "booked": "Prenotato",
+      "paid": "Pagato"
+    },
+    "slots": {
+      "morning": "Mattina",
+      "afternoon": "Pomeriggio",
+      "evening": "Sera",
+      "night": "Notte"
+    }
+  },
+  "DayMagazine": {
+    "dayStory": "Racconto del giorno",
+    "retry": "Riprova",
+    "addActivities": "Aggiungi le attività del giorno…"
+  },
+  "Timeline": {
+    "blockTypes": {
+      "place": "Luogo",
+      "meal": "Pasto",
+      "rest": "Pausa",
+      "action": "Azione",
+      "transfer": "Spostamento"
+    },
+    "transport": {
+      "walk": "A piedi",
+      "metro": "Metro",
+      "bus": "Bus",
+      "taxi": "Taxi",
+      "car": "Auto",
+      "bike": "Bici",
+      "train": "Treno"
+    },
+    "edit": {
+      "editTransfer": "Modifica spostamento",
+      "close": "Chiudi",
+      "mode": "Mezzo",
+      "time": "Tempo",
+      "line": "Linea",
+      "note": "Nota",
+      "markFreeTime": "Marca come tempo libero"
+    },
+    "schedule": "Programma",
+    "noActivities": "Nessuna attività ancora"
+  },
+  "Go": {
+    "title": "Go · assistente di viaggio",
+    "online": "online",
+    "you": "tu",
+    "placeholder": "Scrivi a Go…",
+    "errorGeneric": "Mi dispiace, qualcosa è andato storto.",
+    "send": "Invia",
+    "close": "Chiudi",
+    "actions": {
+      "addToDay": "Aggiungi al giorno",
+      "save": "Salva"
+    }
   }
 }

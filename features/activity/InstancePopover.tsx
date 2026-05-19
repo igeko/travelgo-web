@@ -1,16 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconX, IconCheck, IconCircleDashed, IconBookmark } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import type { TimelineBlock, InstancePatch, BookingStatus, SlotKey } from "./types";
-import { SLOT_LABEL, SLOT_ORDER } from "./types";
-
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  todo:   "Da fare",
-  booked: "Prenotato",
-  paid:   "Pagato",
-};
+import { SLOT_ORDER } from "./types";
 
 type Props = {
   block: TimelineBlock;
@@ -19,6 +14,8 @@ type Props = {
 };
 
 export function InstancePopover({ block, onSave, onClose }: Props) {
+  const t = useTranslations("InstancePopover");
+  const tCommon = useTranslations("Common");
   const [time,   setTime]   = useState(block.time ?? "");
   const [fuzzy,  setFuzzy]  = useState(block.fuzzy);
   const [note,   setNote]   = useState(block.instance_note ?? "");
@@ -39,8 +36,8 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
   return (
     <div className="mt-1 mb-2 rounded-xl border border-border bg-white shadow-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[12px] font-semibold text-ink">Modifica istanza</span>
-        <button onClick={onClose} className="text-ink-faint hover:text-ink transition-colors p-1">
+        <span className="text-[12px] font-semibold text-ink">{t("title")}</span>
+        <button onClick={onClose} aria-label={tCommon("close")} className="text-ink-faint hover:text-ink transition-colors p-1">
           <IconX size={14} />
         </button>
       </div>
@@ -48,7 +45,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
       {/* Slot */}
       <div className="mb-3">
         <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
-          Momento del giorno
+          {t("dayMoment")}
         </label>
         <div className="flex gap-1.5 flex-wrap">
           {SLOT_ORDER.map((s) => (
@@ -62,7 +59,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
                   : "text-ink-soft border-border hover:border-orange/40"
               )}
             >
-              {SLOT_LABEL[s]}
+              {t(`slots.${s}`)}
             </button>
           ))}
         </div>
@@ -71,7 +68,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
       {/* Time */}
       <div className="mb-3">
         <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-          Orario
+          {t("time")}
         </label>
         <input
           type="time"
@@ -84,10 +81,13 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
       {/* Fuzzy */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-[12px] text-ink">Orario approssimativo</p>
-          <p className="text-[11px] text-ink-faint">Nessun orario preciso → bordo tratteggiato</p>
+          <p className="text-[12px] text-ink">{t("fuzzyTitle")}</p>
+          <p className="text-[11px] text-ink-faint">{t("fuzzyHint")}</p>
         </div>
         <button
+          role="switch"
+          aria-checked={fuzzy}
+          aria-label={t("fuzzyTitle")}
           onClick={() => setFuzzy((v) => !v)}
           className={cn(
             "relative w-9 h-5 rounded-full border-2 transition-colors shrink-0 ml-4",
@@ -106,12 +106,12 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
       {/* Nota istanza */}
       <div className="mb-3">
         <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1">
-          Nota istanza
+          {t("noteLabel")}
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Note specifiche per questo giorno…"
+          placeholder={t("notePlaceholder")}
           rows={2}
           className="w-full border border-border rounded-lg px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint outline-none focus:border-orange/50 transition-colors bg-white resize-none"
         />
@@ -120,7 +120,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
       {/* Booking status */}
       <div className="mb-4">
         <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint mb-1.5">
-          Stato prenotazione
+          {t("bookingStatus")}
         </label>
         <div className="flex gap-1.5">
           {(["todo", "booked", "paid"] as BookingStatus[]).map((s) => (
@@ -137,7 +137,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
               {s === "todo"   && <IconCircleDashed size={11} />}
               {s === "booked" && <IconBookmark size={11} />}
               {s === "paid"   && <IconCheck size={11} />}
-              {STATUS_LABEL[s]}
+              {t(`status.${s}`)}
             </button>
           ))}
         </div>
@@ -147,7 +147,7 @@ export function InstancePopover({ block, onSave, onClose }: Props) {
         onClick={handleSave}
         className="w-full bg-orange text-white rounded-lg py-2 text-[13px] font-semibold hover:bg-orange/90 transition-colors"
       >
-        Salva
+        {tCommon("save")}
       </button>
     </div>
   );

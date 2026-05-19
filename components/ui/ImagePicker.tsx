@@ -15,7 +15,7 @@ import {
   IconUpload,
   IconWifiOff,
   IconX,
-} from "@tabler/icons-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { getBrowserClient } from "@/lib/dal/supabase";
 

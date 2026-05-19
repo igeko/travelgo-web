@@ -200,5 +200,92 @@
       "night": "Night"
     },
     "acts": "acts"
+  },
+  "Common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "send": "Send"
+  },
+  "Trips": {
+    "title": "Your trips",
+    "newTrip": "New trip",
+    "loading": "Loading…",
+    "empty": "No trips yet",
+    "emptyHint": "Create one to get started.",
+    "createOne": "Create one",
+    "createTrip": "Create trip"
+  },
+  "InstancePopover": {
+    "title": "Edit instance",
+    "close": "Close",
+    "dayMoment": "Time of day",
+    "time": "Time",
+    "fuzzyTitle": "Approximate time",
+    "fuzzyHint": "No exact time → dashed border",
+    "noteLabel": "Instance note",
+    "notePlaceholder": "Notes specific to this day…",
+    "bookingStatus": "Booking status",
+    "status": {
+      "todo": "To do",
+      "booked": "Booked",
+      "paid": "Paid"
+    },
+    "slots": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "night": "Night"
+    }
+  },
+  "DayMagazine": {
+    "dayStory": "Day story",
+    "retry": "Retry",
+    "addActivities": "Add activities to this day…"
+  },
+  "Timeline": {
+    "blockTypes": {
+      "place": "Place",
+      "meal": "Meal",
+      "rest": "Break",
+      "action": "Action",
+      "transfer": "Transit"
+    },
+    "transport": {
+      "walk": "Walk",
+      "metro": "Metro",
+      "bus": "Bus",
+      "taxi": "Taxi",
+      "car": "Car",
+      "bike": "Bike",
+      "train": "Train"
+    },
+    "edit": {
+      "editTransfer": "Edit transit",
+      "close": "Close",
+      "mode": "Mode",
+      "time": "Time",
+      "line": "Line",
+      "note": "Note",
+      "markFreeTime": "Mark as free time"
+    },
+    "schedule": "Schedule",
+    "noActivities": "No activities yet"
+  },
+  "Go": {
+    "title": "Go · travel assistant",
+    "online": "online",
+    "you": "you",
+    "placeholder": "Write to Go…",
+    "errorGeneric": "Sorry, something went wrong.",
+    "send": "Send",
+    "close": "Close",
+    "actions": {
+      "addToDay": "Add to day",
+      "save": "Save"
+    }
   }
 }

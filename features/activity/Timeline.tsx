@@ -17,6 +17,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
 import { ActivityAutocomplete } from "./ActivityAutocomplete";
@@ -34,7 +35,7 @@ import type {
   NewBlockPayload,
 } from "./types";
 import type { BridgeData, BlockType } from "@/lib/dal/trips";
-import { SLOT_ORDER, SLOT_LABEL } from "./types";
+import { SLOT_ORDER } from "./types";
 
 /* ─── geometry ──────────────────────────────────────────────────── */
 const SPINE_LEFT = 110; // padding-left of spine container (allargata per ospitare le label periodo a sinistra)
@@ -90,6 +91,7 @@ function isSameAdd(a: AddState, afterBlockId: string | undefined, slot: SlotKey)
  * la linea continua a scorrere dietro il divider.
  */
 function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) {
+  const tSlots = useTranslations("ActivityList.slots");
   return (
     <div
       className="relative"
@@ -98,7 +100,6 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
         paddingLeft: SPINE_LEFT,
       }}
     >
-      {/* Connector line continuing the spine through the divider (skipped for first section) */}
       {!isFirst && (
         <div
           className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
@@ -106,7 +107,6 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
           aria-hidden
         />
       )}
-      {/* Period label — left of the spine line, right-aligned to align with time column */}
       <span
         className="absolute text-[10.5px] font-medium tracking-[0.14em] uppercase text-orange select-none whitespace-nowrap"
         style={{
@@ -117,7 +117,7 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
           transform: "translateY(-50%)",
         }}
       >
-        {SLOT_LABEL[slot]}
+        {tSlots(slot)}
       </span>
     </div>
   );
@@ -165,13 +165,7 @@ function BridgeStrip({
 /* ─── BridgeEditor (expanded) ────────────────────────────────────── */
 type BridgeTransport = BridgeData["transport"];
 
-const BRIDGE_TRANSPORTS: { key: BridgeTransport; label: string }[] = [
-  { key: "walk",  label: "A piedi" },
-  { key: "metro", label: "Metro"   },
-  { key: "bus",   label: "Bus"     },
-  { key: "taxi",  label: "Taxi"    },
-  { key: "bike",  label: "Bici"    },
-];
+const BRIDGE_TRANSPORT_KEYS: BridgeTransport[] = ["walk", "metro", "bus", "taxi", "bike"];
 
 function BridgeEditor({
   bridge,
@@ -184,6 +178,7 @@ function BridgeEditor({
   onClose:    () => void;
   onMarkFree: () => void;
 }) {
+  const tT = useTranslations("Timeline");
   const [transport, setTransport] = useState<BridgeTransport>(bridge?.transport ?? "walk");
   const [duration,  setDuration]  = useState(bridge?.duration_min?.toString() ?? "");
   const [line,      setLine]      = useState(bridge?.line ?? "");
@@ -204,29 +199,29 @@ function BridgeEditor({
         {/* Head */}
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
           <IconPencil size={11} />
-          <span>Modifica spostamento</span>
-          <button className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
+          <span>{tT("edit.editTransfer")}</span>
+          <button aria-label={tT("edit.close")} className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
             <IconX size={13} />
           </button>
         </div>
 
         {/* Transport chips */}
         <div className="mb-2">
-          <span className="block text-[10.5px] font-medium text-ink-soft mb-1.5">Mezzo</span>
+          <span className="block text-[10.5px] font-medium text-ink-soft mb-1.5">{tT("edit.mode")}</span>
           <div className="flex gap-1 flex-wrap">
-            {BRIDGE_TRANSPORTS.map((t) => (
+            {BRIDGE_TRANSPORT_KEYS.map((key) => (
               <button
-                key={t.key}
-                onClick={() => setTransport(t.key)}
+                key={key}
+                onClick={() => setTransport(key)}
                 className={cn(
                   "inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-pill)] border text-[11px] font-medium transition-colors",
-                  transport === t.key
+                  transport === key
                     ? "bg-ink text-white border-ink"
                     : "bg-surface-soft border-border text-ink-soft hover:border-orange/40",
                 )}
               >
-                {TRANSPORT_ICON[t.key]}
-                {t.label}
+                {TRANSPORT_ICON[key]}
+                {tT(`transport.${key}`)}
               </button>
             ))}
           </div>
@@ -235,7 +230,7 @@ function BridgeEditor({
         {/* Fields */}
         <div className="grid grid-cols-2 gap-1.5 mb-2">
           <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">Tempo</span>
+            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">{tT("edit.time")}</span>
             <input
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
@@ -244,7 +239,7 @@ function BridgeEditor({
             />
           </div>
           <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">Linea</span>
+            <span className="block text-[9.5px] uppercase tracking-[0.04em] text-ink-faint mb-0.5">{tT("edit.line")}</span>
             <input
               value={line}
               onChange={(e) => setLine(e.target.value)}
@@ -260,7 +255,7 @@ function BridgeEditor({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="bg-transparent outline-none w-full text-ink-soft italic placeholder:text-ink-faint"
-            placeholder="Nota…"
+            placeholder={tT("edit.note")}
           />
         </div>
 
@@ -271,7 +266,7 @@ function BridgeEditor({
             onClick={onMarkFree}
           >
             <IconCircleMinus size={11} />
-            Marca come tempo libero
+            {tT("edit.markFreeTime")}
           </button>
           <button
             className="bg-ink text-white rounded-[var(--radius-pill)] px-3 py-1 text-[11px] font-medium hover:opacity-90 transition-opacity"
@@ -309,6 +304,8 @@ function ScheduleStrip({
   onSave:  (patch: import("./types").InstancePatch) => void;
   onClose: () => void;
 }) {
+  const tT = useTranslations("Timeline");
+  const tCommon = useTranslations("Common");
   const [slot,  setSlot]  = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
   const [fuzzy, setFuzzy] = useState<boolean>(!!block.fuzzy);
 
@@ -316,7 +313,6 @@ function ScheduleStrip({
     onSave({
       slot,
       fuzzy,
-      // se diventa fuzzy, azzeriamo l'ora; altrimenti la lasciamo invariata
       ...(fuzzy ? { time: null } : {}),
     });
     onClose();
@@ -327,11 +323,11 @@ function ScheduleStrip({
       {/* Head */}
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
         <IconCalendarTime size={11} />
-        <span>Programma</span>
+        <span>{tT("schedule")}</span>
         <button
           className="ml-auto text-ink-faint hover:text-ink transition-colors"
           onClick={onClose}
-          aria-label="Chiudi"
+          aria-label={tCommon("close")}
         >
           <IconX size={13} />
         </button>
@@ -717,6 +713,7 @@ type Props = {
 };
 
 export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Props) {
+  const tT = useTranslations("Timeline");
   const {
     blocks,
     addBlock,
@@ -823,7 +820,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
           className="py-10 text-center text-[13px] text-ink-faint"
           style={{ paddingLeft: SPINE_LEFT + 16 }}
         >
-          Nessuna attività ancora.
+          {tT("noActivities")}.
         </div>
         {editMode && renderAddZone(undefined, "morning")}
       </div>

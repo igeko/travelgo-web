@@ -15,8 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { IconArrowUp, IconChevronDown, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import { IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
+import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconChevronDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { imageSearch } from "@/features/media/imageSearch";

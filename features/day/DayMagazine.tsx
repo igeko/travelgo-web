@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { IconRefresh, IconSparkles } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
+import { IconRefresh, IconSparkles } from "@/components/ui/icons";
 import type { Day, Activity } from "@/lib/dal/trips";
 import type { DescribeDayActivity } from "@/app/api/ai/describe-day/route";
 import { useDayNarrative } from "./useDayNarrative";
@@ -24,6 +25,7 @@ type Props = {
 ───────────────────────────────────────────────────────────────── */
 
 export function DayMagazine({ day, activities, enabled }: Props) {
+  const t = useTranslations("DayMagazine");
   const sorted = useMemo(
     () =>
       [...activities].sort((a, b) => {
@@ -76,9 +78,9 @@ export function DayMagazine({ day, activities, enabled }: Props) {
     : null;
 
   /* ── States ── */
-  if (activities.length === 0) return <MagFrame><EmptyState /></MagFrame>;
+  if (activities.length === 0) return <MagFrame><EmptyState message={t("addActivities")} /></MagFrame>;
   if (status === "idle" || status === "loading") return <MagFrame><LoadingShimmer /></MagFrame>;
-  if (status === "error") return <MagFrame><ErrorState onRetry={regenerate} /></MagFrame>;
+  if (status === "error") return <MagFrame><ErrorState onRetry={regenerate} retryLabel={t("retry")} /></MagFrame>;
 
   /* ── Content ── */
   return (
@@ -92,7 +94,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
       >
         <IconSparkles size={13} style={{ color: "var(--color-orange)" }} />
         <b className="not-italic font-medium" style={{ color: "var(--color-ink-soft)" }}>Go</b>
-        &nbsp;· racconto del giorno
+        &nbsp;· {t("dayStory")}
       </div>
 
       {/* Deck — standfirst */}
@@ -342,7 +344,7 @@ function LoadingShimmer() {
   );
 }
 
-function ErrorState({ onRetry }: { onRetry: () => void }) {
+function ErrorState({ onRetry, retryLabel }: { onRetry: () => void; retryLabel: string }) {
   return (
     <div className="px-4 py-5 sm:px-8 sm:py-7">
       <div
@@ -356,14 +358,14 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
           className="font-medium underline cursor-pointer bg-transparent border-0 text-[12px] font-[inherit] ml-auto"
           style={{ color: "#791f1f" }}
         >
-          Riprova
+          {retryLabel}
         </button>
       </div>
     </div>
   );
 }
 
-function EmptyState() {
+function EmptyState({ message }: { message: string }) {
   return (
     <div className="px-4 py-10 sm:px-8 sm:py-[60px] text-center">
       <div
@@ -372,14 +374,8 @@ function EmptyState() {
       >
         📖
       </div>
-      <h4
-        className="text-[20px] font-normal mb-[6px] italic"
-        style={{ fontFamily: "var(--font-serif)", color: "var(--color-ink)" }}
-      >
-        Ancora nessuna tappa
-      </h4>
       <p className="text-[13px] leading-[1.55] max-w-[380px] mx-auto" style={{ color: "var(--color-ink-soft)" }}>
-        Aggiungi le attività del giorno per generare il racconto editoriale.
+        {message}
       </p>
     </div>
   );

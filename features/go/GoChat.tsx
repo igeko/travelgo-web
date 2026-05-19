@@ -15,7 +15,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IconSparkles, IconArrowUp } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
+import { IconSparkles, IconArrowUp } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { GoChatFloat } from "./GoChatFloat";
@@ -158,6 +159,8 @@ function GoTrigger({ onClick, className }: { onClick: () => void; className?: st
 const GREETING_TRIGGER = "__greeting__";
 
 function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose: () => void; className?: string; onDebugCall?: GoChatDebugFn; tripContext?: string }) {
+  const t = useTranslations("Go");
+  const tCommon = useTranslations("Common");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -260,7 +263,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: "Mi dispiace, qualcosa è andato storto.", streaming: false }
+            ? { ...m, content: t("errorGeneric"), streaming: false }
             : m,
         ),
       );
@@ -293,7 +296,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
         <GoAvatar size="md" pulse />
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-orange leading-none">
-            Go · assistente di viaggio
+            {t("title")}
           </div>
         </div>
         <span className="flex items-center gap-1.5 text-[11px] text-ink-faint">
@@ -350,7 +353,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Scrivi a Go…"
+              placeholder={t("placeholder")}
               disabled={loading}
               className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] text-ink placeholder:text-ink-faint py-1.5 disabled:opacity-50"
               style={{ fontFamily: "inherit" }}
@@ -358,7 +361,7 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              aria-label="Invia"
+              aria-label={tCommon("send")}
               className={cn(
                 "w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0 transition-colors border-0",
                 input.trim() && !loading
