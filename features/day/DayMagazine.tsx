@@ -231,34 +231,25 @@ export function DayMagazine({ day, activities, enabled }: Props) {
 function MagFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="sm:rounded-[var(--radius-lg)] sm:border-[0.5px] sm:pb-[22px]"
+      className="relative overflow-hidden sm:rounded-[var(--radius-lg)] sm:border-[0.5px]"
       style={{
-        background:  "var(--color-bg)",
+        background:  "var(--color-surface)",
         borderColor: "var(--color-border)",
+        boxShadow:   "0 1px 2px rgba(13,44,61,0.04), 0 6px 22px rgba(13,44,61,0.05)",
       }}
     >
-      {/* Inner: white paper sheet */}
+      {/* Orange hairline — "segnalibro" del foglio */}
       <div
-        className="relative overflow-hidden sm:mt-[16px] sm:mx-[22px] sm:rounded-[var(--radius-lg)] sm:border-[0.5px]"
+        aria-hidden
         style={{
-          background:  "var(--color-surface)",
-          borderColor: "var(--color-border)",
-          boxShadow:   "0 1px 2px rgba(13,44,61,0.04), 0 6px 22px rgba(13,44,61,0.05)",
+          position:   "absolute",
+          top: 0, left: 0, right: 0,
+          height:     2,
+          background: "linear-gradient(90deg, transparent 0%, var(--color-orange-border) 50%, transparent 100%)",
+          opacity:    0.55,
         }}
-      >
-        {/* Orange hairline — "segnalibro" del foglio */}
-        <div
-          aria-hidden
-          style={{
-            position:   "absolute",
-            top: 0, left: 0, right: 0,
-            height:     2,
-            background: "linear-gradient(90deg, transparent 0%, var(--color-orange-border) 50%, transparent 100%)",
-            opacity:    0.55,
-          }}
-        />
-        {children}
-      </div>
+      />
+      {children}
     </div>
   );
 }

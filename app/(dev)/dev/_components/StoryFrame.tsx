@@ -110,7 +110,7 @@ export function StoryFrame({
           </p>
         )}
       </header>
-      <div className="rounded-lg border border-border bg-surface p-6">
+      <div className="rounded-lg border border-border p-6">
         {children}
       </div>
     </section>

@@ -19,7 +19,7 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
-import { InstancePopover } from "./InstancePopover";
+import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { ActivityAutocomplete } from "./ActivityAutocomplete";
 import {
   IconMapPin, IconSoup, IconTree, IconKey, IconTrain,
@@ -75,6 +75,39 @@ type AddState =
 function isSameAdd(a: AddState, afterBlockId: string | undefined, slot: SlotKey): boolean {
   if (!a) return false;
   return a.afterBlockId === afterBlockId && a.slot === slot;
+}
+
+/* ─── Convert TimelineBlock to ActivityData ──────────────────────── */
+function blockToActivityData(block: Block): Partial<ActivityData> {
+  const timeMatch = block.time?.match(/^(\d{1,2}):(\d{2})$/);
+  const hour = timeMatch ? parseInt(timeMatch[1], 10) : undefined;
+  const minute = timeMatch ? parseInt(timeMatch[2], 10) : undefined;
+
+  return {
+    title: block.title,
+    description: block.short_desc ?? "",
+    status: block.booking_status,
+    period: block.slot as SlotKey,
+    hour,
+    minute,
+    place:
+      block.location &&
+      block.location_place_id &&
+      block.location_lat !== null &&
+      block.location_lng !== null
+        ? {
+            formatted: block.location,
+            name: block.location,
+            placeId: block.location_place_id,
+            lat: block.location_lat,
+            lng: block.location_lng,
+          }
+        : null,
+    budgetAmount: block.budget_amount ?? undefined,
+    budgetCurrency: block.budget_currency ?? "EUR",
+    enrichedPlace: (block.place_enriched as any) ?? null,
+    heroImage: block.hero_image ?? null,
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -451,6 +484,19 @@ function SingleBlock({
   const isFuzzy  = block.fuzzy;
   const showActs = editMode && (hovered || popoverOpen);
 
+  const handleSaveActivity = (data: ActivityData) => {
+    onPatchInstance({
+      time: data.hour !== undefined && data.minute !== undefined
+        ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+        : null,
+      fuzzy: data.period === "night" ? true : false, // Simple logic: night = fuzzy-like
+      instance_note: null,
+      booking_status: data.status,
+      slot: data.period as SlotKey,
+    });
+    onClosePopover();
+  };
+
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       {/* ── Main row ─────────────────────────────────────────────── */}
@@ -487,17 +533,17 @@ function SingleBlock({
         {/* Spine icon — absolute, on the spine line */}
         <div
           className={cn(
-            "absolute flex items-center justify-center rounded-full transition-all duration-150",
+            "absolute flex items-center justify-center rounded-full transition-all duration-150 shadow-sm z-10",
             isFuzzy
               ? [
-                  "bg-[#d5d5ce] text-ink-soft",
+                  "bg-[#d5d5ce] text-ink-soft border-2 border-[#e8e8e0]",
                   (hovered || popoverOpen) &&
-                    "bg-white border-[1.5px] border-orange text-orange-deep",
+                    "bg-white border-orange text-orange-deep",
                 ]
               : [
-                  "bg-bg border-[1.5px] border-[rgba(13,44,61,0.14)] text-ink-soft",
+                  "bg-[#e8e8e0] text-ink-soft border-2 border-[#f5f5f0]",
                   (hovered || popoverOpen) &&
-                    "border-orange text-orange-deep bg-white",
+                    "bg-white border-orange text-orange-deep",
                 ],
           )}
           style={
@@ -571,13 +617,14 @@ function SingleBlock({
         )}
       </div>
 
-      {/* ── Instance popover ──────────────────────────────────────── */}
+      {/* ── Activity edit form ──────────────────────────────────────── */}
       {popoverOpen && editMode && (
         <div style={{ paddingLeft: 0, marginBottom: 4 }}>
-          <InstancePopover
-            block={block}
-            onSave={onPatchInstance}
-            onClose={onClosePopover}
+          <ActivityEditForm
+            initialData={blockToActivityData(block)}
+            isNew={false}
+            onSave={handleSaveActivity}
+            onCancel={onClosePopover}
           />
         </div>
       )}
