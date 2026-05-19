@@ -156,7 +156,16 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
 }
 
 /* ─── BridgeStrip (closed) ───────────────────────────────────────── */
-function BridgeStrip({ bridge, onClick }: { bridge: BridgeData; onClick: () => void }) {
+function BridgeStrip({
+  bridge,
+  editMode,
+  onClick,
+}: {
+  bridge:   BridgeData;
+  editMode: boolean;
+  onClick:  () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
   const durText = bridge.duration_min ? `${bridge.duration_min} min` : null;
   const label = [
     TRANSPORT_LABEL[bridge.transport] ?? bridge.transport,
@@ -166,14 +175,21 @@ function BridgeStrip({ bridge, onClick }: { bridge: BridgeData; onClick: () => v
 
   return (
     <div
-      className="relative flex items-center gap-1.5 cursor-pointer text-ink-soft text-[11px] transition-colors hover:bg-[rgba(13,44,61,0.03)] rounded-[15px_15px_0_0]"
-      style={{ padding: "2px 8px", minHeight: 22, margin: "0 0 0 5px" }}
-      onClick={onClick}
+      className={cn(
+        "relative flex items-center gap-1.5 text-ink-soft text-[11px] transition-colors rounded-[15px_15px_0_0]",
+        editMode ? "cursor-pointer hover:bg-[rgba(13,44,61,0.03)]" : "cursor-default",
+      )}
+      style={{ padding: "2px 8px", minHeight: 22, margin: "0 10px 0 5px" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={editMode ? onClick : undefined}
     >
       <span className="text-ink-faint">{TRANSPORT_ICON[bridge.transport] ?? <IconWalk size={12} />}</span>
       <span>{label}</span>
       {bridge.line && <span className="text-ink-faint">· {bridge.line}</span>}
-      <span className="ml-auto text-[#c7c0b0]"><IconPencil size={11} /></span>
+      {editMode && hovered && (
+        <span className="ml-auto text-[#c7c0b0]"><IconPencil size={11} /></span>
+      )}
     </div>
   );
 }
@@ -825,7 +841,8 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
                       ) : (
                         <BridgeStrip
                           bridge={block.bridge_in_json}
-                          onClick={() => editMode && toggleBridge(block.id, "in")}
+                          editMode={editMode}
+                          onClick={() => toggleBridge(block.id, "in")}
                         />
                       )
                     )}
@@ -856,7 +873,8 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
                       ) : (
                         <BridgeStrip
                           bridge={block.bridge_out_json}
-                          onClick={() => editMode && toggleBridge(block.id, "out")}
+                          editMode={editMode}
+                          onClick={() => toggleBridge(block.id, "out")}
                         />
                       )
                     )}
