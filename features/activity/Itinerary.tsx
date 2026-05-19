@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { RouteMap } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
+import { Timeline } from "./Timeline";
 import { DayViewModeToggle, type DayViewMode } from "@/features/day/DayViewModeToggle";
 import { DayMagazine } from "@/features/day/DayMagazine";
 import type { Activity, Day } from "@/lib/dal/trips";
@@ -18,6 +19,8 @@ type Props = {
   activities: Activity[];
   /** The current day — required to enable the Racconto (magazine) view */
   day?: Day | null;
+  /** The day ID — required to enable the Timeline view */
+  dayId?: string;
   editMode?: boolean;
   tripId?: string;
   initialShowMap?: boolean;
@@ -34,6 +37,7 @@ type Props = {
 export function Itinerary({
   activities,
   day,
+  dayId,
   editMode = false,
   tripId,
   initialShowMap = true,
@@ -55,7 +59,7 @@ export function Itinerary({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(LS_VIEW_MODE_KEY);
-      if (stored === "lista" || stored === "racconto") setViewMode(stored);
+      if (stored === "lista" || stored === "timeline" || stored === "racconto") setViewMode(stored);
     } catch { /* ignore */ }
   }, []);
   function handleViewMode(next: DayViewMode) {
@@ -113,6 +117,7 @@ export function Itinerary({
   }, []);
 
   const isRacconto = viewMode === "racconto";
+  const isTimeline = viewMode === "timeline";
 
   return (
     <div>
@@ -127,7 +132,7 @@ export function Itinerary({
             <DayViewModeToggle value={viewMode} onChange={handleViewMode} />
           )}
 
-          {editMode && !isRacconto && (
+          {editMode && !isRacconto && !isTimeline && (
             <Button
               variant="ghost"
               size="sm"
@@ -139,7 +144,7 @@ export function Itinerary({
               {showMap ? t("hideMap") : t("showMap")}
             </Button>
           )}
-          {editMode && !isRacconto && (
+          {editMode && !isRacconto && !isTimeline && (
             <Button
               variant="solid"
               tone="neutral"
@@ -163,6 +168,13 @@ export function Itinerary({
             enabled={isRacconto}
           />
         </div>
+      ) : isTimeline ? (
+        <Timeline
+          dayId={dayId ?? ""}
+          tripId={tripId ?? ""}
+          initialBlocks={activities}
+          editMode={editMode}
+        />
       ) : (
         <>
           {showAddForm && (

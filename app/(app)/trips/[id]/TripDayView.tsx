@@ -510,6 +510,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             key={selectedDayId}
             activities={activities}
             day={selectedDay}
+            dayId={selectedDayId}
             editMode={editMode}
             tripId={trip.id}
             externalShowAddForm={showAddForm}

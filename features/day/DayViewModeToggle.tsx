@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
    The orange dot on "Racconto" signals AI-generated content.
 ───────────────────────────────────────────────────────────────── */
 
-export type DayViewMode = "lista" | "racconto";
+export type DayViewMode = "lista" | "timeline" | "racconto";
 
 type Props = {
   value: DayViewMode;
@@ -16,18 +16,24 @@ type Props = {
   className?: string;
 };
 
+const MODES: { key: DayViewMode; label: string; dot?: boolean }[] = [
+  { key: "lista",     label: "Lista"    },
+  { key: "timeline",  label: "Timeline" },
+  { key: "racconto",  label: "Racconto", dot: true },
+];
+
 export function DayViewModeToggle({ value, onChange, className }: Props) {
   return (
     <div
       className={cn("inline-flex rounded-[var(--radius-pill)] p-[3px] gap-[2px]", className)}
       style={{ background: "rgba(13,44,61,0.06)" }}
     >
-      {(["lista", "racconto"] as DayViewMode[]).map((mode) => {
-        const active = value === mode;
+      {MODES.map(({ key, label, dot }) => {
+        const active = value === key;
         return (
           <button
-            key={mode}
-            onClick={() => onChange(mode)}
+            key={key}
+            onClick={() => onChange(key)}
             className={cn(
               "inline-flex items-center gap-[5px] px-[14px] py-[6px]",
               "rounded-[var(--radius-pill)] text-[12px] cursor-pointer",
@@ -37,17 +43,12 @@ export function DayViewModeToggle({ value, onChange, className }: Props) {
                 : "bg-transparent text-ink-soft hover:text-ink",
             )}
           >
-            {mode === "lista" ? (
-              "Lista"
-            ) : (
-              <>
-                Racconto
-                {/* Small orange dot: AI indicator */}
-                <span
-                  aria-label="AI"
-                  className="w-[5px] h-[5px] rounded-full bg-orange inline-block shrink-0"
-                />
-              </>
+            {label}
+            {dot && (
+              <span
+                aria-label="AI"
+                className="w-[5px] h-[5px] rounded-full bg-orange inline-block shrink-0"
+              />
             )}
           </button>
         );
