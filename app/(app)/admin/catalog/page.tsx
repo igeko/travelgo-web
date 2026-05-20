@@ -146,19 +146,6 @@ export default function CatalogPage() {
 
   // ── Overpass Status Monitor ──────────────────────────────
   const [overpassStatus, setOverpassStatus] = useState<OverpassStatus | null>(null);
-  const [, setStatusLoading]  = useState(false);
-  const statusRefreshRef = useRef<NodeJS.Timeout | null>(null);
-
-  const refreshOverpassStatus = useCallback(async () => {
-    setStatusLoading(true);
-    try {
-      setOverpassStatus(await api.catalog.overpassStatus<OverpassStatus>());
-    } catch (e) {
-      console.error('[status] errore:', e);
-    } finally {
-      setStatusLoading(false);
-    }
-  }, []);
 
   // Auth guard
   useEffect(() => {
@@ -167,18 +154,23 @@ export default function CatalogPage() {
 
   // ── Carica status Overpass ───────────────────────────────
   useEffect(() => {
-    // Prima richiesta subito
-    refreshOverpassStatus();
-
-    // Poi ogni 30 secondi (non bannare)
-    statusRefreshRef.current = setInterval(() => {
-      refreshOverpassStatus();
-    }, 30000);
-
-    return () => {
-      if (statusRefreshRef.current) clearInterval(statusRefreshRef.current);
+    let cancelled = false;
+    const fetchStatus = async () => {
+      try {
+        const status = await api.catalog.overpassStatus<OverpassStatus>();
+        if (!cancelled) setOverpassStatus(status);
+      } catch (e) {
+        console.error('[status] errore:', e);
+      }
     };
-  }, [refreshOverpassStatus]);
+    // Prima richiesta subito, poi ogni 30 secondi (non bannare)
+    void fetchStatus();
+    const id = setInterval(fetchStatus, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   // ── Carica job ──────────────────────────────────────────
 
@@ -191,7 +183,7 @@ export default function CatalogPage() {
     }
   }, []);
 
-  useEffect(() => { loadJobs(); }, [loadJobs]);
+  useEffect(() => { void (async () => { await loadJobs(); })(); }, [loadJobs]);
 
   // ── Crea task ───────────────────────────────────────────
 

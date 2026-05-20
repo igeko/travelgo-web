@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { AppHeader } from "@/features/app/AppHeader";
 import { TripDayView } from "./TripDayView";
 import { useUser } from "@/features/app/UserContext";
@@ -37,17 +38,9 @@ export function TripShell({ trip, days, initialActivities, initialDayId }: Props
   const { user, isLoggedIn, isDev, isTester } = useUser();
 
   const storageKey = `trip-edit-mode-${trip.id}`;
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useLocalStorageState<boolean>(storageKey, false);
   const [debugMode, setDebugMode] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-
-  useEffect(() => {
-    if (localStorage.getItem(storageKey) === "true") setEditMode(true);
-  }, [storageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, String(editMode));
-  }, [editMode, storageKey]);
 
   // Realtime — sincronizzazione tra client
   const handleRemoteChange = useCallback(() => {

@@ -210,23 +210,25 @@ export function DatePickerField(props: DatePickerFieldProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const popoverId  = useId();
 
-  /* ── Sync single inputText when value/format changes ── */
-  useEffect(() => {
-    if (!isRange) {
-      setInputText(singleValue ? formatDisplay(singleValue, displayFormat) : "");
-      if (singleValue) { setViewYear(singleValue.getFullYear()); setViewMonth(singleValue.getMonth()); }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [singleValue, displayFormat]);
+  /* ── Sync single inputText / view to the controlled value ── */
+  // Done during render via previous-value guards (not effects) to avoid
+  // synchronous setState-in-effect / cascading renders.
+  const [prevSingleSync, setPrevSingleSync] = useState({ value: singleValue, format: displayFormat });
+  if (!isRange && (singleValue !== prevSingleSync.value || displayFormat !== prevSingleSync.format)) {
+    setPrevSingleSync({ value: singleValue, format: displayFormat });
+    setInputText(singleValue ? formatDisplay(singleValue, displayFormat) : "");
+    if (singleValue) { setViewYear(singleValue.getFullYear()); setViewMonth(singleValue.getMonth()); }
+  }
 
   /* ── Sync range view to start date ── */
-  useEffect(() => {
+  const [prevRangeStart, setPrevRangeStart] = useState(rangeValue.start);
+  if (rangeValue.start !== prevRangeStart) {
+    setPrevRangeStart(rangeValue.start);
     if (isRange && rangeValue.start) {
       setViewYear(rangeValue.start.getFullYear());
       setViewMonth(rangeValue.start.getMonth());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeValue.start]);
+  }
 
   /* ── Click outside ── */
   useEffect(() => {

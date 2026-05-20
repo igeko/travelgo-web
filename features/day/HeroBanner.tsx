@@ -231,14 +231,19 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   const [draftImageUrl,      setDraftImageUrl]      = useState(imageUrl ?? "");
   const [draftHeroType,      setDraftHeroType]      = useState<HeroBannerType | undefined>(type);
 
-  useEffect(() => {
+  // Reset the hero drafts when the day changes (resetKey). Done during render
+  // via a previous-value guard rather than an effect, to avoid a synchronous
+  // setState-in-effect / cascading renders.
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setDraftPlace(title);
     setDraftZone(subtitle ?? "");
     setDraftSummary(summary ?? "");
     setDraftPracticalNote(practicalNote ?? "");
     setDraftImageUrl(imageUrl ?? "");
     setDraftHeroType(type);
-  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   /* ── Lodging edit state ── */
   const [lodgingOpen, setLodgingOpen] = useState(false);

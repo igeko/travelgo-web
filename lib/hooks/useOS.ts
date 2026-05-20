@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 export type OS = "mac" | "windows" | "linux" | "unknown";
 
@@ -14,10 +14,10 @@ function detectOS(): OS {
   return "unknown";
 }
 
+const subscribe = () => () => {};
+
 export function useOS(): OS {
-  const [os, setOS] = useState<OS>("unknown");
-  useEffect(() => { setOS(detectOS()); }, []);
-  return os;
+  return useSyncExternalStore(subscribe, detectOS, () => "unknown");
 }
 
 /**

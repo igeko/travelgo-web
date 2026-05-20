@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 /* ─────────────────────────────────────────────────────────────────
    useGoogleMaps · singleton loader for the Google Maps JS SDK.
@@ -40,38 +40,23 @@ function loadScript(apiKey: string) {
   document.head.appendChild(script);
 }
 
+function subscribe(onChange: () => void): () => void {
+  const handler = () => onChange();
+  _listeners.add(handler);
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn("[useGoogleMaps] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.");
+    if (_status !== "error") notify("error");
+  } else if (_status === "idle") {
+    loadScript(apiKey);
+  }
+
+  return () => {
+    _listeners.delete(handler);
+  };
+}
+
 export function useGoogleMaps(): Status {
-  const [status, setStatus] = useState<Status>(_status);
-
-  useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-    if (!apiKey) {
-      console.warn(
-        "[useGoogleMaps] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.",
-      );
-      setStatus("error");
-      return;
-    }
-
-    // If already ready/error, sync immediately.
-    if (_status === "ready" || _status === "error") {
-      setStatus(_status);
-      return;
-    }
-
-    // Subscribe to future changes.
-    const handler = (s: Status) => setStatus(s);
-    _listeners.add(handler);
-
-    // Kick off loading if not started.
-    if (_status === "idle") loadScript(apiKey);
-    else setStatus(_status); // loading — just wait
-
-    return () => {
-      _listeners.delete(handler);
-    };
-  }, []);
-
-  return status;
+  return useSyncExternalStore(subscribe, () => _status, () => "idle");
 }

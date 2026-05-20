@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { sandboxRegistry, type SandboxEntry } from "../registry";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -44,35 +45,28 @@ const LS_LEFT = "sandbox:left-open";
 const LS_RIGHT = "sandbox:right-open";
 const LS_COLLAPSED = "sandbox:collapsed-subgroups";
 
+// Persisted as "1"/"0" strings for backward compatibility.
+const BOOL_CODEC: LocalStorageCodec<boolean> = {
+  parse: (raw) => raw === "1",
+  serialize: (value) => (value ? "1" : "0"),
+};
+
+const EMPTY_SUBGROUPS: ReadonlySet<string> = new Set<string>();
+const SUBGROUPS_CODEC: LocalStorageCodec<Set<string>> = {
+  parse: (raw) => new Set<string>(JSON.parse(raw) as string[]),
+  serialize: (value) => JSON.stringify([...value]),
+};
+
 export function SandboxShell({ children }: { children: ReactNode }) {
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useLocalStorageState<boolean>(LS_LEFT, true, BOOL_CODEC);
+  const [rightOpen, setRightOpen] = useLocalStorageState<boolean>(LS_RIGHT, true, BOOL_CODEC);
   const [rightContent, setRightContent] = useState<ReactNode>(null);
-  const [collapsedSubgroups, setCollapsedSubgroups] = useState<Set<string>>(new Set());
-  const [mounted, setMounted] = useState(false);
+  const [collapsedSubgroups, setCollapsedSubgroups] = useLocalStorageState<Set<string>>(
+    LS_COLLAPSED,
+    EMPTY_SUBGROUPS as Set<string>,
+    SUBGROUPS_CODEC,
+  );
   const pathname = usePathname();
-
-  // Load state from localStorage on mount
-  useEffect(() => {
-    const left = localStorage.getItem(LS_LEFT);
-    const right = localStorage.getItem(LS_RIGHT);
-    const collapsed = localStorage.getItem(LS_COLLAPSED);
-    if (left !== null) setLeftOpen(left === "1");
-    if (right !== null) setRightOpen(right === "1");
-    if (collapsed) setCollapsedSubgroups(new Set(JSON.parse(collapsed)));
-    setMounted(true);
-  }, []);
-
-  // Persist
-  useEffect(() => {
-    if (mounted) localStorage.setItem(LS_LEFT, leftOpen ? "1" : "0");
-  }, [leftOpen, mounted]);
-  useEffect(() => {
-    if (mounted) localStorage.setItem(LS_RIGHT, rightOpen ? "1" : "0");
-  }, [rightOpen, mounted]);
-  useEffect(() => {
-    if (mounted) localStorage.setItem(LS_COLLAPSED, JSON.stringify([...collapsedSubgroups]));
-  }, [collapsedSubgroups, mounted]);
 
   function toggleSubgroup(key: string) {
     setCollapsedSubgroups((prev) => {

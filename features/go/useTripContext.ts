@@ -26,50 +26,53 @@ export function useTripContext(
   focus?: GoFocus,
   enabled = true,
 ): UseTripContextResult {
-  const [context, setContext] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const active = enabled && !!tripId;
+  // Identifies the current request; results are tagged with it so loading/error
+  // can be derived during render (no synchronous setState inside the effect).
+  const requestKey = active ? `${tripId}:${JSON.stringify(focus ?? null)}` : "";
+  const [result, setResult] = useState<{
+    key: string;
+    context: string | undefined;
+    error: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    if (!enabled || !tripId) {
-      setContext(undefined);
-      setError(null);
-      return;
-    }
+    if (!active) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
-    async function load() {
-      let snapshot;
+    (async () => {
       try {
-        snapshot = await api.trips.get(tripId!);
+        const snapshot = await api.trips.get(tripId!);
+        if (cancelled) return;
+
+        const activities: Activity[] = snapshot.days.flatMap((d) => d.activities);
+
+        // The trip snapshot is slimmer than DbTrip/DbDay; getGoContext tolerates
+        // the missing optional fields (traveler counts / theme).
+        const info = {
+          trip: snapshot.trip,
+          days: snapshot.days,
+          activities,
+        } as unknown as TripInfo;
+
+        setResult({ key: requestKey, context: getGoContext(info, focus), error: null });
       } catch {
         if (cancelled) return;
-        setError("Failed to load trip");
-        setLoading(false);
-        return;
+        setResult({ key: requestKey, context: undefined, error: "Failed to load trip" });
       }
-      if (cancelled) return;
+    })();
 
-      const activities: Activity[] = snapshot.days.flatMap((d) => d.activities);
-
-      // The trip snapshot is slimmer than DbTrip/DbDay; getGoContext tolerates
-      // the missing optional fields (traveler counts / theme).
-      const info = {
-        trip: snapshot.trip,
-        days: snapshot.days,
-        activities,
-      } as unknown as TripInfo;
-
-      setContext(getGoContext(info, focus));
-      setLoading(false);
-    }
-
-    void load();
     return () => { cancelled = true; };
-  }, [tripId, focus, enabled]);
+  // tripId/focus are captured via requestKey
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey, active]);
 
-  return { context, loading, error };
+  if (!active) return { context: undefined, loading: false, error: null };
+  const ready = result?.key === requestKey;
+  return {
+    context: ready ? result.context : undefined,
+    loading: !ready,
+    error: ready ? result.error : null,
+  };
 }

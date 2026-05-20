@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DayNarrative, DescribeDayActivity } from "@/app/api/ai/describe-day/route";
 import type { Day } from "@/lib/dal/domain";
 import { api } from "@/lib/client";
@@ -80,45 +80,49 @@ export function useDayNarrative(
   /** Only fetch when enabled (i.e. racconto view is active) */
   enabled: boolean,
 ): UseDayNarrativeResult {
-  const [narrative, setNarrative] = useState<DayNarrative | null>(null);
-  const [status, setStatus] = useState<NarrativeStatus>("idle");
-  const forceRef = useRef(0);
   const [forceTick, setForceTick] = useState(0);
+  // Result of an AI fetch, tagged with the cacheKey + forceTick it was made for
+  // so loading/error/ok can be derived during render (no setState-in-effect).
+  const [fetched, setFetched] = useState<{
+    key: string;
+    tick: number;
+    narrative: DayNarrative | null;
+    error: boolean;
+  } | null>(null);
 
   const dayId = day?.id;
   const hash = hashActivities(activities);
   const cacheKey = `${dayId}:${hash}`;
+  const active = enabled && !!dayId && activities.length > 0;
+
+  // Synchronous fast paths, derived (not stored): DB narrative (prop) then the
+  // localStorage cache. Both skipped on a forced regenerate (forceTick > 0).
+  // readCache is SSR-safe (returns null when localStorage is unavailable).
+  const dayNarrative = day?.narrative;
+  const dbNarrative = useMemo(
+    () => (active && forceTick === 0 && dayNarrative ? normalise(dayNarrative as DayNarrative) : null),
+    [active, forceTick, dayNarrative],
+  );
+  const cachedNarrative = useMemo(
+    () => (active && forceTick === 0 && !dbNarrative ? readCache(cacheKey) : null),
+    [active, forceTick, dbNarrative, cacheKey],
+  );
+  const syncNarrative = dbNarrative ?? cachedNarrative;
+  const hasSync = syncNarrative !== null;
 
   useEffect(() => {
-    if (!enabled || !dayId || activities.length === 0) {
-      setStatus("idle");
-      return;
-    }
+    if (!active) return;
 
-    // ── 1. DB narrative (skip on forced regenerate) ───────────────
-    if (forceTick === 0 && day?.narrative) {
-      const dbNarrative = normalise(day.narrative as DayNarrative);
-      setNarrative(dbNarrative);
-      setStatus("ok");
-      // Also warm localStorage so we have a fast path on next render
+    // Warm localStorage from the DB narrative for a fast path next time.
+    if (dbNarrative) {
       writeCache(cacheKey, dbNarrative);
       return;
     }
+    // A cached narrative already satisfies the request — nothing to fetch.
+    if (hasSync) return;
 
-    // ── 2. localStorage cache (skip on forced regenerate) ─────────
-    if (forceTick === 0) {
-      const cached = readCache(cacheKey);
-      if (cached) {
-        setNarrative(cached);
-        setStatus("ok");
-        return;
-      }
-    }
-
-    // ── 3. Fetch from AI ──────────────────────────────────────────
+    // ── Fetch from AI ─────────────────────────────────────────────
     let cancelled = false;
-    setStatus("loading");
-
     (async () => {
       try {
         const data = await api.ai.describeDay<DayNarrative>({
@@ -129,30 +133,31 @@ export function useDayNarrative(
           summary: day!.summary ?? undefined,
           activities,
         });
-
-        if (!cancelled) {
-          setNarrative(data);
-          setStatus("ok");
-          writeCache(cacheKey, data);
-          // Fire-and-forget — persist to DB so it survives across sessions
-          saveToDb(dayId, data);
-        }
+        if (cancelled) return;
+        setFetched({ key: cacheKey, tick: forceTick, narrative: data, error: false });
+        writeCache(cacheKey, data);
+        // Fire-and-forget — persist to DB so it survives across sessions
+        saveToDb(dayId, data);
       } catch (err) {
         console.error("[useDayNarrative]", err);
-        if (!cancelled) setStatus("error");
+        if (!cancelled) setFetched({ key: cacheKey, tick: forceTick, narrative: null, error: true });
       }
     })();
 
     return () => { cancelled = true; };
+  // dayId/hash captured via cacheKey
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, dayId, hash, forceTick]);
+  }, [active, cacheKey, forceTick, dbNarrative, hasSync]);
 
   function regenerate() {
     try { localStorage.removeItem(CACHE_PREFIX + cacheKey); } catch { /* */ }
-    forceRef.current += 1;
-    setForceTick(forceRef.current);
-    setNarrative(null);
+    setForceTick((t) => t + 1);
   }
 
-  return { narrative, status, regenerate };
+  if (!active) return { narrative: null, status: "idle", regenerate };
+  if (syncNarrative) return { narrative: syncNarrative, status: "ok", regenerate };
+
+  const f = fetched && fetched.key === cacheKey && fetched.tick === forceTick ? fetched : null;
+  if (f) return { narrative: f.narrative, status: f.error ? "error" : "ok", regenerate };
+  return { narrative: null, status: "loading", regenerate };
 }

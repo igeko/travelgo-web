@@ -213,6 +213,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   function selectDay(dayId: string) {
     setSelectedDayId(dayId);
+    // The initial day's activities arrive via props; fetch the rest on demand.
+    if (dayId !== initialDayId) loadActivities(dayId);
     const day = localDays.find((d) => d.id === dayId);
     router.replace(`?day=${day?.day_number ?? 1}`, { scroll: false });
   }
@@ -285,11 +287,6 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       loadActivities(selectedDay.id);
     }
   }, [reloadTick, selectedDay?.id, loadActivities]);
-
-  useEffect(() => {
-    if (selectedDayId === initialDayId) return;
-    loadActivities(selectedDayId);
-  }, [selectedDayId, initialDayId, loadActivities]);
 
   /* ─── Hero content ─── */
   const heroDow = selectedDay.date ? getDow(selectedDay.date) : "";

@@ -18,6 +18,7 @@ import { createPortal } from "react-dom";
 import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconChevronDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 import { imageSearch } from "@/features/media/imageSearch";
 import { api } from "@/lib/client";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
@@ -835,11 +836,10 @@ type FloatPanelProps = {
 
 function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity, onAddToDay }: FloatPanelProps) {
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => !window.matchMedia("(min-width: 640px)").matches);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
-    setIsMobile(!mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(!e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -1110,10 +1110,17 @@ export type GoChatFloatProps = {
 
 export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity, onAddToDay }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
+  // Sync the controlled `open` prop into local state during render (no effect),
+  // so internal toggles and parent control stay coherent without cascading renders.
+  const [prevOpenProp, setPrevOpenProp] = useState(openProp);
+  if (openProp !== undefined && openProp !== prevOpenProp) {
+    setPrevOpenProp(openProp);
+    setOpen(openProp);
+  }
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   // Suggestion attualmente selezionata (singola) — usata come contesto per il classifier
   const [selectedSuggestion, setSelectedSuggestion] = useState<GoSuggestion | null>(null);
 
@@ -1123,8 +1130,6 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
   /** Buffer interno per il messaggio pendente — evita race con lo streaming. */
   const pendingRef    = useRef<string | null>(null);
 
-  useEffect(() => { if (openProp !== undefined) setOpen(openProp); }, [openProp]);
-  useEffect(() => { setMounted(true); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   // Resetta l'altezza della textarea quando il messaggio viene inviato (input torna "")
@@ -1271,14 +1276,16 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
     // quando tripContext cambia (è nelle deps)
     if (!tripContext) return;
     greetingSent.current = true;
-    void send(
-      "Apri la conversazione: saluta l'utente in modo caldo e breve (una frase), " +
-      "menziona la destinazione del viaggio e, se disponibile, il giorno o la sezione che sta visualizzando. " +
-      "Poi proponi 2-3 modi concisi in cui puoi aiutare in questo momento. " +
-      "Tono caldo, conciso. Niente elenchi numerati — usa frasi fluide.",
-      true,  // silent: non mostra il messaggio utente nella chat
-      false, // no forceSuggestions: risposta testuale, non cards
-    );
+    void (async () => {
+      await send(
+        "Apri la conversazione: saluta l'utente in modo caldo e breve (una frase), " +
+        "menziona la destinazione del viaggio e, se disponibile, il giorno o la sezione che sta visualizzando. " +
+        "Poi proponi 2-3 modi concisi in cui puoi aiutare in questo momento. " +
+        "Tono caldo, conciso. Niente elenchi numerati — usa frasi fluide.",
+        true,  // silent: non mostra il messaggio utente nella chat
+        false, // no forceSuggestions: risposta testuale, non cards
+      );
+    })();
   }, [open, tripContext, send]);
 
   const handleSubmit = (e: React.FormEvent) => {

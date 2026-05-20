@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { IconMap, IconPlus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { RouteMap } from "@/components/ui/RouteMap";
@@ -16,6 +17,14 @@ import type { Activity, Day } from "@/lib/dal/domain";
 import type { PlaceResult } from "@/components/ui/AddressField";
 
 const LS_VIEW_MODE_KEY = "day-view-mode";
+
+// Stored as a plain string (not JSON) for backward compatibility; falls back to
+// "lista" for missing or unrecognised values.
+const VIEW_MODE_CODEC: LocalStorageCodec<DayViewMode> = {
+  parse: (raw) =>
+    raw === "lista" || raw === "timeline" || raw === "racconto" ? raw : "lista",
+  serialize: (value) => value,
+};
 
 type Props = {
   activities: Activity[];
@@ -55,24 +64,17 @@ export function Itinerary({
   const t = useTranslations("Itinerary");
   const tMode = useTranslations("DayViewModeToggle");
   const [showMap, setShowMap] = useState(initialShowMap);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [internalShowAddForm, setShowAddForm] = useState(false);
+  // The parent can force the form open (e.g. via the "add" keyboard shortcut);
+  // OR with local state so we don't need a setState-in-effect to sync the prop.
+  const showAddForm = internalShowAddForm || !!externalShowAddForm;
 
   // View mode: "lista" (default) | "racconto" — persisted in localStorage
-  const [viewMode, setViewMode] = useState<DayViewMode>("lista");
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LS_VIEW_MODE_KEY);
-      if (stored === "lista" || stored === "timeline" || stored === "racconto") setViewMode(stored);
-    } catch { /* ignore */ }
-  }, []);
-  function handleViewMode(next: DayViewMode) {
-    setViewMode(next);
-    try { localStorage.setItem(LS_VIEW_MODE_KEY, next); } catch { /* ignore */ }
-  }
-
-  useEffect(() => {
-    if (externalShowAddForm) setShowAddForm(true);
-  }, [externalShowAddForm]);
+  const [viewMode, setViewMode] = useLocalStorageState<DayViewMode>(
+    LS_VIEW_MODE_KEY,
+    "lista",
+    VIEW_MODE_CODEC,
+  );
 
   function handleToggleMap() {
     const next = !showMap;
@@ -159,7 +161,7 @@ export function Itinerary({
           {day && (
             <TabSwitcher
               value={viewMode}
-              onChange={handleViewMode}
+              onChange={setViewMode}
               tabs={[
                 { key: "lista", label: tMode("lista") },
                 { key: "timeline", label: tMode("timeline") },

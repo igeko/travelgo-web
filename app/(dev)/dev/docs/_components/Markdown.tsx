@@ -28,10 +28,7 @@ export function Markdown({ content }: { content: string }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!IS_DEV) {
-      setLoading(false);
-      return;
-    }
+    if (!IS_DEV) return;
     function render() {
       if (window.marked) {
         setHtml(window.marked.parse(content, { gfm: true, breaks: false }));
