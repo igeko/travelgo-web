@@ -100,18 +100,6 @@ function nightsBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
-function formatRangeTrigger(start: Date | null, end: Date | null): string {
-  if (!start && !end) return "";
-  const sy = needsYear(start) || needsYear(end);
-  if (start && !end) return `${fmtShort(start, sy)} →`;
-  if (start && end) {
-    const n = nightsBetween(start, end);
-    // if different years, show year on both; otherwise only if ≠ current year
-    const diffYear = start.getFullYear() !== end.getFullYear();
-    return `${fmtShort(start, sy || diffYear)} → ${fmtShort(end, sy)} · ${n} night${n === 1 ? "" : "s"}`;
-  }
-  return "";
-}
 
 function RangeTriggerContent({ start, end, placeholder }: { start: Date | null; end: Date | null; placeholder: string }) {
   if (!start && !end) {
@@ -299,7 +287,6 @@ export function DatePickerField(props: DatePickerFieldProps) {
   function pickDayRange(d: Date) {
     if (isDisabledDay(d)) return;
     const onChange = (props as RangeProps).onChange;
-    const { start, end } = rangeValue;
 
     if (!rangePending) {
       // No start yet, or range complete → restart
@@ -375,11 +362,6 @@ export function DatePickerField(props: DatePickerFieldProps) {
   }
 
   const days = calendarDays(viewYear, viewMonth);
-
-  /* ── Trigger display ── */
-  const triggerValue = isRange
-    ? formatRangeTrigger(rangeValue.start, rangeValue.end)
-    : inputText;
 
   const hasValue = isRange
     ? !!(rangeValue.start || rangeValue.end)
@@ -665,13 +647,6 @@ function CalendarIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
       <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  );
-}
-function XSmallIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
-      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>
   );
 }

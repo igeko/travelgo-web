@@ -283,7 +283,7 @@ export async function suggest_activities(
 export async function add_activity_to_day(
   args: AddActivityArgs,
 ): Promise<ToolWriteResult> {
-  // eslint-disable-next-line no-console
+   
   console.log("[Go tool] add_activity_to_day", args);
   return { ok: true, note: `Aggiunto al giorno ${args.day_num}` };
 }
@@ -292,21 +292,21 @@ export async function add_activity_to_day(
 export async function add_to_wishlist(
   args: AddWishlistArgs,
 ): Promise<ToolWriteResult> {
-  // eslint-disable-next-line no-console
+   
   console.log("[Go tool] add_to_wishlist", args);
   return { ok: true, note: "Salvato in wishlist" };
 }
 
 /** Stub: imposta il pernottamento di un giorno. */
 export async function set_stay(args: SetStayArgs): Promise<ToolWriteResult> {
-  // eslint-disable-next-line no-console
+   
   console.log("[Go tool] set_stay", args);
   return { ok: true, note: `Stay impostato per giorno ${args.day_num}` };
 }
 
 /** Stub: chiede al map module di centrare un place. */
 export async function show_on_map(args: ShowOnMapArgs): Promise<ToolWriteResult> {
-  // eslint-disable-next-line no-console
+   
   console.log("[Go tool] show_on_map", args);
   return { ok: true };
 }

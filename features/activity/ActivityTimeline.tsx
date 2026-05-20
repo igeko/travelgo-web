@@ -15,12 +15,11 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
 import { TimelineBlock, SPINE_LEFT } from "./TimelineBlock";
 import { AddAffordance } from "./AddAffordance";
 import type { TimelineBlock as Block, SlotKey, SearchResult } from "./types";
-import { SLOT_ORDER, SLOT_LABEL } from "./types";
+import { SLOT_ORDER } from "./types";
 
 type Props = {
   dayId: string;

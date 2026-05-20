@@ -20,7 +20,7 @@ import { useUser }    from "@/features/app/UserContext";
 import { useRouter }  from "next/navigation";
 import {
   IconWorld, IconCategory, IconPlus, IconPlayerPlay,
-  IconPlayerStop, IconCircleCheck, IconAlertCircle,
+  IconPlayerStop, IconCircleCheck,
   IconLoader2, IconDatabase, IconRefresh, IconTrash,
 } from "@/components/ui/icons";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -146,7 +146,7 @@ export default function CatalogPage() {
 
   // ── Overpass Status Monitor ──────────────────────────────
   const [overpassStatus, setOverpassStatus] = useState<OverpassStatus | null>(null);
-  const [statusLoading,  setStatusLoading]  = useState(false);
+  const [, setStatusLoading]  = useState(false);
   const statusRefreshRef = useRef<NodeJS.Timeout | null>(null);
 
   const refreshOverpassStatus = useCallback(async () => {

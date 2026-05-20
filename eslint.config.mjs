@@ -14,7 +14,19 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Claude Code git worktrees are nested checkouts — never lint them.
     ".claude/**",
+    // Static HTML prototypes that intentionally don't follow the design
+    // system / conventions (see CLAUDE.md). Not shipped app code.
+    "app/(design)/**",
   ]),
+  // Allow an underscore prefix to mark intentionally-unused vars/args/catches.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

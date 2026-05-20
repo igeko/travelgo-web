@@ -73,12 +73,11 @@ export function DayList({
   startDate,
   endDate,
   durationDays,
-  title = "Day by day",
   selectedDayId,
   onSelect,
   dayDetails,
 }: DayListProps) {
-  const { days, subtitle } = useMemo(() => {
+  const { days } = useMemo(() => {
     const start = toDate(startDate);
 
     // Resolve length (priority: endDate > durationDays > 1)

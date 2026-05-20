@@ -223,7 +223,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
 
-  const { setTripContext, openGo, openGoWith, isOpen: isGoOpen, hasBeenOpened: goHasBeenOpened, registerAddToDay, unregisterAddToDay } = useTripGo();
+  const { setTripContext, openGo, openGoWith, hasBeenOpened: goHasBeenOpened, registerAddToDay, unregisterAddToDay } = useTripGo();
 
   const goFocus = useMemo(
     () => selectedDay ? { type: "day" as const, dayNumber: selectedDay.day_number } : undefined,

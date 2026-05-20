@@ -73,7 +73,7 @@ export default function CreateTripPage() {
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-1">Trips</div>
           <h1 className="text-2xl font-semibold text-ink">CreateTripForm</h1>
           <p className="mt-2 text-sm text-ink-soft max-w-prose">
-            Form di creazione viaggio. Standalone — il wrapper modale lo mette l'app.
+            Form di creazione viaggio. Standalone — il wrapper modale lo mette l&apos;app.
             Destinazione → reveal Go → cards opzionali (Dates, Travelers, Theme).
           </p>
         </div>

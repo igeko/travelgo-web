@@ -190,7 +190,7 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json(turn);
   } catch (err) {
     // Errore gentile: NON esponiamo la causa.
-    // eslint-disable-next-line no-console
+     
     console.error("[/api/ai/chat] error", (err as Error).message);
     const turn: AssistantTurn = {
       messages: [

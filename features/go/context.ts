@@ -47,11 +47,6 @@ function formatDateShort(iso: string | null): string {
 
 const SLOT_ORDER: ActivitySlot[] = ["morning", "afternoon", "evening", "night"];
 
-function slotLabel(slot: ActivitySlot | null): string {
-  if (!slot) return "";
-  return slot.charAt(0).toUpperCase() + slot.slice(1);
-}
-
 /* ─────────────────────────────────────────────────────────────────
    Main function
 ───────────────────────────────────────────────────────────────── */

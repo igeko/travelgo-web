@@ -57,7 +57,6 @@ export function AppHeader({
   isDev = false,
   debugMode = false,
   onToggleDebugMode,
-  onTripActions,
   tripId,
   isTester = false,
   initials = "",

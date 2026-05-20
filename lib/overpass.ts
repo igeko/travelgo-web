@@ -167,9 +167,8 @@ async function fetchOverpass(
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         // Status check: aspetta se 0 slot disponibili
-        let slots = 0;
         let statusAttempts = 0;
-        while ((slots = await checkStatus(endpoint)) === 0 && statusAttempts < 5) {
+        while ((await checkStatus(endpoint)) === 0 && statusAttempts < 5) {
           const waitMs = 10_000; // aspetta 10s tra status check
           console.log(`[overpass] ${endpoint} occupato (0 slot), attendo...`);
           await sleep(waitMs);

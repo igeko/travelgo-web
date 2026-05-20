@@ -147,7 +147,7 @@ export default async function DocsIndexPage() {
 
       <div className="mt-8 text-[11px] text-ink-faint">
         Renderer markdown: <code className="bg-surface-soft px-1.5 py-0.5 rounded text-[11px]">marked</code> via CDN ·
-        Sorgente: <code className="bg-surface-soft px-1.5 py-0.5 rounded text-[11px]">{DOCS_DIR_REL}/*.md</code>
+        Sorgente: <code className="bg-surface-soft px-1.5 py-0.5 rounded text-[11px]">{DOCS_DIR_REL}{"/*.md"}</code>
       </div>
     </div>
   );

@@ -157,7 +157,6 @@ function GoTrigger({ onClick, className }: { onClick: () => void; className?: st
    Chat panel — nessun container, aperto sulla pagina
 ───────────────────────────────────────────────────────────────── */
 
-const GREETING_TRIGGER = "__greeting__";
 
 function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose: () => void; className?: string; onDebugCall?: GoChatDebugFn; tripContext?: string }) {
   const t = useTranslations("Go");

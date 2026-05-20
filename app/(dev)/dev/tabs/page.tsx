@@ -25,7 +25,6 @@ const COLORS_TABS = [
 export default function TabSwitcherDemo() {
   const [activeView, setActiveView] = useState("timeline");
   const [activeColor, setActiveColor] = useState("color1");
-  const [activeSize, setActiveSize] = useState("sm");
 
   return (
     <div className="min-h-screen bg-bg p-8">

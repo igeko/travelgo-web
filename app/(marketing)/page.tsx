@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 
 export default function MarketingHome() {
@@ -13,7 +14,7 @@ export default function MarketingHome() {
             Under construction — early preview
           </span>
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-6xl">
-            Plan trips you'll
+            Plan trips you&apos;ll
             <span className="block bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">
               remember forever.
             </span>
@@ -23,12 +24,12 @@ export default function MarketingHome() {
             place. From ideas to boarding pass, without scattered tabs.
           </p>
           <div id="cta" className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <a
+            <Link
               href="/trips"
               className="inline-flex h-12 items-center justify-center rounded-full bg-ink px-6 text-sm font-medium text-white transition hover:bg-ink-hover"
             >
               Join the waitlist
-            </a>
+            </Link>
             <a
               href="#features"
               className="inline-flex h-12 items-center justify-center rounded-full border border-border-strong px-6 text-sm font-medium text-ink transition hover:bg-surface-soft"

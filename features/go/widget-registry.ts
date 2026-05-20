@@ -7,7 +7,7 @@
 
 import type { ComponentType } from "react";
 import type { ZodSchema } from "zod";
-import type { GoActionHandlers, GoResponse } from "./types";
+import type { GoActionHandlers } from "./types";
 
 /* ─────────────────────────────────────────────────────────────────
    Definizione di un widget

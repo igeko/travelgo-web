@@ -60,7 +60,7 @@ export function PropsTable({ rows }: { rows: PropRow[] }) {
    CodeBlock · syntax-highlighted-ish inline code snippet
 ─────────────────────────────────────────────────────────────────── */
 
-export function CodeBlock({ code, language = "tsx" }: { code: string; language?: string }) {
+export function CodeBlock({ code }: { code: string; language?: string }) {
   return (
     <pre className={cn(
       "rounded-lg bg-ink text-[12px] leading-relaxed overflow-x-auto p-4",

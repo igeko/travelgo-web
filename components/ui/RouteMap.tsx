@@ -215,7 +215,7 @@ export function RouteMap({
       })
       .catch(() => setRouteError(true));
 
-  }, [status, points, travelMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status, points, travelMode]);  
 
   // ── Cleanup on unmount ──────────────────────────────────────────
   useEffect(() => {

@@ -67,7 +67,6 @@ export async function sendMessage(
     const messages = normalizeTurn(turn);
     return { assistantMessages: messages };
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("[Go client] sendMessage failed", err);
     return {
       assistantMessages: [

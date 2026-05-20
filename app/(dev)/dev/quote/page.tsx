@@ -12,8 +12,8 @@ const SAMPLE_LEAD =
 const SAMPLE_NOTE = "Si cammina parecchio — scarpe comode e una bottiglia d'acqua.";
 
 export default function QuoteStories() {
-  const [lead,    setLead]    = useState(SAMPLE_LEAD);
-  const [note,    setNote]    = useState(SAMPLE_NOTE);
+  const [lead]    = useState(SAMPLE_LEAD);
+  const [note]    = useState(SAMPLE_NOTE);
   const [accent,  setAccent]  = useState<QuoteAccent>("orange");
   const [size,    setSize]    = useState<QuoteSize>("md");
   const [showNote, setShowNote] = useState(true);

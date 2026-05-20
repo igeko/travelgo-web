@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { IconMapPin, IconX, IconPlus } from "@/components/ui/icons";
-import { cn } from "@/lib/cn";
 import { SoftField } from "@/components/ui/SoftField";
 import { api } from "@/lib/client";
 import type { SearchResult, SearchResponse } from "./types";

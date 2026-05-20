@@ -233,7 +233,7 @@ export default function GoChatFloatPage() {
               {open ? "Go is open ↘" : "Open Go ↘"}
             </button>
             <p className="mt-3 text-[11px] text-ink-faint font-serif italic">
-              Try: "suggest restaurants in Kyoto", "what to do in Tokyo", "find me a temple"
+              Try: &quot;suggest restaurants in Kyoto&quot;, &quot;what to do in Tokyo&quot;, &quot;find me a temple&quot;
             </p>
           </section>
 

@@ -11,7 +11,7 @@
  */
 
 import OpenAI from 'openai';
-import { enrichFromWiki, type WikiEnrichment } from './wikipedia';
+import { enrichFromWiki } from './wikipedia';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -36,8 +36,8 @@ export interface EnrichedPlace {
  * Alternativa: Possiamo usare DuckDuckGo API o Bing Search API per ricerche generiche.
  */
 async function searchTourismInfo(
-  placeName: string,
-  openai: OpenAI,
+  _placeName: string,
+  _openai: OpenAI,
 ): Promise<string | null> {
   try {
     // Se in futuro OpenAI aggiunge web search nativo,

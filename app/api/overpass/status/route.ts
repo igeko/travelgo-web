@@ -24,7 +24,7 @@ async function checkStatus(endpoint: string): Promise<{ slots: number; statusUrl
     const slots = match ? parseInt(match[1]) : 0;
 
     return { slots, statusUrl: endpoint.replace('/interpreter', '/status') };
-  } catch (e) {
+  } catch {
     return { slots: -1, statusUrl: endpoint.replace('/interpreter', '/status') }; // -1 = errore
   }
 }
@@ -54,7 +54,7 @@ export async function GET() {
       },
       all: results,
     });
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: 'Errore controllo status Overpass', timestamp: new Date().toISOString() },
       { status: 500 }

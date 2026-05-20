@@ -118,7 +118,7 @@ export default function DestinationFieldPage() {
           </div>
           <h1 className="text-2xl font-semibold text-ink">DestinationField</h1>
           <p className="mt-2 text-sm text-ink-soft max-w-prose">
-            Autocomplete per destinazioni di viaggio. Supporta selezione singola (chip che disabilita l'input) e multipla (chip accumulabili).
+            Autocomplete per destinazioni di viaggio. Supporta selezione singola (chip che disabilita l&apos;input) e multipla (chip accumulabili).
           </p>
         </div>
 
@@ -175,11 +175,11 @@ export default function DestinationFieldPage() {
             <div className="flex flex-col gap-3 text-sm text-ink-soft">
               <div className="flex gap-2.5">
                 <span className="shrink-0 font-mono text-[11px] bg-surface-soft text-ink px-2 py-0.5 rounded">single</span>
-                <span>Una sola destinazione. Dopo la selezione appare il chip; l'input resta attivo per cercare un'altra. Rimuovendo il chip si riparte.</span>
+                <span>Una sola destinazione. Dopo la selezione appare il chip; l&apos;input resta attivo per cercare un&apos;altra. Rimuovendo il chip si riparte.</span>
               </div>
               <div className="flex gap-2.5">
                 <span className="shrink-0 font-mono text-[11px] bg-surface-soft text-ink px-2 py-0.5 rounded">multiple</span>
-                <span>Più destinazioni. I chip si accumulano, l'input rimane attivo. Duplicati ignorati automaticamente.</span>
+                <span>Più destinazioni. I chip si accumulano, l&apos;input rimane attivo. Duplicati ignorati automaticamente.</span>
               </div>
             </div>
           </section>

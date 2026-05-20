@@ -115,7 +115,7 @@ export function CreateTripForm({ onCancel, onSubmit, initialDestination = null }
       <div className="flex items-center gap-2.5 mb-1">
         <GoAvatar size="sm" />
         <h1 className="text-2xl font-serif italic font-medium text-ink leading-tight">
-          Alright, let's go!
+          Alright, let&apos;s go!
         </h1>
       </div>
       <p className="text-mini text-ink-faint ml-[38px] mb-4">

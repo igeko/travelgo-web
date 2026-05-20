@@ -172,7 +172,7 @@ export function DayMagazine({ day, activities, enabled }: Props) {
             borderColor: "var(--color-orange)",
           }}
         >
-          "{narrative.pullQuote}"
+          &ldquo;{narrative.pullQuote}&rdquo;
           {pullQuoteAct && (
             <cite
               className="block text-tiny not-italic tracking-eyebrow uppercase mt-[8px]"

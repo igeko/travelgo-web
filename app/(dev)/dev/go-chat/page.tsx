@@ -309,7 +309,7 @@ export default function GoChatPage() {
           <section>
             <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-1">Float</div>
             <p className="text-[11px] text-ink-soft mb-3 font-serif italic">
-              Il panel floating appare in basso a destra. Clicca "Open Go" per aprirlo.
+              Il panel floating appare in basso a destra. Clicca &quot;Open Go&quot; per aprirlo.
             </p>
             <GoChatFloatSandbox tripContext={tripContext} onDebugCall={handleDebugCall} />
           </section>

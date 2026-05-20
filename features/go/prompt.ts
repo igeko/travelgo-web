@@ -154,7 +154,7 @@ export type GoPromptPayload = {
   tool_choice: "required";
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type ToolDefsInput =
   | OpenAITool[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

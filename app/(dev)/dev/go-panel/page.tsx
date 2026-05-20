@@ -3,7 +3,7 @@
 import { useCallback, useReducer, useState } from "react";
 import { GoPanel } from "@/features/go/GoPanel";
 import { api } from "@/lib/client";
-import type { GoContext, GoAction, GoResponse } from "@/features/go/types";
+import type { GoContext, GoAction } from "@/features/go/types";
 import type { GoApiResponse } from "@/app/api/go/route";
 import { WIDGET_TOOL_DEFINITIONS } from "@/features/go/widgets/tool-definitions";
 import { buildPromptPayload, type GoPromptPayload } from "@/features/go/prompt";
@@ -353,7 +353,7 @@ export default function GoPanelPage() {
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-1">AI</div>
           <h1 className="text-2xl font-semibold text-ink">GoPanel</h1>
           <p className="mt-2 text-sm text-ink-soft max-w-prose">
-            Orchestratore del sistema Go widget. Trigger → API → widget selezionato dall'LLM.
+            Orchestratore del sistema Go widget. Trigger → API → widget selezionato dall&apos;LLM.
             Configura il contesto nei Controls, osserva request/response nel Debug.
           </p>
         </div>
@@ -530,7 +530,7 @@ function PromptDetail({ prompt }: { prompt: GoPromptPayload | undefined }) {
           tool_choice
         </div>
         <code className="text-[10px] font-mono text-ink bg-surface-soft rounded px-2 py-1">
-          "{prompt.tool_choice}"
+          &quot;{prompt.tool_choice}&quot;
         </code>
       </div>
     </div>
