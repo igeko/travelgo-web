@@ -18,6 +18,7 @@
 
 import type { AssistantTurn, Message } from "./types";
 import { RESULTS_BUCKET_ID } from "./types";
+import { api } from "@/lib/client";
 
 type ChatRole = "user" | "assistant";
 
@@ -62,17 +63,7 @@ export async function sendMessage(
     : history;
 
   try {
-    const res = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: toWire(fullHistory) }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const turn = (await res.json()) as AssistantTurn;
+    const turn = await api.ai.chat<AssistantTurn>(toWire(fullHistory));
     const messages = normalizeTurn(turn);
     return { assistantMessages: messages };
   } catch (err) {

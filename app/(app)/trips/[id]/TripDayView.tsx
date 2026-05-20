@@ -15,6 +15,7 @@ import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { cn } from "@/lib/cn";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
+import { api } from "@/lib/client";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
 
 /* ─── helpers ─── */
@@ -242,9 +243,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const loadActivities = useCallback(async (dayId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/activities`);
-      const { data } = await res.json();
-      setActivities(data);
+      setActivities(await api.activities.listForDay(dayId));
+    } catch {
+      // keep current activities on failure
     } finally {
       setLoading(false);
     }
@@ -258,10 +259,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   useEffect(() => {
     registerAddToDay(async (payload) => {
       const dayId = selectedDayIdRef.current;
-      const res = await fetch(`/api/days/${dayId}/activities`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      try {
+        const created = await api.activities.addToDay(dayId, {
           title: payload.title,
           short_desc: payload.description,
           slot: payload.slot,
@@ -269,11 +268,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           location_place_id: payload.locationPlaceId ?? null,
           location_lat: payload.locationLat ?? null,
           location_lng: payload.locationLng ?? null,
-        }),
-      });
-      if (res.ok) {
-        const { data: created } = await res.json();
+        });
         setActivities((prev) => [...prev, created]);
+      } catch {
+        // add failed — leave list unchanged
       }
     });
     return () => unregisterAddToDay();
@@ -419,18 +417,14 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               summary: data.summary || null,
               image_url,
             });
-            await fetch(`/api/days/${selectedDayId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                city: data.subtitle,
-                label: data.title,
-                day_type,
-                notes: data.practicalNote,
-                summary: data.summary,
-                image_url,
-              }),
-            });
+            await api.days.update(selectedDayId, {
+              city: data.subtitle,
+              label: data.title,
+              day_type,
+              notes: data.practicalNote,
+              summary: data.summary,
+              image_url,
+            }).catch(() => {});
           }}
           onSaveLodging={async (data) => {
             const patch = {
@@ -453,11 +447,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               accommodation_lat: patch.accommodation_lat,
               accommodation_lng: patch.accommodation_lng,
             });
-            await fetch(`/api/days/${selectedDayId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(patch),
-            });
+            await api.days.update(selectedDayId, patch).catch(() => {});
           }}
           onRemoveLodging={async () => {
             patchDay(selectedDayId, {
@@ -469,21 +459,17 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               accommodation_lat: null,
               accommodation_lng: null,
             });
-            await fetch(`/api/days/${selectedDayId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                accommodation_type: null,
-                accommodation_name: null,
-                accommodation_address: null,
-                accommodation_url: null,
-                accommodation_place_id: null,
-                accommodation_lat: null,
-                accommodation_lng: null,
-                accommodation_cost_amount: null,
-                accommodation_cost_currency: null,
-              }),
-            });
+            await api.days.update(selectedDayId, {
+              accommodation_type: null,
+              accommodation_name: null,
+              accommodation_address: null,
+              accommodation_url: null,
+              accommodation_place_id: null,
+              accommodation_lat: null,
+              accommodation_lng: null,
+              accommodation_cost_amount: null,
+              accommodation_cost_currency: null,
+            }).catch(() => {});
           }}
           onPrev={prevDay ? () => selectDay(prevDay.id) : undefined}
           onNext={nextDay ? () => selectDay(nextDay.id) : undefined}
@@ -517,11 +503,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
             initialShowMap={selectedDay.show_map}
             onToggleMap={async (show) => {
-              await fetch(`/api/days/${selectedDayId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ show_map: show }),
-              });
+              await api.days.update(selectedDayId, { show_map: show }).catch(() => {});
             }}
             onActivitySave={async (id, data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
@@ -585,24 +567,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               };
 
               try {
-                // Update entity
-                const entityRes = await fetch(`/api/activities/${activity.activity_id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(entityPatch),
-                });
-
-                // Update instance
-                const instanceRes = await fetch(`/api/scheduled-activities/${id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(instancePatch),
-                });
-
-                if ((entityRes.ok || entityRes.status === 304) && (instanceRes.ok || instanceRes.status === 304)) {
-                  if (selectedDay?.id) {
-                    await loadActivities(selectedDay.id);
-                  }
+                await api.activities.updateEntity(activity.activity_id, entityPatch);
+                await api.activities.updateInstance(id, instancePatch);
+                if (selectedDay?.id) {
+                  await loadActivities(selectedDay.id);
                 }
               } catch (error) {
                 console.error("Error saving activity:", error);
@@ -610,8 +578,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             }}
             onActivityDelete={async (id) => {
               setActivities((prev) => prev.filter((a) => a.id !== id));
-              // Delete the day_activity instance (not the entity)
-              await fetch(`/api/scheduled-activities/${id}`, { method: "DELETE" });
+              // Unschedule the instance (the entity is kept)
+              await api.activities.removeFromDay(id).catch(() => {});
             }}
             onCreateActivity={async (data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
@@ -620,10 +588,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const budget_paid = data.status === "paid";
               const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
 
-              const res = await fetch(`/api/days/${selectedDayId}/activities`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+              try {
+                const created = await api.activities.addToDay(selectedDayId, {
                   title: data.title,
                   short_desc: data.description,
                   slot: data.period,
@@ -637,11 +603,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                   budget_paid,
                   booking,
                   place_enriched: data.enrichedPlace ?? null,
-                }),
-              });
-              if (res.ok) {
-                const { data: created } = await res.json();
+                });
                 setActivities((prev) => [...prev, created]);
+              } catch {
+                // create failed — leave list unchanged
               }
             }}
           />

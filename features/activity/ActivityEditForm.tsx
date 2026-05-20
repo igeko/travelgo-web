@@ -13,6 +13,7 @@ import { ImagePicker } from "@/components/ui/ImagePicker";
 import { IconMessage, IconSparkles, IconTrash, IconX } from "@/components/ui/icons";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
 import { useTripGo } from "@/features/go/TripGoContext";
+import { api } from "@/lib/client";
 
 /* ─────────────────────────────────────────────────────────────────
    Types
@@ -182,20 +183,13 @@ export function ActivityEditForm({
     if (!activityId || !tripId || !enriched?.photoRefs[0] || photoImportLoading) return;
     setPhotoImportLoading(true);
     try {
-      const res = await fetch("/api/media/import-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          photoRef: enriched.photoRefs[0],
-          bucket: "trip-media",
-          storagePath: `trips/${tripId}/activities/${activityId}/hero.webp`,
-          tripId,
-        }),
+      const data = await api.media.importUrl({
+        photoRef: enriched.photoRefs[0],
+        bucket: "trip-media",
+        storagePath: `trips/${tripId}/activities/${activityId}/hero.webp`,
+        tripId,
       });
-      if (res.ok) {
-        const { data } = await res.json();
-        setHeroImage(`${data.publicUrl}?t=${Date.now()}`);
-      }
+      setHeroImage(`${data.publicUrl}?t=${Date.now()}`);
     } catch {
       // silent fail — user can upload manually via ImagePicker
     } finally {
@@ -211,9 +205,7 @@ export function ActivityEditForm({
     lastSearchedTitle.current = trimmed;
     setEnrichLoading(true);
     try {
-      const res = await fetch(`/api/places/photo-search?q=${encodeURIComponent(trimmed)}`);
-      const data = await res.json();
-      setEnriched(data.place ?? null);
+      setEnriched(await api.places.photoSearch<PlaceEnriched>(trimmed));
     } catch {
       setEnriched(null);
     } finally {
@@ -239,17 +231,12 @@ export function ActivityEditForm({
     if (!title.trim() || descLoading) return;
     setDescLoading(true);
     try {
-      const res = await fetch("/api/ai/describe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: title.trim(),
-          address: enriched?.address ?? place?.formatted,
-          types: enriched?.types,
-          editorialSummary: enriched?.editorialSummary,
-        }),
+      const data = await api.ai.describe({
+        name: title.trim(),
+        address: enriched?.address ?? place?.formatted,
+        types: enriched?.types,
+        editorialSummary: enriched?.editorialSummary,
       });
-      const data = await res.json();
       if (data.description) setDescription(data.description);
     } catch {
       // silent fail

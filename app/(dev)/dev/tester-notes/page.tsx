@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/client";
 
 type TesterNote = {
   id: string;
@@ -30,9 +31,9 @@ export default function TesterNotesPage() {
   const [filter, setFilter] = useState<"all" | "bug" | "suggestion" | "other">("all");
 
   useEffect(() => {
-    fetch("/api/tester-notes")
-      .then((r) => r.json())
+    api.feedback.list<TesterNote>()
       .then((data) => setNotes(Array.isArray(data) ? data : []))
+      .catch(() => setNotes([]))
       .finally(() => setLoading(false));
   }, []);
 

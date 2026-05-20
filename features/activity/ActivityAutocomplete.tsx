@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { IconMapPin, IconX, IconPlus } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { SoftField } from "@/components/ui/SoftField";
+import { api } from "@/lib/client";
 import type { SearchResult, SearchResponse } from "./types";
 
 type Props = {
@@ -55,12 +56,10 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
   async function fetchResults(q: string) {
     setLoading(true);
     try {
-      const url = `/api/activities/search?trip_id=${tripId}&day_id=${dayId}&q=${encodeURIComponent(q)}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const { data } = await res.json();
-        setResults(data);
-      }
+      const result = await api.activities.search({ tripId, dayId, query: q });
+      setResults(result as unknown as SearchResponse);
+    } catch {
+      // ignore search errors — keep previous results
     } finally {
       setLoading(false);
     }

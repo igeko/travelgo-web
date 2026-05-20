@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { IconBug, IconBulb, IconCheck, IconMessage, IconMessageReport, IconSend, IconX } from "@/components/ui/icons";
+import { api } from "@/lib/client";
 
 type NoteType = "bug" | "suggestion" | "other";
 
@@ -38,11 +39,7 @@ export function FeedbackModal({ tripId, onClose }: Props) {
     if (!note.trim()) return;
     setSaving(true);
     try {
-      await fetch("/api/tester-notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, note, page_url: pathname, trip_id: tripId ?? null }),
-      });
+      await api.feedback.submit({ type, note, page_url: pathname, trip_id: tripId ?? null });
       setDone(true);
       setTimeout(onClose, 1400);
     } finally {

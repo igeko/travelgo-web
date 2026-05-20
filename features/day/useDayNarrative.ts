@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DayNarrative, DescribeDayActivity } from "@/app/api/ai/describe-day/route";
 import type { Day } from "@/lib/dal/domain";
+import { api } from "@/lib/client";
 
 /* ─────────────────────────────────────────────────────────────────
    useDayNarrative
@@ -67,11 +68,7 @@ function writeCache(key: string, value: DayNarrative): void {
 
 async function saveToDb(dayId: string, narrative: DayNarrative): Promise<void> {
   try {
-    await fetch(`/api/days/${dayId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ narrative }),
-    });
+    await api.days.update(dayId, { narrative });
   } catch (err) {
     console.warn("[useDayNarrative] DB save failed (non-blocking)", err);
   }
@@ -124,21 +121,14 @@ export function useDayNarrative(
 
     (async () => {
       try {
-        const res = await fetch("/api/ai/describe-day", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dayId,
-            label: day!.label ?? day!.city ?? "Giorno",
-            zone: day!.city ?? undefined,
-            type: day!.day_type ?? undefined,
-            summary: day!.summary ?? undefined,
-            activities,
-          }),
+        const data = await api.ai.describeDay<DayNarrative>({
+          dayId,
+          label: day!.label ?? day!.city ?? "Giorno",
+          zone: day!.city ?? undefined,
+          type: day!.day_type ?? undefined,
+          summary: day!.summary ?? undefined,
+          activities,
         });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as DayNarrative;
 
         if (!cancelled) {
           setNarrative(data);

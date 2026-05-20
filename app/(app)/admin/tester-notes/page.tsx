@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/icons";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,9 +176,9 @@ export default function TesterNotesPage() {
   // --- Fetch ---
   useEffect(() => {
     if (loading || (!isDev && !isAdmin && !isTester)) return;
-    fetch("/api/tester-notes")
-      .then((r) => r.json())
-      .then(({ data }) => setNotes(Array.isArray(data) ? data : []))
+    api.feedback.list<TesterNote>()
+      .then((data) => setNotes(Array.isArray(data) ? data : []))
+      .catch(() => setNotes([]))
       .finally(() => setFetching(false));
   }, [loading, isDev, isAdmin, isTester]);
 
@@ -190,11 +191,7 @@ export default function TesterNotesPage() {
   const updateStatus = useCallback(async (id: string, status: FeedbackStatus) => {
     setUpdatingId(id);
     try {
-      await fetch(`/api/tester-notes/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+      await api.feedback.update(id, { status });
       setNotes((prev) => prev.map((n) => n.id === id ? { ...n, status } : n));
     } finally {
       setUpdatingId(null);
@@ -211,17 +208,13 @@ export default function TesterNotesPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/tester-notes/${editing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [editing.field]: editing.value }),
-      });
-      if (res.ok) {
-        setNotes((prev) =>
-          prev.map((n) => n.id === editing.id ? { ...n, [editing.field]: editing.value } : n)
-        );
-        setEditing(null);
-      }
+      await api.feedback.update(editing.id, { [editing.field]: editing.value });
+      setNotes((prev) =>
+        prev.map((n) => n.id === editing.id ? { ...n, [editing.field]: editing.value } : n)
+      );
+      setEditing(null);
+    } catch {
+      // edit failed — keep editing state
     } finally {
       setSaving(false);
     }

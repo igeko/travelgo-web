@@ -2,6 +2,7 @@
 
 import { useCallback, useReducer, useState } from "react";
 import { GoPanel } from "@/features/go/GoPanel";
+import { api } from "@/lib/client";
 import type { GoContext, GoAction, GoResponse } from "@/features/go/types";
 import type { GoApiResponse } from "@/app/api/go/route";
 import { WIDGET_TOOL_DEFINITIONS } from "@/features/go/widgets/tool-definitions";
@@ -123,13 +124,7 @@ function useDebugFetch(
       const t0 = Date.now();
       onDebugEntry(id, "start", { step, userChoice });
       try {
-        const res = await fetch("/api/go", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ context, step, userChoice }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: GoApiResponse = await res.json();
+        const json = await api.go.legacy<GoApiResponse>({ context, step, userChoice });
         onDebugEntry(id, "success", { response: json, durationMs: Date.now() - t0 });
         return json;
       } catch (err) {

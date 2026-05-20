@@ -27,6 +27,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { cn } from "@/lib/cn";
 import { OSM_PRESETS } from "@/lib/overpass";
 import { REGION_PRESETS, type RegionPreset } from "@/lib/region-presets";
+import { api } from "@/lib/client";
 
 // ── Tipi Overpass Status ─────────────────────────────────────
 interface OverpassStatus {
@@ -151,9 +152,7 @@ export default function CatalogPage() {
   const refreshOverpassStatus = useCallback(async () => {
     setStatusLoading(true);
     try {
-      const res = await fetch('/api/overpass/status');
-      const data = await res.json();
-      setOverpassStatus(data);
+      setOverpassStatus(await api.catalog.overpassStatus<OverpassStatus>());
     } catch (e) {
       console.error('[status] errore:', e);
     } finally {
@@ -184,10 +183,12 @@ export default function CatalogPage() {
   // ── Carica job ──────────────────────────────────────────
 
   const loadJobs = useCallback(async () => {
-    const res = await fetch('/api/catalog/jobs');
-    if (!res.ok) return;
-    const data = await res.json();
-    setJobs(data.jobs ?? []);
+    try {
+      const data = await api.catalog.listJobs<{ jobs: ImportJob[] }>();
+      setJobs(data.jobs ?? []);
+    } catch {
+      // keep current jobs on failure
+    }
   }, []);
 
   useEffect(() => { loadJobs(); }, [loadJobs]);
@@ -204,17 +205,12 @@ export default function CatalogPage() {
     createAbortRef.current = ctrl;
 
     try {
-      const res = await fetch('/api/catalog/jobs', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          location, presetIds: selectedPresets,
-          notableOnly, batchSize, autoContinue, enrichWiki,
-        }),
-        signal: ctrl.signal,
-      });
+      const res = await api.catalog.createJobStream(
+        { location, presetIds: selectedPresets, notableOnly, batchSize, autoContinue, enrichWiki },
+        { signal: ctrl.signal },
+      );
 
-      if (!res.ok || !res.body) throw new Error('Errore connessione server');
+      if (!res.body) throw new Error('Errore connessione server');
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -276,14 +272,9 @@ export default function CatalogPage() {
     setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: 'running' } : j));
 
     try {
-      const res = await fetch('/api/catalog/import', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ jobId: job.id }),
-        signal:  ctrl.signal,
-      });
+      const res = await api.catalog.runImportStream({ jobId: job.id }, { signal: ctrl.signal });
 
-      if (!res.ok || !res.body) throw new Error('Errore avvio import');
+      if (!res.body) throw new Error('Errore avvio import');
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -313,8 +304,8 @@ export default function CatalogPage() {
 
               // Auto-continue: riprendi se non completo
               if (!ev.complete && job.auto_continue) {
-                const updated = await fetch('/api/catalog/jobs').then((r) => r.json());
-                const next = (updated.jobs as ImportJob[]).find((j) => j.id === job.id);
+                const updated = await api.catalog.listJobs<{ jobs: ImportJob[] }>();
+                const next = updated.jobs.find((j) => j.id === job.id);
                 if (next && next.status === 'paused') {
                   setTimeout(() => startBatch(next), 500);
                 }
@@ -344,7 +335,7 @@ export default function CatalogPage() {
   }, []);
 
   const handleDelete = useCallback(async (jobId: string) => {
-    await fetch(`/api/catalog/jobs?id=${jobId}`, { method: 'DELETE' }).catch(() => {});
+    await api.catalog.deleteJob(jobId).catch(() => {});
     setJobs((prev) => prev.filter((j) => j.id !== jobId));
   }, []);
 

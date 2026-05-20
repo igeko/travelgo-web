@@ -22,6 +22,7 @@ import "./widgets/index";
 
 import { useCallback, useReducer } from "react";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/client";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { GoWidgetRenderer } from "./GoWidgetRenderer";
 import type { GoAction, GoContext, GoResponse } from "./types";
@@ -107,13 +108,7 @@ async function defaultFetch(
   step: 1 | 2,
   userChoice?: string,
 ): Promise<GoApiResponse> {
-  const res = await fetch("/api/go", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ context, step, userChoice }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<GoApiResponse>;
+  return api.go.legacy<GoApiResponse>({ context, step, userChoice });
 }
 
 /* ── Componente ── */

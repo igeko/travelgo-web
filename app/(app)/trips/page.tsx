@@ -8,10 +8,11 @@ import { AppHeader } from "@/features/app/AppHeader";
 import { CreateTripForm, type CreateTripData } from "@/features/trips/CreateTripForm";
 import { IconPlus, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
+import { api } from "@/lib/client";
 
 type TripSummary = {
   id: string;
-  title: string;
+  title: string | null;
   subtitle: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -36,9 +37,9 @@ export default function TripsPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    fetch("/api/trips")
-      .then((r) => r.json())
-      .then(({ data }) => setTrips(Array.isArray(data) ? data : []))
+    api.trips.list()
+      .then((data) => setTrips(Array.isArray(data) ? data : []))
+      .catch(() => setTrips([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -49,13 +50,10 @@ export default function TripsPage() {
       const end   = data.dates.end   ? data.dates.end.toISOString().split("T")[0]   : null;
       const title = data.destination?.name ?? data.destination?.formatted ?? "Nuovo viaggio";
 
-      const res = await fetch("/api/trips", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, start_date: start, end_date: end }),
-      });
-      const json = await res.json();
-      if (res.ok) router.push(`/trips/${json.data.id}/overview`);
+      const { id } = await api.trips.create({ title, start_date: start, end_date: end });
+      router.push(`/trips/${id}/overview`);
+    } catch {
+      // creation failed — stay on the page
     } finally {
       setCreating(false);
     }

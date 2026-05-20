@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import { api } from "@/lib/client";
 import type { TimelineBlock, InstancePatch, NewBlockPayload, BridgeData } from "./types";
 
 type UseTimelineOptions = {
@@ -31,11 +32,9 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
   const loadBlocks = useCallback(async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/activities`);
-      if (res.ok) {
-        const { data } = await res.json();
-        setBlocks(data);
-      }
+      setBlocks(await api.activities.listForDay(dayId));
+    } catch {
+      // keep current blocks on failure
     } finally {
       setSaving(false);
     }
@@ -50,19 +49,15 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       : blocks.length - 1;
     const position = afterIdx >= 0 ? (blocks[afterIdx]?.position ?? afterIdx) + 1 : 1;
 
-    const res = await fetch(`/api/days/${dayId}/activities`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, position }),
-    });
-
-    if (res.ok) {
-      const { data: created } = (await res.json()) as { data: TimelineBlock };
+    try {
+      const created = await api.activities.addToDay(dayId, { ...payload, position });
       setBlocks((prev) => {
         const next = [...prev];
         next.splice(afterIdx + 1, 0, created);
         return next;
       });
+    } catch {
+      // creation failed — leave list unchanged
     }
   }, [blocks, dayId]);
 
@@ -85,15 +80,10 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       prev.map((b) => b.id === blockId ? { ...b, ...patch } : b)
     );
 
-    const res = await fetch(`/api/scheduled-activities/${blockId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-
-    if (!res.ok) {
-      // Rollback
-      await loadBlocks();
+    try {
+      await api.activities.updateInstance(blockId, patch as Record<string, unknown>);
+    } catch {
+      await loadBlocks(); // rollback
     }
   }, [loadBlocks]);
 
@@ -101,8 +91,11 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     // Optimistic
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
 
-    const res = await fetch(`/api/scheduled-activities/${blockId}`, { method: "DELETE" });
-    if (!res.ok) await loadBlocks();
+    try {
+      await api.activities.removeFromDay(blockId);
+    } catch {
+      await loadBlocks();
+    }
   }, [loadBlocks]);
 
   const patchBridge = useCallback(async (
@@ -122,11 +115,9 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       )
     );
 
-    await fetch(`/api/scheduled-activities/${blockId}/bridge`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ direction, bridge }),
-    });
+    await api.activities
+      .setBridge(blockId, direction, bridge as Record<string, unknown> | null)
+      .catch(() => {});
   }, []);
 
   /* ── Reorder (drag) ───────────────────────────────────────────── */
@@ -148,12 +139,8 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     const updated = blocks.map((b, i) => ({ id: b.id, position: i + 1, slot: b.slot }));
     await Promise.all(
       updated.map((u) =>
-        fetch(`/api/scheduled-activities/${u.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ position: u.position, slot: u.slot }),
-        })
-      )
+        api.activities.updateInstance(u.id, { position: u.position, slot: u.slot }).catch(() => {}),
+      ),
     );
   }, [blocks, scheduleReload]);
 
@@ -162,11 +149,9 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
   const aiOrganize = useCallback(async () => {
     setOrganizing(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/activities/organize`, { method: "POST" });
-      if (res.ok) {
-        const { data: organized } = await res.json();
-        setBlocks(organized);
-      }
+      setBlocks(await api.activities.organize(dayId));
+    } catch {
+      // organize failed — keep current order
     } finally {
       setOrganizing(false);
     }

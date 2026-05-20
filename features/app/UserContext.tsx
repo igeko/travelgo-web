@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { api } from "@/lib/client";
 
 export type AppUser = {
   id: string;
@@ -46,10 +47,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then(({ data }: { data: { user: AppUser | null; roles: string[] } }) => {
-        const { user, roles } = data;
+    api.user.me()
+      .then(({ user, roles }) => {
         if (!user) {
           setValue({ user: null, roles: [], isLoggedIn: false, isDev: false, isTester: false, isAdmin: false, loading: false });
           return;

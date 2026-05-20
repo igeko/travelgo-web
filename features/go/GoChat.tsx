@@ -19,6 +19,7 @@ import { useTranslations } from "next-intl";
 import { IconSparkles, IconArrowUp } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
+import { api } from "@/lib/client";
 import { GoChatFloat } from "./GoChatFloat";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -220,13 +221,9 @@ function GoChatPanel({ onClose, className, onDebugCall, tripContext }: { onClose
     });
 
     try {
-      const res = await fetch("/api/go/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, tripContext }),
-      });
+      const res = await api.go.chat({ messages: history, tripContext });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error("No response body");
 
       const rawSystemPrompt = res.headers.get("X-Go-System-Prompt");
       const systemPrompt = rawSystemPrompt ? decodeURIComponent(rawSystemPrompt) : null;

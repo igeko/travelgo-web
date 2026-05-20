@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlaceResult } from "@/components/ui/AddressField";
+import { api } from "@/lib/client";
 
 export type Suggestion = {
   placeId: string;
@@ -64,13 +65,9 @@ export function usePlaceAutocomplete(options: UsePlaceAutocompleteOptions = {}):
     }
     setIsLoadingSuggestions(true);
     try {
-      const params = new URLSearchParams({ input: query });
-      if (types) params.set("types", types);
-      const res = await fetch(`/api/places/autocomplete?${params.toString()}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setSuggestions(data.suggestions ?? []);
-      setIsOpen((data.suggestions ?? []).length > 0);
+      const suggestions = await api.places.autocomplete<Suggestion>(query, types);
+      setSuggestions(suggestions);
+      setIsOpen(suggestions.length > 0);
       setActiveIndex(-1);
     } catch {
       // silently ignore network errors
@@ -104,10 +101,8 @@ export function usePlaceAutocomplete(options: UsePlaceAutocompleteOptions = {}):
 
       setIsLoadingDetails(true);
       try {
-        const res = await fetch(`/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.place) onSelect(data.place as PlaceResult);
+        const place = await api.places.details<PlaceResult>(suggestion.placeId);
+        if (place) onSelect(place);
       } catch {
         onSelect({
           formatted: suggestion.description,

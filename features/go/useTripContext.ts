@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from "react";
 import type { Activity } from "@/lib/dal/domain";
+import { api } from "@/lib/client";
 import { getGoContext, type GoFocus, type TripInfo } from "./context";
 
 type UseTripContextResult = {
@@ -41,25 +42,26 @@ export function useTripContext(
     setError(null);
 
     async function load() {
-      const res = await fetch(`/api/trips/${tripId}`);
-      if (cancelled) return;
-
-      if (!res.ok) {
-        setError(`Failed to load trip (${res.status})`);
+      let snapshot;
+      try {
+        snapshot = await api.trips.get(tripId!);
+      } catch {
+        if (cancelled) return;
+        setError("Failed to load trip");
         setLoading(false);
         return;
       }
-
-      const { data: snapshot } = await res.json();
       if (cancelled) return;
 
-      const activities: Activity[] = snapshot.days.flatMap((d: any) => d.activities);
+      const activities: Activity[] = snapshot.days.flatMap((d) => d.activities);
 
-      const info: TripInfo = {
+      // The trip snapshot is slimmer than DbTrip/DbDay; getGoContext tolerates
+      // the missing optional fields (traveler counts / theme).
+      const info = {
         trip: snapshot.trip,
         days: snapshot.days,
         activities,
-      };
+      } as unknown as TripInfo;
 
       setContext(getGoContext(info, focus));
       setLoading(false);

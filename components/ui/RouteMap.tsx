@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
+import { api } from "@/lib/client";
 import type { PlaceResult } from "./AddressField";
 import type { MapControls } from "./Map";
 
@@ -196,15 +197,8 @@ export function RouteMap({
 
     const map = mapRef.current;
 
-    fetch("/api/routes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        points: points.map((p) => ({ lat: p.lat, lng: p.lng })),
-        travelMode,
-      }),
-    })
-      .then((res) => res.json())
+    api.routes
+      .compute(points.map((p) => ({ lat: p.lat, lng: p.lng })), travelMode)
       .then((data) => {
         if (!data.polyline) {
           setRouteError(true);

@@ -19,6 +19,7 @@ import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconBookmark, Icon
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { imageSearch } from "@/features/media/imageSearch";
+import { api } from "@/lib/client";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
 import type { GoChatDebugFn } from "./GoChat";
 import type { AddToDayPayload } from "./TripGoContext";
@@ -332,18 +333,14 @@ function SuggestionCard({
     if (enrichDone.current || enrichLoading) return;
     setEnrichLoading(true);
     try {
-      const res = await fetch("/api/go/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: suggestion.title,
-          category: suggestion.category,
-          location: suggestion.location,
-          why: suggestion.why,
-          tripContext,
-        }),
+      const res = await api.go.enrich({
+        title: suggestion.title,
+        category: suggestion.category,
+        location: suggestion.location,
+        why: suggestion.why,
+        tripContext,
       });
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error("No response body");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       enrichDone.current = true;
@@ -1159,18 +1156,14 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
     onDebugCall?.({ id: debugId, ts: t0, systemPrompt: null, messages: [...history, ...(silent ? [{ role: "user" as const, content: text }] : [])], response: null, error: null, durationMs: null, streaming: true });
 
     try {
-      const res = await fetch("/api/go/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: silent ? [...history, { role: "user", content: text }] : history,
-          tripContext,
-          forceSuggestions,
-          selectedSuggestion: activeSuggestion ?? undefined,
-        }),
+      const res = await api.go.chat({
+        messages: silent ? [...history, { role: "user", content: text }] : history,
+        tripContext,
+        forceSuggestions,
+        selectedSuggestion: activeSuggestion ?? undefined,
       });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error("No response body");
 
       const contentType = res.headers.get("Content-Type") ?? "";
 

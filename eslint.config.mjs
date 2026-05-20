@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code git worktrees are nested checkouts — never lint them.
+    ".claude/**",
   ]),
 ]);
 
