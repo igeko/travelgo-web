@@ -14,13 +14,31 @@ import type { TimelineBlock, InstancePatch, NewBlockPayload, BridgeData, SlotKey
 type UseTimelineOptions = {
   dayId: string;
   initialBlocks: TimelineBlock[];
+  /**
+   * Called (debounced) after a mutation is persisted, so an owner that holds
+   * the day's activities separately (e.g. the list view) can resync. Without
+   * this, timeline edits stay in this hook's local state and the list shows
+   * stale data until a manual refresh.
+   */
+  onMutated?: () => void;
 };
 
-export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
+export function useTimeline({ dayId, initialBlocks, onMutated }: UseTimelineOptions) {
   const [blocks, setBlocks] = useState<TimelineBlock[]>(initialBlocks);
   const [saving, setSaving] = useState(false);
   const [organizing, setOrganizing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the latest callback in a ref so the debounced notifier doesn't need
+  // to be recreated (and the persist callbacks don't need it in their deps).
+  const onMutatedRef = useRef(onMutated);
+  onMutatedRef.current = onMutated;
+
+  const notifyMutated = useCallback(() => {
+    if (notifyTimer.current) clearTimeout(notifyTimer.current);
+    notifyTimer.current = setTimeout(() => onMutatedRef.current?.(), 600);
+  }, []);
 
   // Mirror the source list whenever the parent replaces it (new array
   // reference) — e.g. the day's activities finish loading after a day switch,
@@ -70,12 +88,13 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
         next.splice(afterIdx + 1, 0, created);
         return next;
       });
+      notifyMutated();
       return created;
     } catch {
       // creation failed — leave list unchanged
       return undefined;
     }
-  }, [blocks, dayId]);
+  }, [blocks, dayId, notifyMutated]);
 
   const addFromEntity = useCallback(async (
     entity: { id: string; title: string; type: TimelineBlock["type"]; location?: string | null },
@@ -121,10 +140,11 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     setBlocks((prev) => prev.map((b) => (b.id === blockId ? { ...b, icon } : b)));
     try {
       await api.activities.updateEntity(activityId, { icon });
+      notifyMutated();
     } catch {
       await loadBlocks();
     }
-  }, [loadBlocks]);
+  }, [loadBlocks, notifyMutated]);
 
   const patchInstance = useCallback(async (blockId: string, patch: InstancePatch) => {
     // Optimistic
@@ -134,10 +154,11 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
 
     try {
       await api.activities.updateInstance(blockId, patch as Record<string, unknown>);
+      notifyMutated();
     } catch {
       await loadBlocks(); // rollback
     }
-  }, [loadBlocks]);
+  }, [loadBlocks, notifyMutated]);
 
   const deleteBlock = useCallback(async (blockId: string) => {
     // Optimistic
@@ -145,10 +166,11 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
 
     try {
       await api.activities.removeFromDay(blockId);
+      notifyMutated();
     } catch {
       await loadBlocks();
     }
-  }, [loadBlocks]);
+  }, [loadBlocks, notifyMutated]);
 
   const patchBridge = useCallback(async (
     blockId: string,
@@ -169,8 +191,9 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
 
     await api.activities
       .setBridge(blockId, direction, bridge as Record<string, unknown> | null)
+      .then(() => notifyMutated())
       .catch(() => {});
-  }, []);
+  }, [notifyMutated]);
 
   /* ── Reorder (drag) ───────────────────────────────────────────── */
 
@@ -194,7 +217,8 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
         api.activities.updateInstance(u.id, { position: u.position, slot: u.slot }).catch(() => {}),
       ),
     );
-  }, [blocks, scheduleReload]);
+    notifyMutated();
+  }, [blocks, scheduleReload, notifyMutated]);
 
   /* ── AI Organize ──────────────────────────────────────────────── */
 
@@ -202,12 +226,13 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     setOrganizing(true);
     try {
       setBlocks(await api.activities.organize(dayId));
+      notifyMutated();
     } catch {
       // organize failed — keep current order
     } finally {
       setOrganizing(false);
     }
-  }, [dayId]);
+  }, [dayId, notifyMutated]);
 
   return {
     blocks,

@@ -545,9 +545,11 @@ type Props = {
   tripId:        string;
   initialBlocks: Block[];
   editMode?:     boolean;
+  /** Fired after a persisted timeline edit, so the owner can resync the day's activities. */
+  onMutated?:    () => void;
 };
 
-export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Props) {
+export function Timeline({ dayId, tripId, initialBlocks, editMode = false, onMutated }: Props) {
   const tT = useTranslations("Timeline");
   const {
     blocks,
@@ -557,7 +559,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
     patchInstance,
     deleteBlock,
     patchBridge,
-  } = useTimeline({ dayId, initialBlocks });
+  } = useTimeline({ dayId, initialBlocks, onMutated });
 
   /* ── local expansion state ───────────────────────────────────── */
   const [addState,       setAddState]       = useState<AddState>(null);

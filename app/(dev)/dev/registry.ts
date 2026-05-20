@@ -162,6 +162,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Activity",
     description: "Combobox ricerca attività del viaggio · gruppi Da programmare / Già pianificate, inline + floating, keyboard nav",
   },
+  {
+    slug: "transit-verifier",
+    title: "TransitVerifier",
+    group: "Features",
+    subgroup: "Activity",
+    description: "Verifica tratta con Go · alternative di trasporto pubblico reali via Routes API → BridgeData, mappa opzionale",
+  },
   // Trips subgroup
   {
     slug: "create-trip",

@@ -499,6 +499,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             tripId={trip.id}
             externalShowAddForm={showAddForm}
             onAddFormClose={() => setShowAddForm(false)}
+            onActivitiesChange={() => {
+              if (selectedDay?.id) loadActivities(selectedDay.id);
+            }}
             onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
             initialShowMap={selectedDay.show_map}
             onToggleMap={async (show) => {
@@ -681,18 +684,18 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         {nextDay && (
           <button
             onClick={() => selectDay(nextDay.id)}
-            className="mt-8 w-full flex items-center gap-3 px-4 py-3.5 rounded-md bg-ink text-white text-left cursor-pointer transition-opacity hover:opacity-90"
+            className="mt-16 w-full flex items-center gap-3 px-4 py-3.5 rounded-md border border-border bg-surface-soft text-left cursor-pointer transition-colors hover:bg-surface hover:border-border-strong"
           >
-            <IconArrowRightCircle className="w-7 h-7 text-orange shrink-0" />
+            <IconArrowRightCircle className="w-6 h-6 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-micro opacity-70 uppercase tracking-[0.08em]">
+              <div className="text-micro text-ink-faint uppercase tracking-eyebrow">
                 {t("nextDay", { number: nextDay.day_number, dow: nextDayDow })}
               </div>
-              <div className="text-[14px] font-medium mt-0.5 truncate">
+              <div className="text-[14px] font-medium mt-0.5 truncate text-ink">
                 {nextDay.label ?? nextDay.city ?? ""}
               </div>
             </div>
-            <IconChevronRight className="w-5 h-5 opacity-70 shrink-0" />
+            <IconChevronRight className="w-5 h-5 text-ink-faint shrink-0" />
           </button>
         )}
 

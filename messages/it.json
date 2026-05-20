@@ -136,7 +136,7 @@
     "addActivity": "Aggiungi attività"
   },
   "DayViewModeToggle": {
-    "lista": "Lista",
+    "lista": "Attività",
     "timeline": "Timeline",
     "racconto": "Racconto"
   },
@@ -357,5 +357,20 @@
       "addToDay": "Aggiungi al giorno",
       "save": "Salva"
     }
+  },
+  "TransitVerifier": {
+    "title": "Verifica con Go",
+    "verify": "Verifica tratta",
+    "loading": "Controllo le opzioni di trasporto…",
+    "retry": "Riprova",
+    "apply": "Applica",
+    "close": "Chiudi",
+    "origin": "Partenza",
+    "destination": "Arrivo",
+    "error": "Non sono riuscito a verificare la tratta. Riprova.",
+    "noRoutes": "Nessun trasporto pubblico trovato per questa tratta.",
+    "minutes": "{count, plural, one {# min} other {# min}}",
+    "stops": "{count, plural, one {# fermata} other {# fermate}}",
+    "walkFor": "{count, plural, one {A piedi # min} other {A piedi # min}}"
   }
 }

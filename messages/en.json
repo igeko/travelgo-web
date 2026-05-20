@@ -136,7 +136,7 @@
     "addActivity": "Add activity"
   },
   "DayViewModeToggle": {
-    "lista": "List",
+    "lista": "Activities",
     "timeline": "Timeline",
     "racconto": "Story"
   },
@@ -357,5 +357,20 @@
       "addToDay": "Add to day",
       "save": "Save"
     }
+  },
+  "TransitVerifier": {
+    "title": "Verify with Go",
+    "verify": "Verify route",
+    "loading": "Checking transit options…",
+    "retry": "Try again",
+    "apply": "Apply",
+    "close": "Close",
+    "origin": "Origin",
+    "destination": "Destination",
+    "error": "Couldn't check the route. Try again.",
+    "noRoutes": "No public transit found for this route.",
+    "minutes": "{count, plural, one {# min} other {# min}}",
+    "stops": "{count, plural, one {# stop} other {# stops}}",
+    "walkFor": "{count, plural, one {Walk # min} other {Walk # min}}"
   }
 }
