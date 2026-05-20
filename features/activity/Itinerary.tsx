@@ -180,12 +180,14 @@ export function Itinerary({
           />
         </div>
       ) : isTimeline ? (
-        <Timeline
-          dayId={dayId ?? ""}
-          tripId={tripId ?? ""}
-          initialBlocks={activities}
-          editMode={editMode}
-        />
+        <div className="bg-white rounded-lg p-4 flex justify-center">
+          <Timeline
+            dayId={dayId ?? ""}
+            tripId={tripId ?? ""}
+            initialBlocks={activities}
+            editMode={editMode}
+          />
+        </div>
       ) : (
         <>
           {showAddForm && (

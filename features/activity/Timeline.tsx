@@ -429,29 +429,17 @@ function SingleBlock({
       {/* ── Main row ─────────────────────────────────────────────── */}
       <div
         className={cn(
-          "relative flex items-center gap-3 rounded-sm py-1.5 pr-2 pl-3 mb-[4px] transition-all duration-150",
-          isFuzzy
-            ? [
-                "bg-transparent",
-                popoverOpen
-                  ? "bg-white shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]"
-                  : hovered &&
-                    "bg-white shadow-[0_0_0_1.5px_var(--color-ink),0_4px_14px_rgba(13,44,61,0.10)]",
-              ]
-            : [
-                "bg-white",
-                popoverOpen
-                  ? "shadow-[0_0_0_1.5px_var(--color-orange),0_4px_14px_rgba(244,123,58,0.10)]"
-                  : hovered &&
-                    "shadow-[0_0_0_1.5px_var(--color-ink),0_4px_14px_rgba(13,44,61,0.10)]",
-              ],
+          "relative flex items-center gap-3 py-1.5 pr-2 pl-5 rounded-full transition-colors",
+          popoverOpen
+            ? "bg-ink text-white my-0.5"
+            : ["border-b border-dashed border-border", hovered && "bg-surface-soft"],
         )}
       >
         {/* Time — absolute, left of spine */}
         <span
-          className="absolute text-[10.5px] font-medium tabular-nums text-right select-none transition-colors"
+          className="absolute text-[12.5px] font-medium tabular-nums text-right select-none transition-colors"
           style={{
-            right:     "calc(100% + 34px)",
+            right:     "calc(100% + 42px)",
             width:      38,
             top:       "50%",
             transform: "translateY(-50%)",
@@ -464,37 +452,42 @@ function SingleBlock({
         {/* Spine icon — absolute, on the spine line */}
         <div
           className={cn(
-            "absolute flex items-center justify-center rounded-full transition-all duration-150 shadow-sm z-10",
+            "absolute flex items-center justify-center rounded-full transition-all duration-150 shadow-sm z-10 [&>svg]:w-3.5 [&>svg]:h-3.5",
             isFuzzy
               ? [
                   "bg-[#d5d5ce] text-ink-soft border-2 border-[#e8e8e0]",
                   popoverOpen
-                    ? "bg-white border-orange text-orange-deep"
+                    ? "bg-ink border-white text-white"
                     : hovered && "bg-white border-ink text-ink",
                 ]
               : [
                   "bg-[#e8e8e0] text-ink-soft border-2 border-[#f5f5f0]",
                   popoverOpen
-                    ? "bg-white border-orange text-orange-deep"
+                    ? "bg-ink border-white text-white"
                     : hovered && "bg-white border-ink text-ink",
                 ],
           )}
           style={
             isFuzzy
               ? {
-                  left:      -22,
+                  left:      -23,
                   top:       "50%",
                   transform: "translateY(-50%)",
-                  width:      20,
-                  height:     20,
+                  width:      22,
+                  height:     22,
+                  borderWidth: popoverOpen ? 1 : undefined,
+                  boxShadow: popoverOpen ? "none" : undefined,
                 }
               : {
-                  left:      -26,
+                  left:      -27,
                   top:       "50%",
                   transform: "translateY(-50%)",
-                  width:      28,
-                  height:     28,
-                  boxShadow: "0 0 0 4px var(--color-bg)",
+                  width:      30,
+                  height:     30,
+                  borderWidth: popoverOpen ? 1 : undefined,
+                  boxShadow: popoverOpen
+                    ? "none"
+                    : "0 0 0 4px var(--color-bg)",
                 }
           }
           aria-hidden
@@ -507,8 +500,9 @@ function SingleBlock({
           className={cn(
             "flex-1 min-w-0 text-left leading-snug transition-colors",
             isFuzzy
-              ? "text-[10.5px] uppercase tracking-[0.08em] font-medium text-ink-soft hover:text-ink"
-              : "text-meta text-ink-soft hover:text-ink",
+              ? "text-[12.5px] uppercase tracking-[0.08em] font-medium"
+              : "text-[15px]",
+            popoverOpen ? "text-white" : "text-ink-soft hover:text-ink",
           )}
           onClick={() => {
             if (!isFuzzy && block.entity_id) {
@@ -549,6 +543,9 @@ function SingleBlock({
               onClick={onDelete}
               title="Scollega dal giorno"
               aria-label="Scollega dal giorno"
+              className={cn(
+                popoverOpen && "text-white/70 hover:text-white",
+              )}
             >
               <IconCircleMinus />
             </Button>
@@ -564,7 +561,7 @@ function SingleBlock({
           <div
             className="absolute top-0 bottom-0 w-[1.5px] pointer-events-none"
             style={{
-              left: -19,
+              left: -21,
               background:
                 "repeating-linear-gradient(180deg, var(--color-orange) 0 3px, transparent 3px 7px)",
             }}
@@ -719,7 +716,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
 
   /* ── main render ─────────────────────────────────────────────── */
   return (
-    <div>
+    <div className="max-w-[498px]">
       {activeSlots.map((slot, slotIdx) => {
         const slotBlocks = slotGroups[slot];
         const isFirstSection = slotIdx === 0;

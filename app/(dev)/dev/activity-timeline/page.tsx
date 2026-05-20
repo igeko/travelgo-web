@@ -183,7 +183,7 @@ export default function ActivityTimelineSandbox() {
           name="Spine view — Tokyo day"
           description="3 sections (Morning / Afternoon / Evening), typed blocks (place/meal/pause/action), fuzzy variant, expandable bridges. In edit mode: hover gaps for add affordance, hover block for pencil + trash."
         >
-          <div className="w-full max-w-[680px]">
+          <div className="w-full max-w-[680px] bg-white rounded-lg p-4">
             <Timeline
               key={resetKey}
               dayId="sandbox"
@@ -199,7 +199,7 @@ export default function ActivityTimelineSandbox() {
           name="Fuzzy variant"
           description="Blocks without precise time/location: small grey icon on spine, uppercase name. Used for meals/pauses/actions without a fixed address."
         >
-          <div className="w-full max-w-[680px]">
+          <div className="w-full max-w-[680px] bg-white rounded-lg p-4">
             <Timeline
               key={`fuzzy-${resetKey}`}
               dayId="sandbox-fuzzy"
@@ -219,7 +219,7 @@ export default function ActivityTimelineSandbox() {
           name="Empty timeline"
           description="Empty state — no blocks. In edit mode the add affordance is visible."
         >
-          <div className="w-full max-w-[680px]">
+          <div className="w-full max-w-[680px] bg-white rounded-lg p-4">
             <Timeline
               key={`empty-${resetKey}`}
               dayId="sandbox-empty"
