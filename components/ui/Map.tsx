@@ -57,10 +57,22 @@ export type MapProps = {
   controls?: MapControls;
 };
 
-/** Minimal map styles — removes POI clutter for a clean travel context */
-const MAP_STYLES: google.maps.MapTypeStyle[] = [
+/**
+ * Minimal map styles — strips POI/transit/business clutter and most label
+ * icons for a clean travel context, keeping geography legible. Shared with
+ * RouteMap so both surfaces look identical. Only applies to raster maps
+ * (no vector mapId is configured).
+ */
+export const MAP_STYLES: google.maps.MapTypeStyle[] = [
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.park", elementType: "labels.text", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.neighborhood", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "landscape", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
 
 export function Map({

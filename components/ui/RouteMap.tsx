@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createElement, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
+import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
+import {
+  IconMapPin, IconSoup, IconTree, IconKey, IconTrain,
+} from "@/components/ui/icons";
+import type { BlockType, BridgeData } from "@/lib/dal/domain";
 import type { PlaceResult } from "./AddressField";
-import type { MapControls } from "./Map";
+import { MAP_STYLES, type MapControls } from "./Map";
 
 /* ─────────────────────────────────────────────────────────────────
    RouteMap · Google Maps with numbered orange markers and a
@@ -27,10 +33,27 @@ import type { MapControls } from "./Map";
 
 export type TravelMode = "WALKING" | "DRIVING" | "BICYCLING" | "TRANSIT";
 
+export type TransportMode = BridgeData["transport"];
+
+/**
+ * A stop on the map. Extends PlaceResult (pure geometry) with optional
+ * semantics so the marker can show a type icon and the route can be
+ * styled per leg. Callers passing plain PlaceResult[] keep the old
+ * behaviour (numbered orange pins, single polyline).
+ */
+export type RouteStop = PlaceResult & {
+  /** Stop icon key (STOP_ICONS) — usually activity.icon */
+  iconKey?: string | null;
+  /** Activity type — fallback icon when iconKey is absent */
+  type?: BlockType | null;
+  /** Transport used to LEAVE this stop toward the next one */
+  transportOut?: TransportMode | null;
+};
+
 export type RouteMapProps = {
   /** Ordered list of places to visit */
-  points: PlaceResult[];
-  /** Routing mode — default WALKING */
+  points: RouteStop[];
+  /** Routing mode — default WALKING. Used when stops carry no per-leg transport. */
   travelMode?: TravelMode;
   /** Map type: roadmap | satellite | hybrid | terrain. Default "roadmap". */
   mapTypeId?: "roadmap" | "satellite" | "hybrid" | "terrain";
@@ -40,6 +63,19 @@ export type RouteMapProps = {
   style?: React.CSSProperties;
   /** UI controls to show on the map. Zoom is on by default. */
   controls?: MapControls;
+};
+
+/**
+ * Imperative handle — lets a parent drive the map via a ref.
+ *   const ref = useRef<RouteMapHandle>(null);
+ *   ref.current?.focusPoint(2);   // zoom/centre on the 3rd stop
+ *   ref.current?.fitAll();        // back to the overview framing
+ */
+export type RouteMapHandle = {
+  /** Pan + zoom onto the stop at `index` (default zoom 16). No-op if out of range. */
+  focusPoint: (index: number, zoom?: number) => void;
+  /** Re-frame all stops + route geometry (the default overview). */
+  fitAll: () => void;
 };
 
 /* ─────────────────────────────────────────────────────────────────
@@ -79,55 +115,163 @@ function decodePolyline(encoded: string): google.maps.LatLngLiteral[] {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   Orange numbered pin SVG — matches ActivityRow pin style
+   Marker glyphs — reuse the same Tabler icons as Timeline / ActivityRow.
+   Tabler components render to <svg viewBox="0 0 24 24">…</svg>; we strip
+   the wrapper and re-embed the inner paths (which inherit stroke from a
+   wrapping <g>) so the marker is the icon itself — no circle, no number —
+   with a white halo for legibility on the map. Memoised per cache key.
 ───────────────────────────────────────────────────────────────── */
-function makePinSvg(index: number): string {
-  const label = String(index + 1);
-  const fontSize = label.length > 1 ? 11 : 13;
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-      <circle cx="14" cy="14" r="13" fill="#f47b3a" />
-      <text
-        x="14" y="${14 + fontSize * 0.35}"
-        text-anchor="middle"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        font-size="${fontSize}"
-        font-weight="600"
-        fill="white"
-      >${label}</text>
-    </svg>
-  `.trim();
+const INK = "#0d2c3d"; // brand blue — markers + route line
+
+const TYPE_CMP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+  place:  IconMapPin,
+  meal:   IconSoup,
+  pause:  IconTree,
+  action: IconKey,
+  move:   IconTrain,
+};
+
+const glyphCache = new Map<string, string>();
+
+/** Inner paths of a Tabler icon (uncoloured — stroke inherited from wrapper). */
+function glyphInner(cacheKey: string, Cmp: React.ComponentType<{ size?: number; stroke?: number }>): string {
+  const cached = glyphCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const markup = renderToStaticMarkup(createElement(Cmp, { size: 24, stroke: 2 }));
+  const inner = markup.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  glyphCache.set(cacheKey, inner);
+  return inner;
 }
 
-function makePinIcon(index: number): google.maps.Icon {
-  const svg = makePinSvg(index);
+/** Resolve a stop to its icon paths, falling back to a generic map pin. */
+function resolveGlyph(stop: RouteStop): string {
+  if (stop.iconKey) {
+    const Cmp = getStopIcon(stop.iconKey);
+    if (Cmp) return glyphInner(`stop:${stop.iconKey}`, Cmp);
+  }
+  if (stop.type && TYPE_CMP[stop.type]) {
+    return glyphInner(`type:${stop.type}`, TYPE_CMP[stop.type]);
+  }
+  return glyphInner("type:place", IconMapPin);
+}
+
+type StopRole = "start" | "mid" | "end";
+
+/** Origin flag inner paths (inline; not in the icon barrel). */
+const FLAG_INNER = `<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 5v16"/><path d="M5 5c3 -1.5 6 -1.5 9 0s6 1.5 9 0v9c-3 1.5 -6 1.5 -9 0s-6 -1.5 -9 0"/>`;
+
+/**
+ * Build an icon-only marker (32×32): blue (ink) glyph over a white halo
+ * for contrast. No circle, no number. The last stop uses a flag.
+ * Layers (back→front): white halo, ink glyph.
+ */
+function makePinIcon(role: StopRole, glyph: string): google.maps.Icon {
+  const inner = role === "end" ? FLAG_INNER : glyph;
+  const transform = `transform="translate(4 4) scale(0.96)"`;
+  const layer = (color: string, width: number) =>
+    `<g ${transform} fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">${layer("#fff", 6)}${layer(INK, 2.2)}</svg>`;
+
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(28, 28),
-    anchor: new google.maps.Point(14, 14),
+    scaledSize: new google.maps.Size(32, 32),
+    anchor: new google.maps.Point(16, 16),
   };
 }
 
-/** Minimal map styles — remove POI/transit clutter */
-const MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] },
-];
+/* ─────────────────────────────────────────────────────────────────
+   Transport → routing mode + polyline style.
+   Pins stay orange; legs are distinguished by stroke pattern/weight.
+───────────────────────────────────────────────────────────────── */
+function transportToTravelMode(t: TransportMode): TravelMode {
+  switch (t) {
+    case "walk":  return "WALKING";
+    case "bike":  return "BICYCLING";
+    case "car":
+    case "taxi":  return "DRIVING";
+    case "metro":
+    case "bus":
+    case "train": return "TRANSIT";
+    default:      return "WALKING";
+  }
+}
 
-export function RouteMap({
+/** PolylineOptions (minus path/map) for a transport mode. */
+function legStyle(t: TransportMode | null | undefined): google.maps.PolylineOptions {
+  const dot = (repeat: string): google.maps.PolylineOptions => ({
+    strokeColor: INK,
+    strokeOpacity: 0,
+    icons: [{
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 2.2, fillColor: INK, fillOpacity: 0.9, strokeOpacity: 0 },
+      offset: "0",
+      repeat,
+    }],
+  });
+  switch (t) {
+    case "walk":
+    case "bike":
+      return dot("9px");                                                  // dotted
+    case "bus":
+      return { strokeColor: INK, strokeOpacity: 0,                        // dashed
+        icons: [{ icon: { path: "M 0,-1 0,1", strokeColor: INK, strokeOpacity: 1, strokeWeight: 3, scale: 3 }, offset: "0", repeat: "14px" }],
+      };
+    case "car":
+    case "taxi":
+      return { strokeColor: INK, strokeOpacity: 0.95, strokeWeight: 4 };   // solid thick
+    case "metro":
+    case "train":
+    default:
+      return { strokeColor: INK, strokeOpacity: 0.9, strokeWeight: 3 };    // solid
+  }
+}
+
+export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function RouteMap({
   points,
   travelMode = "WALKING",
   mapTypeId = "roadmap",
   className,
   style,
   controls = {},
-}: RouteMapProps) {
+}, ref) {
   const status = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
-  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
   const [routeError, setRouteError] = useState(false);
+
+  // ── Imperative camera controls (stable across renders) ──────────
+  const fitAll = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || points.length === 0) return;
+    if (points.length === 1) {
+      map.setCenter({ lat: points[0].lat, lng: points[0].lng });
+      map.setZoom(15);
+      return;
+    }
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+    polylinesRef.current.forEach((pl) =>
+      pl.getPath().forEach((ll) => bounds.extend(ll)),
+    );
+    // Padding leaves room for the 32px markers; extra on top for the halo.
+    map.fitBounds(bounds, { top: 56, right: 44, bottom: 44, left: 44 });
+    google.maps.event.addListenerOnce(map, "idle", () => {
+      const z = map.getZoom();
+      if (z != null && z > 16) map.setZoom(16);
+    });
+  }, [points]);
+
+  const focusPoint = useCallback((index: number, zoom = 16) => {
+    const map = mapRef.current;
+    const p = points[index];
+    if (!map || !p) return;
+    map.panTo({ lat: p.lat, lng: p.lng });
+    map.setZoom(zoom);
+  }, [points]);
+
+  useImperativeHandle(ref, () => ({ focusPoint, fitAll }), [focusPoint, fitAll]);
 
   // ── Initialize map ──────────────────────────────────────────────
   useEffect(() => {
@@ -158,70 +302,85 @@ export function RouteMap({
   // ── Redraw markers + fetch route whenever points/travelMode change
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
+    const map = mapRef.current;
 
-    // Clear previous markers
+    // This run owns the latest async work; later runs flip it to abort.
+    let cancelled = false;
+
+    // Clear previous markers + polylines
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
-
-    // Clear previous polyline
-    polylineRef.current?.setMap(null);
-    polylineRef.current = null;
+    polylinesRef.current.forEach((p) => p.setMap(null));
+    polylinesRef.current = [];
     setRouteError(false);
 
     if (points.length === 0) return;
 
-    // Place numbered markers
+    // Place markers — icon by type, role for start/end
     points.forEach((point, i) => {
+      const role: StopRole =
+        i === 0 ? "start" : i === points.length - 1 ? "end" : "mid";
       const marker = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
-        map: mapRef.current!,
-        icon: makePinIcon(i),
+        map,
+        icon: makePinIcon(role, resolveGlyph(point)),
         title: point.name || point.formatted,
         zIndex: 10 + i,
       });
       markersRef.current.push(marker);
     });
 
-    // Fit bounds to all points
-    if (points.length === 1) {
-      mapRef.current.setCenter({ lat: points[0].lat, lng: points[0].lng });
-      mapRef.current.setZoom(15);
-    } else {
-      const bounds = new google.maps.LatLngBounds();
-      points.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
-      mapRef.current.fitBounds(bounds, 48);
-    }
+    fitAll();
 
-    // Fetch route from server-side handler
     if (points.length < 2) return;
 
-    const map = mapRef.current;
+    const drawPolyline = (encoded: string, style: google.maps.PolylineOptions) => {
+      if (cancelled) return;
+      polylinesRef.current.push(
+        new google.maps.Polyline({ path: decodePolyline(encoded), map, ...style }),
+      );
+    };
 
-    api.routes
-      .compute(points.map((p) => ({ lat: p.lat, lng: p.lng })), travelMode)
-      .then((data) => {
-        if (!data.polyline) {
-          setRouteError(true);
-          return;
-        }
-        const path = decodePolyline(data.polyline);
-        polylineRef.current = new google.maps.Polyline({
-          path,
-          map,
-          strokeColor: "#f47b3a",
-          strokeWeight: 3,
-          strokeOpacity: 0.85,
-        });
-      })
-      .catch(() => setRouteError(true));
+    // Per-leg typed routing when stops carry transport, else one route.
+    const typed = points.some((p) => p.transportOut);
+    if (typed) {
+      Promise.all(
+        points.slice(0, -1).map((from, i) => {
+          const to = points[i + 1];
+          const transport = from.transportOut ?? null;
+          const mode = transport ? transportToTravelMode(transport) : travelMode;
+          return api.routes
+            .compute([{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }], mode)
+            .then((data) => (data.polyline ? { encoded: data.polyline, transport } : null))
+            .catch(() => null);
+        }),
+      ).then((legs) => {
+        if (cancelled) return;
+        const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null } => l != null);
+        if (ok.length === 0) { setRouteError(true); return; }
+        if (ok.length < legs.length) setRouteError(true);
+        ok.forEach((l) => drawPolyline(l.encoded, legStyle(l.transport)));
+        if (!cancelled) fitAll();
+      });
+    } else {
+      api.routes
+        .compute(points.map((p) => ({ lat: p.lat, lng: p.lng })), travelMode)
+        .then((data) => {
+          if (!data.polyline) { setRouteError(true); return; }
+          drawPolyline(data.polyline, { strokeColor: INK, strokeWeight: 3, strokeOpacity: 0.85 });
+          if (!cancelled) fitAll();
+        })
+        .catch(() => setRouteError(true));
+    }
 
-  }, [status, points, travelMode]);  
+    return () => { cancelled = true; };
+  }, [status, points, travelMode, fitAll]);
 
   // ── Cleanup on unmount ──────────────────────────────────────────
   useEffect(() => {
     return () => {
       markersRef.current.forEach((m) => m.setMap(null));
-      polylineRef.current?.setMap(null);
+      polylinesRef.current.forEach((p) => p.setMap(null));
     };
   }, []);
 
@@ -273,4 +432,4 @@ export function RouteMap({
       )}
     </div>
   );
-}
+});

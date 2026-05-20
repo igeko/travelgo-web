@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { IconMap, IconPlus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
-import { RouteMap } from "@/components/ui/RouteMap";
+import { RouteMap, type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
@@ -14,7 +14,6 @@ import { DayMagazine } from "@/features/day/DayMagazine";
 
 type DayViewMode = "lista" | "timeline" | "racconto";
 import type { Activity, Day } from "@/lib/dal/domain";
-import type { PlaceResult } from "@/components/ui/AddressField";
 
 const LS_VIEW_MODE_KEY = "day-view-mode";
 
@@ -39,6 +38,8 @@ type Props = {
   onActivitySave?: (id: string, data: ActivityData) => void;
   onActivityDelete?: (id: string) => void;
   onCreateActivity?: (data: ActivityData) => void;
+  /** Called after the Timeline persists an edit, so the owner can reload activities. */
+  onActivitiesChange?: () => void;
   onAddActivity?: () => void;
   externalShowAddForm?: boolean;
   onAddFormClose?: () => void;
@@ -56,6 +57,7 @@ export function Itinerary({
   onActivitySave,
   onActivityDelete,
   onCreateActivity,
+  onActivitiesChange,
   onAddActivity,
   externalShowAddForm,
   onAddFormClose,
@@ -64,6 +66,9 @@ export function Itinerary({
   const t = useTranslations("Itinerary");
   const tMode = useTranslations("DayViewModeToggle");
   const [showMap, setShowMap] = useState(initialShowMap);
+  const mapRef = useRef<RouteMapHandle>(null);
+  // Index queued while the map mounts (when it was hidden at click time).
+  const pendingFocusRef = useRef<number | null>(null);
   const [internalShowAddForm, setShowAddForm] = useState(false);
   // The parent can force the form open (e.g. via the "add" keyboard shortcut);
   // OR with local state so we don't need a setState-in-effect to sync the prop.
@@ -106,20 +111,48 @@ export function Itinerary({
     });
   }, [activities]);
 
-  const mapPoints = sorted.reduce<PlaceResult[]>((acc, a) => {
-    const lat = (a as any).location_lat;
-    const lng = (a as any).location_lng;
-    if (lat != null && lng != null) {
-      acc.push({
-        lat: lat as number,
-        lng: lng as number,
+  // Map points + a lookup from activity id → its index in the points array
+  // (points skip activities without coordinates, so indexes can differ).
+  const { mapPoints, mapIndexById } = useMemo(() => {
+    const points: RouteStop[] = [];
+    const indexById = new Map<string, number>();
+    for (const a of sorted) {
+      if (a.location_lat == null || a.location_lng == null) continue;
+      indexById.set(a.id, points.length);
+      points.push({
+        lat: a.location_lat,
+        lng: a.location_lng,
         name: a.title,
         formatted: a.location ?? a.title,
-        placeId: (a as any).location_place_id ?? "",
+        placeId: a.location_place_id ?? "",
+        iconKey: a.icon,
+        type: a.type ?? null,
+        transportOut: a.bridge_out_json?.transport ?? null,
       });
     }
-    return acc;
-  }, []);
+    return { mapPoints: points, mapIndexById: indexById };
+  }, [sorted]);
+
+  // When the map was hidden at click time, focus once it has mounted.
+  useEffect(() => {
+    if (!showMap || pendingFocusRef.current == null) return;
+    const index = pendingFocusRef.current;
+    pendingFocusRef.current = null;
+    mapRef.current?.focusPoint(index);
+  }, [showMap]);
+
+  function handleActivityMapClick(activityId: string): boolean {
+    const index = mapIndexById.get(activityId);
+    if (index == null) return false; // no coordinates → fall back to external maps
+    if (showMap) {
+      mapRef.current?.focusPoint(index);
+    } else {
+      pendingFocusRef.current = index;
+      setShowMap(true);
+      onToggleMap?.(true);
+    }
+    return true;
+  }
 
   const isRacconto = viewMode === "racconto";
   const isTimeline = viewMode === "timeline";
@@ -191,6 +224,7 @@ export function Itinerary({
             tripId={tripId ?? ""}
             initialBlocks={activities}
             editMode={editMode}
+            onMutated={onActivitiesChange}
           />
         </div>
       ) : (
@@ -207,6 +241,7 @@ export function Itinerary({
 
           {showMap && (
             <RouteMap
+              ref={mapRef}
               points={mapPoints}
               travelMode="WALKING"
               className="w-full h-[280px] mb-4"
@@ -217,9 +252,11 @@ export function Itinerary({
             activities={sorted}
             editMode={editMode}
             tripId={tripId}
+            hideFuzzy
             onActivitySave={onActivitySave}
             onActivityDelete={onActivityDelete}
             onAskGo={onAskGo}
+            onActivityMapClick={handleActivityMapClick}
           />
         </>
       )}
