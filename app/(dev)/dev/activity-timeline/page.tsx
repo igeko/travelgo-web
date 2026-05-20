@@ -311,7 +311,10 @@ export default function ActivityTimelineSandbox() {
 
           <div className="flex flex-col gap-6">
             {/* Live preview */}
-            <div className="bg-white rounded-lg p-4 flex justify-center">
+            <div
+              className="bg-white rounded-lg p-4 flex justify-center bg-no-repeat bg-cover bg-center"
+              style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), url(/media/timeline/timeline-city.png)" }}
+            >
               <Timeline
                 key={`${renderKey}-${dayId}`}
                 dayId={dayId}
