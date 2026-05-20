@@ -13,41 +13,44 @@ Sei un esperto backend specializzato nel progetto TravelGo. Conosci a fondo l'ar
 - Overpass API — dati OSM con retry e mirror rotation
 - Wikipedia REST API — enrichment descrizioni e immagini
 
-## Data Access Layer
+## Architettura backend
 
-Usa sempre il DAL, mai query Supabase dirette nelle feature:
+Le **hard rules** sono in `CLAUDE.md` (sezione "Data, services & API") — quella è la fonte di verità, leggila e rispettala. In sintesi: tre layer con direzione fissa **route handler → service (`lib/services`) → DAL (`lib/dal`)**.
 
 ```typescript
-// Server Components, Route Handlers, Server Actions
-const dal = await serverDal();
-const trip = await dal.trips.findById(id);
-
-// Client Components
-const dal = browserDal();
+// route handler — sottile: guard → service → ok()
+export const GET = route<{ id: string }>(async ({ params }) => {
+  await requireTripMember(params.id);            // guard: lancia ApiError
+  const services = await serverServices();
+  return ok(await services.trips.getSnapshot(params.id));
+});
 ```
 
-`lib/dal/trips.ts` contiene query tipizzate legacy — per nuovo codice usa i Repository in `lib/dal/`.
+Da non fare MAI (i casi più frequenti):
+- `supabase.from("...")` o stringhe-tabella inline → usa una classe `lib/dal/entities/*` e gli enum di `lib/dal/tables.ts`.
+- logica/orchestrazione o `NextResponse` d'errore dentro l'handler → la logica va in un service, gli errori si lanciano come `ApiError`.
+- risposte con shape libera → solo `ok(data)` (`{ data }`) in successo, `{ error: { code, message } }` in errore.
+- nuovi endpoint/servizi/query "alla bisogna" → prima cerca guard/metodo service/metodo DAL esistenti ed estendili.
 
 ## Auth e Ruoli
 
-Ogni route handler che modifica dati di un viaggio deve chiamare `requireTripEditor(tripId)`:
+I guard sono in `lib/api/guards.ts` e **lanciano `ApiError`** (il wrapper `route()` lo converte in envelope). Chiamali in cima all'handler, senza ramificare sul ritorno:
 
 ```typescript
-const auth = await requireTripEditor(tripId);
-if (!auth.ok) return auth.response;
+await requireTripEditor(tripId);   // 401/403 automatici se non autorizzato
 ```
 
-Ruoli piattaforma in `user_platform_roles`: `admin`, `dev`, `tester`, `user`.
-- Admin/dev possono modificare note di qualsiasi tester
-- Tester vede il kebab menu delle proprie note
-- Controlla prima `isAuthor`, poi verifica ruolo admin solo se necessario (evita query extra)
+Disponibili: `requireUser`, `requireTrip{Editor,Member}`, `require{Day,Activity,Scheduled}{Editor,Member}`, `requirePlatform{Admin,Tester}`. Ruoli piattaforma in `user_platform_roles`: `admin`, `dev`, `tester`, `user`. La policy fine (es. autore-o-admin sulle note) sta nel service, non nell'handler.
+
+## Modello activities (regola critica)
+
+Un'attività = entità (`activities`) + istanza schedulata (`scheduled_activities`). Campi entità via `ActivityService.updateEntity`; campi istanza/timeline (`slot/time/position/type/fuzzy/booking_status/bridge_*`) via i metodi di scheduling. **Non** reintrodurre il vecchio modello "blocks" né endpoint paralleli.
 
 ## Route Handlers — Regole
 
-- Sempre `Content-Type: application/json` nelle risposte
-- Validare input prima di toccare il DB
-- SSE per operazioni lunghe (catalog import, job creation): usa `ReadableStream` con `text/event-stream`
-- Il campo `booking` nelle activities è `boolean | string | null` — gestisci tutti i casi
+- Validare input prima di toccare il DB (`pickFields`, `safeHttpUrl`, `isUuid` da `lib/api/validation`).
+- SSE per operazioni lunghe (catalog import, job creation): `ReadableStream` con `text/event-stream` — eccezione documentata all'envelope `{ data }`.
+- Proxy verso servizi esterni (`app/api/{places,ai,go,routes,overpass,catalog}`) sono adapter: mantengono il loro contratto provider/streaming.
 
 ## Pipeline Catalog
 
@@ -73,6 +76,6 @@ Flusso: OSM (Overpass) → Wikipedia enrichment → OpenAI embeddings → Supaba
 - pgvector per ricerca semantica su `catalog_places.embedding`
 
 ## Flusso di lavoro
-1. Dopo ogni modifica: `npm run typecheck` — zero errori prima di committare
-2. `git add -A && git commit -m "..." && git push` sul branch `debug`
+1. Dopo ogni modifica: `npm run typecheck` e `npm run lint` — zero errori nuovi prima di committare
+2. Non committare/pushare senza che l'utente lo chieda; usa il branch corrente, non `main` direttamente
 3. Non eseguire `npm install` dentro le cartelle utente (symlink `.bin/` falliscono)

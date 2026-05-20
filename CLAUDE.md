@@ -27,20 +27,33 @@ app/
 └── api/            # Route handlers
 ```
 
-### Data Access Layer
+### Data, services & API (backend)
 
-All DB access goes through `lib/dal/`. Two entry points:
+Three layers, strict direction: **route handler → service → DAL**. Never invert or skip.
+
+- **DAL** (`lib/dal/entities/*`) — the only code that touches the DB. One class per entity (`Trips`, `Activities`, `Budget`, `Membership`, `Media`, `Journal`, `Users`, `Catalog`, `Feedback`), built via `serverDal()` (RLS), `serviceDal()` (service-role, after authz), or `browserDal()`.
+- **Services** (`lib/services/*`) — business logic / orchestration / policy. Built via `serverServices()` / `serviceServices()`.
+- **HTTP kit** (`lib/api/*`) — `route()` wrapper, `ok()` + `ApiError`, auth `guards`, single response envelope.
 
 ```typescript
-// Server Components, Route Handlers, Server Actions
-const dal = await serverDal();
-const trip = await dal.trips.findById(id);
-
-// Client Components
-const dal = browserDal();
+// route handler — thin: guard → service → ok()
+export const GET = route<{ id: string }>(async ({ params }) => {
+  await requireTripMember(params.id);
+  const services = await serverServices();
+  return ok(await services.trips.getSnapshot(params.id));
+});
 ```
 
-`lib/dal/trips.ts` has simpler typed queries used in older RSC pages — prefer the Repository pattern for new work.
+#### Hard rules
+
+1. **No table strings.** Reference tables only through the per-domain enums in `lib/dal/tables.ts` (`TripTable.Days`, …). Never `.from("days")`.
+2. **DB access lives only in `lib/dal`.** Handlers, services and components must never call `supabase.from(...)`. Add/extend an entity class instead.
+3. **One activity model.** An activity = entity (`activities`) + scheduled instance (`scheduled_activities`). Entity fields go through `ActivityService.updateEntity`; instance/timeline fields (`slot/time/position/type/fuzzy/booking_status/bridge_*`) through the scheduling methods. Do **not** revive the old "blocks" model or add parallel activity endpoints.
+4. **Routes are thin.** Wrap every handler in `route()`; resolve user/permission with a guard from `lib/api/guards` (they throw `ApiError`); put logic in a service. No orchestration, no manual `NextResponse` in handlers.
+5. **One response envelope.** Success → `ok(data)` → `{ data }`. Errors → throw `ApiError` (or let `DalError` propagate) → `{ error: { code, message } }`. Never hand-build error responses or invent new shapes.
+6. **Reuse before inventing.** Before adding a route/service/query, look for an existing guard, service method, or DAL method and extend it. Add new REST surface only for genuinely new resources, matching the canonical naming already in `app/api`.
+
+> **Exception:** external-service proxies under `app/api/{places,ai,go,routes,overpass,catalog}` are adapters — they keep their provider/streaming contracts (no `{ data }` envelope, no service layer required).
 
 ### Features vs Components
 
@@ -149,9 +162,11 @@ The Go context is hydrated with trip/day data via `features/go/TripGoContext.tsx
 
 Supabase Auth. Platform roles stored in `user_platform_roles` table: `admin`, `dev`, `tester`, `user`.
 
-Role checks in route handlers via `lib/dal/auth.ts`:
-- `requireTripEditor(tripId)` — checks `trip_members` for owner/editor role
-- Admin checks query `user_platform_roles` directly
+Authorization guards live in `lib/api/guards.ts`. They **throw `ApiError`** (the `route()` wrapper turns it into the failure envelope) and return `{ userId }` on success — call them at the top of a handler, do not branch on a return value:
+- `requireUser()` — logged-in only
+- `requireTripEditor(tripId)` / `requireTripMember(tripId)` — `trip_members` role
+- `requireDayEditor` / `requireActivityEditor` / `requireScheduledEditor` (+ `*Member`) — resolve resource → trip → role
+- `requirePlatformAdmin()` / `requirePlatformTester()` — `user_platform_roles`
 
 ## Supabase Project
 

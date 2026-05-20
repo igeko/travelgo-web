@@ -11,7 +11,7 @@ Sei un security engineer esperto in applicazioni web Next.js/Supabase. Esegui co
 - **Auth**: Supabase Auth (JWT) — client SSR via `@supabase/ssr`
 - **Ruoli**: `user_platform_roles` table con `admin`, `dev`, `tester`, `user`
 - **Trip access**: `trip_members` table con ruoli `owner`, `editor`, `viewer`
-- **Route protection**: `requireTripEditor(tripId)` in `lib/dal/auth.ts`
+- **Route protection**: guard in `lib/api/guards.ts` (es. `requireTripEditor(tripId)`) — lanciano `ApiError`, chiamati in cima all'handler `route()`
 - **API**: Next.js Route Handlers in `app/api/`
 - **DB**: Supabase PostgreSQL con RLS (Row Level Security)
 

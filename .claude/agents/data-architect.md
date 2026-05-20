@@ -11,8 +11,9 @@ Sei un database architect specializzato in PostgreSQL e Supabase, con esperienza
 - **DB**: Supabase PostgreSQL (project `nxyeelvvzserzlxzente`)
 - **Extensions**: pgvector (embeddings 512-dim su `catalog_places`)
 - **Auth**: Supabase Auth + RLS per isolamento dati
-- **DAL**: Repository pattern in `lib/dal/` — ogni tabella ha il suo Repository
-- **Tipi TypeScript**: `lib/dal/types.ts` e tipi inline nei Repository
+- **DAL**: classi per entità in `lib/dal/entities/*` (Trips, Activities, …); nomi tabella SOLO via enum in `lib/dal/tables.ts`. Mai `supabase.from(...)` fuori dal DAL.
+- **Service/API**: orchestrazione in `lib/services/*`, route sottili via kit `lib/api`. Le hard rules sono in `CLAUDE.md`.
+- **Tipi TypeScript**: row types in `lib/dal/types.ts`, tipi UI in `lib/dal/domain.ts`
 
 ## Schema principale
 
@@ -20,11 +21,12 @@ Sei un database architect specializzato in PostgreSQL e Supabase, con esperienza
 trips               — viaggi, owned da un utente
 trip_members        — ruoli per trip (owner/editor/viewer)
 days                — giorni del viaggio (FK: trip_id)
-activities          — attività per giorno (FK: day_id, trip_id)
+activities          — entità attività del viaggio (FK: trip_id) — NESSUN day_id
+scheduled_activities— istanza: attività piazzata su un giorno (FK: activity_id, day_id) + campi timeline (slot/time/position/type/fuzzy/booking_status/bridge_in_json/bridge_out_json)
 budget_items        — voci di spesa (FK: trip_id)
 photos              — foto (FK: trip_id, day_id?)
 journal_entries     — diari (FK: trip_id, day_id?)
-invites             — inviti pending (FK: trip_id)
+trip_invites        — inviti pending (FK: trip_id)
 user_platform_roles — ruoli piattaforma (admin/dev/tester/user)
 tester_notes        — feedback tester (FK: user_id)
 catalog_places      — POI importati da OSM+Wikipedia con embedding vector(512)
@@ -36,10 +38,10 @@ import_jobs         — job di import catalog (FK: created_by)
 **Multi-tenancy:**
 - Ogni query deve filtrare per `trip_id` o `user_id` — mai query globali su tabelle tenant
 - RLS come seconda linea di difesa, non unica — la logica applicativa deve già filtrare
-- `requireTripEditor(tripId)` in `lib/dal/auth.ts` — usare sempre nei route handler
+- Guard di autorizzazione in `lib/api/guards.ts` (es. `requireTripEditor(tripId)`) — lanciano `ApiError`, usare sempre nei route handler
 
 **Tipi e nullable:**
-- `booking` in `activities` è `boolean | string | null` — riflette evoluzione storica, non cambiare senza migrazione
+- `booking` in `activities` è `text | null`; i campi di scheduling/timeline (slot/time/position/type/fuzzy/booking_status/bridge_*) vivono su `scheduled_activities`, non su `activities`
 - Preferire `NOT NULL DEFAULT` a nullable quando semanticamente possibile
 - Timestamp sempre con timezone (`TIMESTAMPTZ`), mai `TIMESTAMP`
 
@@ -56,7 +58,7 @@ Per ogni modifica allo schema:
 [ ] Migrazione scritta in supabase/migrations/ con timestamp
 [ ] Migrazione reversibile (UP + DOWN) o documentata come irreversibile
 [ ] RLS policy aggiornata per la nuova tabella/colonna
-[ ] Tipi TypeScript aggiornati in lib/dal/types.ts e nel Repository
+[ ] Tipi TypeScript aggiornati in lib/dal/types.ts e nella classe lib/dal/entities/*
 [ ] Indici aggiunti per FK e colonne usate in WHERE/ORDER BY frequenti
 [ ] Nessun dato sensibile in colonne senza RLS
 [ ] Tested su branch Supabase separato prima di applicare a produzione
@@ -104,8 +106,8 @@ Quando analizzi una query lenta:
   Fix: SQL corretto
 
 ### Ottimizzazioni consigliate
-- Indice mancante su activities(day_id): `CREATE INDEX ...`
-- Query N+1 in DayRepository.findWithActivities: refactor con JOIN
+- Indice mancante su scheduled_activities(day_id): `CREATE INDEX ...`
+- Query N+1 in lib/dal/entities/Trips.getSnapshot: refactor con batch fetch/JOIN
 
 ### Migrazioni necessarie
 - [ ] 20260520_add_index_activities_day_id.sql

@@ -41,6 +41,7 @@ Sei un esperto frontend specializzato nel progetto TravelGo. Conosci a fondo lo 
 - Touch targets: minimo `p-1.5`, non usare `opacity-0 group-hover:opacity-100` per azioni su touch — usa `opacity-30 hover:opacity-100 focus:opacity-100`
 
 ## Flusso di lavoro
-1. Dopo ogni modifica: `npm run typecheck` — zero errori prima di committare
-2. `git add -A && git commit -m "..." && git push` sul branch `debug`
+1. Dopo ogni modifica: `npm run typecheck` e `npm run lint` — zero errori nuovi prima di committare
+2. Non committare/pushare senza che l'utente lo chieda; usa il branch corrente, non `main` direttamente
 3. Non eseguire `npm install` dentro le cartelle utente (symlink `.bin/` falliscono)
+4. Le risposte API hanno envelope unica `{ data }` / `{ error }`: leggi sempre `json.data` nei `fetch`
