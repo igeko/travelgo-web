@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { getTrip, getTripDays } from "@/lib/dal/trips";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { AppHeader } from "@/features/app/AppHeader";
 
 export default async function TripOverviewPage({
@@ -9,11 +8,8 @@ export default async function TripOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [trip, days, supabase] = await Promise.all([
-    getTrip(id),
-    getTripDays(id),
-    getServerClient(),
-  ]);
+  const dal = await serverDal();
+  const [trip, days] = await Promise.all([dal.trips.getTrip(id), dal.trips.getDays(id)]);
 
   if (!trip) notFound();
 
@@ -24,7 +20,7 @@ export default async function TripOverviewPage({
   let isDev = false;
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: user } = await dal.users.getCurrentUser();
     if (user) {
       isLoggedIn = true;
       fullName = user.user_metadata?.full_name ?? user.email ?? "";
@@ -34,13 +30,7 @@ export default async function TripOverviewPage({
         .map((w: string) => w[0]?.toUpperCase() ?? "")
         .slice(0, 2)
         .join("");
-      const { data: roleRow } = await supabase
-        .from("user_platform_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "dev")
-        .maybeSingle();
-      isDev = !!roleRow;
+      isDev = await dal.users.hasPlatformRole(user.id, ["dev"]);
     }
   } catch { /* env mancanti */ }
 

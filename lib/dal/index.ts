@@ -1,8 +1,19 @@
 /**
  * lib/dal/index.ts
  * ─────────────────────────────────────────────────────────────────
- * DAL entry point — exports everything and provides two factory
- * functions that wire up all repositories with the right client.
+ * DAL entry point — exports everything and provides factory functions
+ * that wire up the entity classes with the right Supabase client.
+ *
+ * One class per domain entity:
+ *   dal.trips       Trips       trips + days + scheduling (scheduled_activities)
+ *   dal.activities  Activities  activities + sections + sidebar + search
+ *   dal.budget      Budget      budget_items
+ *   dal.members     Membership  trip_members + trip_invites
+ *   dal.photos      Media       photos
+ *   dal.journal     Journal     journal_entries
+ *   dal.users       Users       auth + profiles + user_platform_roles
+ *   dal.catalog     Catalog     import_jobs + catalog_places (admin)
+ *   dal.feedback    Feedback    tester_notes (admin)
  *
  * Usage in a Server Component / Route Handler:
  *   import { serverDal } from "@/lib/dal";
@@ -12,73 +23,80 @@
  * Usage in a Client Component:
  *   import { browserDal } from "@/lib/dal";
  *   const dal = browserDal();
- *   const { data, error } = await dal.activities.listByDay(dayId);
+ *
+ * Service-role (after the route has checked auth + authorization):
+ *   import { serviceDal } from "@/lib/dal";
+ *   const dal = serviceDal();
  * ─────────────────────────────────────────────────────────────────
  */
 
 export * from "./types";
+export * from "./tables";
+export * from "./domain";
 export * from "./supabase";
 
-export { TripRepository }      from "./TripRepository";
-export { DayRepository }       from "./DayRepository";
-export { ActivityRepository }  from "./ActivityRepository";
-// ScheduledActivityRepository lives on `main` (work in progress) — wire it
-// up here when that work lands. The DAL still works without it; route
-// handlers query scheduled_activities directly through the server client.
-export { BudgetRepository }    from "./BudgetRepository";
-export { MemberRepository }    from "./MemberRepository";
-export { InviteRepository }    from "./InviteRepository";
-export { PhotoRepository }     from "./PhotoRepository";
-export { JournalRepository }   from "./JournalRepository";
-export { UserRepository }      from "./UserRepository";
+export { Trips }       from "./entities/Trips";
+export { Activities }  from "./entities/Activities";
+export { Budget }      from "./entities/Budget";
+export { Membership }  from "./entities/Membership";
+export { Media }       from "./entities/Media";
+export { Journal }     from "./entities/Journal";
+export { Users }       from "./entities/Users";
+export { Catalog }     from "./entities/Catalog";
+export { Feedback }    from "./entities/Feedback";
 
-export type { CreateTripInput, UpdateTripInput }               from "./TripRepository";
-export type { CreateDayInput, UpdateDayInput }                 from "./DayRepository";
-export type { CreateActivityInput, UpdateActivityInput,
-              ActivityWithSections }                           from "./ActivityRepository";
-export type { CreateBudgetItemInput, UpdateBudgetItemInput,
-              BudgetSummary }                                   from "./BudgetRepository";
-export type { CreateInviteInput }                              from "./InviteRepository";
-export type { CreatePhotoInput, UpdatePhotoInput }             from "./PhotoRepository";
-export type { CreateJournalEntryInput, UpdateJournalEntryInput } from "./JournalRepository";
-export type { UserProfile, UpdateProfileInput }                from "./UserRepository";
+export type {
+  CreateTripInput, UpdateTripInput,
+  CreateDayInput, UpdateDayInput,
+  ScheduleActivityInput, UpdateScheduleInput,
+} from "./entities/Trips";
+export type {
+  CreateActivityInput, UpdateActivityInput, ActivityWithSections,
+  ActivitySearchInput, ActivitySearchResult,
+} from "./entities/Activities";
+export type { CreateBudgetItemInput, UpdateBudgetItemInput, BudgetSummary } from "./entities/Budget";
+export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";
+export type { CreatePhotoInput, UpdatePhotoInput } from "./entities/Media";
+export type { CreateJournalEntryInput, UpdateJournalEntryInput } from "./entities/Journal";
+export type { UserProfile, UpdateProfileInput } from "./entities/Users";
+export type { CreateTesterNoteInput } from "./entities/Feedback";
 
-// ── DAL factory types ─────────────────────────────────────────────
+// ── DAL factory ───────────────────────────────────────────────────
 
-import { getBrowserClient, getServerClient } from "./supabase";
-import { TripRepository }       from "./TripRepository";
-import { DayRepository }        from "./DayRepository";
-import { ActivityRepository }   from "./ActivityRepository";
-import { BudgetRepository }     from "./BudgetRepository";
-import { MemberRepository }     from "./MemberRepository";
-import { InviteRepository }     from "./InviteRepository";
-import { PhotoRepository }      from "./PhotoRepository";
-import { JournalRepository }    from "./JournalRepository";
-import { UserRepository }       from "./UserRepository";
+import { getBrowserClient, getServerClient, getServiceClient, type SupabaseClient } from "./supabase";
+import { Trips }       from "./entities/Trips";
+import { Activities }  from "./entities/Activities";
+import { Budget }      from "./entities/Budget";
+import { Membership }  from "./entities/Membership";
+import { Media }       from "./entities/Media";
+import { Journal }     from "./entities/Journal";
+import { Users }       from "./entities/Users";
+import { Catalog }     from "./entities/Catalog";
+import { Feedback }    from "./entities/Feedback";
 
 export type Dal = {
-  trips:        TripRepository;
-  days:         DayRepository;
-  activities:   ActivityRepository;
-  budget:       BudgetRepository;
-  members:      MemberRepository;
-  invites:      InviteRepository;
-  photos:       PhotoRepository;
-  journal:      JournalRepository;
-  users:        UserRepository;
+  trips:      Trips;
+  activities: Activities;
+  budget:     Budget;
+  members:    Membership;
+  photos:     Media;
+  journal:    Journal;
+  users:      Users;
+  catalog:    Catalog;
+  feedback:   Feedback;
 };
 
-function buildDal(client: Awaited<ReturnType<typeof getBrowserClient>>): Dal {
+function buildDal(client: SupabaseClient): Dal {
   return {
-    trips:        new TripRepository(client),
-    days:         new DayRepository(client),
-    activities:   new ActivityRepository(client),
-    budget:       new BudgetRepository(client),
-    members:      new MemberRepository(client),
-    invites:      new InviteRepository(client),
-    photos:       new PhotoRepository(client),
-    journal:      new JournalRepository(client),
-    users:        new UserRepository(client),
+    trips:      new Trips(client),
+    activities: new Activities(client),
+    budget:     new Budget(client),
+    members:    new Membership(client),
+    photos:     new Media(client),
+    journal:    new Journal(client),
+    users:      new Users(client),
+    catalog:    new Catalog(client),
+    feedback:   new Feedback(client),
   };
 }
 
@@ -88,7 +106,7 @@ function buildDal(client: Awaited<ReturnType<typeof getBrowserClient>>): Dal {
  */
 export async function serverDal(): Promise<Dal> {
   const client = await getServerClient();
-  return buildDal(client as Parameters<typeof buildDal>[0]);
+  return buildDal(client);
 }
 
 /**
@@ -96,6 +114,15 @@ export async function serverDal(): Promise<Dal> {
  * Use in Client Components and client-side event handlers.
  */
 export function browserDal(): Dal {
-  const client = getBrowserClient();
+  const client = getBrowserClient() as unknown as SupabaseClient;
+  return buildDal(client);
+}
+
+/**
+ * Service-role DAL — bypasses RLS. Callers MUST verify auth and
+ * authorization before using this. Server-only.
+ */
+export function serviceDal(): Dal {
+  const client = getServiceClient() as unknown as SupabaseClient;
   return buildDal(client);
 }

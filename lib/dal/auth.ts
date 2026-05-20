@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/dal/supabase";
+import { MembershipTable, ActivityTable, TripTable, UserTable } from "@/lib/dal/tables";
 import { NextResponse } from "next/server";
 
 /** Highest-privilege platform roles — can edit fix_notes, change tester-notes status, etc. */
@@ -25,7 +26,7 @@ async function checkTripRole(
   }
 
   const { data } = await supabase
-    .from("trip_members")
+    .from(MembershipTable.Members)
     .select("role")
     .eq("trip_id", tripId)
     .eq("user_id", user.id)
@@ -58,7 +59,7 @@ export function requireTripMember(tripId: string): Promise<AuthResult> {
 async function resolveActivityTripId(activityId: string): Promise<string | null> {
   const supabase = await getServerClient();
   const { data } = await supabase
-    .from("activities")
+    .from(ActivityTable.Activities)
     .select("trip_id")
     .eq("id", activityId)
     .maybeSingle();
@@ -68,7 +69,7 @@ async function resolveActivityTripId(activityId: string): Promise<string | null>
 async function resolveDayTripId(dayId: string): Promise<string | null> {
   const supabase = await getServerClient();
   const { data } = await supabase
-    .from("days")
+    .from(TripTable.Days)
     .select("trip_id")
     .eq("id", dayId)
     .maybeSingle();
@@ -78,7 +79,7 @@ async function resolveDayTripId(dayId: string): Promise<string | null> {
 async function resolveScheduledActivityDayId(scheduledActivityId: string): Promise<string | null> {
   const supabase = await getServerClient();
   const { data } = await supabase
-    .from("scheduled_activities")
+    .from(TripTable.ScheduledActivities)
     .select("day_id")
     .eq("id", scheduledActivityId)
     .maybeSingle();
@@ -136,7 +137,7 @@ export async function requirePlatformAdmin(): Promise<AuthResult> {
     return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
   const { data } = await supabase
-    .from("user_platform_roles")
+    .from(UserTable.PlatformRoles)
     .select("role")
     .eq("user_id", user.id)
     .eq("role", "admin")

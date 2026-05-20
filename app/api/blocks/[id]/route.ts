@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireActivityEditor } from "@/lib/dal/auth";
-import { ACTIVITY_SELECT } from "@/lib/dal/trips";
 import { parseJsonBody, pickFields, safeHttpUrl } from "@/lib/api/validation";
 
 type Params = { params: Promise<{ id: string }> };
@@ -44,14 +43,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "No valid fields" }, { status: 400 });
   }
 
-  const supabase = await getServerClient();
-
-  const { data, error } = await supabase
-    .from("activities")
-    .update(patch)
-    .eq("id", id)
-    .select(ACTIVITY_SELECT)
-    .single();
+  const dal = await serverDal();
+  const { data, error } = await dal.activities.patchBlock(id, patch);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -66,8 +59,8 @@ export async function DELETE(_req: Request, { params }: Params) {
   const auth = await requireActivityEditor(id);
   if (!auth.ok) return auth.response;
 
-  const supabase = await getServerClient();
-  const { error } = await supabase.from("activities").delete().eq("id", id);
+  const dal = await serverDal();
+  const { error } = await dal.activities.deleteBlock(id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

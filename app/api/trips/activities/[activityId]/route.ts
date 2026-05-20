@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireActivityEditor } from "@/lib/dal/auth";
 
 export async function DELETE(
@@ -11,11 +11,8 @@ export async function DELETE(
   const auth = await requireActivityEditor(activityId);
   if (!auth.ok) return auth.response;
 
-  const supabase = await getServerClient();
-  const { error } = await supabase
-    .from("activities")
-    .delete()
-    .eq("id", activityId);
+  const dal = await serverDal();
+  const { error } = await dal.activities.delete(activityId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -51,13 +48,8 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const supabase = await getServerClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("id", activityId)
-    .select()
-    .single();
+  const dal = await serverDal();
+  const { data, error } = await dal.activities.update(activityId, patch);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

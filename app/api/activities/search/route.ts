@@ -13,15 +13,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireTripMember } from "@/lib/dal/auth";
-
-const SEARCH_SELECT = "id, title, short_desc, location, hero_image, type, slot, day_id, trip_id, fuzzy";
-
-// Escape LIKE wildcards in user input to avoid blind enumeration via `%`/`_`.
-function escapeLikePattern(input: string): string {
-  return input.replace(/([\\%_])/g, "\\$1");
-}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -36,43 +29,8 @@ export async function GET(req: NextRequest) {
   const auth = await requireTripMember(tripId);
   if (!auth.ok) return auth.response;
 
-  const safeQ = q ? escapeLikePattern(q) : "";
-  const supabase = await getServerClient();
+  const dal = await serverDal();
+  const result = await dal.activities.search({ tripId, dayId, query: q });
 
-  // ── Gruppo 1: wishlist (tutte le attività del trip) ─────────────
-  let wishlistQuery = supabase
-    .from("activities")
-    .select(SEARCH_SELECT)
-    .eq("trip_id", tripId)
-    .order("slot", { ascending: true })
-    .order("position", { ascending: true })
-    .limit(30);
-
-  if (safeQ) {
-    wishlistQuery = wishlistQuery.ilike("title", `%${safeQ}%`);
-  }
-
-  const { data: wishlistRaw } = await wishlistQuery;
-
-  const wishlist = (wishlistRaw ?? []).map((a) => ({
-    ...a,
-    in_current_day: dayId ? a.day_id === dayId : false,
-  }));
-
-  // ── Gruppo 2: platform (attività da altri trip, full-text) ───────
-  if (!safeQ) {
-    return NextResponse.json({ wishlist, platform: [] });
-  }
-
-  const { data: platform } = await supabase
-    .from("activities")
-    .select(SEARCH_SELECT)
-    .neq("trip_id", tripId)
-    .ilike("title", `%${safeQ}%`)
-    .limit(20);
-
-  return NextResponse.json({
-    wishlist,
-    platform: platform ?? [],
-  });
+  return NextResponse.json(result);
 }

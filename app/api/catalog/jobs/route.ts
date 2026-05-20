@@ -12,24 +12,14 @@
  */
 
 import { NextRequest, NextResponse }  from 'next/server';
-import { createClient }               from '@supabase/supabase-js';
 import { countPlaces }                from '@/lib/overpass';
 import type { OverpassRetryEvent }    from '@/lib/overpass';
-
-// ── Admin Supabase client ─────────────────────────────────────
-
-function adminDb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
-}
 
 // ── Auth helper ───────────────────────────────────────────────
 
 import { requirePlatformAdmin } from '@/lib/dal/auth';
 import { getServerClient } from '@/lib/dal/supabase';
+import { serviceDal } from '@/lib/dal';
 
 async function requireAdmin() {
   const auth = await requirePlatformAdmin();
@@ -51,11 +41,7 @@ export async function GET() {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data, error } = await adminDb()
-    .from('import_jobs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const { data, error } = await serviceDal().catalog.listJobs(50);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ jobs: data });
@@ -118,19 +104,15 @@ export async function POST(req: NextRequest) {
       const count = await countPlaces({ location, presetIds, notableOnly, onRetry });
 
       // Crea job in stato pending
-      const { data: job, error } = await adminDb()
-        .from('import_jobs')
-        .insert({
-          status:        'pending',
-          filters:       { location, presetIds, notableOnly, enrichWiki },
-          batch_size:    batchSize,
-          auto_continue: autoContinue,
-          import_offset: 0,
-          total_found:   count.total,
-          created_by:    user.id,
-        })
-        .select('*')
-        .single();
+      const { data: job, error } = await serviceDal().catalog.createJob({
+        status:        'pending',
+        filters:       { location, presetIds, notableOnly, enrichWiki },
+        batch_size:    batchSize,
+        auto_continue: autoContinue,
+        import_offset: 0,
+        total_found:   count.total,
+        created_by:    user.id,
+      });
 
       if (error) throw new Error(error.message);
 
@@ -166,11 +148,8 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id richiesto' }, { status: 400 });
 
-  const { error } = await adminDb()
-    .from('import_jobs')
-    .delete()
-    .eq('id', id)
-    .neq('status', 'running'); // non eliminare un job in esecuzione
+  // deleteJob never removes a job that is currently running
+  const { error } = await serviceDal().catalog.deleteJob(id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

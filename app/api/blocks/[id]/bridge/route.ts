@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireActivityEditor } from "@/lib/dal/auth";
-import { ACTIVITY_SELECT } from "@/lib/dal/trips";
-import type { BridgeData } from "@/lib/dal/trips";
+import type { BridgeData } from "@/lib/dal/domain";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,13 +26,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const field = body.direction === "in" ? "bridge_in_json" : "bridge_out_json";
 
-  const supabase = await getServerClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .update({ [field]: body.bridge ?? null })
-    .eq("id", id)
-    .select(ACTIVITY_SELECT)
-    .single();
+  const dal = await serverDal();
+  const { data, error } = await dal.activities.setBridge(id, field, body.bridge ?? null);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -78,6 +78,9 @@ export type DbDay = {
   accommodation_cost_currency: string | null;
   accommodation_cost_paid: boolean;
   image_url: string | null;
+  show_map: boolean;
+  summary: string | null;
+  narrative: unknown | null;   // jsonb
   created_at: string;
   updated_at: string;
 };

@@ -35,6 +35,7 @@ import { NextResponse } from "next/server";
 import { assertSafeUrl, SsrfError } from "@/lib/api/ssrf-guard";
 import { requireTripEditor } from "@/lib/dal/auth";
 import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 
 // ─── Costanti ─────────────────────────────────────────────────────
 
@@ -258,19 +259,16 @@ export async function POST(req: Request) {
   const publicUrl = urlData.publicUrl;
 
   // 9. Metadati foto nel DB
-  const { data: photoRow, error: dbError } = await supabase
-    .from("photos")
-    .insert({
-      trip_id: tripId,
-      storage_path: storagePath,
-      day_id: dayId ?? null,
-      activity_id: activityId ?? null,
-      caption: caption ?? null,
-    })
-    .select("id")
-    .single();
+  const dal = await serverDal();
+  const { data: photoRow, error: dbError } = await dal.photos.create({
+    trip_id: tripId,
+    storage_path: storagePath,
+    day_id: dayId ?? null,
+    activity_id: activityId ?? null,
+    caption: caption ?? null,
+  });
 
-  if (dbError) {
+  if (dbError || !photoRow) {
     // Upload riuscito ma metadati falliti — pulizia orphan file
     await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
     console.error("[media/import-url] db insert error:", dbError);
@@ -283,6 +281,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     storagePath,
     publicUrl,
-    photoId: (photoRow as { id: string }).id,
+    photoId: photoRow.id,
   });
 }

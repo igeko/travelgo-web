@@ -18,7 +18,7 @@ import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { Timeline } from "@/features/activity/Timeline";
 import type { TimelineBlock } from "@/features/activity/types";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 
 /* ─────────────────────────────────────────────────────────────────
    Mock data

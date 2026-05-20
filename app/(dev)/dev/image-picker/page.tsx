@@ -329,7 +329,7 @@ export default function ImagePickerStories() {
     path: (name) => \`trips/\${tripId}/banner/\${name\`,
   }}
   onApply={({ storagePath, publicUrl, width, height }) => {
-    // storagePath → save to DB via PhotoRepository
+    // storagePath → save to DB via dal.photos (Media entity)
     // publicUrl   → update day.imageUrl for immediate display
     updateDayBanner(dayId, { imageUrl: publicUrl, storagePath });
   }}

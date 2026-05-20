@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { IconRefresh, IconSparkles } from "@/components/ui/icons";
-import type { Day, Activity } from "@/lib/dal/trips";
+import type { Day, Activity } from "@/lib/dal/domain";
 import type { DescribeDayActivity } from "@/app/api/ai/describe-day/route";
 import { useDayNarrative } from "./useDayNarrative";
 import { cn } from "@/lib/cn";

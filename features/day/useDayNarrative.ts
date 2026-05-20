@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { DayNarrative, DescribeDayActivity } from "@/app/api/ai/describe-day/route";
-import type { Day } from "@/lib/dal/trips";
+import type { Day } from "@/lib/dal/domain";
 
 /* ─────────────────────────────────────────────────────────────────
    useDayNarrative

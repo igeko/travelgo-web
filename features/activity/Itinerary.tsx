@@ -12,7 +12,7 @@ import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { DayMagazine } from "@/features/day/DayMagazine";
 
 type DayViewMode = "lista" | "timeline" | "racconto";
-import type { Activity, Day } from "@/lib/dal/trips";
+import type { Activity, Day } from "@/lib/dal/domain";
 import type { PlaceResult } from "@/components/ui/AddressField";
 
 const LS_VIEW_MODE_KEY = "day-view-mode";

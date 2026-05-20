@@ -5,7 +5,7 @@ import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { ActivityList } from "@/features/activity/ActivityList";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 
 const STUB: Pick<Activity, "trip_id" | "activity_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng" | "place_enriched" | "booking" | "type" | "fuzzy" | "instance_note" | "booking_status" | "bridge_in_json" | "bridge_out_json" | "entity_id"> = {
   trip_id: "trip-1",

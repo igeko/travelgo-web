@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTripMember } from "@/lib/dal/auth";
-import { getTripSnapshot } from "@/lib/dal/trips";
+import { serverDal } from "@/lib/dal";
 
 export async function GET(
   _req: Request,
@@ -11,7 +11,8 @@ export async function GET(
   const auth = await requireTripMember(id);
   if (!auth.ok) return auth.response;
 
-  const snapshot = await getTripSnapshot(id);
+  const dal = await serverDal();
+  const snapshot = await dal.trips.getSnapshot(id);
   if (!snapshot) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

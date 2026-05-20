@@ -15,7 +15,7 @@ import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { cn } from "@/lib/cn";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
-import type { Trip, Day, Activity } from "@/lib/dal/trips";
+import type { Trip, Day, Activity } from "@/lib/dal/domain";
 
 /* ─── helpers ─── */
 function localDate(iso: string) {

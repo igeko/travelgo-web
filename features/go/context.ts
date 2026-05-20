@@ -11,7 +11,7 @@
  */
 
 import type { DbTrip, DbDay, ActivitySlot } from "@/lib/dal/types";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 
 /* ─────────────────────────────────────────────────────────────────
    Input types

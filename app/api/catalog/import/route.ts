@@ -18,27 +18,17 @@
  */
 
 import { NextRequest }        from 'next/server';
-import { createClient }       from '@supabase/supabase-js';
 import OpenAI                 from 'openai';
 import { searchPlaces, buildEmbedText, PlaceBasic } from '@/lib/overpass';
 import { enrichFromWiki }     from '@/lib/wikipedia';
 import { requirePlatformAdmin } from '@/lib/dal/auth';
 import { getServerClient }    from '@/lib/dal/supabase';
+import { serviceDal }         from '@/lib/dal';
 
 // ── SSE helper ────────────────────────────────────────────────
 
 function sseEvent(data: Record<string, unknown>): string {
   return `data: ${JSON.stringify(data)}\n\n`;
-}
-
-// ── Supabase admin client ─────────────────────────────────────
-
-function adminDb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
 }
 
 // ── Route handler ─────────────────────────────────────────────
@@ -61,13 +51,9 @@ export async function POST(req: NextRequest) {
 
   // ── Carica job ────────────────────────────────────────────
   const { jobId } = await req.json() as { jobId: string };
-  const db = adminDb();
+  const dal = serviceDal();
 
-  const { data: job, error: jobErr } = await db
-    .from('import_jobs')
-    .select('*')
-    .eq('id', jobId)
-    .single();
+  const { data: job, error: jobErr } = await dal.catalog.getJob(jobId);
 
   if (jobErr || !job) {
     return new Response(sseEvent({ type: 'error', message: 'Job non trovato' }), {
@@ -88,9 +74,9 @@ export async function POST(req: NextRequest) {
     notableOnly: boolean;
     enrichWiki:  boolean;
   };
-  const batchSize:    number  = job.batch_size    ?? 500;
-  const importOffset: number  = job.import_offset ?? 0;
-  const totalFound:   number  = job.total_found   ?? 0;
+  const batchSize:    number  = (job.batch_size    as number | null) ?? 500;
+  const importOffset: number  = (job.import_offset as number | null) ?? 0;
+  const totalFound:   number  = (job.total_found   as number | null) ?? 0;
 
   // ── SSE stream ────────────────────────────────────────────
   const { readable, writable } = new TransformStream();
@@ -108,9 +94,10 @@ export async function POST(req: NextRequest) {
 
     try {
       // Segna running
-      await db.from('import_jobs')
-        .update({ status: 'running', started_at: new Date().toISOString() })
-        .eq('id', jobId);
+      await dal.catalog.updateJob(jobId, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+      });
 
       await send({
         type: 'progress',
@@ -157,29 +144,25 @@ export async function POST(req: NextRequest) {
           await new Promise((r) => setTimeout(r, 100));
         }
 
-        const { data: inserted } = await db
-          .from('catalog_places')
-          .upsert({
-            name:          p.name,
-            country:       p.tags['addr:country'] ?? null,
-            country_code:  null,
-            city:          p.tags['addr:city']    ?? null,
-            address:       null,
-            category:      p.category,
-            kinds:         [p.mainTag, p.category].filter(Boolean),
-            description:   description ?? null,
-            rating:        null,
-            cover_image:   coverImage  ?? null,
-            lat:           p.lat,
-            lng:           p.lng,
-            source:        'osm',
-            source_id:     `${p.osmType}/${p.osmId}`,
-            wikidata:      p.tags.wikidata  ?? null,
-            wikipedia:     wikipedia        ?? null,
-            import_job_id: jobId,
-          }, { onConflict: 'source,source_id' })
-          .select('id')
-          .single();
+        const { data: inserted } = await dal.catalog.upsertPlace({
+          name:          p.name,
+          country:       p.tags['addr:country'] ?? null,
+          country_code:  null,
+          city:          p.tags['addr:city']    ?? null,
+          address:       null,
+          category:      p.category,
+          kinds:         [p.mainTag, p.category].filter(Boolean),
+          description:   description ?? null,
+          rating:        null,
+          cover_image:   coverImage  ?? null,
+          lat:           p.lat,
+          lng:           p.lng,
+          source:        'osm',
+          source_id:     `${p.osmType}/${p.osmId}`,
+          wikidata:      p.tags.wikidata  ?? null,
+          wikipedia:     wikipedia        ?? null,
+          import_job_id: jobId,
+        });
 
         if (inserted?.id) {
           batchSaved++;
@@ -193,9 +176,7 @@ export async function POST(req: NextRequest) {
               model: 'text-embedding-3-small', input: toEmbed.map((x) => x.text), dimensions: 512,
             });
             for (let j = 0; j < toEmbed.length; j++) {
-              await db.from('catalog_places').update({
-                embedding: res.data[j].embedding, embedded_at: new Date().toISOString(),
-              }).eq('id', toEmbed[j].id);
+              await dal.catalog.setPlaceEmbedding(toEmbed[j].id, res.data[j].embedding);
             }
             batchEmbedded += toEmbed.length;
           } catch (e) {
@@ -219,17 +200,17 @@ export async function POST(req: NextRequest) {
       const isComplete = newOffset >= totalFound || batch.length < batchSize;
 
       // Aggiorna totali cumulativi
-      const prev = await db.from('import_jobs').select('total_saved,total_embedded').eq('id', jobId).single();
+      const prev = await dal.catalog.getJobTotals(jobId);
       const prevSaved    = prev.data?.total_saved    ?? 0;
       const prevEmbedded = prev.data?.total_embedded ?? 0;
 
-      await db.from('import_jobs').update({
+      await dal.catalog.updateJob(jobId, {
         status:         isComplete ? 'done' : 'paused',
         import_offset:  newOffset,
         total_saved:    prevSaved    + batchSaved,
         total_embedded: prevEmbedded + batchEmbedded,
         completed_at:   isComplete ? new Date().toISOString() : null,
-      }).eq('id', jobId);
+      });
 
       await send({
         type: 'done',
@@ -243,7 +224,7 @@ export async function POST(req: NextRequest) {
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
-      await db.from('import_jobs').update({ status: 'error' }).eq('id', jobId);
+      await dal.catalog.updateJob(jobId, { status: 'error' });
       await send({ type: 'error', message: msg });
     } finally {
       writer.close();

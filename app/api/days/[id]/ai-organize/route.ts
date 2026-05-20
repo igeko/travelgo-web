@@ -10,9 +10,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireDayEditor } from "@/lib/dal/auth";
-import { ACTIVITY_SELECT } from "@/lib/dal/trips";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -36,14 +35,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const auth = await requireDayEditor(dayId);
   if (!auth.ok) return auth.response;
 
-  const supabase = await getServerClient();
+  const dal = await serverDal();
 
   // Leggi i blocchi del giorno
-  const { data: blocks, error } = await supabase
-    .from("activities")
-    .select(ACTIVITY_SELECT)
-    .eq("day_id", dayId)
-    .order("position", { ascending: true });
+  const { data: blocks, error } = await dal.activities.listBlocksByDay(dayId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!blocks || blocks.length === 0) {
@@ -93,23 +88,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ blocks });
   }
 
-  // Applica le nuove position + slot in batch
-  const updates = reordered.map((r) =>
-    supabase
-      .from("activities")
-      .update({ position: r.position, slot: r.slot })
-      .eq("id", r.id)
-      .eq("day_id", dayId) // safety: non tocca altri giorni
-  );
-
-  await Promise.all(updates);
+  // Applica le nuove position + slot in batch (scoped al giorno corrente)
+  await dal.activities.reorderBlocks(dayId, reordered);
 
   // Rileggi i blocchi aggiornati
-  const { data: updated } = await supabase
-    .from("activities")
-    .select(ACTIVITY_SELECT)
-    .eq("day_id", dayId)
-    .order("position", { ascending: true });
+  const { data: updated } = await dal.activities.listBlocksByDay(dayId);
 
   return NextResponse.json({ blocks: updated ?? [] });
 }

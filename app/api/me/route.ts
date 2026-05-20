@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
+import { serverDal, serviceDal } from "@/lib/dal";
 
 export async function GET() {
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const dal = await serverDal();
+  const { data: user } = await dal.users.getCurrentUser();
   if (!user) return NextResponse.json({ user: null, roles: [] });
 
-  const { data: rows } = await getServiceClient()
-    .from("user_platform_roles")
-    .select("role")
-    .eq("user_id", user.id);
-
-  const roles = (rows ?? []).map((r: { role: string }) => r.role);
+  const roles = await serviceDal().users.getPlatformRoles(user.id);
 
   return NextResponse.json({
     user: {

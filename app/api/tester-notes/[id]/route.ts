@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
+import { serverDal, serviceDal } from "@/lib/dal";
 import { ADMIN_ROLES } from "@/lib/dal/auth";
 
 const VALID_STATUSES = ["proposed", "approved", "in_progress", "to_be_tested", "done", "archived"];
@@ -7,11 +7,11 @@ const VALID_STATUSES = ["proposed", "approved", "in_progress", "to_be_tested", "
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const dal = await serverDal();
+  const { data: user } = await dal.users.getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const db = getServiceClient();
+  const svc = serviceDal();
 
   const body = await req.json();
   const { status, note, fix_notes } = body;
@@ -20,13 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // status e fix_notes: solo admin/dev
   if (status !== undefined || fix_notes !== undefined) {
-    const { data: adminRoles } = await db
-      .from("user_platform_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ADMIN_ROLES);
-
-    if (!adminRoles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const isAdmin = await svc.users.hasPlatformRole(user.id, ADMIN_ROLES);
+    if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     if (status !== undefined) {
       if (!VALID_STATUSES.includes(status)) {
@@ -44,22 +39,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (note !== undefined) {
     if (!note?.trim()) return NextResponse.json({ error: "Note cannot be empty" }, { status: 400 });
 
-    const { data: noteData } = await db
-      .from("tester_notes")
-      .select("user_id")
-      .eq("id", id)
-      .single();
+    const authorId = await svc.feedback.getAuthorId(id);
+    if (!authorId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    if (!noteData) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    const isAuthor = noteData.user_id === user.id;
+    const isAuthor = authorId === user.id;
     if (!isAuthor) {
-      const { data: adminRoles } = await db
-        .from("user_platform_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .in("role", ADMIN_ROLES);
-      if (!adminRoles?.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const isAdmin = await svc.users.hasPlatformRole(user.id, ADMIN_ROLES);
+      if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     updates.note = note.trim();
@@ -69,10 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { error } = await db
-    .from("tester_notes")
-    .update(updates)
-    .eq("id", id);
+  const { error } = await svc.feedback.update(id, updates);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

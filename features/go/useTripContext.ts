@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 import { getGoContext, type GoFocus, type TripInfo } from "./context";
 
 type UseTripContextResult = {

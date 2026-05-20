@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireDayEditor } from "@/lib/dal/auth";
 import { parseJsonBody, pickFields, safeHttpUrl } from "@/lib/api/validation";
 
@@ -42,11 +42,8 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const supabase = await getServerClient();
-  const { error } = await supabase
-    .from("days")
-    .update(patch)
-    .eq("id", dayId);
+  const dal = await serverDal();
+  const { error } = await dal.trips.patchDay(dayId, patch);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

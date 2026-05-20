@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const dal = await serverDal();
+  const { data: user } = await dal.users.getCurrentUser();
   if (!user) redirect("/login");
 
   const fullName = user.user_metadata?.full_name ?? user.email ?? "";
@@ -20,12 +20,7 @@ export default async function ProfilePage() {
     .join("");
 
   // Roles
-  const { data: roleRows, error: rolesError } = await supabase
-    .from("user_platform_roles")
-    .select("role")
-    .eq("user_id", user.id);
-  console.log("[profile] roleRows:", roleRows, "error:", rolesError);
-  const roles: string[] = (roleRows ?? []).map((r: { role: string }) => r.role);
+  const roles: string[] = await dal.users.getPlatformRoles(user.id);
 
   const joinedAt = new Date(user.created_at).toLocaleDateString("it-IT", {
     day: "numeric", month: "long", year: "numeric",

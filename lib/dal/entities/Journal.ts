@@ -1,14 +1,13 @@
 /**
- * lib/dal/JournalRepository.ts
+ * lib/dal/entities/Journal.ts
  * ─────────────────────────────────────────────────────────────────
- * All DB access for `journal_entries`.
+ * The Journal entity — all DB access for `journal_entries`.
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { SupabaseClient } from "./supabase";
-import { DalError, type DalResult, type DbJournalEntry } from "./types";
-
-// ── Input types ───────────────────────────────────────────────────
+import type { SupabaseClient } from "../supabase";
+import { JournalTable } from "../tables";
+import { DalError, type DalResult, type DbJournalEntry } from "../types";
 
 export type CreateJournalEntryInput = {
   trip_id: string;
@@ -23,14 +22,12 @@ export type UpdateJournalEntryInput = {
   mood?: string | null;
 };
 
-// ── Repository ────────────────────────────────────────────────────
-
-export class JournalRepository {
+export class Journal {
   constructor(private readonly db: SupabaseClient) {}
 
   async listByTrip(tripId: string): Promise<DalResult<DbJournalEntry[]>> {
     const { data, error } = await this.db
-      .from("journal_entries")
+      .from(JournalTable.Entries)
       .select("*")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false });
@@ -41,7 +38,7 @@ export class JournalRepository {
 
   async listByDay(dayId: string): Promise<DalResult<DbJournalEntry[]>> {
     const { data, error } = await this.db
-      .from("journal_entries")
+      .from(JournalTable.Entries)
       .select("*")
       .eq("day_id", dayId)
       .order("created_at", { ascending: true });
@@ -52,7 +49,7 @@ export class JournalRepository {
 
   async findById(id: string): Promise<DalResult<DbJournalEntry>> {
     const { data, error } = await this.db
-      .from("journal_entries")
+      .from(JournalTable.Entries)
       .select("*")
       .eq("id", id)
       .single();
@@ -63,7 +60,7 @@ export class JournalRepository {
 
   async create(input: CreateJournalEntryInput): Promise<DalResult<DbJournalEntry>> {
     const { data, error } = await this.db
-      .from("journal_entries")
+      .from(JournalTable.Entries)
       .insert(input)
       .select()
       .single();
@@ -77,7 +74,7 @@ export class JournalRepository {
     input: UpdateJournalEntryInput,
   ): Promise<DalResult<DbJournalEntry>> {
     const { data, error } = await this.db
-      .from("journal_entries")
+      .from(JournalTable.Entries)
       .update({ ...input, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select()
@@ -88,11 +85,7 @@ export class JournalRepository {
   }
 
   async delete(id: string): Promise<DalResult<true>> {
-    const { error } = await this.db
-      .from("journal_entries")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await this.db.from(JournalTable.Entries).delete().eq("id", id);
     if (error) return { data: null, error: new DalError(error.message, error.code) };
     return { data: true, error: null };
   }

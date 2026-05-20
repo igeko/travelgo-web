@@ -1,4 +1,4 @@
-import type { Activity, BlockType, BookingStatus, BridgeData } from "@/lib/dal/trips";
+import type { Activity, BlockType, BookingStatus, BridgeData } from "@/lib/dal/domain";
 
 export type { BlockType, BookingStatus, BridgeData };
 

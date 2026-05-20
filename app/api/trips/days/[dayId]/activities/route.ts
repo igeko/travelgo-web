@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDayActivities } from "@/lib/dal/trips";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireDayEditor, requireDayMember } from "@/lib/dal/auth";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ dayId: string }> }) {
@@ -9,7 +8,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ dayId: 
   const auth = await requireDayMember(dayId);
   if (!auth.ok) return auth.response;
 
-  const activities = await getDayActivities(dayId);
+  const dal = await serverDal();
+  const activities = await dal.trips.getDayActivities(dayId);
   return NextResponse.json(activities);
 }
 
@@ -23,22 +23,17 @@ export async function POST(
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
-  const supabase = await getServerClient();
+  const dal = await serverDal();
 
   // Resolve trip_id from day
-  const { data: day } = await supabase
-    .from("days")
-    .select("trip_id")
-    .eq("id", dayId)
-    .single();
-
-  if (!day) {
+  const tripId = await dal.trips.tripIdForDay(dayId);
+  if (!tripId) {
     return NextResponse.json({ error: "Day not found" }, { status: 404 });
   }
 
   // 1. CREATE activity entity (instance fields booking/budget/notes now live here)
   const activityInsert: Record<string, unknown> = {
-    trip_id: day.trip_id,
+    trip_id: tripId,
     title: body.title ?? "New activity",
   };
 
@@ -53,14 +48,10 @@ export async function POST(
     if (key in body) activityInsert[key] = body[key];
   }
 
-  const { data: activity, error: actError } = await supabase
-    .from("activities")
-    .insert(activityInsert)
-    .select()
-    .single();
+  const { data: activity, error: actError } = await dal.activities.create(activityInsert);
 
-  if (actError) {
-    return NextResponse.json({ error: actError.message }, { status: 500 });
+  if (actError || !activity) {
+    return NextResponse.json({ error: actError?.message ?? "Failed to create activity" }, { status: 500 });
   }
 
   // 2. CREATE scheduled_activity instance (only slot/time/position)
@@ -68,21 +59,16 @@ export async function POST(
     activity_id: activity.id,
     day_id: dayId,
   };
-
   const scheduledFields = ["slot", "time", "position"] as const;
   for (const key of scheduledFields) {
     if (key in body) scheduledInsert[key] = body[key];
   }
 
-  const { data: scheduled, error: saError } = await supabase
-    .from("scheduled_activities")
-    .insert(scheduledInsert)
-    .select("id, activity_id, day_id, slot, position, time, created_at, updated_at")
-    .single();
+  const { data: scheduled, error: saError } = await dal.trips.scheduleActivity(scheduledInsert);
 
-  if (saError) {
-    await supabase.from("activities").delete().eq("id", activity.id);
-    return NextResponse.json({ error: saError.message }, { status: 500 });
+  if (saError || !scheduled) {
+    await dal.activities.delete(activity.id);
+    return NextResponse.json({ error: saError?.message ?? "Failed to schedule activity" }, { status: 500 });
   }
 
   // Combined response for backward compat with the existing UI shape.

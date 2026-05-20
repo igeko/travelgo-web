@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconCircleMinus, IconPencil, IconX } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
-import type { BridgeData } from "@/lib/dal/trips";
+import type { BridgeData } from "@/lib/dal/domain";
 import { TRANSPORT_ICON } from "./icons";
 
 type BridgeTransport = BridgeData["transport"];

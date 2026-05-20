@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { SlotStation } from "./SlotStation";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 
 const SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
 

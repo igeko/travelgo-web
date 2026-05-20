@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/dal/supabase";
+import { serverDal } from "@/lib/dal";
 import { requireDayEditor, requireDayMember } from "@/lib/dal/auth";
-import { ACTIVITY_SELECT } from "@/lib/dal/trips";
 import { parseJsonBody, safeHttpUrl } from "@/lib/api/validation";
 
 type Params = { params: Promise<{ id: string }> };
@@ -17,13 +16,8 @@ export async function GET(_req: Request, { params }: Params) {
   const auth = await requireDayMember(dayId);
   if (!auth.ok) return auth.response;
 
-  const supabase = await getServerClient();
-
-  const { data, error } = await supabase
-    .from("activities")
-    .select(ACTIVITY_SELECT)
-    .eq("day_id", dayId)
-    .order("position", { ascending: true });
+  const dal = await serverDal();
+  const { data, error } = await dal.activities.listBlocksByDay(dayId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -52,31 +46,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.body as Record<string, unknown>;
 
-  const supabase = await getServerClient();
+  const dal = await serverDal();
 
-  const { data: day } = await supabase
-    .from("days")
-    .select("trip_id")
-    .eq("id", dayId)
-    .single();
-
-  if (!day) return NextResponse.json({ error: "Day not found" }, { status: 404 });
+  const tripId = await dal.trips.tripIdForDay(dayId);
+  if (!tripId) return NextResponse.json({ error: "Day not found" }, { status: 404 });
 
   const slot = typeof body.slot === "string" && SLOT_VALUES.has(body.slot) ? body.slot : "morning";
 
-  const { data: last } = await supabase
-    .from("activities")
-    .select("position")
-    .eq("day_id", dayId)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const nextPosition = (last?.position ?? 0) + 1;
+  const nextPosition = await dal.activities.nextBlockPosition(dayId);
 
   const insert: Record<string, unknown> = {
     day_id: dayId,
-    trip_id: day.trip_id,
+    trip_id: tripId,
     title:    typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 200) : "Nuovo blocco",
     type:     typeof body.type === "string" ? body.type : "place",
     fuzzy:    body.fuzzy === true,
@@ -105,11 +86,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  const { data: created, error } = await supabase
-    .from("activities")
-    .insert(insert)
-    .select(ACTIVITY_SELECT)
-    .single();
+  const { data: created, error } = await dal.activities.createBlock(insert);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

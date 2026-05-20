@@ -7,7 +7,7 @@ import { TripDayView } from "./TripDayView";
 import { useUser } from "@/features/app/UserContext";
 import { useTripRealtime } from "@/hooks/useTripRealtime";
 import { TripViewers } from "@/features/trip/TripViewers";
-import type { Trip, Day, Activity } from "@/lib/dal/trips";
+import type { Trip, Day, Activity } from "@/lib/dal/domain";
 
 function EmptyTripState({ trip }: { trip: Trip }) {
   const t = useTranslations("TripShell");

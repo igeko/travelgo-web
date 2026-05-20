@@ -33,7 +33,7 @@ import type {
   SearchResult,
   NewBlockPayload,
 } from "./types";
-import type { BridgeData, BlockType } from "@/lib/dal/trips";
+import type { BridgeData, BlockType } from "@/lib/dal/domain";
 import { SLOT_ORDER } from "./types";
 import { BridgeEditor } from "./Timeline/BridgeEditor";
 import { TYPE_ICON, TRANSPORT_ICON } from "./Timeline/icons";

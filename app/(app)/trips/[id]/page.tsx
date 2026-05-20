@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getTrip, getTripDays, getDayActivities } from "@/lib/dal/trips";
+import { serverDal } from "@/lib/dal";
 import { TripShell } from "./TripShell";
 
 export default async function TripPage({
@@ -12,7 +12,8 @@ export default async function TripPage({
   const { id } = await params;
   const { day: dayParam } = await searchParams;
 
-  const [trip, days] = await Promise.all([getTrip(id), getTripDays(id)]);
+  const dal = await serverDal();
+  const [trip, days] = await Promise.all([dal.trips.getTrip(id), dal.trips.getDays(id)]);
   if (!trip) notFound();
 
   const dayNumber = dayParam ? parseInt(dayParam, 10) : NaN;
@@ -20,7 +21,7 @@ export default async function TripPage({
     (!isNaN(dayNumber) && days.find((d) => d.day_number === dayNumber)) ||
     days[0] ||
     null;
-  const initialActivities = initialDay ? await getDayActivities(initialDay.id) : [];
+  const initialActivities = initialDay ? await dal.trips.getDayActivities(initialDay.id) : [];
 
   return (
     <TripShell

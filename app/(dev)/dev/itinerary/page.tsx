@@ -5,7 +5,7 @@ import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { Itinerary } from "@/features/activity/Itinerary";
-import type { Activity } from "@/lib/dal/trips";
+import type { Activity } from "@/lib/dal/domain";
 
 const SAMPLE_ACTIVITIES = [
   {

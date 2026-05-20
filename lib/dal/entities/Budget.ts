@@ -1,19 +1,18 @@
 /**
- * lib/dal/BudgetRepository.ts
+ * lib/dal/entities/Budget.ts
  * ─────────────────────────────────────────────────────────────────
- * All DB access for `budget_items`.
+ * The Budget entity — all DB access for `budget_items`.
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { SupabaseClient } from "./supabase";
+import type { SupabaseClient } from "../supabase";
+import { BudgetTable } from "../tables";
 import {
   DalError,
   type DalResult,
   type DbBudgetItem,
   type BudgetStatus,
-} from "./types";
-
-// ── Input types ───────────────────────────────────────────────────
+} from "../types";
 
 export type CreateBudgetItemInput = {
   trip_id: string;
@@ -27,11 +26,7 @@ export type CreateBudgetItemInput = {
   paid_by?: string;
 };
 
-export type UpdateBudgetItemInput = Partial<
-  Omit<CreateBudgetItemInput, "trip_id">
->;
-
-// ── Aggregate shape ───────────────────────────────────────────────
+export type UpdateBudgetItemInput = Partial<Omit<CreateBudgetItemInput, "trip_id">>;
 
 export type BudgetSummary = {
   total_planned: number;
@@ -40,15 +35,12 @@ export type BudgetSummary = {
   currency: string;
 };
 
-// ── Repository ────────────────────────────────────────────────────
-
-export class BudgetRepository {
+export class Budget {
   constructor(private readonly db: SupabaseClient) {}
 
-  /** All budget items for a trip, ordered by creation date. */
   async listByTrip(tripId: string): Promise<DalResult<DbBudgetItem[]>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .select("*")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false });
@@ -57,10 +49,9 @@ export class BudgetRepository {
     return { data: data as DbBudgetItem[], error: null };
   }
 
-  /** Budget items for a specific day. */
   async listByDay(dayId: string): Promise<DalResult<DbBudgetItem[]>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .select("*")
       .eq("day_id", dayId)
       .order("created_at", { ascending: false });
@@ -69,10 +60,9 @@ export class BudgetRepository {
     return { data: data as DbBudgetItem[], error: null };
   }
 
-  /** Budget items for a specific activity. */
   async listByActivity(activityId: string): Promise<DalResult<DbBudgetItem[]>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .select("*")
       .eq("activity_id", activityId)
       .order("created_at", { ascending: false });
@@ -83,7 +73,7 @@ export class BudgetRepository {
 
   async findById(id: string): Promise<DalResult<DbBudgetItem>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .select("*")
       .eq("id", id)
       .single();
@@ -94,7 +84,7 @@ export class BudgetRepository {
 
   async create(input: CreateBudgetItemInput): Promise<DalResult<DbBudgetItem>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .insert(input)
       .select()
       .single();
@@ -108,7 +98,7 @@ export class BudgetRepository {
     input: UpdateBudgetItemInput,
   ): Promise<DalResult<DbBudgetItem>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .update({ ...input, updated_at: new Date().toISOString() })
       .eq("id", id)
       .select()
@@ -119,19 +109,15 @@ export class BudgetRepository {
   }
 
   async delete(id: string): Promise<DalResult<true>> {
-    const { error } = await this.db
-      .from("budget_items")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await this.db.from(BudgetTable.Items).delete().eq("id", id);
     if (error) return { data: null, error: new DalError(error.message, error.code) };
     return { data: true, error: null };
   }
 
-  /** Per-trip totals grouped by status — handy for the budget overview card. */
+  /** Per-trip totals grouped by status. */
   async getSummary(tripId: string, currency: string): Promise<DalResult<BudgetSummary>> {
     const { data, error } = await this.db
-      .from("budget_items")
+      .from(BudgetTable.Items)
       .select("status, amount")
       .eq("trip_id", tripId)
       .eq("currency", currency);
@@ -140,9 +126,7 @@ export class BudgetRepository {
 
     const items = data as Pick<DbBudgetItem, "status" | "amount">[];
     const sum = (status: BudgetStatus) =>
-      items
-        .filter((i) => i.status === status)
-        .reduce((acc, i) => acc + Number(i.amount), 0);
+      items.filter((i) => i.status === status).reduce((acc, i) => acc + Number(i.amount), 0);
 
     return {
       data: {

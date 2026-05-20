@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient, getServiceClient } from "@/lib/dal/supabase";
+import { serverDal, serviceDal } from "@/lib/dal";
 import { isCurrencyCode, parseJsonBody } from "@/lib/api/validation";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -10,41 +10,20 @@ function safeIsoDate(value: unknown): string | null {
 }
 
 export async function GET() {
-  const supabase = await getServerClient();
+  const dal = await serverDal();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: user } = await dal.users.getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data, error } = await supabase
-    .from("trips")
-    .select("id, title, subtitle, start_date, end_date, days(count)")
-    .order("created_at", { ascending: false });
-
+  const { data: trips, error } = await dal.trips.listSummaries();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  type TripRow = {
-    id: string;
-    title: string | null;
-    subtitle: string | null;
-    start_date: string | null;
-    end_date: string | null;
-    days: { count: number }[] | null;
-  };
-  const trips = ((data ?? []) as TripRow[]).map((t) => ({
-    id: t.id,
-    title: t.title,
-    subtitle: t.subtitle,
-    start_date: t.start_date,
-    end_date: t.end_date,
-    day_count: t.days?.[0]?.count ?? 0,
-  }));
 
   return NextResponse.json(trips);
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const dal = await serverDal();
+  const { data: user } = await dal.users.getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const parsed = await parseJsonBody(req);
@@ -74,31 +53,25 @@ export async function POST(req: NextRequest) {
 
   const currency = isCurrencyCode(raw.currency) ? raw.currency : "EUR";
 
-  const db = getServiceClient();
+  const db = serviceDal();
 
-  const { data: trip, error: tripErr } = await db
-    .from("trips")
-    .insert({
-      title,
-      subtitle: subtitle || null,
-      start_date: startDate,
-      end_date: endDate,
-      currency,
-      local_currency: currency,
-      display_currency: currency,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
+  const { data: trip, error: tripErr } = await db.trips.create({
+    title,
+    subtitle: subtitle || null,
+    start_date: startDate,
+    end_date: endDate,
+    currency,
+    local_currency: currency,
+    display_currency: currency,
+    created_by: user.id,
+  });
 
   if (tripErr || !trip) {
     return NextResponse.json({ error: tripErr?.message ?? "Failed to create trip" }, { status: 500 });
   }
 
   // 2. Aggiunge l'utente come owner
-  await db
-    .from("trip_members")
-    .insert({ trip_id: trip.id, user_id: user.id, role: "owner" });
+  await db.members.add({ trip_id: trip.id, user_id: user.id, role: "owner" });
 
   // 3. Genera i days se entrambe le date sono presenti
   if (startDate && endDate) {
@@ -117,7 +90,7 @@ export async function POST(req: NextRequest) {
       current.setDate(current.getDate() + 1);
     }
     if (days.length > 0) {
-      await db.from("days").insert(days);
+      await db.trips.createDays(days);
     }
   }
 
