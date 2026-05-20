@@ -2,52 +2,47 @@
  * app/api/catalog/preview/route.ts
  *
  * GET /api/catalog/preview?location=Japan&presets=attractions,historic&limit=12
+ * → { data: { location, total_found, attribution, places } }
  *
- * Restituisce un campione di posti da Wikidata senza importare nulla.
- * Usato dal pannello admin per mostrare un'anteprima prima dell'import.
- *
+ * Sample places from Overpass without importing. Admin-only.
  * Dati: © OpenStreetMap contributors (ODbL)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { searchPlaces }              from '@/lib/overpass';
-import { requirePlatformAdmin }      from '@/lib/dal/auth';
+import { route, queryParam, ok } from '@/lib/api';
+import { requirePlatformAdmin } from '@/lib/api/guards';
+import { badRequest, upstream } from '@/lib/api/errors';
+import { searchPlaces } from '@/lib/overpass';
 
-export async function GET(req: NextRequest) {
-  const auth = await requirePlatformAdmin();
-  if (!auth.ok) return auth.response;
+export const GET = route(async ({ req }) => {
+  await requirePlatformAdmin();
 
-  // ── Params ───────────────────────────────────────────────
-  const sp          = req.nextUrl.searchParams;
-  const location    = sp.get('location') ?? '';
-  const presets     = (sp.get('presets') ?? 'attractions').split(',').map((s) => s.trim()).filter(Boolean);
-  const limit       = Math.min(parseInt(sp.get('limit') ?? '12'), 50);
-  const notableOnly = sp.get('notableOnly') === 'true';
+  const location = queryParam(req, 'location') ?? '';
+  const presets = (queryParam(req, 'presets') ?? 'attractions')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limit = Math.min(parseInt(queryParam(req, 'limit') ?? '12', 10), 50);
+  const notableOnly = queryParam(req, 'notableOnly') === 'true';
 
-  if (!location) return NextResponse.json({ error: 'location richiesto' }, { status: 400 });
+  if (!location) throw badRequest('location richiesto');
 
-  // ── Fetch da Overpass ─────────────────────────────────────
   try {
     const places = await searchPlaces({ location, presetIds: presets, limit, notableOnly });
-
-    return NextResponse.json({
+    return ok({
       location,
       total_found: places.length,
       attribution: '© OpenStreetMap contributors (ODbL)',
       places: places.map((p) => ({
-        osmId:     `${p.osmType}/${p.osmId}`,
-        osmType:   p.osmType,
-        name:      p.name,
-        lat:       p.lat,
-        lng:       p.lng,
-        category:  p.category,
-        mainTag:   p.mainTag,
-        wikidata:  p.tags.wikidata,
+        osmId: `${p.osmType}/${p.osmId}`,
+        osmType: p.osmType,
+        name: p.name,
+        lat: p.lat,
+        lng: p.lng,
+        category: p.category,
+        mainTag: p.mainTag,
+        wikidata: p.tags.wikidata,
         wikipedia: p.tags.wikipedia,
       })),
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Errore Overpass';
-    return NextResponse.json({ error: msg }, { status: 502 });
+    throw upstream(err instanceof Error ? err.message : 'Errore Overpass');
   }
-}
+});

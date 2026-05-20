@@ -26,7 +26,7 @@ import {
   type AccommodationType,
   type ActivitySlot,
 } from "../types";
-import type { Trip, Day, Activity, TripSnapshot } from "../domain";
+import type { Trip, Day, Activity, TripSnapshot, BlockType, BookingStatus } from "../domain";
 
 // ── Input types ───────────────────────────────────────────────────
 
@@ -85,19 +85,24 @@ export type UpdateDayInput = {
   narrative?: unknown;
 };
 
-export type ScheduleActivityInput = {
-  activity_id: string;
-  day_id: string;
+export type ScheduleInstanceFields = {
   slot?: ActivitySlot | null;
   time?: string | null;
   position?: number;
+  type?: BlockType | null;
+  fuzzy?: boolean;
+  instance_note?: string | null;
+  booking_status?: BookingStatus | null;
+  bridge_in_json?: Record<string, unknown> | null;
+  bridge_out_json?: Record<string, unknown> | null;
 };
 
-export type UpdateScheduleInput = {
-  slot?: ActivitySlot | null;
-  time?: string | null;
-  position?: number;
+export type ScheduleActivityInput = ScheduleInstanceFields & {
+  activity_id: string;
+  day_id: string;
 };
+
+export type UpdateScheduleInput = ScheduleInstanceFields;
 
 export type TripSummary = {
   id: string;
@@ -113,7 +118,8 @@ export type TripSummary = {
 const TRIP_UI_SELECT = "id, title, subtitle, start_date, end_date, currency";
 const DAY_UI_SELECT =
   "id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary, image_url, narrative";
-const SCHEDULED_SELECT = "id, activity_id, day_id, slot, position, time, created_at, updated_at";
+const SCHEDULED_SELECT =
+  "id, activity_id, day_id, slot, position, time, type, fuzzy, instance_note, booking_status, bridge_in_json, bridge_out_json, created_at, updated_at";
 const SCHEDULED_ACTIVITY_JOIN_SELECT =
   "id, trip_id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes";
 
@@ -125,6 +131,12 @@ type ScheduledRow = {
   slot: string | null;
   position: number | null;
   time: string | null;
+  type?: string | null;
+  fuzzy?: boolean | null;
+  instance_note?: string | null;
+  booking_status?: string | null;
+  bridge_in_json?: Record<string, unknown> | null;
+  bridge_out_json?: Record<string, unknown> | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -360,7 +372,7 @@ export class Trips {
 
   async updateSchedule(
     id: string,
-    input: UpdateScheduleInput,
+    input: UpdateScheduleInput | Record<string, unknown>,
   ): Promise<DalResult<DbScheduledActivity>> {
     const { data, error } = await this.db
       .from(TripTable.ScheduledActivities)
@@ -467,7 +479,7 @@ export class Trips {
     const dayIds = days.map((d) => d.id);
     const { data: scheduled } = await this.db
       .from(TripTable.ScheduledActivities)
-      .select("id, activity_id, day_id, slot, position, time")
+      .select(SCHEDULED_SELECT)
       .in("day_id", dayIds)
       .order("slot", { ascending: true, nullsFirst: false })
       .order("position", { ascending: true });
@@ -531,5 +543,13 @@ function mergeScheduled(
     budget_currency: act?.budget_currency ?? null,
     budget_paid: act?.budget_paid ?? false,
     place_enriched: null,
+    // Instance-level timeline fields (live on scheduled_activities)
+    type: (sa.type ?? undefined) as Activity["type"],
+    fuzzy: sa.fuzzy ?? false,
+    instance_note: sa.instance_note ?? null,
+    booking_status: (sa.booking_status ?? null) as Activity["booking_status"],
+    bridge_in_json: (sa.bridge_in_json ?? null) as Activity["bridge_in_json"],
+    bridge_out_json: (sa.bridge_out_json ?? null) as Activity["bridge_out_json"],
+    entity_id: sa.activity_id,
   };
 }

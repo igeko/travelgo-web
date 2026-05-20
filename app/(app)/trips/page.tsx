@@ -38,7 +38,7 @@ export default function TripsPage() {
   useEffect(() => {
     fetch("/api/trips")
       .then((r) => r.json())
-      .then((data) => setTrips(Array.isArray(data) ? data : []))
+      .then(({ data }) => setTrips(Array.isArray(data) ? data : []))
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,7 +55,7 @@ export default function TripsPage() {
         body: JSON.stringify({ title, start_date: start, end_date: end }),
       });
       const json = await res.json();
-      if (res.ok) router.push(`/trips/${json.id}/overview`);
+      if (res.ok) router.push(`/trips/${json.data.id}/overview`);
     } finally {
       setCreating(false);
     }

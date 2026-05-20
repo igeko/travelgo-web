@@ -48,7 +48,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
-      .then(({ user, roles }: { user: AppUser | null; roles: string[] }) => {
+      .then(({ data }: { data: { user: AppUser | null; roles: string[] } }) => {
+        const { user, roles } = data;
         if (!user) {
           setValue({ user: null, roles: [], isLoggedIn: false, isDev: false, isTester: false, isAdmin: false, loading: false });
           return;

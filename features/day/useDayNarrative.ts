@@ -67,7 +67,7 @@ function writeCache(key: string, value: DayNarrative): void {
 
 async function saveToDb(dayId: string, narrative: DayNarrative): Promise<void> {
   try {
-    await fetch(`/api/trips/days/${dayId}`, {
+    await fetch(`/api/days/${dayId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ narrative }),

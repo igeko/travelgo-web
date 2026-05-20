@@ -7,6 +7,8 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+import type { BlockType, BookingStatus } from "./domain";
+
 // ── Enums / literals ─────────────────────────────────────────────
 
 export type MemberRole = "owner" | "editor" | "viewer";
@@ -118,6 +120,13 @@ export type DbScheduledActivity = {
   slot: ActivitySlot | null;
   position: number;
   time: string | null;
+  // Instance-level timeline fields (per-day placement metadata)
+  type: BlockType | null;
+  fuzzy: boolean;
+  instance_note: string | null;
+  booking_status: BookingStatus | null;
+  bridge_in_json: Record<string, unknown> | null;
+  bridge_out_json: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

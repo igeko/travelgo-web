@@ -177,7 +177,7 @@ export default function TesterNotesPage() {
     if (loading || (!isDev && !isAdmin && !isTester)) return;
     fetch("/api/tester-notes")
       .then((r) => r.json())
-      .then((data) => setNotes(Array.isArray(data) ? data : []))
+      .then(({ data }) => setNotes(Array.isArray(data) ? data : []))
       .finally(() => setFetching(false));
   }, [loading, isDev, isAdmin, isTester]);
 

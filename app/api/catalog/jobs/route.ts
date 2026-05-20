@@ -17,16 +17,17 @@ import type { OverpassRetryEvent }    from '@/lib/overpass';
 
 // ── Auth helper ───────────────────────────────────────────────
 
-import { requirePlatformAdmin } from '@/lib/dal/auth';
-import { getServerClient } from '@/lib/dal/supabase';
+import { requirePlatformAdmin } from '@/lib/api/guards';
 import { serviceDal } from '@/lib/dal';
 
-async function requireAdmin() {
-  const auth = await requirePlatformAdmin();
-  if (!auth.ok) return null;
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+/** Returns the admin user id, or null if the caller is not a platform admin. */
+async function requireAdminId(): Promise<string | null> {
+  try {
+    const { userId } = await requirePlatformAdmin();
+    return userId;
+  } catch {
+    return null;
+  }
 }
 
 // ── SSE helper ────────────────────────────────────────────────
@@ -38,8 +39,8 @@ function sseEvent(data: Record<string, unknown>): string {
 // ── GET — lista job ───────────────────────────────────────────
 
 export async function GET() {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = await requireAdminId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { data, error } = await serviceDal().catalog.listJobs(50);
 
@@ -50,8 +51,8 @@ export async function GET() {
 // ── POST — crea job (SSE) ─────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const user = await requireAdmin();
-  if (!user) {
+  const userId = await requireAdminId();
+  if (!userId) {
     return new Response(sseEvent({ type: 'error', message: 'Unauthorized' }), {
       status: 401, headers: { 'Content-Type': 'text/event-stream' },
     });
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
         auto_continue: autoContinue,
         import_offset: 0,
         total_found:   count.total,
-        created_by:    user.id,
+        created_by:    userId,
       });
 
       if (error) throw new Error(error.message);
@@ -142,8 +143,8 @@ export async function POST(req: NextRequest) {
 // ── DELETE — elimina job ──────────────────────────────────────
 
 export async function DELETE(req: NextRequest) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = await requireAdminId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id richiesto' }, { status: 400 });

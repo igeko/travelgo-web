@@ -57,7 +57,10 @@ export function ActivityAutocomplete({ tripId, dayId, onSelect, onCreateNew, onC
     try {
       const url = `/api/activities/search?trip_id=${tripId}&day_id=${dayId}&q=${encodeURIComponent(q)}`;
       const res = await fetch(url);
-      if (res.ok) setResults(await res.json());
+      if (res.ok) {
+        const { data } = await res.json();
+        setResults(data);
+      }
     } finally {
       setLoading(false);
     }

@@ -50,7 +50,7 @@ export function useTripContext(
         return;
       }
 
-      const snapshot = await res.json();
+      const { data: snapshot } = await res.json();
       if (cancelled) return;
 
       const activities: Activity[] = snapshot.days.flatMap((d: any) => d.activities);

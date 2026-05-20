@@ -242,8 +242,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const loadActivities = useCallback(async (dayId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/trips/days/${dayId}/activities`);
-      const data = await res.json();
+      const res = await fetch(`/api/days/${dayId}/activities`);
+      const { data } = await res.json();
       setActivities(data);
     } finally {
       setLoading(false);
@@ -258,7 +258,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   useEffect(() => {
     registerAddToDay(async (payload) => {
       const dayId = selectedDayIdRef.current;
-      const res = await fetch(`/api/trips/days/${dayId}/activities`, {
+      const res = await fetch(`/api/days/${dayId}/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -272,7 +272,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         }),
       });
       if (res.ok) {
-        const created = await res.json();
+        const { data: created } = await res.json();
         setActivities((prev) => [...prev, created]);
       }
     });
@@ -419,7 +419,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               summary: data.summary || null,
               image_url,
             });
-            await fetch(`/api/trips/days/${selectedDayId}`, {
+            await fetch(`/api/days/${selectedDayId}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -453,7 +453,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               accommodation_lat: patch.accommodation_lat,
               accommodation_lng: patch.accommodation_lng,
             });
-            await fetch(`/api/trips/days/${selectedDayId}`, {
+            await fetch(`/api/days/${selectedDayId}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(patch),
@@ -469,7 +469,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               accommodation_lat: null,
               accommodation_lng: null,
             });
-            await fetch(`/api/trips/days/${selectedDayId}`, {
+            await fetch(`/api/days/${selectedDayId}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -517,7 +517,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
             initialShowMap={selectedDay.show_map}
             onToggleMap={async (show) => {
-              await fetch(`/api/trips/days/${selectedDayId}`, {
+              await fetch(`/api/days/${selectedDayId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ show_map: show }),
@@ -561,7 +561,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               );
 
               // Split into entity and instance fields
-              // Entity fields (title, location, etc.) go to /api/trips/activities/{activity_id}
+              // Entity fields (title, location, etc.) go to /api/activities/{activity_id}
               const entityPatch = {
                 title: data.title,
                 short_desc: data.description,
@@ -571,28 +571,29 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 location_lng: data.place?.lng ?? null,
                 place_enriched: data.enrichedPlace ?? null,
                 hero_image,
-              };
-
-              // Instance fields (slot, time, notes, booking, budget) go to /api/trips/day-activities/{day_activity_id}
-              const instancePatch = {
-                slot: data.period,
-                time,
                 booking,
                 budget_amount: data.budgetAmount ?? null,
                 budget_currency: data.budgetCurrency,
                 budget_paid,
               };
 
+              // Instance fields (slot, time) go to /api/scheduled-activities/{id}.
+              // Note: booking/budget live on the entity, so they go in entityPatch above.
+              const instancePatch = {
+                slot: data.period,
+                time,
+              };
+
               try {
                 // Update entity
-                const entityRes = await fetch(`/api/trips/activities/${activity.activity_id}`, {
+                const entityRes = await fetch(`/api/activities/${activity.activity_id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(entityPatch),
                 });
 
                 // Update instance
-                const instanceRes = await fetch(`/api/trips/day-activities/${id}`, {
+                const instanceRes = await fetch(`/api/scheduled-activities/${id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(instancePatch),
@@ -610,7 +611,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             onActivityDelete={async (id) => {
               setActivities((prev) => prev.filter((a) => a.id !== id));
               // Delete the day_activity instance (not the entity)
-              await fetch(`/api/trips/day-activities/${id}`, { method: "DELETE" });
+              await fetch(`/api/scheduled-activities/${id}`, { method: "DELETE" });
             }}
             onCreateActivity={async (data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
@@ -619,7 +620,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               const budget_paid = data.status === "paid";
               const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
 
-              const res = await fetch(`/api/trips/days/${selectedDayId}/activities`, {
+              const res = await fetch(`/api/days/${selectedDayId}/activities`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -639,7 +640,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 }),
               });
               if (res.ok) {
-                const created = await res.json();
+                const { data: created } = await res.json();
                 setActivities((prev) => [...prev, created]);
               }
             }}

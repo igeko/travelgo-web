@@ -48,7 +48,8 @@ export { Feedback }    from "./entities/Feedback";
 export type {
   CreateTripInput, UpdateTripInput,
   CreateDayInput, UpdateDayInput,
-  ScheduleActivityInput, UpdateScheduleInput,
+  ScheduleActivityInput, UpdateScheduleInput, ScheduleInstanceFields,
+  TripSummary,
 } from "./entities/Trips";
 export type {
   CreateActivityInput, UpdateActivityInput, ActivityWithSections,

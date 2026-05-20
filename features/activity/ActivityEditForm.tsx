@@ -193,8 +193,8 @@ export function ActivityEditForm({
         }),
       });
       if (res.ok) {
-        const { publicUrl } = await res.json();
-        setHeroImage(`${publicUrl}?t=${Date.now()}`);
+        const { data } = await res.json();
+        setHeroImage(`${data.publicUrl}?t=${Date.now()}`);
       }
     } catch {
       // silent fail — user can upload manually via ImagePicker

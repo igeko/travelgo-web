@@ -10,7 +10,7 @@
  */
 
 import type { SupabaseClient } from "../supabase";
-import { ActivityTable } from "../tables";
+import { ActivityTable, TripTable } from "../tables";
 import {
   DalError,
   type DalResult,
@@ -18,7 +18,6 @@ import {
   type DbActivitySection,
   type DbActivitySidebar,
 } from "../types";
-import { ACTIVITY_SELECT } from "../domain";
 
 // ── Input types ───────────────────────────────────────────────────
 
@@ -50,15 +49,14 @@ export type ActivitySearchInput = {
   query?: string;
 };
 
-type SearchRow = Record<string, unknown> & { day_id?: string | null };
+type SearchRow = Record<string, unknown> & { id: string };
 export type ActivitySearchResult = {
   wishlist: (SearchRow & { in_current_day: boolean })[];
   platform: SearchRow[];
 };
 
-// Columns used by the autocomplete search (timeline-aware).
-const SEARCH_SELECT =
-  "id, title, short_desc, location, hero_image, type, slot, day_id, trip_id, fuzzy";
+// Entity columns surfaced by the autocomplete search.
+const SEARCH_SELECT = "id, title, short_desc, location, hero_image, trip_id";
 
 /** Escape LIKE wildcards in user input to avoid blind enumeration via `%`/`_`. */
 function escapeLikePattern(input: string): string {
@@ -190,95 +188,12 @@ export class Activities {
     return { data: true, error: null };
   }
 
-  // ── Day "blocks" list (timeline view, instance fields on activities) ──
-
-  /** All blocks of a day, ordered by position. */
-  async listBlocksByDay(dayId: string): Promise<DalResult<DbActivity[]>> {
-    const { data, error } = await this.db
-      .from(ActivityTable.Activities)
-      .select(ACTIVITY_SELECT)
-      .eq("day_id", dayId)
-      .order("position", { ascending: true });
-
-    if (error) return { data: null, error: new DalError(error.message, error.code) };
-    return { data: (data ?? []) as unknown as DbActivity[], error: null };
-  }
-
-  /** Next free position for a new block in a day. */
-  async nextBlockPosition(dayId: string): Promise<number> {
-    const { data } = await this.db
-      .from(ActivityTable.Activities)
-      .select("position")
-      .eq("day_id", dayId)
-      .order("position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return ((data as { position: number | null } | null)?.position ?? 0) + 1;
-  }
-
-  async createBlock(insert: Record<string, unknown>): Promise<DalResult<DbActivity>> {
-    const { data, error } = await this.db
-      .from(ActivityTable.Activities)
-      .insert(insert)
-      .select(ACTIVITY_SELECT)
-      .single();
-
-    if (error) return { data: null, error: new DalError(error.message, error.code) };
-    return { data: data as unknown as DbActivity, error: null };
-  }
-
-  /** Patch a block and return the refreshed row (timeline select). */
-  async patchBlock(
-    id: string,
-    patch: Record<string, unknown>,
-  ): Promise<DalResult<DbActivity>> {
-    const { data, error } = await this.db
-      .from(ActivityTable.Activities)
-      .update(patch)
-      .eq("id", id)
-      .select(ACTIVITY_SELECT)
-      .single();
-
-    if (error) return { data: null, error: new DalError(error.message, error.code) };
-    return { data: data as unknown as DbActivity, error: null };
-  }
-
-  /** Remove a block (a row in `activities`). */
-  async deleteBlock(id: string): Promise<DalResult<true>> {
-    return this.delete(id);
-  }
-
-  /** Set one bridge field (bridge_in_json / bridge_out_json) on a block. */
-  async setBridge(
-    id: string,
-    field: "bridge_in_json" | "bridge_out_json",
-    value: unknown,
-  ): Promise<DalResult<DbActivity>> {
-    return this.patchBlock(id, { [field]: value ?? null });
-  }
-
-  /** Apply AI-suggested position/slot changes, scoped to a single day. */
-  async reorderBlocks(
-    dayId: string,
-    items: { id: string; position: number; slot: string }[],
-  ): Promise<void> {
-    await Promise.all(
-      items.map((r) =>
-        this.db
-          .from(ActivityTable.Activities)
-          .update({ position: r.position, slot: r.slot })
-          .eq("id", r.id)
-          .eq("day_id", dayId),
-      ),
-    );
-  }
-
   // ── Search / autocomplete ────────────────────────────────────────
 
   /**
-   * Two-group autocomplete:
-   *  • wishlist — activities already in the trip (any day), flagged if
-   *    scheduled in the current day
+   * Two-group autocomplete over activity entities:
+   *  • wishlist — activities already in the trip, flagged if currently
+   *    scheduled on the given day (via scheduled_activities)
    *  • platform — activities from other trips matching the query
    */
   async search(input: ActivitySearchInput): Promise<ActivitySearchResult> {
@@ -290,16 +205,28 @@ export class Activities {
       .from(ActivityTable.Activities)
       .select(SEARCH_SELECT)
       .eq("trip_id", tripId)
-      .order("slot", { ascending: true })
-      .order("position", { ascending: true })
+      .order("title", { ascending: true })
       .limit(30);
 
     if (safeQ) wishlistQuery = wishlistQuery.ilike("title", `%${safeQ}%`);
 
     const { data: wishlistRaw } = await wishlistQuery;
+
+    // Which of these are already scheduled on the current day?
+    let scheduledIds = new Set<string>();
+    if (dayId) {
+      const { data: scheduled } = await this.db
+        .from(TripTable.ScheduledActivities)
+        .select("activity_id")
+        .eq("day_id", dayId);
+      scheduledIds = new Set(
+        ((scheduled ?? []) as { activity_id: string }[]).map((s) => s.activity_id),
+      );
+    }
+
     const wishlist = ((wishlistRaw ?? []) as SearchRow[]).map((a) => ({
       ...a,
-      in_current_day: dayId ? a.day_id === dayId : false,
+      in_current_day: dayId ? scheduledIds.has(a.id as string) : false,
     }));
 
     if (!safeQ) return { wishlist, platform: [] };

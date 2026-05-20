@@ -31,8 +31,11 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
   const loadBlocks = useCallback(async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/blocks`);
-      if (res.ok) setBlocks(await res.json());
+      const res = await fetch(`/api/days/${dayId}/activities`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setBlocks(data);
+      }
     } finally {
       setSaving(false);
     }
@@ -47,14 +50,14 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       : blocks.length - 1;
     const position = afterIdx >= 0 ? (blocks[afterIdx]?.position ?? afterIdx) + 1 : 1;
 
-    const res = await fetch(`/api/days/${dayId}/blocks`, {
+    const res = await fetch(`/api/days/${dayId}/activities`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, position }),
     });
 
     if (res.ok) {
-      const created: TimelineBlock = await res.json();
+      const { data: created } = (await res.json()) as { data: TimelineBlock };
       setBlocks((prev) => {
         const next = [...prev];
         next.splice(afterIdx + 1, 0, created);
@@ -82,7 +85,7 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       prev.map((b) => b.id === blockId ? { ...b, ...patch } : b)
     );
 
-    const res = await fetch(`/api/blocks/${blockId}`, {
+    const res = await fetch(`/api/scheduled-activities/${blockId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -98,7 +101,7 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     // Optimistic
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
 
-    const res = await fetch(`/api/blocks/${blockId}`, { method: "DELETE" });
+    const res = await fetch(`/api/scheduled-activities/${blockId}`, { method: "DELETE" });
     if (!res.ok) await loadBlocks();
   }, [loadBlocks]);
 
@@ -119,7 +122,7 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       )
     );
 
-    await fetch(`/api/blocks/${blockId}/bridge`, {
+    await fetch(`/api/scheduled-activities/${blockId}/bridge`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ direction, bridge }),
@@ -145,7 +148,7 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     const updated = blocks.map((b, i) => ({ id: b.id, position: i + 1, slot: b.slot }));
     await Promise.all(
       updated.map((u) =>
-        fetch(`/api/blocks/${u.id}`, {
+        fetch(`/api/scheduled-activities/${u.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ position: u.position, slot: u.slot }),
@@ -159,9 +162,9 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
   const aiOrganize = useCallback(async () => {
     setOrganizing(true);
     try {
-      const res = await fetch(`/api/days/${dayId}/ai-organize`, { method: "POST" });
+      const res = await fetch(`/api/days/${dayId}/activities/organize`, { method: "POST" });
       if (res.ok) {
-        const { blocks: organized } = await res.json();
+        const { data: organized } = await res.json();
         setBlocks(organized);
       }
     } finally {

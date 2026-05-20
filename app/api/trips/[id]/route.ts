@@ -1,21 +1,10 @@
-import { NextResponse } from "next/server";
-import { requireTripMember } from "@/lib/dal/auth";
-import { serverDal } from "@/lib/dal";
+import { route, ok } from "@/lib/api";
+import { requireTripMember } from "@/lib/api/guards";
+import { serverServices } from "@/lib/services";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-
-  const auth = await requireTripMember(id);
-  if (!auth.ok) return auth.response;
-
-  const dal = await serverDal();
-  const snapshot = await dal.trips.getSnapshot(id);
-  if (!snapshot) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  return NextResponse.json(snapshot);
-}
+/** GET /api/trips/[id] — full trip snapshot (days + activities). */
+export const GET = route<{ id: string }>(async ({ params }) => {
+  await requireTripMember(params.id);
+  const services = await serverServices();
+  return ok(await services.trips.getSnapshot(params.id));
+});

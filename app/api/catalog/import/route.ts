@@ -21,9 +21,9 @@ import { NextRequest }        from 'next/server';
 import OpenAI                 from 'openai';
 import { searchPlaces, buildEmbedText, PlaceBasic } from '@/lib/overpass';
 import { enrichFromWiki }     from '@/lib/wikipedia';
-import { requirePlatformAdmin } from '@/lib/dal/auth';
-import { getServerClient }    from '@/lib/dal/supabase';
-import { serviceDal }         from '@/lib/dal';
+import { requirePlatformAdmin } from '@/lib/api/guards';
+import { ApiError }            from '@/lib/api/errors';
+import { serviceDal }          from '@/lib/dal';
 
 // ── SSE helper ────────────────────────────────────────────────
 
@@ -31,22 +31,20 @@ function sseEvent(data: Record<string, unknown>): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+function sseError(message: string, status: number): Response {
+  return new Response(sseEvent({ type: 'error', message }), {
+    status, headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
 // ── Route handler ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const adminAuth = await requirePlatformAdmin();
-  if (!adminAuth.ok) {
-    const msg = adminAuth.response.status === 401 ? 'Unauthorized' : 'Forbidden';
-    return new Response(sseEvent({ type: 'error', message: msg }), {
-      status: adminAuth.response.status, headers: { 'Content-Type': 'text/event-stream' },
-    });
-  }
-  const supabase = await getServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return new Response(sseEvent({ type: 'error', message: 'Unauthorized' }), {
-      status: 401, headers: { 'Content-Type': 'text/event-stream' },
-    });
+  try {
+    await requirePlatformAdmin();
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 401;
+    return sseError(status === 401 ? 'Unauthorized' : 'Forbidden', status);
   }
 
   // ── Carica job ────────────────────────────────────────────

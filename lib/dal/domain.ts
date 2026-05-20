@@ -88,23 +88,3 @@ export type TripSnapshot = {
   trip: Trip;
   days: Array<Day & { activities: Activity[] }>;
 };
-
-// ── Activity query-select constants ───────────────────────────────
-// Used by the day-block routes that read instance fields off `activities`.
-
-/** Base columns — always available. */
-export const ACTIVITY_SELECT_BASE = [
-  "id", "day_id", "trip_id", "slot", "position", "time",
-  "title", "short_desc", "location", "location_place_id", "location_lat", "location_lng",
-  "icon", "hero_image", "url",
-  "budget_amount", "budget_currency", "budget_paid", "booking", "place_enriched",
-].join(", ");
-
-/** Base + timeline columns (require the timeline DB migration). */
-export const ACTIVITY_SELECT_TIMELINE = [
-  ...ACTIVITY_SELECT_BASE.split(", "),
-  "type", "fuzzy", "instance_note", "booking_status",
-  "bridge_in_json", "bridge_out_json", "entity_id",
-].join(", ");
-
-export const ACTIVITY_SELECT = ACTIVITY_SELECT_TIMELINE;
