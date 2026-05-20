@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createElement, useState } from "react";
 import Link from "next/link";
 import {
   IconChevronRight,
@@ -12,6 +12,7 @@ import {
 import { StatusBadge, type ActivityStatus } from "@/components/ui/StatusBadge";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Button } from "@/components/ui/Button";
+import { getStopIcon } from "./Timeline/stopIcons";
 import { cn } from "@/lib/cn";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -30,6 +31,8 @@ export type ActivityRowProps = {
   placeId?: string;
   /** Map pin number shown on the location badge */
   pin?: number;
+  /** Activity category icon key (see Timeline/stopIcons) — used to give the Map badge semantic context */
+  icon?: string | null;
   /** Cost in local currency (e.g. "¥3,200") */
   cost?: string;
   /** Approx converted cost (e.g. "≈ €20") */
@@ -51,6 +54,12 @@ export type ActivityRowProps = {
   onSave?: (data: ActivityData) => void;
   onDelete?: () => void;
   onAskGo?: (title: string, activityId?: string) => void;
+  /**
+   * Click handler for the "Map" badge. Return `true` if the click was
+   * handled in-app (e.g. zoomed the embedded map); returning falsy lets
+   * the badge fall back to opening Google Maps in a new tab.
+   */
+  onMapClick?: () => boolean | void;
   className?: string;
 };
 
@@ -67,6 +76,7 @@ export function ActivityRow({
   location,
   placeId,
   pin,
+  icon,
   cost,
   costApprox,
   status,
@@ -80,6 +90,7 @@ export function ActivityRow({
   onSave,
   onDelete,
   onAskGo,
+  onMapClick,
   className,
 }: ActivityRowProps) {
   const [editOpen, setEditOpen] = useState(false);
@@ -88,6 +99,8 @@ export function ActivityRow({
   const isSelected = state === "selected";
   const isPast     = state === "past";
   const isActive   = isNow || isSelected;
+
+  const categoryIcon = getStopIcon(icon);
 
   /* ── Row wrapper classes ── */
   const rowBase = cn(
@@ -112,7 +125,7 @@ export function ActivityRow({
     <div
       className={cn(
         "relative shrink-0 rounded-[10px] overflow-hidden bg-cover bg-center",
-        "w-[88px] h-[68px]",
+        "w-[114px] h-[88px]",
       )}
       style={{ backgroundImage: `url(${thumb ?? DEFAULT_THUMB})` }}
     >
@@ -191,6 +204,7 @@ export function ActivityRow({
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                if (onMapClick?.()) return; // handled in-app (e.g. zoomed the map)
                 const url = placeId
                   ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
                   : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
@@ -207,6 +221,8 @@ export function ActivityRow({
                 <span className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-orange text-white text-[9px] font-semibold leading-none shrink-0">
                   {pin}
                 </span>
+              ) : categoryIcon ? (
+                createElement(categoryIcon, { className: "w-3 h-3 shrink-0 text-orange" })
               ) : (
                 <IconMapPin className="w-3 h-3 shrink-0" />
               )}

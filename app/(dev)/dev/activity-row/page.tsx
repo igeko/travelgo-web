@@ -19,6 +19,8 @@ export default function ActivityRowStories() {
   const [status, setStatus] = useState<StatusOption>("booked");
   const [showDescription, setShowDescription] = useState(true);
   const [showLocation, setShowLocation] = useState(true);
+  const [showPin, setShowPin] = useState(false);
+  const [icon, setIcon] = useState<string>("food");
   const [showCost, setShowCost] = useState(true);
   const [editMode, setEditMode] = useState(false);
 
@@ -84,9 +86,30 @@ export default function ActivityRowStories() {
         {
           kind: "toggle",
           id: "loc",
-          label: "Location + pin",
+          label: "Location (Map badge)",
           value: showLocation,
           onChange: setShowLocation,
+        },
+        {
+          kind: "radio",
+          id: "icon",
+          label: "Map badge icon",
+          value: icon,
+          onChange: setIcon,
+          options: [
+            { value: "food", label: "Food" },
+            { value: "coffee", label: "Coffee" },
+            { value: "museum", label: "Museum" },
+            { value: "view", label: "View" },
+            { value: "none", label: "None (pin)" },
+          ],
+        },
+        {
+          kind: "toggle",
+          id: "pin",
+          label: "Pin number (overrides icon)",
+          value: showPin,
+          onChange: setShowPin,
         },
         {
           kind: "toggle",
@@ -121,7 +144,8 @@ export default function ActivityRowStories() {
                 ? "At Tsukiji outer market you sit at the counter of a kaisen-don — rice and the day's raw fish. The Sushi Dai family has served the same breakfast since 1970."
                 : undefined
             }
-            pin={showLocation ? 3 : undefined}
+            pin={showLocation && showPin ? 3 : undefined}
+            icon={icon === "none" ? null : icon}
             location={showLocation ? "Tsukiji, Tokyo" : undefined}
             cost={showCost ? "¥3,200" : undefined}
             costApprox={showCost ? "≈ €20" : undefined}

@@ -12,20 +12,30 @@ type Props = {
   activities: Activity[];
   editMode?: boolean;
   tripId?: string;
+  /** When true, fuzzy activities (timeline-only stops without a fixed time) are hidden. */
+  hideFuzzy?: boolean;
   onActivitySave?: (id: string, data: ActivityData) => void;
   onActivityDelete?: (id: string) => void;
   onAskGo?: (title: string, activityId?: string) => void;
+  /** Click on a row's "Map" badge. Return true if handled in-app (zoomed). */
+  onActivityMapClick?: (activityId: string) => boolean | void;
 };
 
 export function ActivityList({
   activities,
   editMode = false,
   tripId,
+  hideFuzzy = false,
   onActivitySave,
   onActivityDelete,
   onAskGo,
+  onActivityMapClick,
 }: Props) {
   const t = useTranslations("ActivityList");
+
+  const visibleActivities = hideFuzzy
+    ? activities.filter((a) => !a.fuzzy)
+    : activities;
 
   function renderRow(a: Activity) {
     // Determine status based on activity state
@@ -48,6 +58,7 @@ export function ActivityList({
         title={a.title}
         description={a.short_desc ?? undefined}
         location={a.location ?? undefined}
+        icon={a.icon}
         thumb={a.hero_image ?? undefined}
         cost={a.budget_amount ? `¥${a.budget_amount.toLocaleString("en-US")}` : undefined}
         status={status}
@@ -80,11 +91,12 @@ export function ActivityList({
         onSave={(data) => onActivitySave?.(a.id, data)}
         onDelete={() => onActivityDelete?.(a.id)}
         onAskGo={onAskGo}
+        onMapClick={onActivityMapClick ? () => onActivityMapClick(a.id) : undefined}
       />
     );
   }
 
-  if (activities.length === 0) {
+  if (visibleActivities.length === 0) {
     return (
       <p className="text-ink-soft text-[14px] text-center py-12">
         {t("empty")}
@@ -95,7 +107,7 @@ export function ActivityList({
   return (
     <div>
       {SLOT_ORDER.map((slot) => {
-        const acts = activities.filter((a) => a.slot === slot);
+        const acts = visibleActivities.filter((a) => a.slot === slot);
         if (!acts.length) return null;
         return (
           <div key={slot}>
@@ -104,7 +116,7 @@ export function ActivityList({
           </div>
         );
       })}
-      {activities.filter((a) => !a.slot).map((a) => (
+      {visibleActivities.filter((a) => !a.slot).map((a) => (
         <div key={`unslotted-${a.id}`}>
           <SlotStation label={t("slots.unslotted")} count={1} />
           {renderRow(a)}
