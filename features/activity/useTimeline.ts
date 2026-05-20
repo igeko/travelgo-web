@@ -22,6 +22,17 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
   const [organizing, setOrganizing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Mirror the source list whenever the parent replaces it (new array
+  // reference) — e.g. the day's activities finish loading after a day switch,
+  // or a realtime reload. Local edits go through setBlocks and never change
+  // the parent's reference, so they are never clobbered. Adjusted during
+  // render (the sanctioned alternative to a state-syncing effect).
+  const [prevInitial, setPrevInitial] = useState(initialBlocks);
+  if (initialBlocks !== prevInitial) {
+    setPrevInitial(initialBlocks);
+    setBlocks(initialBlocks);
+  }
+
   /* ── helpers ──────────────────────────────────────────────────── */
 
   function scheduleReload() {
@@ -81,6 +92,39 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
       ...(time ? { time } : {}),
     } as NewBlockPayload & { entity_id: string }, afterBlockId);
   }, [addBlock]);
+
+  /**
+   * Crea uno "stop" fuzzy (titolo + icona, senza orario). Modello 1:
+   * eredita l'ora del blocco sopra (se ne ha una) per ordinarsi subito
+   * dopo di esso; resta fuzzy (la UI non mostra l'ora).
+   */
+  const addStop = useCallback(async (
+    title: string,
+    icon: string,
+    slot: SlotKey,
+    afterBlockId?: string,
+  ) => {
+    const above = afterBlockId ? blocks.find((b) => b.id === afterBlockId) : undefined;
+    const time = above?.time ?? undefined;
+    return addBlock({
+      title,
+      type:  "pause",
+      slot,
+      fuzzy: true,
+      ...(time ? { time } : {}),
+      icon,
+    } as NewBlockPayload & { icon: string }, afterBlockId);
+  }, [addBlock, blocks]);
+
+  /** Cambia l'icona (campo entità) di un blocco. Optimistic + persist. */
+  const setIcon = useCallback(async (blockId: string, activityId: string, icon: string) => {
+    setBlocks((prev) => prev.map((b) => (b.id === blockId ? { ...b, icon } : b)));
+    try {
+      await api.activities.updateEntity(activityId, { icon });
+    } catch {
+      await loadBlocks();
+    }
+  }, [loadBlocks]);
 
   const patchInstance = useCallback(async (blockId: string, patch: InstancePatch) => {
     // Optimistic
@@ -172,6 +216,8 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     loadBlocks,
     addBlock,
     addFromEntity,
+    addStop,
+    setIcon,
     patchInstance,
     deleteBlock,
     patchBridge,

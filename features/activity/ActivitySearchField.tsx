@@ -90,6 +90,8 @@ export type ActivitySearchFieldProps = {
   items?: TripActivityOption[];
   placeholder?: string;
   label?: string;
+  /** When true the floating label is always visible (not just on hover/focus). */
+  labelAlwaysVisible?: boolean;
   className?: string;
   /** Visual size of the field, mirroring SoftField. Default "md". */
   size?: "sm" | "md";
@@ -114,6 +116,7 @@ export function ActivitySearchField({
   items,
   placeholder,
   label,
+  labelAlwaysVisible,
   className,
   size = "md",
   defaultOpen = false,
@@ -245,6 +248,7 @@ export function ActivitySearchField({
       onChange={handleInputChange}
       placeholder={placeholder ?? t("placeholder")}
       label={label}
+      labelAlwaysVisible={labelAlwaysVisible}
       size={size}
       autoComplete="off"
       inputProps={{

@@ -288,12 +288,62 @@
       "markFreeTime": "Marca come tempo libero"
     },
     "schedule": "Programma",
+    "makeStop": "Rendi una tappa",
     "noPreciseTime": "Senza ora precisa",
     "hour": "Ora",
     "minutes": "Minuti",
     "clearTime": "rimuovi orario",
     "noActivities": "Nessuna attività ancora",
-    "alreadyOnDay": "«{title}» è già in programma in questo giorno"
+    "alreadyOnDay": "«{title}» è già in programma in questo giorno",
+    "actions": {
+      "addActivity": "Aggiungi attività",
+      "addStop": "Aggiungi tappa",
+      "schedule": "Programma nel giorno",
+      "transit": "Transit",
+      "unschedule": "Scollega dal giorno",
+      "changeIcon": "Cambia icona"
+    },
+    "addActivityForm": {
+      "newActivity": "Nuova attività…",
+      "adding": "Aggiungo l'attività, apro la programmazione…"
+    },
+    "stop": {
+      "newStop": "Nuova tappa…",
+      "titleLabel": "Titolo",
+      "titlePlaceholder": "es. pausa caffè",
+      "iconLabel": "Icona",
+      "create": "Crea tappa"
+    },
+    "axis": {
+      "noTimeLane": "Senza orario — trascina sull'asse per assegnarlo",
+      "none": "Nessuna"
+    },
+    "stopIcons": {
+      "coffee": "Caffè",
+      "food": "Cibo",
+      "drink": "Drink",
+      "dessert": "Dolce",
+      "photo": "Foto",
+      "view": "Panorama",
+      "monument": "Monumento",
+      "museum": "Museo",
+      "rest": "Riposo",
+      "shop": "Shopping",
+      "market": "Mercato",
+      "ticket": "Biglietti",
+      "walk": "A piedi",
+      "bike": "Bici",
+      "bus": "Bus",
+      "car": "Auto",
+      "train": "Treno",
+      "beach": "Spiaggia",
+      "swim": "Nuoto",
+      "park": "Parco",
+      "star": "Preferito",
+      "music": "Musica",
+      "info": "Info",
+      "gift": "Regalo"
+    }
   },
   "Go": {
     "title": "Go · assistente di viaggio",

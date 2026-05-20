@@ -33,6 +33,7 @@ export default function ActivitySearchStories() {
   const [layout, setLayout] = useState<Layout>("inline");
   const [size, setSize] = useState<Size>("md");
   const [label, setLabel] = useState("");
+  const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
   const [placeholder, setPlaceholder] = useState("");
   const [selected, setSelected] = useState<TripActivityOption | null>(null);
 
@@ -101,6 +102,13 @@ export default function ActivitySearchStories() {
           onChange: setLabel,
         },
         {
+          kind: "toggle",
+          id: "labelAlwaysVisible",
+          label: "Label always visible",
+          value: labelAlwaysVisible,
+          onChange: setLabelAlwaysVisible,
+        },
+        {
           kind: "text",
           id: "placeholder",
           label: "Placeholder",
@@ -141,6 +149,7 @@ export default function ActivitySearchStories() {
               defaultOpen={layout === "inline"}
               size={size}
               label={label || undefined}
+              labelAlwaysVisible={labelAlwaysVisible}
               placeholder={placeholder || undefined}
             />
           </div>
@@ -155,6 +164,7 @@ export default function ActivitySearchStories() {
               { prop: "items", type: "TripActivityOption[]", description: "Pre-supplied activities (skips fetching). For tests / sandbox." },
               { prop: "placeholder", type: "string", defaultValue: "ActivitySearch.placeholder", description: "Input placeholder." },
               { prop: "label", type: "string", description: "Floating field label." },
+              { prop: "labelAlwaysVisible", type: "boolean", defaultValue: "false", description: "Keep the floating label visible instead of only on hover/focus." },
               { prop: "size", type: '"sm" | "md"', defaultValue: '"md"', description: "Visual size, mirroring SoftField." },
               { prop: "defaultOpen", type: "boolean", defaultValue: "false", description: "Render as an always-open inline panel instead of a floating dropdown." },
               { prop: "className", type: "string", description: "Extra classes on the wrapper." },

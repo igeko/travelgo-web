@@ -21,10 +21,13 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
 import { AddActivityForm } from "./Timeline/AddActivityForm";
+import { StopComposer } from "./Timeline/StopComposer";
+import { STOP_ICONS, stopIconNode } from "./Timeline/stopIcons";
 import { Button } from "@/components/ui/Button";
+import { IconPicker } from "@/components/ui/IconPicker";
 import { PeriodBar, type PeriodTime } from "@/components/ui/PeriodBar";
 import {
-  IconCalendarTime, IconPlus, IconX, IconCircleMinus,
+  IconCalendarTime, IconPlus, IconX, IconUnlink,
   IconWalk, IconRoute,
 } from "@/components/ui/icons";
 import type {
@@ -45,6 +48,7 @@ const SPINE_X    = 97;  // x position of the vertical spine line
 /* ─── add state ──────────────────────────────────────────────────── */
 type AddState =
   | { kind: "autocomplete"; afterBlockId?: string; slot: SlotKey }
+  | { kind: "stop";         afterBlockId?: string; slot: SlotKey }
   | null;
 
 function isSameAdd(a: AddState, afterBlockId: string | undefined, slot: SlotKey): boolean {
@@ -79,10 +83,11 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
         aria-hidden
       />
       <span
-        className="absolute text-[10.5px] font-medium tracking-[0.14em] uppercase text-orange select-none whitespace-nowrap"
+        className="absolute text-tiny font-semibold tracking-[0.03em] uppercase text-orange select-none whitespace-nowrap"
         style={{
+          // Bordo destro allineato a quello degli orari (SPINE_LEFT - 42).
           left: 0,
-          width: SPINE_X - 8,
+          width: SPINE_LEFT - 42,
           textAlign: "right",
           top: "50%",
           transform: "translateY(-50%)",
@@ -118,6 +123,7 @@ function BridgeStrip({ bridge }: { bridge: BridgeData }) {
       <span className="text-ink-faint">{TRANSPORT_ICON[bridge.transport] ?? <IconWalk size={12} />}</span>
       <span>{label}</span>
       {bridge.line && <span className="text-ink-faint">· {bridge.line}</span>}
+      {bridge.note && <span className="text-ink-faint italic truncate">· {bridge.note}</span>}
     </div>
   );
 }
@@ -171,6 +177,9 @@ function ScheduleStrip({
   const tCommon = useTranslations("Common");
   const [slot, setSlot] = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
   const [time, setTime] = useState<PeriodTime>(parseClock(block.time));
+  // "Make it a stop": flag indipendente dall'orario — una tappa può avere o
+  // meno un orario; l'unica discriminante attività/tappa è `fuzzy`.
+  const [stop, setStop] = useState<boolean>(!!block.fuzzy);
 
   const hasTime = time.hour !== undefined && time.minute !== undefined;
 
@@ -178,12 +187,7 @@ function ScheduleStrip({
     const timeStr = hasTime
       ? `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`
       : null;
-    // Nessun orario preciso ⇒ fuzzy (deriva dallo stato del picker).
-    onSave({
-      slot,
-      fuzzy: !hasTime,
-      time: timeStr,
-    });
+    onSave({ slot, fuzzy: stop, time: timeStr });
     onClose();
   }
 
@@ -213,13 +217,41 @@ function ScheduleStrip({
       />
 
       {/* Footer */}
-      <div className="flex justify-end items-center gap-1.5 mt-2.5">
-        <Button size="sm" variant="ghost" tone="neutral" onClick={onClose}>
-          {tCommon("cancel")}
-        </Button>
-        <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
-          {tCommon("apply")}
-        </Button>
+      <div className="flex justify-between items-center gap-2 mt-2.5">
+        {/* Toggle "make it a stop" → forza il fuzzy */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={stop}
+          onClick={() => setStop((s) => !s)}
+          className="group inline-flex items-center gap-2 cursor-pointer select-none"
+        >
+          <span
+            className={cn(
+              "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+              stop ? "bg-orange" : "bg-border-strong",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                stop ? "translate-x-4" : "translate-x-0.5",
+              )}
+            />
+          </span>
+          <span className="text-tiny text-ink-soft group-hover:text-ink transition-colors">
+            {tT("makeStop")}
+          </span>
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" tone="neutral" onClick={onClose}>
+            {tCommon("cancel")}
+          </Button>
+          <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
+            {tCommon("apply")}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -227,34 +259,56 @@ function ScheduleStrip({
 
 /* ─── AddZone ────────────────────────────────────────────────────── */
 /**
- * Affordance "aggiungi attività": invisibile a riposo, compare solo
- * all'hover come piccolo pallino con il "+" sulla spine + scritta piccola.
+ * Affordance invisibile a riposo, compare solo all'hover: pallino "+"
+ * sulla spine + due azioni piccole — "aggiungi attività" e "add stop".
  */
 function AddZone({
   onAddActivity,
+  onAddStop,
+  alwaysVisible = false,
 }: {
   onAddActivity: () => void;
+  onAddStop: () => void;
+  /** Mostra le azioni sempre (non solo all'hover) — es. timeline vuota. */
+  alwaysVisible?: boolean;
 }) {
+  const t = useTranslations("Timeline.actions");
+  const reveal = alwaysVisible
+    ? "opacity-100"
+    : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
   return (
-    <button
-      type="button"
-      onClick={onAddActivity}
-      className="group relative flex items-center w-full text-left min-h-[20px] pl-5 my-0.5 cursor-pointer"
-    >
-      {/* Small "+" dot on the spine — hover only */}
+    <div className="group relative flex items-center w-full min-h-[20px] pl-5 my-0.5">
+      {/* Small "+" dot on the spine */}
       <div
-        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity z-10"
+        className={cn(
+          "absolute flex items-center justify-center rounded-full bg-orange text-white transition-opacity z-10 pointer-events-none",
+          reveal,
+        )}
         style={{ left: -21, top: "50%", transform: "translateY(-50%)", width: 18, height: 18 }}
         aria-hidden
       >
         <IconPlus size={11} />
       </div>
 
-      {/* Small label — hover only */}
-      <span className="text-tiny font-medium text-ink-soft opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
-        aggiungi attività
-      </span>
-    </button>
+      {/* Azioni */}
+      <div className={cn("flex items-center gap-2.5 transition-opacity", reveal)}>
+        <button
+          type="button"
+          onClick={onAddActivity}
+          className="text-tiny font-medium text-ink-soft hover:text-ink hover:underline underline-offset-[3px] cursor-pointer"
+        >
+          {t("addActivity")}
+        </button>
+        <span aria-hidden className="text-tiny text-ink-faint/60">·</span>
+        <button
+          type="button"
+          onClick={onAddStop}
+          className="text-tiny font-medium text-ink-soft hover:text-ink hover:underline underline-offset-[3px] cursor-pointer"
+        >
+          {t("addStop")}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -267,6 +321,7 @@ function SingleBlock({
   onOpenPopover,
   onClosePopover,
   onEditTransit,
+  onSetIcon,
   onPatchInstance,
   onDelete,
 }: {
@@ -277,12 +332,21 @@ function SingleBlock({
   onOpenPopover:    () => void;
   onClosePopover:   () => void;
   onEditTransit:    () => void;
+  onSetIcon:        (icon: string) => void;
   onPatchInstance:  (patch: import("./types").InstancePatch) => void;
   onDelete:         () => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [iconOpen, setIconOpen] = useState(false);
   const isFuzzy  = block.fuzzy;
   const showActs = editMode && (hovered || popoverOpen || transitOpen);
+  const stopIcon = stopIconNode(block.icon);
+  const tA = useTranslations("Timeline.actions");
+  const tIcons = useTranslations("Timeline.stopIcons");
+  const iconOptions = useMemo(
+    () => STOP_ICONS.map((o) => ({ key: o.key, Icon: o.Icon, label: tIcons(o.key) })),
+    [tIcons],
+  );
 
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
@@ -306,13 +370,20 @@ function SingleBlock({
             color:     hovered || popoverOpen ? "var(--color-ink-soft)" : "var(--color-ink-faint)",
           }}
         >
-          {block.time ?? <span className="opacity-30">—</span>}
+          {block.time ? block.time : <span className="opacity-30">—</span>}
         </span>
 
-        {/* Spine icon — absolute, on the spine line */}
-        <div
+        {/* Spine icon — absolute, on the spine line. In edit mode è cliccabile
+            per cambiare l'icona (popover IconPicker). */}
+        <button
+          type="button"
+          onClick={editMode ? () => setIconOpen((o) => !o) : undefined}
+          aria-label={editMode ? tA("changeIcon") : undefined}
+          aria-hidden={!editMode}
+          tabIndex={editMode ? 0 : -1}
           className={cn(
             "absolute flex items-center justify-center rounded-full transition-all duration-150 shadow-sm z-10 [&>svg]:w-3.5 [&>svg]:h-3.5",
+            editMode && "cursor-pointer",
             isFuzzy
               ? [
                   "bg-[#d5d5ce] text-ink-soft border-2 border-[#e8e8e0]",
@@ -350,17 +421,30 @@ function SingleBlock({
                     : "0 0 0 4px var(--color-bg)",
                 }
           }
-          aria-hidden
         >
-          {TYPE_ICON[block.type ?? "place"] ?? TYPE_ICON.place}
-        </div>
+          {stopIcon ?? (TYPE_ICON[block.type ?? "place"] ?? TYPE_ICON.place)}
+        </button>
+
+        {/* Icon picker popover — cambia icona dopo la creazione */}
+        {iconOpen && editMode && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setIconOpen(false)} aria-hidden />
+            <div className="absolute z-40 top-full mt-1 left-0 w-[280px] rounded-md border border-border bg-surface shadow-[0_4px_24px_rgba(13,44,61,0.12)] p-2">
+              <IconPicker
+                value={block.icon ?? null}
+                onChange={(key) => { onSetIcon(key); setIconOpen(false); }}
+                options={iconOptions}
+              />
+            </div>
+          </>
+        )}
 
         {/* Name */}
         <button
           className={cn(
             "flex-1 min-w-0 text-left leading-snug transition-colors",
             isFuzzy
-              ? "text-tiny uppercase tracking-[0.08em] font-medium -ml-2"
+              ? "text-tiny uppercase tracking-[0.08em] font-semibold -ml-4"
               : "text-[15px]",
             popoverOpen ? "text-white" : isFuzzy ? "text-ink-soft" : "text-ink",
           )}
@@ -387,8 +471,8 @@ function SingleBlock({
               tone="neutral"
               iconOnly
               onClick={onOpenPopover}
-              title="Programma nel giorno"
-              aria-label="Programma nel giorno"
+              title={tA("schedule")}
+              aria-label={tA("schedule")}
               className={cn(
                 popoverOpen && "bg-orange/10 text-orange hover:bg-orange/10",
               )}
@@ -401,8 +485,8 @@ function SingleBlock({
               tone="neutral"
               iconOnly
               onClick={onEditTransit}
-              title="Transit"
-              aria-label="Transit"
+              title={tA("transit")}
+              aria-label={tA("transit")}
               className={cn(
                 popoverOpen && "text-white/70 hover:text-white",
                 transitOpen && "bg-orange/10 text-orange hover:bg-orange/10",
@@ -416,13 +500,13 @@ function SingleBlock({
               tone="neutral"
               iconOnly
               onClick={onDelete}
-              title="Scollega dal giorno"
-              aria-label="Scollega dal giorno"
+              title={tA("unschedule")}
+              aria-label={tA("unschedule")}
               className={cn(
                 popoverOpen && "text-white/70 hover:text-white",
               )}
             >
-              <IconCircleMinus />
+              <IconUnlink />
             </Button>
           </div>
         )}
@@ -468,6 +552,8 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   const {
     blocks,
     addFromEntity,
+    addStop,
+    setIcon,
     patchInstance,
     deleteBlock,
     patchBridge,
@@ -493,7 +579,10 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
     // preserving their relative order via `position`.
     for (const s of SLOT_ORDER) {
       groups[s].sort((a, b) => {
-        if (a.time && b.time) return a.time.localeCompare(b.time);
+        // Tiebreak su position: gli "stop" fuzzy ereditano l'ora del vicino
+        // (Modello 1) e la position decide se stanno prima o dopo di esso.
+        if (a.time && b.time)
+          return a.time.localeCompare(b.time) || ((a.position ?? 0) - (b.position ?? 0));
         if (a.time) return -1;
         if (b.time) return 1;
         return (a.position ?? 0) - (b.position ?? 0);
@@ -511,12 +600,35 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
     setDupError(null);
   }
 
+  function handleAddStop(afterBlockId: string | undefined, slot: SlotKey) {
+    setAddState({ kind: "stop", afterBlockId, slot });
+    setExpandedBridgeKey(null);
+    setDupError(null);
+  }
+
+  // Crea uno stop fuzzy (titolo + icona) e apre SCHEDULE (orario opzionale).
+  async function handleCreateStop(
+    title: string,
+    icon: string,
+    afterBlockId: string | undefined,
+    slot: SlotKey,
+  ): Promise<boolean> {
+    const created = await addStop(title, icon, slot, afterBlockId);
+    if (created) {
+      setAddState(null);
+      setPopoverBlockId(created.id);
+      return true;
+    }
+    return false;
+  }
+
   // Seleziona un'attività esistente del viaggio: la programma nel giorno e
   // apre subito il pannello SCHEDULE sul nuovo blocco.
   async function handleSelectActivity(
     option: TripActivityOption,
     afterBlockId: string | undefined,
     slot: SlotKey,
+    icon: string | null,
   ): Promise<boolean> {
     // Già programmata in questo giorno? (vincolo UNIQUE activity_id+day_id)
     // Guard centrale: rifiuta il duplicato con un errore. Vale per la ricerca
@@ -544,6 +656,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
     );
     // Chiude la form e apre SCHEDULE solo se l'attività è stata aggiunta.
     if (created) {
+      if (icon) setIcon(created.id, created.activity_id, icon);
       setAddState(null);
       setPopoverBlockId(created.id);
       return true;
@@ -558,24 +671,33 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   }
 
   /* ── render helpers ──────────────────────────────────────────── */
-  function renderAddZone(afterBlockId: string | undefined, slot: SlotKey) {
+  function renderAddZone(afterBlockId: string | undefined, slot: SlotKey, alwaysVisible = false) {
     if (!editMode) return null;
 
     const autoHere = isSameAdd(addState, afterBlockId, slot) && addState?.kind === "autocomplete";
+    const stopHere = isSameAdd(addState, afterBlockId, slot) && addState?.kind === "stop";
 
     return (
       <div key={`az-${afterBlockId ?? "start"}-${slot}`}>
-        {!autoHere && (
+        {!autoHere && !stopHere && (
           <AddZone
             onAddActivity={() => handleAddActivity(afterBlockId, slot)}
+            onAddStop={() => handleAddStop(afterBlockId, slot)}
+            alwaysVisible={alwaysVisible}
           />
         )}
         {autoHere && (
           <AddActivityForm
             tripId={tripId}
-            onSelect={(opt) => handleSelectActivity(opt, afterBlockId, slot)}
+            onSelect={(opt, icon) => handleSelectActivity(opt, afterBlockId, slot, icon)}
             onClose={() => setAddState(null)}
             excludeIds={blocks.map((b) => b.activity_id)}
+          />
+        )}
+        {stopHere && (
+          <StopComposer
+            onCreate={(title, icon) => handleCreateStop(title, icon, afterBlockId, slot)}
+            onClose={() => setAddState(null)}
           />
         )}
       </div>
@@ -599,12 +721,16 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
       <div>
         {dupNotice}
         <div
-          className="py-10 text-center text-meta text-ink-faint"
+          className="py-8 text-center text-meta text-ink-faint"
           style={{ paddingLeft: SPINE_LEFT + 16 }}
         >
           {tT("noActivities")}.
         </div>
-        {editMode && renderAddZone(undefined, "morning")}
+        {editMode && (
+          <div className="relative pb-4" style={{ paddingLeft: SPINE_LEFT }}>
+            {renderAddZone(undefined, "morning", true)}
+          </div>
+        )}
       </div>
     );
   }
@@ -678,6 +804,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
                       onOpenPopover={() => setPopoverBlockId(block.id)}
                       onClosePopover={() => setPopoverBlockId(null)}
                       onEditTransit={() => toggleBridge(block.id, "in")}
+                      onSetIcon={(icon) => setIcon(block.id, block.activity_id, icon)}
                       onPatchInstance={(patch) => patchInstance(block.id, patch)}
                       onDelete={() => deleteBlock(block.id)}
                     />

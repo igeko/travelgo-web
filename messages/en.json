@@ -288,12 +288,62 @@
       "markFreeTime": "Mark as free time"
     },
     "schedule": "Schedule",
+    "makeStop": "Make it a stop",
     "noPreciseTime": "No precise time",
     "hour": "Hour",
     "minutes": "Minutes",
     "clearTime": "clear time",
     "noActivities": "No activities yet",
-    "alreadyOnDay": "“{title}” is already scheduled on this day"
+    "alreadyOnDay": "“{title}” is already scheduled on this day",
+    "actions": {
+      "addActivity": "Add activity",
+      "addStop": "Add stop",
+      "schedule": "Schedule in the day",
+      "transit": "Transit",
+      "unschedule": "Remove from day",
+      "changeIcon": "Change icon"
+    },
+    "addActivityForm": {
+      "newActivity": "New activity…",
+      "adding": "Adding the activity, opening the scheduler…"
+    },
+    "stop": {
+      "newStop": "New stop…",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. coffee break",
+      "iconLabel": "Icon",
+      "create": "Create stop"
+    },
+    "axis": {
+      "noTimeLane": "No time — drag onto the axis to assign one",
+      "none": "None"
+    },
+    "stopIcons": {
+      "coffee": "Coffee",
+      "food": "Food",
+      "drink": "Drink",
+      "dessert": "Dessert",
+      "photo": "Photo",
+      "view": "View",
+      "monument": "Monument",
+      "museum": "Museum",
+      "rest": "Rest",
+      "shop": "Shopping",
+      "market": "Market",
+      "ticket": "Tickets",
+      "walk": "Walk",
+      "bike": "Bike",
+      "bus": "Bus",
+      "car": "Car",
+      "train": "Train",
+      "beach": "Beach",
+      "swim": "Swim",
+      "park": "Park",
+      "star": "Favorite",
+      "music": "Music",
+      "info": "Info",
+      "gift": "Gift"
+    }
   },
   "Go": {
     "title": "Go · travel assistant",

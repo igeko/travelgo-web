@@ -22,6 +22,7 @@ import { StoryPage, StoryFrame, PropsTable } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { Timeline } from "@/features/activity/Timeline";
+import { TimelineAxis } from "@/features/activity/Timeline/TimelineAxis";
 import type { TimelineBlock } from "@/features/activity/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -176,6 +177,14 @@ export default function ActivityTimelineSandbox() {
   const [blocks, setBlocks] = useState<TimelineBlock[]>(TOKYO_BLOCKS);
   const [error, setError] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
+
+  // Axis prototype state (local, no backend)
+  const [axisBlocks, setAxisBlocks] = useState<TimelineBlock[]>(TOKYO_BLOCKS);
+  function handleAxisChange(id: string, time: string, slot: TimelineBlock["slot"]) {
+    setAxisBlocks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, time, slot, fuzzy: false } : b)),
+    );
+  }
 
   function apply(text: string = jsonText) {
     try {
@@ -359,6 +368,16 @@ export default function ActivityTimelineSandbox() {
                 )}
               </div>
             </div>
+          </div>
+        </StoryFrame>
+
+        {/* ── Story: axis drag&drop prototype ── */}
+        <StoryFrame
+          name="Asse temporale (edit) — drag&drop [prototipo Fase 1]"
+          description="Asse proporzionale 06:00–24:00. Trascina un'attività per cambiarne l'orario (snap 5'). I blocchi senza orario stanno nella corsia in fondo: trascinali sull'asse per assegnarne uno. Stato locale, nessun salvataggio."
+        >
+          <div className="bg-white rounded-lg p-4 max-w-[520px] mx-auto">
+            <TimelineAxis blocks={axisBlocks} onChangeTime={handleAxisChange} />
           </div>
         </StoryFrame>
 

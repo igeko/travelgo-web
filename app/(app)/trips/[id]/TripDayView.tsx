@@ -213,8 +213,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   function selectDay(dayId: string) {
     setSelectedDayId(dayId);
-    // The initial day's activities arrive via props; fetch the rest on demand.
-    if (dayId !== initialDayId) loadActivities(dayId);
+    // Always reload the selected day's activities: the initial day's list
+    // arrives via props, but once the user navigates away `activities` holds
+    // another day's data, so returning to any day (initial included) must refetch.
+    loadActivities(dayId);
     const day = localDays.find((d) => d.id === dayId);
     router.replace(`?day=${day?.day_number ?? 1}`, { scroll: false });
   }
