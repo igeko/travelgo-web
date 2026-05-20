@@ -80,6 +80,13 @@ export class ActivityService {
     let createdEntityId: string | null = null;
 
     if (existingId) {
+      // Idempotent: an entity already scheduled on this day (UNIQUE
+      // activity_id+day_id) must not be inserted twice — return the
+      // existing occurrence so the caller can open/edit it instead.
+      const existing = (await this.listForDay(dayId)).find(
+        (b) => b.activity_id === existingId,
+      );
+      if (existing) return existing;
       activityId = existingId;
     } else {
       const entityPatch = pickFields(body, ENTITY_FIELDS);

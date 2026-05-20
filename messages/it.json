@@ -201,8 +201,21 @@
     },
     "acts": "atti"
   },
+  "ActivitySearch": {
+    "placeholder": "Cerca un'attività del viaggio…",
+    "listLabel": "Attività del viaggio",
+    "toPlan": "Da programmare",
+    "planned": "Già pianificate",
+    "wishlistOnly": "Solo in wishlist",
+    "noResults": "Nessun risultato per «{query}»",
+    "clear": "Pulisci ricerca",
+    "statusTodo": "Da fare",
+    "statusBooked": "Prenotato",
+    "statusPaid": "Pagato"
+  },
   "Common": {
     "save": "Salva",
+    "apply": "Applica",
     "cancel": "Annulla",
     "close": "Chiudi",
     "delete": "Elimina",
@@ -265,6 +278,8 @@
     },
     "edit": {
       "editTransfer": "Modifica spostamento",
+      "transit": "Transit",
+      "durationRecognized": "Riconosciuto — {total} min totali",
       "close": "Chiudi",
       "mode": "Mezzo",
       "time": "Tempo",
@@ -277,7 +292,8 @@
     "hour": "Ora",
     "minutes": "Minuti",
     "clearTime": "rimuovi orario",
-    "noActivities": "Nessuna attività ancora"
+    "noActivities": "Nessuna attività ancora",
+    "alreadyOnDay": "«{title}» è già in programma in questo giorno"
   },
   "Go": {
     "title": "Go · assistente di viaggio",

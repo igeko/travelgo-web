@@ -34,6 +34,8 @@ type CommonProps = {
   hideCounter?: boolean;
   /** When true the floating label is always visible (not just on hover/focus) */
   labelAlwaysVisible?: boolean;
+  /** Visual size of the pill. Default "md". */
+  size?: "sm" | "md";
   /** Slots: <SoftField.Prefix /> and/or <SoftField.Suffix /> */
   children?: ReactNode;
   /** Extra classes on the outer pill wrapper */
@@ -107,7 +109,7 @@ function Prefix({ children }: { children: ReactNode }) {
     <span
       className={cn(
         "shrink-0 inline-flex items-center text-ink-faint",
-        "[&>svg]:size-3.5",
+        "[&>svg]:size-3.5 group-data-[size=sm]/sf:[&>svg]:size-3",
         "group-data-[multiline=true]/sf:self-start group-data-[multiline=true]/sf:mt-1.5",
       )}
     >
@@ -170,6 +172,7 @@ const SoftFieldBase = forwardRef<
     maxLength,
     hideCounter,
     labelAlwaysVisible,
+    size = "md",
     children,
     className,
     autoComplete,
@@ -179,11 +182,13 @@ const SoftFieldBase = forwardRef<
   } = props;
 
   const multiline = "multiline" in props && props.multiline === true;
+  const small = size === "sm";
   const { prefix, suffix } = extractSlots(children);
 
   const sharedInputClasses = cn(
     "block w-full min-w-0 bg-transparent border-0 outline-0 shadow-none p-0 m-0 appearance-none",
-    "font-sans text-[15px] leading-[1.45] font-normal text-ink",
+    "font-sans leading-[1.45] font-normal text-ink",
+    small ? "text-[13px]" : "text-[15px]",
     "placeholder:text-ink-faint",
     "disabled:cursor-not-allowed",
   );
@@ -192,16 +197,21 @@ const SoftFieldBase = forwardRef<
     <div className={cn("w-full", className)}>
       <div
         data-multiline={multiline ? "true" : "false"}
+        data-size={size}
         className={cn(
           // Named `group/sf` so Prefix/Suffix can react to focus-within and
           // to the multiline state on this wrapper.
-          "group/sf relative flex gap-1.5 px-[18px] py-[10px]",
+          "group/sf relative flex",
+          small ? "gap-1 px-3.5 py-1.5" : "gap-1.5 px-[18px] py-[10px]",
+          // In sm the auto-sized (h-6) slot buttons are taller than the text
+          // line and would stretch the pill — shrink them to match the line.
+          small && "[&_button]:h-5 [&_button]:px-2",
           // Slot alignment: top in multiline (next to the first textarea line),
           // centered in single-line.
           multiline ? "items-start" : "items-center",
           "bg-surface-input border border-border",
           // Shape: pill for input, generous radius for textarea
-          multiline ? "rounded-[20px]" : "rounded-pill",
+          multiline ? (small ? "rounded-[16px]" : "rounded-[20px]") : "rounded-pill",
           // Interaction states
           "transition-[background,border-color,box-shadow] duration-150",
           "hover:border-border-strong",
@@ -241,7 +251,7 @@ const SoftFieldBase = forwardRef<
             autoComplete={autoComplete}
             name={name}
             id={id}
-            className={cn(sharedInputClasses, "resize-y min-h-[54px]")}
+            className={cn(sharedInputClasses, "resize-y", small ? "min-h-[40px]" : "min-h-[54px]")}
             {...(inputProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (

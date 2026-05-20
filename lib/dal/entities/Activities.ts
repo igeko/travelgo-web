@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from "../supabase";
+import type { BookingStatus } from "../domain";
 import { ActivityTable, TripTable } from "../tables";
 import {
   DalError,
@@ -50,8 +51,23 @@ export type ActivitySearchInput = {
 };
 
 type SearchRow = Record<string, unknown> & { id: string };
+
+/** One scheduled occurrence of an activity, surfaced alongside search hits. */
+export type ActivityScheduledInstance = {
+  /** ISO "YYYY-MM-DD" of the day it sits on, or null if the day has no date. */
+  date: string | null;
+  time: string | null;
+  status: BookingStatus | null;
+};
+
+export type ActivitySearchWishlistRow = SearchRow & {
+  in_current_day: boolean;
+  /** Every day this activity is scheduled on (empty → still wishlist-only). */
+  scheduled: ActivityScheduledInstance[];
+};
+
 export type ActivitySearchResult = {
-  wishlist: (SearchRow & { in_current_day: boolean })[];
+  wishlist: ActivitySearchWishlistRow[];
   platform: SearchRow[];
 };
 
@@ -224,9 +240,15 @@ export class Activities {
       );
     }
 
-    const wishlist = ((wishlistRaw ?? []) as SearchRow[]).map((a) => ({
+    const wishlistRows = (wishlistRaw ?? []) as SearchRow[];
+    const scheduledByActivity = await this.scheduledInstancesFor(
+      wishlistRows.map((a) => a.id as string),
+    );
+
+    const wishlist = wishlistRows.map((a) => ({
       ...a,
       in_current_day: dayId ? scheduledIds.has(a.id as string) : false,
+      scheduled: scheduledByActivity.get(a.id as string) ?? [],
     }));
 
     if (!safeQ) return { wishlist, platform: [] };
@@ -239,5 +261,57 @@ export class Activities {
       .limit(20);
 
     return { wishlist, platform: (platform ?? []) as SearchRow[] };
+  }
+
+  /**
+   * Group the scheduled occurrences (day date + time + booking status) of a
+   * set of activities by activity id. Occurrences are sorted by date, then time.
+   */
+  private async scheduledInstancesFor(
+    activityIds: string[],
+  ): Promise<Map<string, ActivityScheduledInstance[]>> {
+    const byActivity = new Map<string, ActivityScheduledInstance[]>();
+    if (activityIds.length === 0) return byActivity;
+
+    const { data: scheduled } = await this.db
+      .from(TripTable.ScheduledActivities)
+      .select("activity_id, time, booking_status, day_id")
+      .in("activity_id", activityIds);
+
+    const rows = (scheduled ?? []) as {
+      activity_id: string;
+      time: string | null;
+      booking_status: string | null;
+      day_id: string;
+    }[];
+    if (rows.length === 0) return byActivity;
+
+    const dayIds = [...new Set(rows.map((r) => r.day_id))];
+    const { data: days } = await this.db
+      .from(TripTable.Days)
+      .select("id, date")
+      .in("id", dayIds);
+    const dateByDay = new Map(
+      ((days ?? []) as { id: string; date: string | null }[]).map((d) => [d.id, d.date]),
+    );
+
+    for (const r of rows) {
+      const list = byActivity.get(r.activity_id) ?? [];
+      list.push({
+        date: dateByDay.get(r.day_id) ?? null,
+        time: r.time,
+        status: (r.booking_status ?? null) as BookingStatus | null,
+      });
+      byActivity.set(r.activity_id, list);
+    }
+
+    for (const list of byActivity.values()) {
+      list.sort(
+        (a, b) =>
+          (a.date ?? "").localeCompare(b.date ?? "") ||
+          (a.time ?? "").localeCompare(b.time ?? ""),
+      );
+    }
+    return byActivity;
   }
 }

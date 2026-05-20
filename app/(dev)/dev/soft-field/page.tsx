@@ -21,6 +21,7 @@ export default function SoftFieldStories() {
   const [label, setLabel] = useState("Lodging name");
   const [placeholder, setPlaceholder] = useState("Lodging name");
   const [multiline, setMultiline] = useState(false);
+  const [size, setSize] = useState<"sm" | "md">("md");
   const [useMaxLength, setUseMaxLength] = useState(false);
   const [maxLength, setMaxLength] = useState(80);
   const [prefix, setPrefix] = useState<PrefixOption>("none");
@@ -61,6 +62,17 @@ export default function SoftFieldStories() {
     {
       title: "Layout",
       controls: [
+        {
+          kind: "radio",
+          id: "size",
+          label: "Size",
+          value: size,
+          onChange: (v) => setSize(v as "sm" | "md"),
+          options: [
+            { value: "md", label: "md (default)" },
+            { value: "sm", label: "sm" },
+          ],
+        },
         {
           kind: "toggle",
           id: "multiline",
@@ -206,6 +218,7 @@ export default function SoftFieldStories() {
           {multiline ? (
             <SoftField
               multiline
+              size={size}
               value={value}
               onChange={setValue}
               label={label || undefined}
@@ -219,6 +232,7 @@ export default function SoftFieldStories() {
             </SoftField>
           ) : (
             <SoftField
+              size={size}
               value={value}
               onChange={setValue}
               label={label || undefined}
@@ -231,6 +245,54 @@ export default function SoftFieldStories() {
               {suffixNode}
             </SoftField>
           )}
+        </StoryFrame>
+
+        <StoryFrame
+          name="Size · sm vs md"
+          description="`size='sm'` shrinks padding, font and icons for compact / inline contexts. Default is `md`. Slots adapt automatically."
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint">
+                md (default)
+              </div>
+              <SoftField value="Hoshinoya Tokyo" onChange={() => {}} label="Lodging name">
+                <SoftField.Prefix>
+                  <IconMapPin />
+                </SoftField.Prefix>
+                <SoftField.Suffix>
+                  <Button variant="outline">
+                    <IconMapPin />
+                    <span>map</span>
+                  </Button>
+                </SoftField.Suffix>
+              </SoftField>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint">
+                sm
+              </div>
+              <SoftField size="sm" value="Hoshinoya Tokyo" onChange={() => {}} label="Lodging name">
+                <SoftField.Prefix>
+                  <IconMapPin />
+                </SoftField.Prefix>
+                <SoftField.Suffix>
+                  <Button variant="outline">
+                    <IconMapPin />
+                    <span>map</span>
+                  </Button>
+                </SoftField.Suffix>
+              </SoftField>
+              <SoftField
+                size="sm"
+                multiline
+                value=""
+                onChange={() => {}}
+                label="Notes"
+                placeholder="A few words…"
+              />
+            </div>
+          </div>
         </StoryFrame>
 
         <StoryFrame

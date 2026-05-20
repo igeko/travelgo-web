@@ -1,6 +1,16 @@
 import type { Activity, BlockType, BookingStatus, BridgeData } from "@/lib/dal/domain";
+import type { ActivityScheduledInstance } from "@/lib/dal";
 
 export type { BlockType, BookingStatus, BridgeData };
+
+/** An activity entity as surfaced by ActivitySearchField (entity + its occurrences). */
+export type TripActivityOption = {
+  id: string;
+  title: string;
+  location: string | null;
+  /** Days this activity is scheduled on — empty means wishlist-only. */
+  scheduled: ActivityScheduledInstance[];
+};
 
 /** Un blocco della timeline — è semplicemente un Activity arricchito */
 export type TimelineBlock = Activity;

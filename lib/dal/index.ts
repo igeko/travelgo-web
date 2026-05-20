@@ -54,6 +54,7 @@ export type {
 export type {
   CreateActivityInput, UpdateActivityInput, ActivityWithSections,
   ActivitySearchInput, ActivitySearchResult,
+  ActivityScheduledInstance, ActivitySearchWishlistRow,
 } from "./entities/Activities";
 export type { CreateBudgetItemInput, UpdateBudgetItemInput, BudgetSummary } from "./entities/Budget";
 export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";

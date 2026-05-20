@@ -28,6 +28,12 @@ export type Period = {
   id: string;
   /** Display label, uppercase by convention (e.g. "MORNING") */
   name: string;
+  /**
+   * Short label used when the bar gets narrow (≤ ~360px), e.g. "MORN".
+   * Must be supplied by the caller for non-English locales — falls back
+   * to truncating `name` when omitted.
+   */
+  shortName?: string;
   /** Hour range shown on inactive cells (e.g. "05–12") */
   range: string;
   /**
@@ -40,10 +46,10 @@ export type Period = {
 
 /** Default 4-period set, English labels */
 export const DEFAULT_PERIODS: Period[] = [
-  { id: "morning",   name: "MORNING",   range: "05–12", hours: [5,6,7,8,9,10,11] },
-  { id: "afternoon", name: "AFTERNOON", range: "12–18", hours: [12,13,14,15,16,17] },
-  { id: "evening",   name: "EVENING",   range: "18–22", hours: [18,19,20,21] },
-  { id: "night",     name: "NIGHT",     range: "22–05", hours: [22,23,0,1,2,3,4] },
+  { id: "morning",   name: "MORNING",   shortName: "MORN",  range: "05–12", hours: [5,6,7,8,9,10,11] },
+  { id: "afternoon", name: "AFTERNOON", shortName: "AFT",   range: "12–18", hours: [12,13,14,15,16,17] },
+  { id: "evening",   name: "EVENING",   shortName: "EVE",   range: "18–22", hours: [18,19,20,21] },
+  { id: "night",     name: "NIGHT",     shortName: "NIGHT", range: "22–05", hours: [22,23,0,1,2,3,4] },
 ];
 
 /** Time value owned by the parent in picker mode. `undefined` = unset. */
@@ -185,7 +191,7 @@ export function PeriodBar({
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        "grid bg-surface border border-border rounded-pill",
+        "@container/periodbar grid bg-surface border border-border rounded-pill",
         BAR_SIZE[size],
         disabled && "opacity-50 pointer-events-none",
         className,
@@ -212,11 +218,20 @@ export function PeriodBar({
           >
             <div
               className={cn(
-                "font-medium uppercase tracking-[0.08em]",
+                "font-medium uppercase tracking-[0.08em] truncate",
                 NAME_SIZE[size],
               )}
             >
-              {p.name}
+              {p.shortName ? (
+                <>
+                  <span className="@max-[360px]/periodbar:hidden">{p.name}</span>
+                  <span className="hidden @max-[360px]/periodbar:inline">
+                    {p.shortName}
+                  </span>
+                </>
+              ) : (
+                p.name
+              )}
             </div>
             {isActive && shownTime ? (
               <div

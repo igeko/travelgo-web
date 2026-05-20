@@ -20,22 +20,22 @@ import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { useTimeline } from "./useTimeline";
-import { ActivityAutocomplete } from "./ActivityAutocomplete";
+import { AddActivityForm } from "./Timeline/AddActivityForm";
 import { Button } from "@/components/ui/Button";
 import { PeriodBar, type PeriodTime } from "@/components/ui/PeriodBar";
 import {
   IconCalendarTime, IconPlus, IconX, IconCircleMinus,
-  IconWalk, IconPencil, IconMapPin,
+  IconWalk, IconRoute,
 } from "@/components/ui/icons";
 import type {
   TimelineBlock as Block,
   SlotKey,
-  SearchResult,
-  NewBlockPayload,
+  TripActivityOption,
 } from "./types";
-import type { BridgeData, BlockType } from "@/lib/dal/domain";
+import type { BridgeData } from "@/lib/dal/domain";
 import { SLOT_ORDER } from "./types";
 import { BridgeEditor } from "./Timeline/BridgeEditor";
+import { formatMinutes } from "./Timeline/duration";
 import { TYPE_ICON, TRANSPORT_ICON } from "./Timeline/icons";
 
 /* ─── geometry ──────────────────────────────────────────────────── */
@@ -44,7 +44,6 @@ const SPINE_X    = 97;  // x position of the vertical spine line
 
 /* ─── add state ──────────────────────────────────────────────────── */
 type AddState =
-  | { kind: "composer";     afterBlockId?: string; slot: SlotKey }
   | { kind: "autocomplete"; afterBlockId?: string; slot: SlotKey }
   | null;
 
@@ -74,13 +73,11 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
         paddingLeft: SPINE_LEFT,
       }}
     >
-      {!isFirst && (
-        <div
-          className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
-          style={{ left: SPINE_X, top: 0, bottom: 0 }}
-          aria-hidden
-        />
-      )}
+      <div
+        className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
+        style={{ left: SPINE_X, top: 0, bottom: 0 }}
+        aria-hidden
+      />
       <span
         className="absolute text-[10.5px] font-medium tracking-[0.14em] uppercase text-orange select-none whitespace-nowrap"
         style={{
@@ -97,19 +94,14 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
   );
 }
 
-/* ─── BridgeStrip (closed) ───────────────────────────────────────── */
-function BridgeStrip({
-  bridge,
-  editMode,
-  onClick,
-}: {
-  bridge:   BridgeData;
-  editMode: boolean;
-  onClick:  () => void;
-}) {
+/* ─── BridgeStrip (sola visualizzazione) ─────────────────────────────
+   I bridge non sono più editabili dallo strip: niente hover, niente
+   matita, niente click. Si modificano solo dall'edit form TRANSIT
+   dell'attività.
+─────────────────────────────────────────────────────────────────── */
+function BridgeStrip({ bridge }: { bridge: BridgeData }) {
   const tTransport = useTranslations("Timeline.transport");
-  const [hovered, setHovered] = useState(false);
-  const durText = bridge.duration_min ? `${bridge.duration_min} min` : null;
+  const durText = formatMinutes(bridge.duration_min) || null;
   let transportLabel: string;
   try {
     transportLabel = tTransport(bridge.transport);
@@ -120,21 +112,12 @@ function BridgeStrip({
 
   return (
     <div
-      className={cn(
-        "relative flex items-center gap-1.5 text-ink-soft text-tiny transition-colors rounded-[15px_15px_0_0]",
-        editMode ? "cursor-pointer hover:bg-[rgba(13,44,61,0.03)]" : "cursor-default",
-      )}
+      className="relative flex items-center gap-1.5 text-ink-soft text-tiny rounded-[15px_15px_0_0]"
       style={{ padding: "2px 8px", minHeight: 22, margin: "0 10px 0 5px" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={editMode ? onClick : undefined}
     >
       <span className="text-ink-faint">{TRANSPORT_ICON[bridge.transport] ?? <IconWalk size={12} />}</span>
       <span>{label}</span>
       {bridge.line && <span className="text-ink-faint">· {bridge.line}</span>}
-      {editMode && hovered && (
-        <span className="ml-auto text-[#c7c0b0]"><IconPencil size={11} /></span>
-      )}
     </div>
   );
 }
@@ -149,6 +132,23 @@ function parseClock(clock?: string | null): PeriodTime {
     hour: Number.isFinite(h) ? h : undefined,
     minute: Number.isFinite(m) ? m : undefined,
   };
+}
+
+/** "HH:mm" + N minuti (wrap a 24h). Null se non parsabile. */
+function addMinutesToClock(clock: string, minutes: number): string | null {
+  const [h, m] = clock.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  const total = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** Periodo (slot) corrispondente a un orario "HH:mm". */
+function slotForClock(clock: string): SlotKey {
+  const h = Number(clock.split(":")[0]);
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  if (h < 22) return "evening";
+  return "night";
 }
 
 /* ─── ScheduleStrip ──────────────────────────────────────────────── */
@@ -169,9 +169,8 @@ function ScheduleStrip({
 }) {
   const tT = useTranslations("Timeline");
   const tCommon = useTranslations("Common");
-  const [slot,  setSlot]  = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
-  const [fuzzy, setFuzzy] = useState<boolean>(!!block.fuzzy);
-  const [time,  setTime]  = useState<PeriodTime>(parseClock(block.time));
+  const [slot, setSlot] = useState<SlotKey>((block.slot as SlotKey) ?? "morning");
+  const [time, setTime] = useState<PeriodTime>(parseClock(block.time));
 
   const hasTime = time.hour !== undefined && time.minute !== undefined;
 
@@ -179,16 +178,17 @@ function ScheduleStrip({
     const timeStr = hasTime
       ? `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`
       : null;
+    // Nessun orario preciso ⇒ fuzzy (deriva dallo stato del picker).
     onSave({
       slot,
-      fuzzy,
-      time: fuzzy ? null : timeStr,
+      fuzzy: !hasTime,
+      time: timeStr,
     });
     onClose();
   }
 
   return (
-    <div className="rounded-md border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
+    <div className="rounded-md rounded-tr-none border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
       {/* Head */}
       <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
         <IconCalendarTime size={11} />
@@ -206,28 +206,19 @@ function ScheduleStrip({
       <PeriodBar
         value={slot}
         onChange={(id) => setSlot(id as SlotKey)}
-        time={fuzzy ? { hour: undefined, minute: undefined } : time}
-        onTimeChange={(t) => {
-          setTime(t);
-          if (t.hour !== undefined || t.minute !== undefined) setFuzzy(false);
-        }}
+        time={time}
+        onTimeChange={setTime}
         size="slim"
         pickerLabels={{ hour: tT("hour"), minutes: tT("minutes"), clearTime: tT("clearTime") }}
       />
 
       {/* Footer */}
-      <div className="flex justify-between items-center mt-2.5 text-tiny text-ink-soft">
-        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={fuzzy}
-            onChange={(e) => setFuzzy(e.target.checked)}
-            className="accent-[var(--color-orange)] cursor-pointer"
-          />
-          <span>{tT("noPreciseTime")}</span>
-        </label>
+      <div className="flex justify-end items-center gap-1.5 mt-2.5">
+        <Button size="sm" variant="ghost" tone="neutral" onClick={onClose}>
+          {tCommon("cancel")}
+        </Button>
         <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
-          OK
+          {tCommon("apply")}
         </Button>
       </div>
     </div>
@@ -235,170 +226,35 @@ function ScheduleStrip({
 }
 
 /* ─── AddZone ────────────────────────────────────────────────────── */
+/**
+ * Affordance "aggiungi attività": invisibile a riposo, compare solo
+ * all'hover come piccolo pallino con il "+" sulla spine + scritta piccola.
+ */
 function AddZone({
-  onAddBlock,
   onAddActivity,
 }: {
-  onAddBlock:    () => void;
   onAddActivity: () => void;
 }) {
   return (
-    <div className="group relative flex items-center min-h-[14px] cursor-pointer pl-1 my-0">
-      {/* Orange dot on spine */}
+    <button
+      type="button"
+      onClick={onAddActivity}
+      className="group relative flex items-center w-full text-left min-h-[20px] pl-5 my-0.5 cursor-pointer"
+    >
+      {/* Small "+" dot on the spine — hover only */}
       <div
-        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pointer-events-none"
+        className="absolute flex items-center justify-center rounded-full bg-orange text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity z-10"
         style={{ left: -21, top: "50%", transform: "translateY(-50%)", width: 18, height: 18 }}
         aria-hidden
       >
         <IconPlus size={11} />
       </div>
 
-      {/* Affordances */}
-      <div className="flex items-center gap-3.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <button
-          className="inline-flex items-center gap-2 text-orange-deep group/item"
-          onClick={(e) => { e.stopPropagation(); onAddBlock(); }}
-        >
-          <span className="w-7 h-px bg-current opacity-85" />
-          <span className="text-tiny font-medium group-hover/item:underline underline-offset-[3px]">
-            aggiungi blocco
-          </span>
-        </button>
-        <button
-          className="inline-flex items-center gap-2 text-ink-soft hover:text-ink group/item transition-colors"
-          onClick={(e) => { e.stopPropagation(); onAddActivity(); }}
-        >
-          <span className="w-7 h-px bg-current opacity-85" />
-          <span className="text-tiny font-medium group-hover/item:underline underline-offset-[3px]">
-            aggiungi attività
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── BlockComposer (add-expanded card) ──────────────────────────── */
-const BLOCK_TYPES: { key: BlockType; label: string }[] = [
-  { key: "place",  label: "Luogo"       },
-  { key: "move",   label: "Spostamento" },
-  { key: "meal",   label: "Pasto"       },
-  { key: "pause",  label: "Pausa"       },
-  { key: "action", label: "Azione"      },
-];
-
-function BlockComposer({
-  defaultSlot,
-  onAdd,
-  onClose,
-}: {
-  defaultSlot: SlotKey;
-  onAdd:   (payload: NewBlockPayload) => void;
-  onClose: () => void;
-}) {
-  const [type,  setType]  = useState<BlockType>("place");
-  const [time,  setTime]  = useState("");
-  const [title, setTitle] = useState("");
-  const [zone,  setZone]  = useState("");
-
-  function handleAdd() {
-    const t = title.trim();
-    if (!t) return;
-    onAdd({
-      title: t,
-      type,
-      slot:  defaultSlot,
-      fuzzy: !zone.trim(),
-      time:  time || undefined,
-    });
-    onClose();
-  }
-
-  return (
-    <div className="relative py-1">
-      {/* Solid orange spine segment */}
-      <div
-        className="absolute top-0 bottom-0 w-[1.5px] bg-orange pointer-events-none"
-        style={{ left: -19 }}
-        aria-hidden
-      />
-      <div className="rounded-md border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
-        {/* Head */}
-        <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-2.5">
-          <IconPlus size={11} />
-          <span>Nuovo blocco</span>
-          <button className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
-            <IconX size={13} />
-          </button>
-        </div>
-
-        {/* Type chips */}
-        <div className="flex gap-1 flex-wrap mb-2.5">
-          {BLOCK_TYPES.map((bt) => (
-            <button
-              key={bt.key}
-              onClick={() => setType(bt.key)}
-              className={cn(
-                "inline-flex items-center gap-1 px-2 py-1 rounded-pill border text-[10.5px] font-medium cursor-pointer transition-colors",
-                type === bt.key
-                  ? "bg-[#ddedde] text-[#3d6e0e] border-[#9bbf9a]"
-                  : "bg-surface-soft border-border text-ink-soft hover:border-orange/40",
-              )}
-            >
-              <span className="[&>svg]:w-[11px] [&>svg]:h-[11px]">
-                {TYPE_ICON[bt.key] ?? <IconMapPin size={11} />}
-              </span>
-              {bt.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Fields */}
-        <div className="flex gap-1.5 mb-2">
-          <div className="w-[78px] shrink-0 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Ora</span>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink font-medium"
-            />
-          </div>
-          <div className="flex-1 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Titolo</span>
-            <input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              className="bg-transparent outline-none w-full text-ink font-medium placeholder:text-ink-faint"
-              placeholder="es. pausa caffè"
-            />
-          </div>
-          <div className="w-[124px] shrink-0 bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9px] uppercase tracking-meta text-ink-faint mb-0.5">Zona (opz.)</span>
-            <input
-              value={zone}
-              onChange={(e) => setZone(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink placeholder:text-ink-faint italic"
-              placeholder="(decidi sul posto)"
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center text-[10.5px] text-ink-faint">
-          <span className="italic">Niente zona = fuzzy</span>
-          <button
-            onClick={handleAdd}
-            disabled={!title.trim()}
-            className="bg-ink text-white rounded-pill px-3 py-1 text-[10.5px] font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
-          >
-            Aggiungi
-          </button>
-        </div>
-      </div>
-    </div>
+      {/* Small label — hover only */}
+      <span className="text-tiny font-medium text-ink-soft opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
+        aggiungi attività
+      </span>
+    </button>
   );
 }
 
@@ -407,22 +263,26 @@ function SingleBlock({
   block,
   editMode,
   popoverOpen,
+  transitOpen,
   onOpenPopover,
   onClosePopover,
+  onEditTransit,
   onPatchInstance,
   onDelete,
 }: {
   block:            Block;
   editMode:         boolean;
   popoverOpen:      boolean;
+  transitOpen:      boolean;
   onOpenPopover:    () => void;
   onClosePopover:   () => void;
+  onEditTransit:    () => void;
   onPatchInstance:  (patch: import("./types").InstancePatch) => void;
   onDelete:         () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const isFuzzy  = block.fuzzy;
-  const showActs = editMode && (hovered || popoverOpen);
+  const showActs = editMode && (hovered || popoverOpen || transitOpen);
 
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
@@ -431,8 +291,8 @@ function SingleBlock({
         className={cn(
           "relative flex items-center gap-3 py-1.5 pr-2 pl-5 rounded-full transition-colors",
           popoverOpen
-            ? "bg-ink text-white my-0.5"
-            : ["border-b border-dashed border-border", hovered && "bg-surface-soft"],
+            ? "bg-ink text-white my-0.5 rounded-br-none"
+            : ["rounded-tr-none", !isFuzzy && "border-t border-dashed border-border-strong", hovered && "bg-surface-soft"],
         )}
       >
         {/* Time — absolute, left of spine */}
@@ -500,9 +360,9 @@ function SingleBlock({
           className={cn(
             "flex-1 min-w-0 text-left leading-snug transition-colors",
             isFuzzy
-              ? "text-[12.5px] uppercase tracking-[0.08em] font-medium"
+              ? "text-tiny uppercase tracking-[0.08em] font-medium -ml-2"
               : "text-[15px]",
-            popoverOpen ? "text-white" : "text-ink-soft hover:text-ink",
+            popoverOpen ? "text-white" : isFuzzy ? "text-ink-soft" : "text-ink",
           )}
           onClick={() => {
             if (!isFuzzy && block.entity_id) {
@@ -540,6 +400,21 @@ function SingleBlock({
               variant="ghost"
               tone="neutral"
               iconOnly
+              onClick={onEditTransit}
+              title="Transit"
+              aria-label="Transit"
+              className={cn(
+                popoverOpen && "text-white/70 hover:text-white",
+                transitOpen && "bg-orange/10 text-orange hover:bg-orange/10",
+              )}
+            >
+              <IconRoute />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              tone="neutral"
+              iconOnly
               onClick={onDelete}
               title="Scollega dal giorno"
               aria-label="Scollega dal giorno"
@@ -553,15 +428,14 @@ function SingleBlock({
         )}
       </div>
 
-      {/* ── Schedule strip (period + fuzzy) ─────────────────────────── */}
+      {/* ── Schedule strip (period + fuzzy) — SOTTO l'attività ───────── */}
       {popoverOpen && editMode && (
         <div className="relative" style={{ paddingLeft: 0, marginBottom: 4 }}>
-          {/* Dashed orange spine segment — a sinistra della spine principale,
-              alta quanto lo schedule */}
+          {/* Dashed orange spine segment */}
           <div
             className="absolute top-0 bottom-0 w-[1.5px] pointer-events-none"
             style={{
-              left: -21,
+              left: -19,
               background:
                 "repeating-linear-gradient(180deg, var(--color-orange) 0 3px, transparent 3px 7px)",
             }}
@@ -593,7 +467,6 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   const tT = useTranslations("Timeline");
   const {
     blocks,
-    addBlock,
     addFromEntity,
     patchInstance,
     deleteBlock,
@@ -603,6 +476,8 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   /* ── local expansion state ───────────────────────────────────── */
   const [addState,       setAddState]       = useState<AddState>(null);
   const [popoverBlockId, setPopoverBlockId] = useState<string | null>(null);
+  // Transient error shown when trying to add an activity already on the day.
+  const [dupError,       setDupError]       = useState<string | null>(null);
 
   // bridge key = "blockId-in" | "blockId-out"
   const [expandedBridgeKey, setExpandedBridgeKey] = useState<string | null>(null);
@@ -630,32 +505,50 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   const activeSlots = SLOT_ORDER.filter((s) => slotGroups[s].length > 0);
 
   /* ── handlers ────────────────────────────────────────────────── */
-  function handleAddBlock(afterBlockId: string | undefined, slot: SlotKey) {
-    setAddState({ kind: "composer", afterBlockId, slot });
-    setExpandedBridgeKey(null);
-  }
-
   function handleAddActivity(afterBlockId: string | undefined, slot: SlotKey) {
     setAddState({ kind: "autocomplete", afterBlockId, slot });
     setExpandedBridgeKey(null);
+    setDupError(null);
   }
 
-  function handleSelectEntity(entity: SearchResult, afterBlockId?: string) {
-    addFromEntity(
-      { id: entity.id, title: entity.title, type: entity.type, location: entity.location },
-      afterBlockId,
+  // Seleziona un'attività esistente del viaggio: la programma nel giorno e
+  // apre subito il pannello SCHEDULE sul nuovo blocco.
+  async function handleSelectActivity(
+    option: TripActivityOption,
+    afterBlockId: string | undefined,
+    slot: SlotKey,
+  ): Promise<boolean> {
+    // Già programmata in questo giorno? (vincolo UNIQUE activity_id+day_id)
+    // Guard centrale: rifiuta il duplicato con un errore. Vale per la ricerca
+    // (dove peraltro è già esclusa) e per il futuro drag&drop dalla Wishlist.
+    const already = blocks.find(
+      (b) => b.activity_id === option.id || b.entity_id === option.id,
     );
-    setAddState(null);
-  }
+    if (already) {
+      setDupError(tT("alreadyOnDay", { title: option.title }));
+      return false;
+    }
+    setDupError(null);
 
-  function handleCreateNew(title: string, afterBlockId: string | undefined, slot: SlotKey) {
-    addBlock({ title, type: "place", slot, fuzzy: true }, afterBlockId);
-    setAddState(null);
-  }
+    // Precompila periodo e orario a +5 min rispetto all'attività subito sopra
+    // (il blocco dopo cui si inserisce), se esiste e ha un orario.
+    const above = afterBlockId ? blocks.find((b) => b.id === afterBlockId) : undefined;
+    const preTime = above?.time ? addMinutesToClock(above.time, 5) : null;
+    const preSlot: SlotKey = preTime ? slotForClock(preTime) : slot;
 
-  function handleComposerAdd(payload: NewBlockPayload, afterBlockId?: string) {
-    addBlock(payload, afterBlockId);
-    setAddState(null);
+    const created = await addFromEntity(
+      { id: option.id, title: option.title, type: "place", location: option.location },
+      afterBlockId,
+      preSlot,
+      preTime,
+    );
+    // Chiude la form e apre SCHEDULE solo se l'attività è stata aggiunta.
+    if (created) {
+      setAddState(null);
+      setPopoverBlockId(created.id);
+      return true;
+    }
+    return false;
   }
 
   function toggleBridge(blockId: string, direction: "in" | "out") {
@@ -668,41 +561,43 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
   function renderAddZone(afterBlockId: string | undefined, slot: SlotKey) {
     if (!editMode) return null;
 
-    const composerHere = isSameAdd(addState, afterBlockId, slot) && addState?.kind === "composer";
-    const autoHere     = isSameAdd(addState, afterBlockId, slot) && addState?.kind === "autocomplete";
+    const autoHere = isSameAdd(addState, afterBlockId, slot) && addState?.kind === "autocomplete";
 
     return (
       <div key={`az-${afterBlockId ?? "start"}-${slot}`}>
-        {!composerHere && !autoHere && (
+        {!autoHere && (
           <AddZone
-            onAddBlock={()    => handleAddBlock(afterBlockId, slot)}
-            onAddActivity={()  => handleAddActivity(afterBlockId, slot)}
-          />
-        )}
-        {composerHere && (
-          <BlockComposer
-            defaultSlot={slot}
-            onAdd={(payload) => handleComposerAdd(payload, afterBlockId)}
-            onClose={() => setAddState(null)}
+            onAddActivity={() => handleAddActivity(afterBlockId, slot)}
           />
         )}
         {autoHere && (
-          <ActivityAutocomplete
+          <AddActivityForm
             tripId={tripId}
-            dayId={dayId}
-            onSelect={(e) => handleSelectEntity(e, afterBlockId)}
-            onCreateNew={(t) => handleCreateNew(t, afterBlockId, slot)}
+            onSelect={(opt) => handleSelectActivity(opt, afterBlockId, slot)}
             onClose={() => setAddState(null)}
+            excludeIds={blocks.map((b) => b.activity_id)}
           />
         )}
       </div>
     );
   }
 
+  /* ── duplicate-add error notice (reused by both render branches) ── */
+  const dupNotice = dupError ? (
+    <div
+      role="alert"
+      className="mb-2 rounded-md border border-danger-border bg-danger-bg px-3 py-1.5 text-mini text-danger-fg"
+      style={{ marginLeft: SPINE_LEFT }}
+    >
+      {dupError}
+    </div>
+  ) : null;
+
   /* ── empty state ─────────────────────────────────────────────── */
   if (blocks.length === 0) {
     return (
       <div>
+        {dupNotice}
         <div
           className="py-10 text-center text-meta text-ink-faint"
           style={{ paddingLeft: SPINE_LEFT + 16 }}
@@ -716,7 +611,8 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
 
   /* ── main render ─────────────────────────────────────────────── */
   return (
-    <div className="max-w-[498px]">
+    <div className="min-w-[498px] max-w-[498px]">
+      {dupNotice}
       {activeSlots.map((slot, slotIdx) => {
         const slotBlocks = slotGroups[slot];
         const isFirstSection = slotIdx === 0;
@@ -739,7 +635,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
                 className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
                 style={{
                   left:   SPINE_X,
-                  top:    isFirstSection ? 32 : (firstBlockHasBridgeIn && !editMode ? 12 : 0),
+                  top:    isFirstSection ? 0 : (firstBlockHasBridgeIn && !editMode ? 12 : 0),
                   bottom: isLastSection  ? 32 : 0,
                 }}
                 aria-hidden
@@ -751,59 +647,46 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false }: Pro
               {slotBlocks.map((block, blockIdx) => {
                 const isLastBlock = blockIdx === slotBlocks.length - 1;
                 const bridgeInKey  = `${block.id}-in`;
-                const bridgeOutKey = `${block.id}-out`;
+
+                // In read-mode diamo respiro tra un'attività e l'altra: uno
+                // spacer (che mostra un tratto di spine) tra ogni coppia di
+                // blocchi, anche quando c'è un bridge (lo spazio finisce sopra
+                // la strip del transit del blocco successivo).
+                const showSpacer = !editMode && !isLastBlock;
 
                 return (
                   <div key={block.id}>
-                    {/* Bridge IN (before the block) */}
-                    {block.bridge_in_json && (
-                      expandedBridgeKey === bridgeInKey ? (
-                        <BridgeEditor
-                          bridge={block.bridge_in_json}
-                          onSave={(b) => { patchBridge(block.id, "in", b); setExpandedBridgeKey(null); }}
-                          onClose={() => setExpandedBridgeKey(null)}
-                          onMarkFree={() => { patchBridge(block.id, "in", null); setExpandedBridgeKey(null); }}
-                        />
-                      ) : (
-                        <BridgeStrip
-                          bridge={block.bridge_in_json}
-                          editMode={editMode}
-                          onClick={() => toggleBridge(block.id, "in")}
-                        />
-                      )
-                    )}
+                    {/* Transit (bridge IN) — SOPRA l'attività; editor apribile
+                        dall'azione TRANSIT anche senza bridge esistente */}
+                    {expandedBridgeKey === bridgeInKey ? (
+                      <BridgeEditor
+                        bridge={block.bridge_in_json ?? null}
+                        onSave={(b) => { patchBridge(block.id, "in", b); setExpandedBridgeKey(null); }}
+                        onClose={() => setExpandedBridgeKey(null)}
+                        onDelete={() => { patchBridge(block.id, "in", null); setExpandedBridgeKey(null); }}
+                      />
+                    ) : block.bridge_in_json ? (
+                      <BridgeStrip bridge={block.bridge_in_json} />
+                    ) : null}
 
                     {/* Block row + popover */}
                     <SingleBlock
                       block={block}
                       editMode={editMode}
                       popoverOpen={popoverBlockId === block.id}
+                      transitOpen={expandedBridgeKey === bridgeInKey}
                       onOpenPopover={() => setPopoverBlockId(block.id)}
                       onClosePopover={() => setPopoverBlockId(null)}
+                      onEditTransit={() => toggleBridge(block.id, "in")}
                       onPatchInstance={(patch) => patchInstance(block.id, patch)}
                       onDelete={() => deleteBlock(block.id)}
                     />
 
+                    {/* Read-mode: spazio tra attività senza bridge → mostra la spine */}
+                    {showSpacer && <div className="h-8" aria-hidden />}
+
                     {/* Add zone after block (between this and next, or at end of section) */}
                     {!isLastBlock && renderAddZone(block.id, slot)}
-
-                    {/* Bridge OUT (after the block / add-zone) */}
-                    {block.bridge_out_json && (
-                      expandedBridgeKey === bridgeOutKey ? (
-                        <BridgeEditor
-                          bridge={block.bridge_out_json}
-                          onSave={(b) => { patchBridge(block.id, "out", b); setExpandedBridgeKey(null); }}
-                          onClose={() => setExpandedBridgeKey(null)}
-                          onMarkFree={() => { patchBridge(block.id, "out", null); setExpandedBridgeKey(null); }}
-                        />
-                      ) : (
-                        <BridgeStrip
-                          bridge={block.bridge_out_json}
-                          editMode={editMode}
-                          onClick={() => toggleBridge(block.id, "out")}
-                        />
-                      )
-                    )}
                   </div>
                 );
               })}

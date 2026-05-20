@@ -155,6 +155,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Activity",
     description: "Day editor spine view · blocchi tipizzati, bridge, add affordance, AI organize, fuzzy variant",
   },
+  {
+    slug: "activity-search",
+    title: "ActivitySearchField",
+    group: "Features",
+    subgroup: "Activity",
+    description: "Combobox ricerca attività del viaggio · gruppi Da programmare / Già pianificate, inline + floating, keyboard nav",
+  },
   // Trips subgroup
   {
     slug: "create-trip",

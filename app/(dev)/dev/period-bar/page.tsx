@@ -19,15 +19,23 @@ import { SandboxRightPanel } from "../_components/SandboxShell";
 const PRESETS: Record<string, Period[]> = {
   "four-default": DEFAULT_PERIODS,
   "three-period": [
-    { id: "morning", name: "MORNING", range: "05–12" },
-    { id: "afternoon", name: "AFTERNOON", range: "12–18" },
-    { id: "evening", name: "EVENING", range: "18–22" },
+    { id: "morning", name: "MORNING", shortName: "MORN", range: "05–12" },
+    { id: "afternoon", name: "AFTERNOON", shortName: "AFT", range: "12–18" },
+    { id: "evening", name: "EVENING", shortName: "EVE", range: "18–22" },
   ],
   "two-period": [
-    { id: "day", name: "DAY", range: "06–18" },
-    { id: "night", name: "NIGHT", range: "18–06" },
+    { id: "day", name: "DAY", shortName: "DAY", range: "06–18" },
+    { id: "night", name: "NIGHT", shortName: "NIGHT", range: "18–06" },
   ],
 };
+
+/** Italian set — demonstrates that short labels are caller-provided (i18n-safe). */
+const PERIODS_IT: Period[] = [
+  { id: "morning", name: "MATTINA", shortName: "MATT", range: "05–12" },
+  { id: "afternoon", name: "POMERIGGIO", shortName: "POM", range: "12–18" },
+  { id: "evening", name: "SERA", shortName: "SERA", range: "18–22" },
+  { id: "night", name: "NOTTE", shortName: "NOTTE", range: "22–05" },
+];
 
 type PresetKey = keyof typeof PRESETS;
 
@@ -204,13 +212,13 @@ export default function PeriodBarStories() {
         </StoryFrame>
 
         <StoryFrame
-          name="Width adapts to container"
-          description="Width follows the container. Cells stay balanced (1fr each)."
+          name="Width adapts · short labels when narrow"
+          description="Width follows the container (1fr per cell). Below ~360px the cells swap the full name for the period's `shortName` (a container query — reacts to the bar width, not the viewport). Short labels are caller-provided, so they translate per locale."
         >
           <div className="flex flex-col gap-3">
             <div className="w-[320px] border border-dashed border-border rounded-md p-3">
               <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mb-2">
-                Container 320px · slim
+                Container 320px · EN · short labels
               </div>
               <PeriodBar
                 value="afternoon"
@@ -218,9 +226,19 @@ export default function PeriodBarStories() {
                 periods={DEFAULT_PERIODS}
               />
             </div>
+            <div className="w-[320px] border border-dashed border-border rounded-md p-3">
+              <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mb-2">
+                Container 320px · IT · short labels
+              </div>
+              <PeriodBar
+                value="afternoon"
+                onChange={() => {}}
+                periods={PERIODS_IT}
+              />
+            </div>
             <div className="w-full border border-dashed border-border rounded-md p-3">
               <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mb-2">
-                Full-width container · slim
+                Full-width container · slim · full labels
               </div>
               <PeriodBar
                 value="evening"

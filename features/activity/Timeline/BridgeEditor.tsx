@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconCircleMinus, IconPencil, IconX } from "@/components/ui/icons";
+import { IconRoute, IconClock, IconNotes, IconX, IconTrash } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { SoftField } from "@/components/ui/SoftField";
 import type { BridgeData } from "@/lib/dal/domain";
 import { TRANSPORT_ICON } from "./icons";
+import { parseDurationToMinutes, formatMinutes, hasUnitToken } from "./duration";
 
 type BridgeTransport = BridgeData["transport"];
 
@@ -15,18 +18,32 @@ export function BridgeEditor({
   bridge,
   onSave,
   onClose,
-  onMarkFree,
+  onDelete,
 }: {
   bridge: BridgeData | null;
-  onSave:     (b: BridgeData) => void;
-  onClose:    () => void;
-  onMarkFree: () => void;
+  onSave:   (b: BridgeData) => void;
+  onClose:  () => void;
+  onDelete: () => void;
 }) {
   const tT = useTranslations("Timeline");
+  const tCommon = useTranslations("Common");
   const [transport, setTransport] = useState<BridgeTransport>(bridge?.transport ?? "walk");
-  const [duration,  setDuration]  = useState(bridge?.duration_min?.toString() ?? "");
+  const [duration,  setDuration]  = useState(formatMinutes(bridge?.duration_min));
   const [line,      setLine]      = useState(bridge?.line ?? "");
   const [note,      setNote]      = useState(bridge?.note ?? "");
+
+  const parsedMin  = parseDurationToMinutes(duration);
+  const recognized = hasUnitToken(duration) && parsedMin !== null;
+
+  function handleSave() {
+    onSave({
+      transport,
+      duration_min: parsedMin ?? 0,
+      line:  line  || null,
+      note:  note  || null,
+      stops: null,
+    });
+  }
 
   return (
     <div className="relative py-1">
@@ -38,16 +55,16 @@ export function BridgeEditor({
         }}
         aria-hidden
       />
-      <div className="rounded-md border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
-        <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-2">
-          <IconPencil size={11} />
-          <span>{tT("edit.editTransfer")}</span>
+      <div className="rounded-md rounded-br-none border-[1.5px] border-orange bg-white p-[11px_13px] shadow-[0_4px_14px_rgba(244,123,58,0.10)]">
+        <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.08em] text-orange-deep font-medium mb-3">
+          <IconRoute size={11} />
+          <span>{tT("edit.transit")}</span>
           <button aria-label={tT("edit.close")} className="ml-auto text-ink-faint hover:text-ink transition-colors" onClick={onClose}>
             <IconX size={13} />
           </button>
         </div>
 
-        <div className="mb-2">
+        <div className="mb-3">
           <span className="block text-[10.5px] font-medium text-ink-soft mb-1.5">{tT("edit.mode")}</span>
           <div className="flex gap-1 flex-wrap">
             {BRIDGE_TRANSPORT_KEYS.map((key) => (
@@ -68,58 +85,64 @@ export function BridgeEditor({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 mb-2">
-          <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-meta text-ink-faint mb-0.5">{tT("edit.time")}</span>
-            <input
+        <div className="mb-3">
+          <div className="grid grid-cols-2 gap-2">
+            <SoftField
+              size="sm"
               value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink font-medium placeholder:text-ink-faint"
-              placeholder="~10 min"
-            />
-          </div>
-          <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px]">
-            <span className="block text-[9.5px] uppercase tracking-meta text-ink-faint mb-0.5">{tT("edit.line")}</span>
-            <input
+              onChange={setDuration}
+              label={tT("edit.time")}
+              labelAlwaysVisible
+              placeholder="es. 1d 4h 20m"
+            >
+              <SoftField.Prefix><IconClock /></SoftField.Prefix>
+            </SoftField>
+            <SoftField
+              size="sm"
               value={line}
-              onChange={(e) => setLine(e.target.value)}
-              className="bg-transparent outline-none w-full text-ink placeholder:text-ink-faint"
+              onChange={setLine}
+              label={tT("edit.line")}
+              labelAlwaysVisible
               placeholder="opz."
-            />
+            >
+              <SoftField.Prefix><IconRoute /></SoftField.Prefix>
+            </SoftField>
           </div>
+          {recognized && (
+            <p className="mt-1.5 ml-1 text-[10px] text-ink-faint">
+              {tT("edit.durationRecognized", { total: parsedMin })}
+            </p>
+          )}
         </div>
 
-        <div className="bg-surface-soft rounded-[7px] px-2.5 py-1.5 text-[11.5px] mb-2">
-          <input
+        <div className="mb-3">
+          <SoftField
+            size="sm"
             value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="bg-transparent outline-none w-full text-ink-soft italic placeholder:text-ink-faint"
+            onChange={setNote}
+            label={tT("edit.note")}
+            labelAlwaysVisible
             placeholder={tT("edit.note")}
-          />
+          >
+            <SoftField.Prefix><IconNotes /></SoftField.Prefix>
+          </SoftField>
         </div>
 
-        <div className="flex justify-between items-center mt-2.5 text-tiny">
-          <button
-            className="inline-flex items-center gap-1 text-red-700 hover:underline underline-offset-[3px] transition-colors"
-            onClick={onMarkFree}
-          >
-            <IconCircleMinus size={11} />
-            {tT("edit.markFreeTime")}
-          </button>
-          <button
-            className="bg-ink text-white rounded-pill px-3 py-1 text-tiny font-medium hover:opacity-90 transition-opacity"
-            onClick={() =>
-              onSave({
-                transport,
-                duration_min: parseInt(duration) || 0,
-                line:  line  || null,
-                note:  note  || null,
-                stops: null,
-              })
-            }
-          >
-            OK
-          </button>
+        <div className="flex items-center mt-2.5">
+          {bridge && (
+            <Button size="sm" variant="ghost" tone="danger" onClick={onDelete}>
+              <IconTrash />
+              {tCommon("delete")}
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button size="sm" variant="ghost" tone="neutral" onClick={onClose}>
+              {tCommon("cancel")}
+            </Button>
+            <Button size="sm" variant="solid" tone="neutral" onClick={handleSave}>
+              {tCommon("apply")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

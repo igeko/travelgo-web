@@ -201,8 +201,21 @@
     },
     "acts": "acts"
   },
+  "ActivitySearch": {
+    "placeholder": "Search a trip activity…",
+    "listLabel": "Trip activities",
+    "toPlan": "To plan",
+    "planned": "Already planned",
+    "wishlistOnly": "Wishlist only",
+    "noResults": "No results for “{query}”",
+    "clear": "Clear search",
+    "statusTodo": "To do",
+    "statusBooked": "Booked",
+    "statusPaid": "Paid"
+  },
   "Common": {
     "save": "Save",
+    "apply": "Apply",
     "cancel": "Cancel",
     "close": "Close",
     "delete": "Delete",
@@ -265,6 +278,8 @@
     },
     "edit": {
       "editTransfer": "Edit transit",
+      "transit": "Transit",
+      "durationRecognized": "Recognized — {total} min total",
       "close": "Close",
       "mode": "Mode",
       "time": "Time",
@@ -277,7 +292,8 @@
     "hour": "Hour",
     "minutes": "Minutes",
     "clearTime": "clear time",
-    "noActivities": "No activities yet"
+    "noActivities": "No activities yet",
+    "alreadyOnDay": "“{title}” is already scheduled on this day"
   },
   "Go": {
     "title": "Go · travel assistant",

@@ -71,6 +71,8 @@ export {
   IconTrash,
   IconTrain,
   IconTree,
+  IconRoute,
+  IconClock,
   IconUpload,
   IconWalk,
   IconWifiOff,

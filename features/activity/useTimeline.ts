@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { api } from "@/lib/client";
-import type { TimelineBlock, InstancePatch, NewBlockPayload, BridgeData } from "./types";
+import type { TimelineBlock, InstancePatch, NewBlockPayload, BridgeData, SlotKey } from "./types";
 
 type UseTimelineOptions = {
   dayId: string;
@@ -52,25 +52,33 @@ export function useTimeline({ dayId, initialBlocks }: UseTimelineOptions) {
     try {
       const created = await api.activities.addToDay(dayId, { ...payload, position });
       setBlocks((prev) => {
+        // addToDay is idempotent: if the entity was already scheduled on the
+        // day it returns the existing occurrence — don't insert it twice.
+        if (prev.some((b) => b.id === created.id)) return prev;
         const next = [...prev];
         next.splice(afterIdx + 1, 0, created);
         return next;
       });
+      return created;
     } catch {
       // creation failed — leave list unchanged
+      return undefined;
     }
   }, [blocks, dayId]);
 
   const addFromEntity = useCallback(async (
     entity: { id: string; title: string; type: TimelineBlock["type"]; location?: string | null },
     afterBlockId?: string,
+    slot: SlotKey = "morning",
+    time?: string | null,
   ) => {
     return addBlock({
       title:     entity.title,
       type:      entity.type,
-      slot:      "morning",
+      slot,
       fuzzy:     false,
       entity_id: entity.id,
+      ...(time ? { time } : {}),
     } as NewBlockPayload & { entity_id: string }, afterBlockId);
   }, [addBlock]);
 
