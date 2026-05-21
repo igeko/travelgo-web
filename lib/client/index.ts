@@ -25,6 +25,9 @@ import { routes } from "./routes";
 import { ai } from "./ai";
 import { go } from "./go";
 import { catalog } from "./catalog";
+import { storage } from "./storage";
+import { realtime } from "./realtime";
+import { auth } from "./auth";
 
 export const api = {
   trips,
@@ -38,6 +41,10 @@ export const api = {
   ai,
   go,
   catalog,
+  // Direct-to-provider surfaces (Supabase SDK) wrapped behind the layer:
+  storage,
+  realtime,
+  auth,
 };
 
 export { ApiClientError } from "./errors";

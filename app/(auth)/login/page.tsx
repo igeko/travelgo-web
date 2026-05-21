@@ -10,7 +10,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { getBrowserClient } from "@/lib/dal/supabase";
+import { auth } from "@/lib/client/auth";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -21,15 +21,9 @@ function LoginForm() {
 
   async function handleGoogleLogin() {
     setLoading(true);
-    const supabase = getBrowserClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        queryParams: { access_type: "offline", prompt: "consent" },
-        skipBrowserRedirect: false,
-      },
-    });
+    await auth.signInWithGoogle(
+      `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    );
     // After this the browser redirects to Google — no need to setLoading(false)
   }
 

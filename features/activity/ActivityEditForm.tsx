@@ -253,7 +253,7 @@ export function ActivityEditForm({
   const displayImageUrl = heroImage || DEFAULT_THUMB;
   // Google photo URL used exclusively inside the enrichment card
   const enrichedPhotoUrl = showEnrichment && enriched?.photoRefs[0]
-    ? `/api/places/photo?ref=${enriched.photoRefs[0]}&maxwidth=400`
+    ? api.places.photoUrl(enriched.photoRefs[0], 400)
     : undefined;
 
   function handleSave() {

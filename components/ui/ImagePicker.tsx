@@ -17,7 +17,7 @@ import {
   IconX,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
-import { getBrowserClient } from "@/lib/dal/supabase";
+import { storage } from "@/lib/client/storage";
 
 /* ─────────────────────────────────────────────────────────────────
    ImagePicker · TravelGo atom
@@ -172,7 +172,7 @@ async function compressToWebP(
   });
 }
 
-// ── Supabase Storage upload utility ──────────────────────────────
+// ── Storage upload utility ───────────────────────────────────────
 
 async function uploadToStorage(
   blob: Blob,
@@ -182,22 +182,7 @@ async function uploadToStorage(
   const path =
     typeof opts.path === "function" ? opts.path(fileName) : opts.path;
 
-  const supabase = getBrowserClient();
-
-  const { data, error } = await supabase.storage
-    .from(opts.bucket)
-    .upload(path, blob, {
-      contentType: "image/webp",
-      upsert: true,
-    });
-
-  if (error) throw error;
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(opts.bucket).getPublicUrl(data.path);
-
-  return { storagePath: data.path, publicUrl };
+  return storage.uploadImage(opts.bucket, path, blob);
 }
 
 // ── Formatting helpers ────────────────────────────────────────────
