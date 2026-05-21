@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   IconSparkles, IconLoader2, IconRefresh, IconClock, IconChevronRight, IconWalk, IconX,
@@ -49,6 +49,16 @@ export function TransitVerifier({
   const [options, setOptions] = useState<TransitOption[]>([]);
   const [selected, setSelected] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Stable points for the RouteMap so selecting an option doesn't recreate
+  // the array and trigger a fresh Google Routes fetch.
+  const mapPoints = useMemo(
+    () => [
+      { formatted: origin.label ?? "", name: origin.label ?? "", placeId: "", lat: origin.lat, lng: origin.lng },
+      { formatted: destination.label ?? "", name: destination.label ?? "", placeId: "", lat: destination.lat, lng: destination.lng },
+    ],
+    [origin.label, origin.lat, origin.lng, destination.label, destination.lat, destination.lng],
+  );
 
   /** Compact one-line note for the BridgeData (rides only, e.g. "RER B · 12 fermate"). */
   function noteFor(option: TransitOption): string {
@@ -219,10 +229,7 @@ export function TransitVerifier({
           {showMap && options[selected] && (
             <div className="mb-3 overflow-hidden rounded-md border border-border">
               <RouteMap
-                points={[
-                  { formatted: origin.label ?? "", name: origin.label ?? "", placeId: "", lat: origin.lat, lng: origin.lng },
-                  { formatted: destination.label ?? "", name: destination.label ?? "", placeId: "", lat: destination.lat, lng: destination.lng },
-                ]}
+                points={mapPoints}
                 travelMode="TRANSIT"
                 style={{ height: 180 }}
               />

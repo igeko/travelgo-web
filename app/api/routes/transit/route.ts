@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLatLng, isPlainObject, parseJsonBody } from "@/lib/api/validation";
+import { requireUser } from "@/lib/api/guards";
 import { normalizeTransitResponse } from "./normalize";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -36,6 +37,14 @@ const FIELD_MASK = [
 ].join(",");
 
 export async function POST(req: NextRequest) {
+  // Auth gate: this proxy hits a higher-billing transit SKU, so don't let
+  // anonymous callers spend against the server key.
+  try {
+    await requireUser();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Routes API not configured" }, { status: 500 });

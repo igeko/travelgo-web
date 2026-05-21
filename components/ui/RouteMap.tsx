@@ -1,7 +1,6 @@
 "use client";
 
-import { createElement, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
@@ -133,12 +132,43 @@ const TYPE_CMP: Record<string, React.ComponentType<{ size?: number; stroke?: num
 
 const glyphCache = new Map<string, string>();
 
-/** Inner paths of a Tabler icon (uncoloured — stroke inherited from wrapper). */
-function glyphInner(cacheKey: string, Cmp: React.ComponentType<{ size?: number; stroke?: number }>): string {
+type GlyphCmp = React.ComponentType<{ size?: number; stroke?: number }>;
+type SvgChild = { type?: unknown; props?: Record<string, unknown> };
+
+/** camelCase React prop → kebab-case SVG attribute (strokeWidth → stroke-width). */
+function attrName(key: string): string {
+  return key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+}
+
+/** Serialize one SVG child element (path/circle/line/…) to a self-closing tag. */
+function serializeChild(child: SvgChild): string {
+  if (!child || typeof child.type !== "string") return "";
+  const props = child.props ?? {};
+  const attrs = Object.entries(props)
+    .filter(([k, v]) => k !== "children" && k !== "className" && v != null && typeof v !== "object" && typeof v !== "function")
+    .map(([k, v]) => `${attrName(k)}="${String(v)}"`)
+    .join(" ");
+  return `<${child.type}${attrs ? ` ${attrs}` : ""} />`;
+}
+
+/**
+ * Inner geometry of a Tabler icon (uncoloured — stroke inherited from the
+ * marker's wrapping <g>). We invoke the component to get its React element
+ * tree and serialize the child shapes by hand, so neither react-dom/server
+ * nor the client reconciler is pulled in. Cached per icon.
+ */
+function glyphInner(cacheKey: string, Cmp: GlyphCmp): string {
   const cached = glyphCache.get(cacheKey);
   if (cached !== undefined) return cached;
-  const markup = renderToStaticMarkup(createElement(Cmp, { size: 24, stroke: 2 }));
-  const inner = markup.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  // Tabler icons are forwardRef components (`.render`); fall back to calling
+  // a plain function component if that ever changes.
+  const ref = (Cmp as { render?: (p: object, r: null) => unknown }).render;
+  const element = typeof ref === "function"
+    ? ref({ size: 24, stroke: 2 }, null)
+    : (Cmp as (p: object) => unknown)({ size: 24, stroke: 2 });
+  const kids = (element as SvgChild | null)?.props?.children;
+  const list: SvgChild[] = Array.isArray(kids) ? kids.filter(Boolean) : kids ? [kids as SvgChild] : [];
+  const inner = list.map(serializeChild).join("");
   glyphCache.set(cacheKey, inner);
   return inner;
 }
@@ -239,10 +269,14 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  // A focus request queued until the map (SDK) is ready. Survives the async
+  // route fetch so its late re-frame doesn't snap the camera back.
+  const pendingFocusRef = useRef<{ index: number; zoom: number } | null>(null);
+  const prevPointsRef = useRef(points);
   const [routeError, setRouteError] = useState(false);
 
-  // ── Imperative camera controls (stable across renders) ──────────
-  const fitAll = useCallback(() => {
+  // ── Camera controls (stable across renders) ─────────────────────
+  const frameAll = useCallback(() => {
     const map = mapRef.current;
     if (!map || points.length === 0) return;
     if (points.length === 1) {
@@ -263,13 +297,34 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
     });
   }, [points]);
 
-  const focusPoint = useCallback((index: number, zoom = 16) => {
+  // Apply a queued focus if both the map and target stop are available.
+  // Returns whether it ran, so auto-framing can defer to an explicit focus.
+  const applyFocus = useCallback(() => {
     const map = mapRef.current;
-    const p = points[index];
-    if (!map || !p) return;
+    const req = pendingFocusRef.current;
+    const p = req ? points[req.index] : undefined;
+    if (!map || !req || !p) return false;
     map.panTo({ lat: p.lat, lng: p.lng });
-    map.setZoom(zoom);
+    map.setZoom(req.zoom);
+    return true;
   }, [points]);
+
+  // Internal framing after markers/route render: a queued focus wins.
+  const autoFit = useCallback(() => {
+    if (!applyFocus()) frameAll();
+  }, [applyFocus, frameAll]);
+
+  const focusPoint = useCallback((index: number, zoom = 16) => {
+    // Queue first; if the SDK is still loading, the markers effect re-applies
+    // it once the map mounts (instead of silently dropping the request).
+    pendingFocusRef.current = { index, zoom };
+    applyFocus();
+  }, [applyFocus]);
+
+  const fitAll = useCallback(() => {
+    pendingFocusRef.current = null; // explicit overview clears focus intent
+    frameAll();
+  }, [frameAll]);
 
   useImperativeHandle(ref, () => ({ focusPoint, fitAll }), [focusPoint, fitAll]);
 
@@ -304,6 +359,14 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
     if (status !== "ready" || !mapRef.current) return;
     const map = mapRef.current;
 
+    // Drop a stale focus intent when the stop set changes (e.g. day switch),
+    // so we don't snap onto the wrong activity. A focus queued for the current
+    // stops (reference unchanged) survives until the SDK is ready.
+    if (prevPointsRef.current !== points) {
+      pendingFocusRef.current = null;
+      prevPointsRef.current = points;
+    }
+
     // This run owns the latest async work; later runs flip it to abort.
     let cancelled = false;
 
@@ -330,7 +393,7 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       markersRef.current.push(marker);
     });
 
-    fitAll();
+    autoFit();
 
     if (points.length < 2) return;
 
@@ -341,9 +404,32 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       );
     };
 
-    // Per-leg typed routing when stops carry transport, else one route.
-    const typed = points.some((p) => p.transportOut);
-    if (typed) {
+    // Per-leg geometry is only needed when adjacent legs use *different*
+    // transports (each leg styled separately). When every leg shares one
+    // transport — or none carry transport at all — a single computeRoutes
+    // call covers the whole route, saving N−1 Google calls. The exception
+    // is multi-leg TRANSIT: Google's Routes API rejects intermediates in
+    // TRANSIT mode, so that case must stay per-leg (two points each).
+    const legTransports = points.slice(0, -1).map((p) => p.transportOut ?? null);
+    const uniform = new Set(legTransports).size <= 1;
+    const sharedTransport = uniform ? legTransports[0] ?? null : null;
+    const sharedMode = sharedTransport ? transportToTravelMode(sharedTransport) : travelMode;
+    const singleCall = uniform && !(sharedMode === "TRANSIT" && points.length > 2);
+
+    if (singleCall) {
+      const style = sharedTransport
+        ? legStyle(sharedTransport)
+        : { strokeColor: INK, strokeWeight: 3, strokeOpacity: 0.85 };
+      api.routes
+        .compute(points.map((p) => ({ lat: p.lat, lng: p.lng })), sharedMode)
+        .then((data) => {
+          if (cancelled) return;
+          if (!data.polyline) { setRouteError(true); return; }
+          drawPolyline(data.polyline, style);
+          autoFit();
+        })
+        .catch(() => { if (!cancelled) setRouteError(true); });
+    } else {
       Promise.all(
         points.slice(0, -1).map((from, i) => {
           const to = points[i + 1];
@@ -357,24 +443,15 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       ).then((legs) => {
         if (cancelled) return;
         const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null } => l != null);
+        // Only flag an error when nothing drew — a partial route still reads.
         if (ok.length === 0) { setRouteError(true); return; }
-        if (ok.length < legs.length) setRouteError(true);
         ok.forEach((l) => drawPolyline(l.encoded, legStyle(l.transport)));
-        if (!cancelled) fitAll();
+        autoFit();
       });
-    } else {
-      api.routes
-        .compute(points.map((p) => ({ lat: p.lat, lng: p.lng })), travelMode)
-        .then((data) => {
-          if (!data.polyline) { setRouteError(true); return; }
-          drawPolyline(data.polyline, { strokeColor: INK, strokeWeight: 3, strokeOpacity: 0.85 });
-          if (!cancelled) fitAll();
-        })
-        .catch(() => setRouteError(true));
     }
 
     return () => { cancelled = true; };
-  }, [status, points, travelMode, fitAll]);
+  }, [status, points, travelMode, autoFit]);
 
   // ── Cleanup on unmount ──────────────────────────────────────────
   useEffect(() => {
