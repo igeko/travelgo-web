@@ -7,6 +7,7 @@ import { IconMap, IconPlus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { RouteMap, type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
+import { MapStopsBar } from "./MapStopsBar";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
 import { TabSwitcher } from "@/components/ui/TabSwitcher";
@@ -244,7 +245,14 @@ export function Itinerary({
               ref={mapRef}
               points={mapPoints}
               travelMode="WALKING"
-              className="w-full h-[280px] mb-4"
+              className="w-full h-[280px] mb-3"
+            />
+          )}
+
+          {showMap && mapPoints.length > 0 && (
+            <MapStopsBar
+              stops={mapPoints}
+              onFocus={(index) => mapRef.current?.focusPoint(index)}
             />
           )}
 

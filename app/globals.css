@@ -110,6 +110,27 @@
   background: rgba(13,44,61,0.28);
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   Scrollbar orizzontale stilizzata — classe .scrollbar-x
+───────────────────────────────────────────────────────────────── */
+.scrollbar-x {
+  scrollbar-width: thin;
+  /* Track space is always reserved (no layout shift); colour appears on hover. */
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.15s ease;
+}
+.scrollbar-x:hover { scrollbar-color: rgba(13,44,61,0.18) transparent; }
+.scrollbar-x::-webkit-scrollbar        { height: 6px; }
+.scrollbar-x::-webkit-scrollbar-track  { background: transparent; }
+.scrollbar-x::-webkit-scrollbar-thumb  {
+  background: transparent;
+  border-radius: 99px;
+  transition: background 0.15s ease;
+}
+.scrollbar-x:hover::-webkit-scrollbar-track { background: rgba(13,44,61,0.05); }
+.scrollbar-x:hover::-webkit-scrollbar-thumb { background: rgba(13,44,61,0.18); }
+.scrollbar-x:hover::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+
 html {
   background: var(--color-bg);
   color: var(--color-ink);
