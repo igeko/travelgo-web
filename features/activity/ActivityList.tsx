@@ -4,9 +4,8 @@ import { useTranslations } from "next-intl";
 import { ActivityRow } from "./ActivityRow";
 import type { ActivityData } from "./ActivityEditForm";
 import { SlotStation } from "./SlotStation";
+import { SLOT_ORDER } from "./types";
 import type { Activity } from "@/lib/dal/domain";
-
-const SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
 
 type Props = {
   activities: Activity[];
@@ -14,6 +13,8 @@ type Props = {
   tripId?: string;
   /** When true, fuzzy activities (timeline-only stops without a fixed time) are hidden. */
   hideFuzzy?: boolean;
+  /** Show the time-of-day reference colour line next to each slot heading. */
+  showSlotColors?: boolean;
   onActivitySave?: (id: string, data: ActivityData) => void;
   onActivityDelete?: (id: string) => void;
   onAskGo?: (title: string, activityId?: string) => void;
@@ -26,6 +27,7 @@ export function ActivityList({
   editMode = false,
   tripId,
   hideFuzzy = false,
+  showSlotColors = true,
   onActivitySave,
   onActivityDelete,
   onAskGo,
@@ -111,7 +113,12 @@ export function ActivityList({
         if (!acts.length) return null;
         return (
           <div key={slot}>
-            <SlotStation label={t(`slots.${slot}`)} count={acts.length} />
+            <SlotStation
+              label={t(`slots.${slot}`)}
+              count={acts.length}
+              slot={slot}
+              showSlotColor={showSlotColors}
+            />
             {acts.map(renderRow)}
           </div>
         );

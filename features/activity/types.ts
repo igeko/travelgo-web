@@ -27,6 +27,19 @@ export const SLOT_LABEL: Record<SlotKey, string> = {
   night:     "Night",
 };
 
+/**
+ * Time-of-day reference colours — single source of truth shared by the day map
+ * (RouteMap markers + legs) and the activity list slot dividers. Deep, saturated
+ * hues so thin strokes stay legible over the light basemap and the four slots
+ * read at a glance (gold / sky / rose / indigo).
+ */
+export const SLOT_COLORS: Record<SlotKey, string> = {
+  morning:   "#e08a00", // amber — sunrise
+  afternoon: "#0284c7", // sky blue — midday
+  evening:   "#be185d", // deep rose — sunset
+  night:     "#4338ca", // indigo — night
+};
+
 /** Raggruppamento per sezione */
 export type SlotGroup = {
   slot: SlotKey;

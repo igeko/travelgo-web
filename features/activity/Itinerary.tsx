@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { IconMap, IconPlus } from "@/components/ui/icons";
@@ -12,6 +12,7 @@ import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
 import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { DayMagazine } from "@/features/day/DayMagazine";
+import { useTripGo, type MapFocusTarget } from "@/features/go/TripGoContext";
 
 type DayViewMode = "lista" | "timeline" | "racconto";
 import type { Activity, Day } from "@/lib/dal/domain";
@@ -66,10 +67,14 @@ export function Itinerary({
 }: Props) {
   const t = useTranslations("Itinerary");
   const tMode = useTranslations("DayViewModeToggle");
+  const { registerShowOnMap, unregisterShowOnMap } = useTripGo();
   const [showMap, setShowMap] = useState(initialShowMap);
   const mapRef = useRef<RouteMapHandle>(null);
   // Index queued while the map mounts (when it was hidden at click time).
   const pendingFocusRef = useRef<number | null>(null);
+  // Go-suggested place queued while the map (re)mounts: showing it may require
+  // switching back to "lista" view and revealing the map first.
+  const pendingCoordFocusRef = useRef<MapFocusTarget | null>(null);
   const [internalShowAddForm, setShowAddForm] = useState(false);
   // The parent can force the form open (e.g. via the "add" keyboard shortcut);
   // OR with local state so we don't need a setState-in-effect to sync the prop.
@@ -129,6 +134,7 @@ export function Itinerary({
         iconKey: a.icon,
         type: a.type ?? null,
         transportOut: a.bridge_out_json?.transport ?? null,
+        slot: a.slot,
       });
     }
     return { mapPoints: points, mapIndexById: indexById };
@@ -154,6 +160,35 @@ export function Itinerary({
     }
     return true;
   }
+
+  // Go's "Mostra in mappa" trigger: the map only lives in "lista" view when
+  // visible, so switch back and reveal it if needed, then drop the ad-hoc pin.
+  const handleShowOnMap = useCallback((target: MapFocusTarget) => {
+    const mapVisibleNow = showMap && viewMode === "lista";
+    if (viewMode !== "lista") setViewMode("lista");
+    if (!showMap) {
+      setShowMap(true);
+      onToggleMap?.(true);
+    }
+    if (mapVisibleNow) {
+      mapRef.current?.focusCoord(target.lat, target.lng, { label: target.title });
+    } else {
+      pendingCoordFocusRef.current = target;
+    }
+  }, [showMap, viewMode, setViewMode, onToggleMap]);
+
+  useEffect(() => {
+    registerShowOnMap(handleShowOnMap);
+    return () => unregisterShowOnMap();
+  }, [registerShowOnMap, unregisterShowOnMap, handleShowOnMap]);
+
+  // Apply a queued Go pin once the map is back in view.
+  useEffect(() => {
+    if (!showMap || viewMode !== "lista" || !pendingCoordFocusRef.current) return;
+    const target = pendingCoordFocusRef.current;
+    pendingCoordFocusRef.current = null;
+    mapRef.current?.focusCoord(target.lat, target.lng, { label: target.title });
+  }, [showMap, viewMode]);
 
   const isRacconto = viewMode === "racconto";
   const isTimeline = viewMode === "timeline";
@@ -245,7 +280,7 @@ export function Itinerary({
               ref={mapRef}
               points={mapPoints}
               travelMode="WALKING"
-              className="w-full h-[280px] mb-3"
+              className="w-full h-[308px] mb-3"
             />
           )}
 

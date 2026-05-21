@@ -15,7 +15,7 @@ const TOKYO_POINTS: RouteStop[] = [
     placeId: "ChIJ8T1GpMGOGGARDYGSgpooDWw",
     lat: 35.7147, lng: 139.7967,
     components: { locality: "Tokyo", country: "Japan" },
-    iconKey: "monument", transportOut: "metro",
+    iconKey: "monument", transportOut: "metro", slot: "morning",
   },
   {
     formatted: "Ueno Park, Ueno, Tokyo",
@@ -23,7 +23,7 @@ const TOKYO_POINTS: RouteStop[] = [
     placeId: "ChIJIfBAsjuOGGARfRBVyq3aZhY",
     lat: 35.7141, lng: 139.7741,
     components: { locality: "Tokyo", country: "Japan" },
-    iconKey: "park", transportOut: "walk",
+    iconKey: "park", transportOut: "walk", slot: "morning",
   },
   {
     formatted: "Akihabara, Tokyo",
@@ -31,7 +31,7 @@ const TOKYO_POINTS: RouteStop[] = [
     placeId: "ChITR9NHqbuOGGARLhFTkZFTkZE",
     lat: 35.7022, lng: 139.7741,
     components: { locality: "Tokyo", country: "Japan" },
-    iconKey: "shop", transportOut: "bus",
+    iconKey: "shop", transportOut: "bus", slot: "afternoon",
   },
   {
     formatted: "Tsukiji Outer Market, Tokyo",
@@ -39,7 +39,7 @@ const TOKYO_POINTS: RouteStop[] = [
     placeId: "ChIJU8KGqTuLGGARu5d5AQ-RUzE",
     lat: 35.6654, lng: 139.7707,
     components: { locality: "Tokyo", country: "Japan" },
-    iconKey: "food", transportOut: "taxi",
+    iconKey: "food", transportOut: "taxi", slot: "evening",
   },
   {
     formatted: "teamLab Borderless, Azabudai Hills, Tokyo",
@@ -47,7 +47,7 @@ const TOKYO_POINTS: RouteStop[] = [
     placeId: "ChIJrTLr-GyuEmsRBfy61i59si0",
     lat: 35.6572, lng: 139.7394,
     components: { locality: "Tokyo", country: "Japan" },
-    iconKey: "ticket",
+    iconKey: "ticket", slot: "night",
   },
 ];
 
@@ -259,6 +259,14 @@ export default function RouteMapStories() {
                   {p.name}
                 </Button>
               ))}
+              <Button
+                size="sm"
+                variant="outline"
+                tone="neutral"
+                onClick={() => mapRef.current?.focusCoord(35.6586, 139.7454, { label: "Tokyo Tower (ad-hoc)" })}
+              >
+                focusCoord (off-route pin)
+              </Button>
               <Button
                 size="sm"
                 variant="solid"

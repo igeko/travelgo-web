@@ -23,7 +23,7 @@ import { imageSearch } from "@/features/media/imageSearch";
 import { api } from "@/lib/client";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
 import type { GoChatDebugFn } from "./GoChat";
-import type { AddToDayPayload } from "./TripGoContext";
+import type { AddToDayPayload, MapFocusTarget } from "./TripGoContext";
 
 /* ─────────────────────────────────────────────────────────────────
    Tipi
@@ -293,6 +293,7 @@ function SuggestionCard({
   activeEditMatch,
   onApplyToActivity,
   onAddToDay,
+  onShowOnMap,
 }: {
   suggestion: GoSuggestion;
   selected: boolean;
@@ -302,6 +303,7 @@ function SuggestionCard({
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
   onAddToDay?: (payload: AddToDayPayload) => void;
+  onShowOnMap?: (target: MapFocusTarget) => void;
 }) {
   const [open, setOpen] = useState(suggestion.autoExpand ?? false);
 
@@ -646,6 +648,25 @@ function SuggestionCard({
                 </a>
               </Button>
             )}
+            {onShowOnMap && place?.lat != null && place?.lng != null && (
+              <Button
+                variant="outline"
+                size="sm"
+                iconOnly={false}
+                tone="neutral"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowOnMap({
+                    title: suggestion.title,
+                    lat: place.lat!,
+                    lng: place.lng!,
+                    placeId: place.placeId,
+                  });
+                }}
+              >
+                <IconMapPin size={12} /> Mappa
+              </Button>
+            )}
             <Button variant="outline" size="sm" iconOnly tone="neutral" aria-label="Wishlist">
               <IconBookmark size={12} />
             </Button>
@@ -708,6 +729,7 @@ function SuggestionsBlock({
   activeEditMatch,
   onApplyToActivity,
   onAddToDay,
+  onShowOnMap,
 }: {
   suggestions: GoSuggestion[];
   sizeMode: SizeMode;
@@ -716,6 +738,7 @@ function SuggestionsBlock({
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
   onAddToDay?: (payload: AddToDayPayload) => void;
+  onShowOnMap?: (target: MapFocusTarget) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -759,6 +782,7 @@ function SuggestionsBlock({
           activeEditMatch={activeEditMatch}
           onApplyToActivity={onApplyToActivity}
           onAddToDay={onAddToDay}
+          onShowOnMap={onShowOnMap}
         />
       ))}
     </div>
@@ -832,9 +856,10 @@ type FloatPanelProps = {
   activeEditMatch?: boolean;
   onApplyToActivity?: (data: { title: string; description: string }) => void;
   onAddToDay?: (payload: AddToDayPayload) => void;
+  onShowOnMap?: (target: MapFocusTarget) => void;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity, onAddToDay }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity, onAddToDay, onShowOnMap }: FloatPanelProps) {
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(() => !window.matchMedia("(min-width: 640px)").matches);
 
@@ -997,6 +1022,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                   activeEditMatch={activeEditMatch}
                   onApplyToActivity={onApplyToActivity}
                   onAddToDay={onAddToDay}
+                  onShowOnMap={onShowOnMap}
                 />
               )}
             </div>
@@ -1106,9 +1132,10 @@ export type GoChatFloatProps = {
   /** Callback per applicare i dati della suggestion alla form attiva. */
   onApplyToActivity?: (data: { title: string; description: string }) => void;
   onAddToDay?: (payload: AddToDayPayload) => void;
+  onShowOnMap?: (target: MapFocusTarget) => void;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity, onAddToDay }: GoChatFloatProps) {
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity, onAddToDay, onShowOnMap }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
   // Sync the controlled `open` prop into local state during render (no effect),
   // so internal toggles and parent control stay coherent without cascading renders.
@@ -1326,6 +1353,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
           activeEditMatch={activeEditMatch}
           onApplyToActivity={onApplyToActivity}
           onAddToDay={onAddToDay}
+          onShowOnMap={onShowOnMap}
         />
       )}
     </div>,

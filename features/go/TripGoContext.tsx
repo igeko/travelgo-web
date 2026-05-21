@@ -33,6 +33,14 @@ export type AddToDayPayload = {
   locationLng?: number;
 };
 
+/** Luogo da mostrare sulla mappa della pagina ospite (trigger disaccoppiato). */
+export type MapFocusTarget = {
+  title: string;
+  lat: number;
+  lng: number;
+  placeId?: string;
+};
+
 type TripGoContextValue = {
   openGo: () => void;
   /** Apre il panel e invia subito un messaggio (sopprime il greeting). */
@@ -51,6 +59,13 @@ type TripGoContextValue = {
   /** Registra il handler per "Add to day" dal componente pagina corrente. */
   registerAddToDay: (cb: (payload: AddToDayPayload) => void) => void;
   unregisterAddToDay: () => void;
+  /**
+   * Registra il handler per "Mostra in mappa". Go emette solo il trigger col
+   * luogo; la pagina che possiede una mappa decide come reagire. Le pagine
+   * senza mappa non registrano nulla → il trigger è un no-op.
+   */
+  registerShowOnMap: (cb: (target: MapFocusTarget) => void) => void;
+  unregisterShowOnMap: () => void;
 };
 
 const TripGoContext = createContext<TripGoContextValue | null>(null);
@@ -66,6 +81,8 @@ const NOOP_CONTEXT: TripGoContextValue = {
   unregisterActiveEdit: () => {},
   registerAddToDay: () => {},
   unregisterAddToDay: () => {},
+  registerShowOnMap: () => {},
+  unregisterShowOnMap: () => {},
 };
 
 export function useTripGo(): TripGoContextValue {
@@ -90,6 +107,7 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
   const [activeEditId, setActiveEditId]         = useState<string | null>(null);
   const activeEditCallbackRef                   = useRef<((data: GoApplyData) => void) | null>(null);
   const addToDayCallbackRef                     = useRef<((payload: AddToDayPayload) => void) | null>(null);
+  const showOnMapCallbackRef                    = useRef<((target: MapFocusTarget) => void) | null>(null);
 
   const openGo = useCallback(() => {
     setOpen(true);
@@ -139,11 +157,24 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
     addToDayCallbackRef.current?.(payload);
   }, []);
 
+  const registerShowOnMap = useCallback((cb: (target: MapFocusTarget) => void) => {
+    showOnMapCallbackRef.current = cb;
+  }, []);
+
+  const unregisterShowOnMap = useCallback(() => {
+    showOnMapCallbackRef.current = null;
+  }, []);
+
+  const handleShowOnMap = useCallback((target: MapFocusTarget) => {
+    showOnMapCallbackRef.current?.(target);
+  }, []);
+
   return (
     <TripGoContext.Provider value={{
       openGo, openGoWith, closeGo, setTripContext, isOpen: open, hasBeenOpened,
       registerActiveEdit, unregisterActiveEdit,
       registerAddToDay, unregisterAddToDay,
+      registerShowOnMap, unregisterShowOnMap,
     }}>
       {children}
       <GoChatFloat
@@ -155,6 +186,7 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
         activeEditMatch={activeEditMatch}
         onApplyToActivity={handleApplyToActivity}
         onAddToDay={handleAddToDay}
+        onShowOnMap={handleShowOnMap}
       />
     </TripGoContext.Provider>
   );
