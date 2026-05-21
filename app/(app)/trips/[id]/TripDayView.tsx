@@ -347,7 +347,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           onNext={nextDay ? () => selectDay(nextDay.id) : undefined}
         />
 
-        <div className="px-2 sm:px-4">
+        <div>
 
         {/* Day incipit — Go voice + day summary + "ask me" CTA.
             Unifies the former Quote + GoLaunchTrigger blocks. Go stays
@@ -551,7 +551,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
           );
         })()}
 
-        </div>{/* end px-4 */}
+        </div>
 
         {/* Next day */}
         {nextDay && (
