@@ -10,7 +10,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import OpenAI from "openai";
+import { getAI, AI_MODELS } from "@/lib/ai/provider";
 import type { Dal, Activity, ActivitySearchResult } from "@/lib/dal";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
 import { pickFields, safeHttpUrl } from "@/lib/api/validation";
@@ -189,9 +189,9 @@ export class ActivityService {
 
     let reordered: { id: string; position: number; slot: string }[] = [];
     try {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = getAI();
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: AI_MODELS.fast,
         temperature: 0.2,
         messages: [
           { role: "system", content: ORGANIZE_PROMPT },

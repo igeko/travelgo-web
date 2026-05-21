@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAI, aiConfigured, AI_MODELS } from "@/lib/ai/provider";
 
 /**
  * POST /api/ai/describe
@@ -33,7 +34,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // ── Fallback senza API key ─────────────────────────────────────
-  if (!process.env.OPENAI_API_KEY) {
+  if (!aiConfigured()) {
     const description =
       body.editorialSummary?.trim() ||
       `${body.name} is a wonderful spot worth adding to your itinerary${
@@ -44,8 +45,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // ── Chiamata OpenAI ────────────────────────────────────────────
   try {
-    const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = getAI();
 
     // Costruiamo il contesto con i dati disponibili
     const contextLines = [
@@ -64,7 +64,7 @@ export async function POST(req: Request): Promise<Response> {
       .join("\n");
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: AI_MODELS.fast,
       messages: [
         {
           role: "system",

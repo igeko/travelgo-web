@@ -3,12 +3,8 @@
  * che da /api/go/chat quando viene rilevato un location-info intent.
  */
 
-import OpenAI from "openai";
+import { getAI, AI_MODELS } from "@/lib/ai/provider";
 import { UNTRUSTED_DATA_INSTRUCTION, sanitizeUntrustedText, wrapUntrusted } from "@/lib/api/go-untrusted";
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 export const DEEP_DIVE_SYSTEM = `You are Go, TravelGo's expert travel assistant.
 The user wants a detailed breakdown of a specific place or activity.
@@ -58,8 +54,8 @@ export async function runDeepDive(input: DeepDiveInput): Promise<DeepDiveResult>
     ? `${headerLines}\n\n${wrapUntrusted("trip-context", input.tripContext)}`
     : headerLines;
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
+  const completion = await getAI().chat.completions.create({
+    model: AI_MODELS.smart,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: DEEP_DIVE_SYSTEM },

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAI, aiConfigured, AI_MODELS } from "@/lib/ai/provider";
 import { buildDescribeDayPrompt } from "@/lib/ai/describe-day-prompt";
 
 /**
@@ -89,16 +90,15 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "activities required" }, { status: 400 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!aiConfigured()) {
     return NextResponse.json(buildFallback(body));
   }
 
   try {
-    const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = getAI();
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: AI_MODELS.fast,
       messages: [{ role: "user", content: buildPrompt(body) }],
       max_tokens: 700,
       temperature: 0.75,

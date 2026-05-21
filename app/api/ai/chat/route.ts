@@ -27,6 +27,7 @@ import type {
   ChatCompletionToolMessageParam,
 } from "openai/resources/chat/completions";
 
+import { getAI, aiConfigured, AI_MODELS } from "@/lib/ai/provider";
 import { TOOL_DEFINITIONS } from "@/lib/ai/tool-definitions";
 import { runTool, type ToolName, MOCK } from "@/lib/ai/tools";
 import type { ActivitySuggestion, AssistantTurn, Message } from "@/lib/ai/types";
@@ -72,14 +73,13 @@ export async function POST(req: Request): Promise<Response> {
   const userMessages = Array.isArray(body.messages) ? body.messages : [];
 
   // ── Fallback scriptato (no API key) ──────────────────────────
-  if (!process.env.OPENAI_API_KEY) {
+  if (!aiConfigured()) {
     return NextResponse.json(scriptedResponse(userMessages));
   }
 
   // ── Loop tool-calling reale ──────────────────────────────────
   try {
-    const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = getAI();
 
     const messages: ChatCompletionMessageParam[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -92,7 +92,7 @@ export async function POST(req: Request): Promise<Response> {
     // safety: max 6 round di tool-calling per turno
     for (let i = 0; i < 6; i++) {
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: AI_MODELS.fast,
         messages,
         tools: TOOL_DEFINITIONS,
       });

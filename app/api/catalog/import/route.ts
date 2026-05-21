@@ -18,7 +18,7 @@
  */
 
 import { NextRequest }        from 'next/server';
-import OpenAI                 from 'openai';
+import { getAI, AI_MODELS }   from '@/lib/ai/provider';
 import { searchPlaces, buildEmbedText, PlaceBasic } from '@/lib/overpass';
 import { enrichFromWiki }     from '@/lib/wikipedia';
 import { requirePlatformAdmin } from '@/lib/api/guards';
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   // ── Import in background ─────────────────────────────────
   (async () => {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = getAI();
     const EMBED_BATCH = 100;
 
     try {
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
         if (toEmbed.length >= EMBED_BATCH || (i === batch.length - 1 && toEmbed.length > 0)) {
           try {
             const res = await openai.embeddings.create({
-              model: 'text-embedding-3-small', input: toEmbed.map((x) => x.text), dimensions: 512,
+              model: AI_MODELS.embedding, input: toEmbed.map((x) => x.text), dimensions: 512,
             });
             for (let j = 0; j < toEmbed.length; j++) {
               await dal.catalog.setPlaceEmbedding(toEmbed[j].id, res.data[j].embedding);

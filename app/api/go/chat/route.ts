@@ -10,14 +10,10 @@
  * forceSuggestions=true bypassa il classifier (usato dal greeting iniziale).
  */
 
-import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { getAI, AI_MODELS } from "@/lib/ai/provider";
 import { runDeepDive } from "../_deepDive";
 import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted, sanitizeUntrustedText } from "@/lib/api/go-untrusted";
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_LENGTH = 4_000;
@@ -105,8 +101,8 @@ async function classifyIntent(
     ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${safeTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${safeTitle}" }.`
     : CLASSIFIER_SYSTEM;
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
+  const completion = await getAI().chat.completions.create({
+    model: AI_MODELS.fast,
     response_format: { type: "json_object" },
     max_tokens: 60,
     messages: [
@@ -197,8 +193,8 @@ export async function POST(req: Request): Promise<Response> {
   /* ── Mode: suggestions ── */
   if (intent.mode === "suggestions") {
     try {
-      const completion = await getOpenAI().chat.completions.create({
-        model: "gpt-4o",
+      const completion = await getAI().chat.completions.create({
+        model: AI_MODELS.smart,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SUGGESTIONS_SYSTEM_PROMPT },
@@ -220,8 +216,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   /* ── Mode: chat (streaming) ── */
-  const stream = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
+  const stream = await getAI().chat.completions.create({
+    model: AI_MODELS.fast,
     stream: true,
     messages: [
       { role: "system", content: BASE_SYSTEM_PROMPT },

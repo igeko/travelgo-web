@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getAI, aiConfigured, AI_MODELS } from "@/lib/ai/provider";
 import { UNTRUSTED_DATA_INSTRUCTION, sanitizeUntrustedText, wrapUntrusted } from "@/lib/api/go-untrusted";
 
 /**
@@ -10,10 +10,6 @@ import { UNTRUSTED_DATA_INSTRUCTION, sanitizeUntrustedText, wrapUntrusted } from
  *
  * Body: { title, category, location, why, tripContext? }
  */
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 const ENRICH_SYSTEM_PROMPT = `You are Go, TravelGo's travel assistant.
 The user has asked for a deeper description of a specific place or activity.
@@ -54,8 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  if (!aiConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   const safeTitle = sanitizeUntrustedText(title, 200);
   const safeCategory = category ? sanitizeUntrustedText(category, 50) : "";
@@ -75,8 +70,8 @@ export async function POST(req: NextRequest) {
 
   const system = ENRICH_SYSTEM_PROMPT;
 
-  const stream = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
+  const stream = await getAI().chat.completions.create({
+    model: AI_MODELS.smart,
     stream: true,
     messages: [
       { role: "system", content: system },
