@@ -54,6 +54,13 @@ export type RouteMapProps = {
   points: RouteStop[];
   /** Routing mode — default WALKING. Used when stops carry no per-leg transport. */
   travelMode?: TravelMode;
+  /**
+   * Per-leg colour matrix: index `i` colours the leg from `points[i]` to
+   * `points[i+1]` (so length is `points.length - 1`). A null/undefined entry
+   * falls back to the brand ink. Providing any colour forces per-leg drawing
+   * so each segment can be styled independently.
+   */
+  legColors?: Array<string | null | undefined>;
   /** Map type: roadmap | satellite | hybrid | terrain. Default "roadmap". */
   mapTypeId?: "roadmap" | "satellite" | "hybrid" | "terrain";
   /** Extra classes on the wrapper (use for width/height) */
@@ -227,13 +234,17 @@ function transportToTravelMode(t: TransportMode): TravelMode {
   }
 }
 
-/** PolylineOptions (minus path/map) for a transport mode. */
-function legStyle(t: TransportMode | null | undefined): google.maps.PolylineOptions {
+/**
+ * PolylineOptions (minus path/map) for a transport mode. The pattern
+ * (dotted/dashed/solid/thick) encodes the mode; `color` overrides the
+ * default brand ink so callers can colour each leg independently.
+ */
+function legStyle(t: TransportMode | null | undefined, color: string = INK): google.maps.PolylineOptions {
   const dot = (repeat: string): google.maps.PolylineOptions => ({
-    strokeColor: INK,
+    strokeColor: color,
     strokeOpacity: 0,
     icons: [{
-      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 2.2, fillColor: INK, fillOpacity: 0.9, strokeOpacity: 0 },
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 2.2, fillColor: color, fillOpacity: 0.9, strokeOpacity: 0 },
       offset: "0",
       repeat,
     }],
@@ -243,22 +254,23 @@ function legStyle(t: TransportMode | null | undefined): google.maps.PolylineOpti
     case "bike":
       return dot("9px");                                                  // dotted
     case "bus":
-      return { strokeColor: INK, strokeOpacity: 0,                        // dashed
-        icons: [{ icon: { path: "M 0,-1 0,1", strokeColor: INK, strokeOpacity: 1, strokeWeight: 3, scale: 3 }, offset: "0", repeat: "14px" }],
+      return { strokeColor: color, strokeOpacity: 0,                      // dashed
+        icons: [{ icon: { path: "M 0,-1 0,1", strokeColor: color, strokeOpacity: 1, strokeWeight: 3, scale: 3 }, offset: "0", repeat: "14px" }],
       };
     case "car":
     case "taxi":
-      return { strokeColor: INK, strokeOpacity: 0.95, strokeWeight: 4 };   // solid thick
+      return { strokeColor: color, strokeOpacity: 0.95, strokeWeight: 4 }; // solid thick
     case "metro":
     case "train":
     default:
-      return { strokeColor: INK, strokeOpacity: 0.9, strokeWeight: 3 };    // solid
+      return { strokeColor: color, strokeOpacity: 0.9, strokeWeight: 3 };  // solid
   }
 }
 
 export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function RouteMap({
   points,
   travelMode = "WALKING",
+  legColors,
   mapTypeId = "roadmap",
   className,
   style,
@@ -412,9 +424,11 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
     // TRANSIT mode, so that case must stay per-leg (two points each).
     const legTransports = points.slice(0, -1).map((p) => p.transportOut ?? null);
     const uniform = new Set(legTransports).size <= 1;
+    // Custom per-leg colours mean each segment must be drawn on its own.
+    const hasLegColors = !!legColors?.some((c) => !!c);
     const sharedTransport = uniform ? legTransports[0] ?? null : null;
     const sharedMode = sharedTransport ? transportToTravelMode(sharedTransport) : travelMode;
-    const singleCall = uniform && !(sharedMode === "TRANSIT" && points.length > 2);
+    const singleCall = uniform && !hasLegColors && !(sharedMode === "TRANSIT" && points.length > 2);
 
     if (singleCall) {
       const style = sharedTransport
@@ -437,21 +451,21 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
           const mode = transport ? transportToTravelMode(transport) : travelMode;
           return api.routes
             .compute([{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }], mode)
-            .then((data) => (data.polyline ? { encoded: data.polyline, transport } : null))
+            .then((data) => (data.polyline ? { encoded: data.polyline, transport, color: legColors?.[i] ?? undefined } : null))
             .catch(() => null);
         }),
       ).then((legs) => {
         if (cancelled) return;
-        const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null } => l != null);
+        const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null; color: string | undefined } => l != null);
         // Only flag an error when nothing drew — a partial route still reads.
         if (ok.length === 0) { setRouteError(true); return; }
-        ok.forEach((l) => drawPolyline(l.encoded, legStyle(l.transport)));
+        ok.forEach((l) => drawPolyline(l.encoded, legStyle(l.transport, l.color ?? INK)));
         autoFit();
       });
     }
 
     return () => { cancelled = true; };
-  }, [status, points, travelMode, autoFit]);
+  }, [status, points, travelMode, legColors, autoFit]);
 
   // ── Cleanup on unmount ──────────────────────────────────────────
   useEffect(() => {

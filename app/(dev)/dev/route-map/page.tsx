@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
@@ -53,10 +53,14 @@ const TOKYO_POINTS: RouteStop[] = [
 
 const POINT_COUNT_OPTIONS = [2, 3, 4, 5];
 
+/** Demo per-leg colour matrix (index i = leg from point i → i+1). */
+const LEG_PALETTE = ["#e11d48", "#2563eb", "#16a34a", "#d97706"];
+
 export default function RouteMapStories() {
   const mapRef = useRef<RouteMapHandle>(null);
   const [pointCount, setPointCount] = useState(3);
   const [typedLegs, setTypedLegs] = useState(true);
+  const [customColors, setCustomColors] = useState(false);
   const [travelMode, setTravelMode] = useState<TravelMode>("WALKING");
   const [mapTypeId, setMapTypeId] = useState<"roadmap" | "satellite" | "hybrid" | "terrain">("roadmap");
   const [height, setHeight] = useState(400);
@@ -69,6 +73,13 @@ export default function RouteMapStories() {
 
   const activePoints = TOKYO_POINTS.slice(0, pointCount).map((p) =>
     typedLegs ? p : { ...p, transportOut: null },
+  );
+
+  // Per-leg colour matrix (index i = leg from point i → i+1). Memoised so a
+  // stable array reference doesn't retrigger the Google Routes fetch.
+  const legColors = useMemo(
+    () => (customColors ? LEG_PALETTE.slice(0, Math.max(0, pointCount - 1)) : undefined),
+    [customColors, pointCount],
   );
 
   const groups: ControlGroup[] = [
@@ -115,6 +126,13 @@ export default function RouteMapStories() {
           label: "Typed legs (per-transport)",
           value: typedLegs,
           onChange: setTypedLegs,
+        },
+        {
+          kind: "toggle",
+          id: "custom-colors",
+          label: "Custom leg colors (legColors)",
+          value: customColors,
+          onChange: setCustomColors,
         },
         {
           kind: "radio",
@@ -214,6 +232,7 @@ export default function RouteMapStories() {
               ref={mapRef}
               points={activePoints}
               travelMode={travelMode}
+              legColors={legColors}
               mapTypeId={mapTypeId}
               className="w-full"
               style={{ height }}
