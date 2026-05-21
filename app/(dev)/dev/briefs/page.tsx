@@ -1,7 +1,7 @@
 /**
  * app/(dev)/dev/briefs/page.tsx
  *
- * Lista di tutti i brief in content/briefs/.
+ * Lista di tutti i brief in docs/briefs/.
  */
 
 import Link         from 'next/link';
@@ -28,7 +28,7 @@ export default function BriefsPage() {
 
       {briefs.length === 0 ? (
         <p className="text-sm text-ink/40">
-          Nessun brief trovato in <code>content/briefs/</code>.
+          Nessun brief trovato in <code>docs/briefs/</code>.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -58,7 +58,7 @@ export default function BriefsPage() {
       )}
 
       <p className="text-xs text-ink/30 pt-2">
-        I file sorgente sono in <code>content/briefs/*.md</code>.
+        I file sorgente sono in <code>docs/briefs/*.md</code>.
         Aggiungere un nuovo brief = creare un nuovo file <code>.md</code> con frontmatter.
       </p>
 

@@ -1,7 +1,7 @@
 /**
  * lib/briefs.ts
  *
- * Utility server-side per leggere i brief MD da content/briefs/.
+ * Utility server-side per leggere i brief MD da docs/briefs/.
  * Nessuna dipendenza esterna — parsing frontmatter e markdown inline.
  */
 
@@ -25,7 +25,7 @@ export interface Brief extends BriefMeta {
 
 // ── Path ────────────────────────────────────────────────────
 
-const BRIEFS_DIR = path.join(process.cwd(), 'content', 'briefs');
+const BRIEFS_DIR = path.join(process.cwd(), 'docs', 'briefs');
 
 // ── Frontmatter parser ───────────────────────────────────────
 

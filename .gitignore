@@ -32,9 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# design reference assets — live outside the repo (large template), never commit
+/design_pvt/
 
 # typescript
 *.tsbuildinfo
