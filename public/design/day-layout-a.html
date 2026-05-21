@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Day layout · Proposta A "Trinity" (sketch)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.21.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Tokens
+───────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f1efe8;
+  --surface: #ffffff;
+  --surface-soft: #f5f3ee;
+  --surface-warm: #fdf5ee;
+  --border: rgba(13, 44, 61, 0.08);
+  --border-strong: rgba(13, 44, 61, 0.18);
+  --ink: #0d2c3d;
+  --ink-soft: #5b6b78;
+  --ink-faint: #8a98a3;
+  --orange: #f47b3a;
+  --orange-soft: #fdecdf;
+  --orange-border: #f9d4b6;
+  --orange-deep: #a84818;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button { cursor: pointer; border: 0; background: none; color: inherit; }
+.ti { line-height: 1; vertical-align: -1px; }
+.go-jp { font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif; }
+
+/* Scrollbar */
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(13,44,61,0.15) transparent; }
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(13,44,61,0.15); border-radius: 99px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Intro
+───────────────────────────────────────────────────────────────── */
+.page-wrap { padding: 36px 24px 64px; max-width: 1380px; margin: 0 auto; }
+.intro { max-width: 820px; margin-bottom: 22px; }
+.intro .eb { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; }
+.intro h1 { font-family: Georgia, serif; font-size: 34px; font-weight: 500; line-height: 1.15; margin: 0 0 12px; }
+.intro p { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+.intro p b { color: var(--ink); }
+
+/* ─────────────────────────────────────────────────────────────────
+   Frame · chrome (top nav + sub-header)
+───────────────────────────────────────────────────────────────── */
+.frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  height: 880px;
+}
+
+.topnav {
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand .logo {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--orange);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.brand .name { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.brand .name em { color: var(--orange); font-style: normal; }
+.topnav nav { display: flex; align-items: center; gap: 24px; font-size: 13px; font-weight: 500; position: relative; }
+.topnav nav .item { color: var(--ink-soft); cursor: pointer; }
+.topnav nav .item:hover { color: var(--ink); }
+.topnav nav .item.active { color: var(--ink); position: relative; }
+.topnav nav .item.active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -19px;
+  height: 2px;
+  background: var(--orange);
+}
+.topnav .right { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--ink-soft); }
+.topnav .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--orange-soft); border: 1px solid var(--orange-border); }
+
+.subheader {
+  height: 48px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.trip-name { display: flex; align-items: baseline; gap: 8px; }
+.trip-name .name { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.trip-name .sep { color: var(--ink-faint); }
+.trip-name .meta { font-size: 12px; color: var(--ink-soft); }
+.subheader .tabs { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; }
+.subheader .tabs .tab { padding: 6px 12px; border-radius: var(--radius-pill); color: var(--ink-soft); cursor: pointer; }
+.subheader .tabs .tab:hover { background: var(--surface-soft); }
+.subheader .tabs .tab.active { background: var(--ink); color: #fff; }
+.subheader .actions { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.subheader .editing { display: inline-flex; align-items: center; gap: 4px; background: var(--orange); color: #fff; padding: 4px 8px; border-radius: var(--radius-pill); }
+.subheader .editing .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.subheader .feedback { color: var(--ink-soft); padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+.content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Sidebar Itinerary · collapsible
+───────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s;
+}
+.sidebar.collapsed { width: 56px; }
+
+.sidebar-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-head .eb { font-size: 9px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.sidebar-head h4 { font-size: 15px; font-weight: 500; margin: 4px 0 0; }
+.sidebar-head .sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+.sidebar-head .toggle { color: var(--ink-faint); padding: 4px; }
+.sidebar-head .toggle:hover { color: var(--ink); }
+
+.sidebar-list { flex: 1; overflow-y: auto; }
+.sidebar-day {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s;
+}
+.sidebar-day:hover { background: var(--surface-soft); }
+.sidebar-day.active { background: var(--ink); }
+.sidebar-day.active::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; background: var(--orange); border-radius: 0 3px 3px 0; }
+.sidebar-day .date { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+.sidebar-day .dow { font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+.sidebar-day .num { font-size: 18px; font-weight: 500; line-height: 1; color: var(--ink); }
+.sidebar-day.active .dow { color: var(--orange); }
+.sidebar-day.active .num { color: #fff; }
+.sidebar-day .info { min-width: 0; flex: 1; }
+.sidebar-day .region { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange-deep); }
+.sidebar-day.active .region { color: var(--orange); }
+.sidebar-day .title { font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-day.active .title { color: rgba(255,255,255,0.9); }
+.sidebar-day .chev { color: var(--ink-faint); font-size: 12px; }
+.sidebar-day.active .chev { color: rgba(255,255,255,0.6); }
+
+/* Collapsed state */
+.sidebar.collapsed .sidebar-head,
+.sidebar.collapsed .sidebar-day .info,
+.sidebar.collapsed .sidebar-day .chev { display: none; }
+.sidebar-collapsed-top { display: none; height: 40px; border-bottom: 1px solid var(--border); align-items: center; justify-content: center; color: var(--ink-faint); }
+.sidebar-collapsed-top:hover { color: var(--ink); background: var(--surface-soft); }
+.sidebar.collapsed .sidebar-collapsed-top { display: flex; }
+.sidebar.collapsed .sidebar-day { padding: 0; height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.sidebar.collapsed .sidebar-day .date { width: auto; }
+.sidebar.collapsed .sidebar-day .num { font-size: 14px; }
+.sidebar.collapsed .sidebar-day.active .num { color: #fff; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Day content card
+───────────────────────────────────────────────────────────────── */
+.day-card {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  position: relative;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 24px 12px;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(13,44,61,0.55) 70%, rgba(13,44,61,0.85) 100%),
+    linear-gradient(160deg,#dfa97e 0%,#c88b65 22%,#9a7d80 45%,#566677 70%,#3d4a64 100%);
+}
+.hero .eb { color: rgba(255,255,255,0.8); font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; }
+.hero .eb em { color: var(--orange); font-style: normal; }
+.hero h2 { font-family: Georgia, serif; font-size: 24px; font-weight: 500; line-height: 1.15; margin: 4px 0 0; color: #fff; }
+.hero .meta { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+.hero .edit-day {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: rgba(255,255,255,0.9);
+  color: var(--ink);
+  font-size: 11px; font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.hero .edit-day:hover { background: #fff; }
+
+.lodging {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--ink);
+  color: #fff;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.lodging .icon { width: 28px; height: 28px; border-radius: 50%; background: rgba(244,123,58,0.18); display: inline-flex; align-items: center; justify-content: center; color: var(--orange); }
+.lodging .label { font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+.lodging .name { font-size: 13px; font-weight: 500; }
+.lodging .sep { color: rgba(255,255,255,0.4); }
+.lodging .place { font-size: 11px; color: rgba(255,255,255,0.6); }
+.lodging .right { margin-left: auto; display: flex; gap: 6px; }
+.lodging .open-btn {
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+}
+.lodging .open-btn:hover { background: rgba(255,255,255,0.1); }
+
+.day-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(245,243,238,0.4);
+}
+.day-toolbar .label { font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.tabswitcher {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.tabswitcher button {
+  font-size: 11px; font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  transition: all 0.15s;
+}
+.tabswitcher button:hover { background: var(--surface-soft); }
+.tabswitcher button.active { background: var(--ink); color: #fff; }
+
+.day-body { flex: 1; overflow-y: auto; }
+
+/* ─────────────────────────────────────────────────────────────────
+   View · Activities (lista cards)
+───────────────────────────────────────────────────────────────── */
+.activities { padding: 8px 20px 20px; }
+.section { margin-top: 16px; }
+.section:first-child { margin-top: 8px; }
+.section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.section-head .eb { font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--orange); }
+.section-head .line { flex: 1; height: 1px; background: rgba(244,123,58,0.3); }
+.section-head .count { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+
+.activity {
+  display: flex;
+  gap: 16px;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  margin: 0 -8px;
+  transition: background 0.12s;
+}
+.activity:last-child { border-bottom: 0; }
+.activity:hover, .activity.hover { background: rgba(253,236,223,0.5); }
+.activity .photo { position: relative; flex-shrink: 0; }
+.activity .img { width: 112px; height: 84px; border-radius: var(--radius-md); background-size: cover; background-position: center; }
+.activity .time-chip {
+  position: absolute;
+  bottom: 6px; left: 6px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.activity .body { flex: 1; min-width: 0; padding-right: 12px; }
+.activity .title-row { display: flex; align-items: baseline; gap: 8px; }
+.activity .badge {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.activity .name { font-size: 15px; font-weight: 500; line-height: 1.25; }
+.activity .deck { font-size: 12px; color: var(--ink-soft); line-height: 1.55; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.activity .map-link { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ink-faint); margin-top: 6px; }
+.activity .map-link:hover { color: var(--orange-deep); }
+.activity .actions { display: flex; align-items: flex-start; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.activity:hover .actions { opacity: 1; }
+.activity .actions button { color: var(--ink-faint); padding: 4px; }
+.activity .actions button:hover { color: var(--ink); }
+.activity .actions .chev { color: var(--ink-faint); font-size: 12px; padding: 4px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   View · Timeline (spine)
+───────────────────────────────────────────────────────────────── */
+.timeline { padding: 16px 28px 24px; }
+.tl-wrap { position: relative; padding-left: 28px; }
+.tl-wrap::before {
+  content: "";
+  position: absolute;
+  left: 5px; top: 8px; bottom: 8px;
+  width: 1px;
+  background: repeating-linear-gradient(180deg, rgba(13,44,61,0.20) 0 4px, transparent 4px 8px);
+}
+.tl-section { margin-bottom: 8px; }
+.tl-section-head {
+  display: flex; align-items: center; gap: 8px;
+  margin: 16px 0 4px;
+  margin-left: -28px;
+}
+.tl-section-head:first-child { margin-top: 0; }
+.tl-section-head .eb { font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--orange); }
+.tl-section-head .line { flex: 1; height: 1px; background: repeating-linear-gradient(90deg, rgba(244,123,58,0.4) 0 4px, transparent 4px 8px); }
+
+.tl-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.tl-item .dot {
+  position: absolute;
+  left: -28px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.tl-item .dot::after {
+  content: "";
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.tl-item.hover .dot { background: var(--orange); border-color: var(--orange); }
+.tl-item.hover .dot::after { background: #fff; }
+.tl-item .time { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; width: 48px; flex-shrink: 0; }
+.tl-item .connector { width: 24px; height: 1px; flex-shrink: 0; background: repeating-linear-gradient(90deg, rgba(13,44,61,0.18) 0 3px, transparent 3px 6px); }
+.tl-item .label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: background 0.12s;
+}
+.tl-item.hover .label { background: rgba(253,236,223,0.5); }
+.tl-item .name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-item .region { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange-deep); flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────────
+   View · Story (magazine)
+───────────────────────────────────────────────────────────────── */
+.story { padding: 24px 32px; font-family: Georgia, serif; }
+.story-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.story-ai {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--orange-soft);
+  color: var(--orange-deep);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: "General Sans", sans-serif;
+}
+.story-source { font-size: 11px; color: var(--ink-faint); font-style: italic; font-family: "General Sans", sans-serif; }
+.story h2 { font-size: 22px; font-style: italic; font-weight: 500; line-height: 1.4; margin: 0 0 24px; color: var(--ink); }
+.story .col-layout { display: grid; grid-template-columns: 1fr 240px; gap: 24px; align-items: start; }
+.story p { font-size: 14px; color: var(--ink); line-height: 1.7; margin: 0 0 16px; }
+.story .photo-stack { display: flex; flex-direction: column; gap: 16px; }
+.photo-cap { position: relative; }
+.photo-cap .img { border-radius: var(--radius-md); background-size: cover; background-position: center; }
+.photo-cap.lg .img { height: 170px; }
+.photo-cap.sm .img { height: 110px; }
+.photo-cap .caption { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-family: "General Sans", sans-serif; }
+.photo-cap .badge {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.photo-cap .pname { font-size: 12px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-cap .ptime { font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.story .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+.story .pullquote { border-left: 2px solid var(--orange); padding-left: 16px; margin-top: 24px; }
+.story .pullquote p { font-size: 16px; font-style: italic; line-height: 1.4; margin: 0; }
+.story .pullquote .meta { font-size: 11px; font-family: "General Sans", sans-serif; color: var(--ink-faint); margin-top: 6px; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Map card (sticky right)
+───────────────────────────────────────────────────────────────── */
+.map-card {
+  width: 44%;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.map-card.hidden { display: none; }
+.map-svg { width: 100%; height: 100%; display: block; background: #e8e3d8; }
+.map-info {
+  position: absolute;
+  top: 12px; left: 12px;
+  background: var(--orange-soft);
+  border: 1px solid var(--orange-border);
+  border-radius: var(--radius-pill);
+  font-size: 10px; font-weight: 500;
+  color: var(--orange-deep);
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-zoom {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  display: flex; flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.map-zoom button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; }
+.map-zoom button:first-child { border-bottom: 1px solid var(--border); }
+.map-zoom button:hover { background: var(--surface-soft); }
+.map-attr { position: absolute; bottom: 6px; left: 8px; font-size: 9px; color: rgba(138,152,163,0.7); font-style: italic; }
+
+.map-pin { cursor: pointer; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Note section
+───────────────────────────────────────────────────────────────── */
+.notes { max-width: 820px; padding-top: 24px; margin-top: 32px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-faint); line-height: 1.65; }
+.notes b { color: var(--ink-soft); }
+.notes code { background: var(--surface-soft); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="intro">
+    <div class="eb">Design exploration · day layout · proposta A</div>
+    <h1>Trinity · chrome + cards rounded + 3 viste reali</h1>
+    <p>
+      Proposta A "Trinity": sidebar Itinerary collassabile (260↔56px) + content card grande con hero foto + mappa sticky a destra (44%). Tre cards rounded affiancati. Il toggle <b>Activities · Timeline · Story</b> cambia la forma del body; quando <b>Story</b> è attiva la mappa scompare e il content prende tutta la larghezza. Clicca i tab in alto a destra del content per provare.
+    </p>
+  </div>
+
+  <div class="frame">
+    <!-- Top nav -->
+    <div class="topnav">
+      <div class="brand">
+        <span class="logo go-jp">五</span>
+        <span class="name">TRAVEL<em>GO</em></span>
+      </div>
+      <nav>
+        <span class="item active">My trips</span>
+        <span class="item">Explore</span>
+        <span class="item">Guides</span>
+        <span class="item">Budget</span>
+      </nav>
+      <div class="right">
+        <span>Hi, Enrico</span>
+        <span><i class="ti ti-world"></i> EN <i class="ti ti-chevron-down"></i></span>
+        <div class="avatar"></div>
+      </div>
+    </div>
+
+    <!-- Sub-header -->
+    <div class="subheader">
+      <div class="trip-name">
+        <span class="name">JAPAN 2026!</span>
+        <span class="sep">·</span>
+        <span class="meta">20 days</span>
+      </div>
+      <div class="tabs">
+        <span class="tab">Trip</span>
+        <span class="tab active">Day by day</span>
+        <span class="tab">Map</span>
+        <span class="tab">Budget</span>
+        <span class="tab">Notes</span>
+      </div>
+      <div class="actions">
+        <span class="editing"><span class="dot"></span> Editing</span>
+        <span class="feedback"><i class="ti ti-message-dots"></i> Feedback</span>
+      </div>
+    </div>
+
+    <!-- Content · sidebar + day-card + map-card -->
+    <div class="content">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-collapsed-top" onclick="toggleSidebar()" title="Espandi sidebar">
+          <i class="ti ti-layout-sidebar-left-expand"></i>
+        </div>
+        <div class="sidebar-head">
+          <div>
+            <div class="eb">Itinerary</div>
+            <h4>Day by day</h4>
+            <div class="sub">20 days · Jul 31 → Aug 19, 2026</div>
+          </div>
+          <button class="toggle" onclick="toggleSidebar()" title="Collassa sidebar"><i class="ti ti-layout-sidebar-left-collapse"></i></button>
+        </div>
+        <div class="sidebar-list" id="sidebar-list"></div>
+      </aside>
+
+      <!-- Day card -->
+      <div class="day-card">
+        <div class="hero">
+          <div class="eb">Day 2 · <em>Tokyo</em></div>
+          <h2>Asakusa, Yanesen e Sumida-Gawa</h2>
+          <div class="meta">Sat Aug 1, 2026 · 6 activities</div>
+          <button class="edit-day"><i class="ti ti-pencil"></i> Edit Day</button>
+        </div>
+        <div class="lodging">
+          <div class="icon"><i class="ti ti-building"></i></div>
+          <span class="label">Staying at</span>
+          <span class="name">HOTEL TAVINOS Asakusa</span>
+          <span class="sep">·</span>
+          <span class="place">Tokyo, Japan</span>
+          <div class="right">
+            <button class="open-btn">Open <i class="ti ti-arrow-up-right"></i></button>
+          </div>
+        </div>
+        <div class="day-toolbar">
+          <div class="label">Day itinerary</div>
+          <div class="tabswitcher">
+            <button data-view="activities" class="active" onclick="switchView('activities')">Activities</button>
+            <button data-view="timeline" onclick="switchView('timeline')">Timeline</button>
+            <button data-view="story" onclick="switchView('story')">Story</button>
+          </div>
+        </div>
+        <div class="day-body scrollbar-thin" id="day-body"></div>
+      </div>
+
+      <!-- Map card -->
+      <aside class="map-card" id="map-card">
+        <svg class="map-svg" id="map" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+          <rect x="0" y="0" width="600" height="400" fill="#e8e3d8"/>
+          <g stroke="#d4cdbd" stroke-width="0.5" id="grid"></g>
+          <g stroke="#c8bfa8" stroke-width="2" fill="none" opacity="0.7">
+            <path d="M 0 140 Q 200 170 400 130 T 600 100"/>
+            <path d="M 0 280 Q 250 240 500 290"/>
+            <path d="M 300 0 Q 320 200 280 400"/>
+            <path d="M 480 0 L 460 400"/>
+          </g>
+          <path d="M 360 0 Q 380 80 370 160 Q 360 240 390 320 L 395 400" stroke="#a8c4d6" stroke-width="14" fill="none" opacity="0.55"/>
+          <g font-family="Georgia, serif" fill="#8a7e63" opacity="0.5">
+            <text x="395" y="155" font-size="13" font-style="italic">Asakusa</text>
+            <text x="265" y="165" font-size="12" font-style="italic">Yanaka</text>
+            <text x="345" y="290" font-size="12" font-style="italic">Taito</text>
+            <text x="445" y="225" font-size="13" font-style="italic">Sumida</text>
+            <text x="120" y="320" font-size="13" font-style="italic">Shinjuku</text>
+          </g>
+          <polyline id="polyline" stroke="var(--orange)" stroke-width="2.5" fill="none" stroke-dasharray="4 3" opacity="0.75"/>
+          <g id="pins"></g>
+        </svg>
+        <div class="map-info"><i class="ti ti-info-circle"></i> hover activity ↔ pin · polyline arancio</div>
+        <div class="map-zoom">
+          <button><i class="ti ti-plus"></i></button>
+          <button><i class="ti ti-minus"></i></button>
+        </div>
+        <div class="map-attr">design mock · not a real map</div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>Interazioni implementate.</b> Toggle viste <code>Activities · Timeline · Story</code> reale. Sidebar collassabile (chevron, 260↔56px). Hover row ↔ pin bidirezionale in Activities e Timeline. Quando Story è attiva, mappa nascosta e content full-width.
+    <br><br>
+    <b>Da decidere.</b> Posizione sticky della mappa (qui è card laterale che scrolla solo se il viewport è ridotto). Empty state delle viste Activities/Timeline quando un giorno è vuoto. Editing form (Edit Day) si apre come pannello inline che spinge la feed in basso — non implementato in questo sketch.
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   Data
+───────────────────────────────────────────────────────────────── */
+const ACTIVITIES = [
+  { id: "1", time: "08:00", name: "Senso-ji",                 region: "Asakusa", slot: "morning",   gradient: "linear-gradient(160deg,#dfa97e,#c88b65 50%,#3d4a64)", deck: "Tempio dedicato alla dea Kannon, costruito nel VII secolo. La leggenda racconta che la statua fu pescata nel Sumida-gawa. Foto con calma e vedi i negozietti di Nakamise.", x: 400, y: 165 },
+  { id: "2", time: "10:30", name: "Parco Sumida",             region: "Sumida",  slot: "morning",   gradient: "linear-gradient(160deg,#d6b8a8,#896a55 60%,#4d3525)", deck: "Passeggiare lungo il parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni. Caffè a Leaves Coffee Apartment.", x: 380, y: 205 },
+  { id: "3", time: "12:30", name: "Kuramae",                  region: "Taito",   slot: "afternoon", gradient: "linear-gradient(160deg,#b8a8c9,#5d4a7a 60%,#2a1f3a)", deck: "Quartiere degli artigiani moderni. Kakimori (cartoleria), Ink Stand (mescolare inchiostro), Jiyucho (materiali da corrispondenza).", x: 365, y: 245 },
+  { id: "4", time: "14:00", name: "Yanesen",                  region: "Yanaka",  slot: "afternoon", gradient: "linear-gradient(160deg,#a8d6d2,#5f9e9a 60%,#1a3a5a)", deck: "Da Kuramae prendi i mezzi verso Nippori/Sendagi (circa 20 min). Arrivi a Yanesen nel momento di massima luce. Camminata lenta tra i gatti del quartiere.", x: 290, y: 175 },
+  { id: "5", time: "16:30", name: "Solamachi Pokemon Center", region: "Sumida",  slot: "afternoon", gradient: "linear-gradient(160deg,#c4744a,#8a3c1c 60%,#4c1f0a)", deck: "Pokemon Center dentro Tokyo Skytree Town. Veloce, prima della salita al Sky Tree.", x: 425, y: 235 },
+  { id: "6", time: "18:30", name: "Tokyo Sky Tower Tree",     region: "Sumida",  slot: "evening",   gradient: "linear-gradient(160deg,#7a8aa3,#3d4a64 60%,#1a2840)", deck: "Salita alla Sky Tree al tramonto. Occhio alla last entry e al meteo: se nuvoloso, rimanda al giorno dopo.", x: 435, y: 240 },
+];
+
+const DAYS = [
+  { dow: "FRI", num: 31, region: "TOKYO",                title: "Arrivo a Narita" },
+  { dow: "SAT", num:  1, region: "TOKYO",                title: "Asakusa, Yanesen e S...", active: true },
+  { dow: "SUN", num:  2, region: "TOKYO",                title: "Marunouchi e Nihomb..." },
+  { dow: "MON", num:  3, region: "TOKYO FUJI",           title: "Escursione Monte Fuji..." },
+  { dow: "TUE", num:  4, region: "TOKYO",                title: "Shibuya, Ginza e Odai..." },
+  { dow: "WED", num:  5, region: "TOKYO → NIKKO",        title: "Ritiro Camper" },
+  { dow: "THU", num:  6, region: "NIKKO",                title: "Trekking Kegon" },
+  { dow: "FRI", num:  7, region: "NIKKO",                title: "Templi e laghi" },
+  { dow: "SAT", num:  8, region: "NUMATA → MATSUMOTO",   title: "Spostamento" },
+];
+
+const SLOTS = [
+  { key: "morning",   label: "Morning" },
+  { key: "afternoon", label: "Afternoon" },
+  { key: "evening",   label: "Evening" },
+  { key: "night",     label: "Night" },
+];
+
+/* ─────────────────────────────────────────────────────────────────
+   State
+───────────────────────────────────────────────────────────────── */
+let state = {
+  view: "activities",
+  hoverId: null,
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   Render · sidebar
+───────────────────────────────────────────────────────────────── */
+function renderSidebar() {
+  const list = document.getElementById("sidebar-list");
+  list.innerHTML = DAYS.map(d => `
+    <div class="sidebar-day ${d.active ? "active" : ""}">
+      <div class="date">
+        <span class="dow">${d.dow}</span>
+        <span class="num">${d.num}</span>
+      </div>
+      <div class="info">
+        <div class="region">${d.region}</div>
+        <div class="title">${d.title}</div>
+      </div>
+      <i class="ti ti-chevron-right chev"></i>
+    </div>
+  `).join("");
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Render · grid (map background)
+───────────────────────────────────────────────────────────────── */
+function renderGrid() {
+  const g = document.getElementById("grid");
+  let h = "";
+  for (let i = 0; i < 12; i++) h += `<line x1="0" y1="${i*35}" x2="600" y2="${i*35}"/>`;
+  for (let i = 0; i < 18; i++) h += `<line x1="${i*35}" y1="0" x2="${i*35}" y2="400"/>`;
+  g.innerHTML = h;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Render · views (activities | timeline | story)
+───────────────────────────────────────────────────────────────── */
+function setHover(id) {
+  state.hoverId = id;
+  renderActiveView();
+  renderPins();
+}
+
+function renderActivities() {
+  const slots = SLOTS.filter(s => ACTIVITIES.some(a => a.slot === s.key));
+  return `<div class="activities">${slots.map(s => {
+    const acts = ACTIVITIES.filter(a => a.slot === s.key);
+    return `<div class="section">
+      <div class="section-head">
+        <span class="eb">${s.label}</span>
+        <span class="line"></span>
+        <span class="count">${acts.length} acts</span>
+      </div>
+      ${acts.map(a => {
+        const idx = ACTIVITIES.indexOf(a);
+        const isHover = state.hoverId === a.id;
+        return `<div class="activity ${isHover ? "hover" : ""}"
+          onmouseenter="setHover('${a.id}')" onmouseleave="setHover(null)">
+          <div class="photo">
+            <div class="img" style="background:${a.gradient}"></div>
+            <span class="time-chip">${a.time}</span>
+          </div>
+          <div class="body">
+            <div class="title-row">
+              <span class="badge">${idx + 1}</span>
+              <span class="name">${a.name}</span>
+            </div>
+            <p class="deck">${a.deck}</p>
+            <span class="map-link"><i class="ti ti-map-pin"></i> Map</span>
+          </div>
+          <div class="actions">
+            <button><i class="ti ti-pencil"></i></button>
+            <i class="ti ti-chevron-right chev"></i>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderTimeline() {
+  const slots = SLOTS.filter(s => ACTIVITIES.some(a => a.slot === s.key));
+  return `<div class="timeline"><div class="tl-wrap">${slots.map(s => {
+    const acts = ACTIVITIES.filter(a => a.slot === s.key);
+    return `<div class="tl-section">
+      <div class="tl-section-head">
+        <span class="eb">${s.label}</span>
+        <span class="line"></span>
+      </div>
+      ${acts.map(a => {
+        const isHover = state.hoverId === a.id;
+        return `<div class="tl-item ${isHover ? "hover" : ""}"
+          onmouseenter="setHover('${a.id}')" onmouseleave="setHover(null)">
+          <span class="dot"></span>
+          <span class="time">${a.time}</span>
+          <span class="connector"></span>
+          <div class="label">
+            <span class="name">${a.name}</span>
+            <span class="region">${a.region}</span>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("")}</div></div>`;
+}
+
+function renderStory() {
+  return `<div class="story">
+    <div class="story-top">
+      <span class="story-ai"><i class="ti ti-sparkles"></i> AI</span>
+      <span class="story-source"><i class="ti ti-arrow-up-right"></i> Go · Day story</span>
+    </div>
+    <h2>Tra il frastuono della modernità, Tokyo svela la sua anima nei templi e nei mercati, dove ogni angolo racconta una storia antica.</h2>
+    <div class="col-layout">
+      <div>
+        <p>In un angolo di Tokyo, l'alba si fa strada tra i grattacieli, rivelando la serena bellezza di Senso-ji, il tempio dedicato alla dea Kannon. Costruito nel VII secolo, il tempio è avvolto da un'atmosfera di sacralità, dove la leggenda narra che la statua della dea fu recuperata dalle acque del Sumida-gawa.</p>
+        <p>Passeggiando lungo Nakamise, si scorgono negozietti che offrono dolci tradizionali e souvenir, un invito a perdersi nei profumi di incenso e nella storia che permea l'aria. Proseguendo verso il Parco Sumida, il fruscio delle foglie e il canto degli uccelli creano una pausa contemplativa nel ritmo frenetico della città.</p>
+      </div>
+      <div class="photo-stack">
+        ${photoCap(ACTIVITIES[1], 2, "lg")}
+        ${photoCap(ACTIVITIES[0], 1, "lg")}
+      </div>
+    </div>
+    <p>Kuramae si svela come un microcosmo creativo, dove Kakimori offre penne e quaderni unici, mentre l'Ink Stand invita a mescolare inchiostri in un rituale di scrittura. La vibrante Yanesen, con il suo fascino vintage, accoglie i visitatori nel vivace mercato di Yanaka Ginza, tra gatti indolenti e botteghe storiche.</p>
+    <div class="photo-grid">
+      ${photoCap(ACTIVITIES[2], 3, "sm")}
+      ${photoCap(ACTIVITIES[3], 4, "sm")}
+      ${photoCap(ACTIVITIES[5], 6, "sm")}
+    </div>
+    <div class="pullquote">
+      <p>"Passeggiare e/o fare pausa al parco di Sumida poi procedere verso Kuramae, quartiere degli artigiani moderni."</p>
+      <div class="meta">Parco Sumida · 10:30</div>
+    </div>
+  </div>`;
+}
+
+function photoCap(a, index, size) {
+  return `<div class="photo-cap ${size}">
+    <div class="img" style="background:${a.gradient}"></div>
+    <div class="caption">
+      <span class="badge">${index}</span>
+      <span class="pname">${a.name}</span>
+      <span class="ptime">${a.time}</span>
+    </div>
+  </div>`;
+}
+
+function renderActiveView() {
+  const body = document.getElementById("day-body");
+  if (state.view === "activities") body.innerHTML = renderActivities();
+  else if (state.view === "timeline") body.innerHTML = renderTimeline();
+  else if (state.view === "story") body.innerHTML = renderStory();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Render · pins on map
+───────────────────────────────────────────────────────────────── */
+function renderPins() {
+  const el = document.getElementById("pins");
+  el.innerHTML = ACTIVITIES.map((a, i) => {
+    const isHover = state.hoverId === a.id;
+    const r = isHover ? 16 : 12;
+    return `<g class="map-pin" onmouseenter="setHover('${a.id}')" onmouseleave="setHover(null)">
+      ${isHover ? `<circle cx="${a.x}" cy="${a.y}" r="22" fill="none" stroke="var(--orange)" stroke-width="1.5" opacity="0.4"/>` : ""}
+      <circle cx="${a.x}" cy="${a.y}" r="${r}" fill="var(--orange)" stroke="white" stroke-width="2.5"/>
+      <text x="${a.x}" y="${a.y + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="white" pointer-events="none">${i + 1}</text>
+    </g>`;
+  }).join("");
+
+  document.getElementById("polyline").setAttribute("points", ACTIVITIES.map(a => `${a.x},${a.y}`).join(" "));
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Actions
+───────────────────────────────────────────────────────────────── */
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("collapsed");
+}
+
+function switchView(v) {
+  state.view = v;
+  // Aggiorna i tab
+  document.querySelectorAll(".tabswitcher button").forEach(b => {
+    b.classList.toggle("active", b.dataset.view === v);
+  });
+  // Story → nasconde la mappa
+  document.getElementById("map-card").classList.toggle("hidden", v === "story");
+  renderActiveView();
+}
+
+/* Init */
+renderGrid();
+renderSidebar();
+renderActiveView();
+renderPins();
+</script>
+</body>
+</html>

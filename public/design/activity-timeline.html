@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Timeline · vista attività (renderizzazione)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.21.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Tokens
+───────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f1efe8;
+  --surface: #ffffff;
+  --surface-soft: #f5f3ee;
+  --border: rgba(13, 44, 61, 0.08);
+  --border-strong: rgba(13, 44, 61, 0.18);
+  --ink: #0d2c3d;
+  --ink-soft: #5b6b78;
+  --ink-faint: #8a98a3;
+  --orange: #f47b3a;
+  --orange-soft: #fdecdf;
+  --orange-deep: #a84818;
+  --spine-color: rgba(13, 44, 61, 0.14);
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.ti { line-height: 1; vertical-align: -1px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Layout
+───────────────────────────────────────────────────────────────── */
+.page { padding: 36px 24px 64px; max-width: 720px; margin: 0 auto; }
+.intro { margin-bottom: 24px; }
+.intro .eb { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; }
+.intro h1 { font-family: Georgia, serif; font-size: 28px; font-weight: 500; line-height: 1.2; margin: 0 0 10px; }
+.intro p { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+.intro p b { color: var(--ink); }
+
+.timeline-wrap {
+  min-width: 498px;
+  max-width: 498px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Section divider · etichetta periodo a SINISTRA della spine
+───────────────────────────────────────────────────────────────── */
+.section { position: relative; padding-left: 110px; }
+.section.first { height: 22px; }
+.section:not(.first) { height: 32px; }
+.section .spine-bg {
+  position: absolute;
+  left: 97px; top: 0; bottom: 0;
+  width: 1.5px;
+  background: var(--spine-color);
+  pointer-events: none;
+}
+.section .label {
+  position: absolute;
+  left: 0; top: 50%; transform: translateY(-50%);
+  width: 68px; /* SPINE_LEFT - 42 */
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--orange);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Spine section
+───────────────────────────────────────────────────────────────── */
+.spine-section {
+  position: relative;
+  padding-left: 110px;
+}
+.spine-section .spine-line {
+  position: absolute;
+  left: 97px;
+  width: 1.5px;
+  background: var(--spine-color);
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Bridge strip (transit IN) — sopra il blocco
+───────────────────────────────────────────────────────────────── */
+.bridge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  border-radius: 15px 15px 0 0;
+  padding: 2px 8px;
+  min-height: 22px;
+  margin: 0 10px 0 5px;
+}
+.bridge .ico { color: var(--ink-faint); display: inline-flex; }
+.bridge .ico i { font-size: 12px; }
+.bridge .sep { color: var(--ink-faint); }
+.bridge .note { color: var(--ink-faint); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Block row
+───────────────────────────────────────────────────────────────── */
+.block {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 20px;
+  border-radius: var(--radius-pill);
+  border-top-right-radius: 0;
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.block:not(.fuzzy) {
+  border-top: 1px dashed var(--border-strong);
+}
+.block:hover { background: var(--surface-soft); }
+
+/* Time column — absolute, left of spine */
+.block .time {
+  position: absolute;
+  right: calc(100% + 42px);
+  width: 38px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+  color: var(--ink-faint);
+  transition: color 0.12s;
+}
+.block:hover .time { color: var(--ink-soft); }
+.block .time .dash { opacity: 0.3; }
+
+/* Spine icon · normal */
+.block .icon {
+  position: absolute;
+  left: -27px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: #e8e8e0;
+  color: var(--ink-soft);
+  border: 2px solid #f5f5f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 4px var(--bg);
+  z-index: 10;
+  transition: all 0.15s;
+}
+.block .icon i { font-size: 14px; }
+.block:hover .icon { background: #fff; border-color: var(--ink); color: var(--ink); }
+
+/* Spine icon · fuzzy (più piccolo, niente halo aggressivo) */
+.block.fuzzy .icon {
+  left: -23px;
+  width: 22px; height: 22px;
+  background: #d5d5ce;
+  border-color: #e8e8e0;
+  box-shadow: 0 0 0 4px var(--bg);
+}
+.block.fuzzy .icon i { font-size: 12px; }
+.block.fuzzy:hover .icon { background: #fff; border-color: var(--ink); color: var(--ink); }
+
+/* Name */
+.block .name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.block.fuzzy .name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-left: -16px;
+}
+
+/* Instance note (sotto il nome, fuzzy) */
+.block .note {
+  display: block;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* Booking status pill (compact) */
+.block .booking {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.block .booking.booked { background: #fef5cf; color: #7a5e0e; }
+.block .booking.paid   { background: #e4f3da; color: #3d6e0e; }
+.block .booking.todo   { background: #fde6e1; color: #9a3015; }
+
+/* Spacer between blocks in read mode */
+.spacer { height: 32px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Notes
+───────────────────────────────────────────────────────────────── */
+.notes { max-width: 720px; margin: 48px auto 0; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-faint); line-height: 1.65; }
+.notes b { color: var(--ink-soft); }
+.notes code { background: var(--surface-soft); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="intro">
+    <div class="eb">Timeline · render attività (read mode)</div>
+    <h1>Tokyo day · spine verticale, attività e transiti</h1>
+    <p>
+      Renderizzazione del componente <b>Timeline</b> (<code>features/activity/Timeline.tsx</code>) in HTML puro,
+      fedele al pattern: spine continua verticale, etichetta periodo a sinistra, blocchi atomici con orario fuori dalla spine, icona centrale con halo, blocchi fuzzy in small-caps, transit strips (bridge_in) sopra il blocco di arrivo. 8 attività dal preset "Tokyo day" della sandbox.
+    </p>
+  </div>
+
+  <div id="timeline" class="timeline-wrap"></div>
+</div>
+
+<div class="notes">
+  <b>Pattern preservato.</b> <code>SPINE_LEFT 110px</code>, <code>SPINE_X 97px</code>. Spine 1.5px, color <code>rgba(13,44,61,0.14)</code>. Icona normal 30×30 con halo <code>0 0 0 4px var(--bg)</code> che maschera la spine. Icona fuzzy 22×22, name uppercase small-caps. Bridge strip sopra il blocco di destinazione. Spaziatore 32px tra blocchi (read mode).
+  <br><br>
+  <b>Fuori scope.</b> Edit mode, add zones hover-reveal, schedule popover, transit editor, icon picker — tutti gestiti dal componente React. Qui solo la vista di consumo.
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   Mock data · preset "Tokyo day" della sandbox /dev/activity-timeline
+───────────────────────────────────────────────────────────────── */
+const TYPE_ICON = {
+  place:  "ti-map-pin",
+  meal:   "ti-tools-kitchen-2",
+  pause:  "ti-coffee",
+  action: "ti-circle-check",
+  move:   "ti-arrows-exchange",
+};
+const TRANSPORT_ICON = {
+  walk:  "ti-walk",
+  metro: "ti-train",
+  bus:   "ti-bus",
+  taxi:  "ti-car",
+  bike:  "ti-bike",
+  car:   "ti-car",
+  train: "ti-train",
+};
+const TRANSPORT_LABEL = {
+  walk:  "A piedi",
+  metro: "Metro",
+  bus:   "Bus",
+  taxi:  "Taxi",
+  bike:  "Bici",
+  car:   "Auto",
+  train: "Treno",
+};
+
+const BLOCKS = [
+  // ── Morning
+  { id: "b1", slot: "morning",   time: "09:00", title: "Tsukiji Outer Market",   type: "place",  booking: "booked" },
+  { id: "b2", slot: "morning",   time: "10:30", title: "teamLab Planets TOKYO", type: "place",  booking: "paid",
+    bridge_in: { transport: "walk",  duration: 12 } },
+  { id: "b3", slot: "morning",   time: "12:30", title: "PRANZO · ICHIRAN RAMEN", type: "meal", fuzzy: true,
+    bridge_in: { transport: "metro", duration: 8, line: "Hibiya Line", stops: "Toyosu → Shibuya" } },
+
+  // ── Afternoon
+  { id: "b4", slot: "afternoon", time: "14:00", title: "Shibuya Crossing",      type: "place", booking: "todo" },
+  { id: "b5", slot: "afternoon", time: null,    title: "PAUSA CAFFÈ",            type: "pause", fuzzy: true,
+    bridge_in: { transport: "walk", duration: 5 } },
+  { id: "b6", slot: "afternoon", time: "16:00", title: "Meiji Shrine",          type: "place", booking: "todo",
+    bridge_in: { transport: "taxi", duration: 20 } },
+
+  // ── Evening
+  { id: "b7", slot: "evening",   time: "19:30", title: "Omoide Yokocho",         type: "place" },
+  { id: "b8", slot: "evening",   time: "21:00", title: "PRENOTA CENA YAKINIKU", type: "action", fuzzy: true,
+    note: "Verifica disponibilità sabato sera",
+    bridge_in: { transport: "walk", duration: 3 } },
+];
+
+const SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
+const SLOT_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
+
+/* ─────────────────────────────────────────────────────────────────
+   Render
+───────────────────────────────────────────────────────────────── */
+function fmtDuration(m) {
+  if (m == null) return "";
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r === 0 ? `${h}h` : `${h}h ${r}'`;
+}
+
+function renderBridge(b) {
+  const tIco = TRANSPORT_ICON[b.transport] || "ti-arrows-exchange";
+  const tLab = TRANSPORT_LABEL[b.transport] || b.transport;
+  const dur  = fmtDuration(b.duration);
+  const parts = [tLab, dur, b.stops].filter(Boolean).join(" · ");
+  return `<div class="bridge">
+    <span class="ico"><i class="ti ${tIco}"></i></span>
+    <span>${parts}</span>
+    ${b.line ? `<span class="sep">· ${b.line}</span>` : ""}
+    ${b.note ? `<span class="note">· ${b.note}</span>` : ""}
+  </div>`;
+}
+
+function renderBlock(b) {
+  const isFuzzy = !!b.fuzzy;
+  const icon = TYPE_ICON[b.type] || TYPE_ICON.place;
+  const timeHtml = b.time
+    ? b.time
+    : `<span class="dash">—</span>`;
+  const bookingHtml = b.booking
+    ? `<span class="booking ${b.booking}">${b.booking}</span>`
+    : "";
+  const noteHtml = b.note ? `<span class="note">${b.note}</span>` : "";
+  return `<div class="block ${isFuzzy ? "fuzzy" : ""}">
+    <span class="time">${timeHtml}</span>
+    <span class="icon"><i class="ti ${icon}"></i></span>
+    <div class="name">${b.title}${noteHtml}</div>
+    ${bookingHtml}
+  </div>`;
+}
+
+function renderSlot(slot, slotBlocks, isFirst, isLast) {
+  if (slotBlocks.length === 0) return "";
+
+  // Section divider
+  const divider = `<div class="section ${isFirst ? "first" : ""}">
+    <div class="spine-bg"></div>
+    <div class="label">${SLOT_LABEL[slot]}</div>
+  </div>`;
+
+  // Calcola dove la spine inizia/finisce in questa section
+  const spineTop = isFirst ? 0 : 0;
+  const spineBottom = isLast ? 32 : 0;
+
+  // Blocchi con bridge sopra + spacer in mezzo
+  const blocksHtml = slotBlocks.map((b, i) => {
+    const isLastBlock = i === slotBlocks.length - 1;
+    const bridge = b.bridge_in ? renderBridge(b.bridge_in) : "";
+    const spacer = !isLastBlock ? `<div class="spacer" aria-hidden></div>` : "";
+    return `${bridge}${renderBlock(b)}${spacer}`;
+  }).join("");
+
+  return `${divider}
+    <div class="spine-section">
+      <div class="spine-line" style="top:${spineTop}px;bottom:${spineBottom}px"></div>
+      ${blocksHtml}
+    </div>`;
+}
+
+function render() {
+  const root = document.getElementById("timeline");
+  // Group by slot
+  const groups = { morning: [], afternoon: [], evening: [], night: [] };
+  for (const b of BLOCKS) groups[b.slot].push(b);
+  // Sort each slot by time (no-time goes last)
+  for (const s of SLOT_ORDER) {
+    groups[s].sort((a, b) => {
+      if (a.time && b.time) return a.time.localeCompare(b.time);
+      if (a.time) return -1;
+      if (b.time) return 1;
+      return 0;
+    });
+  }
+  const active = SLOT_ORDER.filter(s => groups[s].length > 0);
+  root.innerHTML = active.map((s, i) =>
+    renderSlot(s, groups[s], i === 0, i === active.length - 1)
+  ).join("");
+}
+
+render();
+</script>
+</body>
+</html>

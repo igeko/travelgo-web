@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelGo · Discover places (sketch)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.21.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   Tokens
+───────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f1efe8;
+  --surface: #ffffff;
+  --surface-soft: #f5f3ee;
+  --surface-warm: #fdf5ee;
+  --border: rgba(13, 44, 61, 0.08);
+  --border-strong: rgba(13, 44, 61, 0.18);
+  --ink: #0d2c3d;
+  --ink-soft: #5b6b78;
+  --ink-faint: #8a98a3;
+  --orange: #f47b3a;
+  --orange-soft: #fdecdf;
+  --orange-border: #f9d4b6;
+  --orange-deep: #a84818;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button { cursor: pointer; border: 0; background: none; color: inherit; }
+.ti { line-height: 1; vertical-align: -1px; }
+.go-jp { font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif; }
+
+/* Scrollbar */
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(13,44,61,0.15) transparent; }
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(13,44,61,0.15); border-radius: 99px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Page intro (above the sketch)
+───────────────────────────────────────────────────────────────── */
+.page-wrap { padding: 36px 24px 64px; max-width: 1380px; margin: 0 auto; }
+.intro { max-width: 820px; margin-bottom: 22px; }
+.intro .eb { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; }
+.intro h1 { font-family: Georgia, serif; font-size: 34px; font-weight: 500; line-height: 1.15; margin: 0 0 12px; }
+.intro p { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+.intro p b { color: var(--ink); }
+
+/* ─────────────────────────────────────────────────────────────────
+   Chrome container
+───────────────────────────────────────────────────────────────── */
+.frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  height: 880px;
+}
+
+/* Top nav */
+.topnav {
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand .logo {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--orange);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.brand .name { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.brand .name em { color: var(--orange); font-style: normal; }
+.topnav nav { display: flex; align-items: center; gap: 24px; font-size: 13px; font-weight: 500; position: relative; }
+.topnav nav .item { color: var(--ink-soft); cursor: pointer; }
+.topnav nav .item:hover { color: var(--ink); }
+.topnav nav .item.active { color: var(--ink); position: relative; }
+.topnav nav .item.active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -19px;
+  height: 2px;
+  background: var(--orange);
+}
+.topnav .right { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--ink-soft); }
+.topnav .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--orange-soft); border: 1px solid var(--orange-border); }
+
+/* Sub-header */
+.subheader {
+  height: 48px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.trip-name { display: flex; align-items: baseline; gap: 8px; }
+.trip-name .name { color: var(--orange); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.trip-name .sep { color: var(--ink-faint); }
+.trip-name .meta { font-size: 12px; color: var(--ink-soft); }
+.subheader .tabs { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; }
+.subheader .tabs .tab { padding: 6px 12px; border-radius: var(--radius-pill); color: var(--ink-soft); cursor: pointer; }
+.subheader .tabs .tab:hover { background: var(--surface-soft); }
+.subheader .tabs .tab.active { background: var(--ink); color: #fff; }
+.subheader .actions { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.subheader .feedback { color: var(--ink-soft); padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+/* Content area */
+.content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+  position: relative;
+}
+
+/* Card pattern */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Search panel (sx)
+───────────────────────────────────────────────────────────────── */
+.search-panel {
+  width: 420px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.93);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(13,44,61,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.search-head {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+}
+.search-head .row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.search-head .eb { color: var(--orange); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.search-head h3 { font-family: Georgia, serif; font-size: 18px; font-weight: 500; margin: 4px 0 0; line-height: 1.2; }
+.search-head .count { font-size: 11px; color: var(--ink-faint); }
+.search-input { position: relative; }
+.search-input i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 14px; }
+.search-input input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px 10px 36px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-input input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(244,123,58,0.15); }
+
+/* Categorie chips */
+.cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--border-strong); }
+.chip.active { color: #fff; border-color: transparent; }
+
+/* Results */
+.results { flex: 1; overflow-y: auto; }
+.results-empty { text-align: center; padding: 40px 16px; color: var(--ink-faint); font-size: 12px; }
+.results-empty i { display: block; font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
+
+.result {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.result:hover, .result.hover, .result.selected { background: var(--surface-soft); }
+.result .photo { position: relative; flex-shrink: 0; }
+.result .photo .img { width: 68px; height: 68px; border-radius: var(--radius-md); background-size: cover; background-position: center; }
+.result .photo .cat-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff;
+}
+.result .body { flex: 1; min-width: 0; }
+.result .body .title-row { display: flex; align-items: baseline; gap: 8px; }
+.result .body .name { font-size: 13px; font-weight: 500; line-height: 1.2; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.result .body .rating { font-size: 10px; color: var(--ink-faint); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.result .body .meta { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+.result .body .deck { font-size: 11px; color: var(--ink-soft); line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.result .body .scheduled { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange-deep); margin-top: 4px; }
+.result .save-btn {
+  align-self: flex-start;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.result .save-btn:hover { border-color: var(--orange); color: var(--orange); }
+.result .save-btn.saved { background: var(--orange); border-color: var(--orange); color: #fff; }
+.result .save-btn i { font-size: 13px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Map (center)
+───────────────────────────────────────────────────────────────── */
+.map-wrap {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.map-svg { width: 100%; height: 100%; display: block; background: #e8e3d8; }
+.map-info {
+  position: absolute;
+  top: 16px; left: 16px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 11px; font-weight: 500;
+  color: var(--ink-soft);
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.map-info b { color: var(--ink); }
+.map-info .deep { color: var(--orange-deep); }
+
+.map-zoom {
+  position: absolute;
+  top: 16px; right: 16px;
+  display: flex; flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.map-zoom button { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+.map-zoom button:first-child { border-bottom: 1px solid var(--border); }
+.map-zoom button:hover { background: var(--surface-soft); }
+
+.map-attr {
+  position: absolute; bottom: 8px; left: 8px;
+  font-size: 9px; color: rgba(138,152,163,0.7); font-style: italic;
+}
+
+/* Map pin */
+.map-pin { cursor: pointer; }
+.map-pin .pulse { fill: none; stroke-width: 1.5; opacity: 0.4; }
+.map-pin .pin { stroke-width: 2.5; }
+
+/* Place popover */
+.popover {
+  position: absolute;
+  z-index: 30;
+  width: 280px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(13,44,61,0.18);
+  overflow: hidden;
+}
+.popover .ph { height: 120px; position: relative; background-size: cover; background-position: center; }
+.popover .ph .close {
+  position: absolute; top: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink);
+}
+.popover .ph .cat-pill {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.popover .pbody { padding: 12px; }
+.popover .pbody .pname-row { display: flex; align-items: baseline; gap: 8px; }
+.popover .pbody .pname { font-size: 14px; font-weight: 500; line-height: 1.2; flex: 1; }
+.popover .pbody .prating { font-size: 10px; color: var(--ink-faint); }
+.popover .pbody .pmeta { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+.popover .pbody .pdeck { font-size: 11px; color: var(--ink-soft); line-height: 1.45; margin-top: 6px; }
+.popover .pbody .pactions { display: flex; gap: 8px; margin-top: 10px; }
+.popover .pbody .pactions .btn {
+  font-size: 11px; font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px;
+  flex: 1;
+}
+.popover .pbody .pactions .btn.primary { background: var(--orange-soft); color: var(--orange-deep); }
+.popover .pbody .pactions .btn.primary.saved { background: var(--orange); color: #fff; }
+.popover .pbody .pactions .btn.secondary { border: 1px solid var(--border); color: var(--ink-soft); }
+
+/* ─────────────────────────────────────────────────────────────────
+   Wishlist panel (dx)
+───────────────────────────────────────────────────────────────── */
+.wishlist-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s;
+}
+.wishlist-panel.collapsed { width: 56px; }
+
+.wishlist-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wishlist-head .eb { font-size: 9px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.wishlist-head .count-row { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.wishlist-head .count-row .n { font-size: 15px; font-weight: 500; }
+.wishlist-head .count-row .sub { font-size: 10px; color: var(--ink-faint); }
+.wishlist-head .hint { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+.wishlist-head .toggle { color: var(--ink-faint); padding: 4px; }
+.wishlist-head .toggle:hover { color: var(--ink); }
+
+.wishlist-list { flex: 1; overflow-y: auto; }
+.wishlist-empty { text-align: center; padding: 40px 16px; color: var(--ink-faint); font-size: 12px; }
+.wishlist-empty i { display: block; font-size: 24px; margin-bottom: 8px; opacity: 0.6; }
+
+.wish-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.wish-item:hover, .wish-item.hover { background: var(--surface-soft); }
+.wish-item .photo { position: relative; flex-shrink: 0; }
+.wish-item .img { width: 48px; height: 48px; border-radius: var(--radius-md); background-size: cover; background-position: center; }
+.wish-item .cat-badge {
+  position: absolute; bottom: -4px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 8px; color: #fff;
+}
+.wish-item .body { flex: 1; min-width: 0; }
+.wish-item .body .name { font-size: 12px; font-weight: 500; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wish-item .body .region { font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+.wish-item .body .scheduled, .wish-item .body .pending { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+.wish-item .body .scheduled { color: var(--orange-deep); }
+.wish-item .body .pending { color: var(--ink-faint); }
+.wish-item .body .pending .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
+.wish-item .trash {
+  align-self: flex-start;
+  padding: 4px;
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.wish-item:hover .trash { opacity: 1; }
+.wish-item .trash:hover { color: #b03030; }
+
+.wishlist-foot { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(245,243,238,0.6); }
+.wishlist-foot .plan-btn {
+  width: 100%;
+  font-size: 11px; font-weight: 500;
+  color: var(--orange-deep);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px;
+}
+.wishlist-foot .plan-btn:hover { background: #fff; }
+
+/* Wishlist collapsed */
+.wishlist-panel.collapsed .wishlist-head,
+.wishlist-panel.collapsed .wishlist-list,
+.wishlist-panel.collapsed .wishlist-foot { display: none; }
+.wishlist-collapsed-top { display: none; height: 40px; border-bottom: 1px solid var(--border); align-items: center; justify-content: center; color: var(--ink-faint); }
+.wishlist-collapsed-top:hover { color: var(--ink); background: var(--surface-soft); }
+.wishlist-collapsed-body { display: none; flex-direction: column; align-items: center; padding-top: 16px; gap: 12px; flex: 1; }
+.wishlist-collapsed-body .orb {
+  position: relative;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wishlist-collapsed-body .orb .num {
+  position: absolute; top: -4px; right: -4px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wishlist-collapsed-body .label { font-size: 9px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); writing-mode: vertical-rl; transform: rotate(180deg); }
+
+.wishlist-panel.collapsed .wishlist-collapsed-top { display: flex; }
+.wishlist-panel.collapsed .wishlist-collapsed-body { display: flex; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Go floating
+───────────────────────────────────────────────────────────────── */
+@keyframes goPulseHaloIdle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 123, 58, 0.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(244, 123, 58, 0); }
+}
+@keyframes goFloatEnter {
+  0% { opacity: 0; transform: translateY(12px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.go-orb {
+  position: absolute;
+  bottom: 16px;
+  right: 304px;
+  z-index: 40;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--orange);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px rgba(13,44,61,0.25);
+  animation: goPulseHaloIdle 2.6s ease-in-out infinite;
+  transition: transform 0.15s, right 0.2s;
+}
+.go-orb:hover { transform: scale(1.05); }
+.go-orb .jp { font-size: 22px; }
+.go-orb .spark {
+  position: absolute;
+  top: -4px; right: -4px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+.wishlist-panel.collapsed ~ .go-orb { right: 80px; }
+.wishlist-panel.collapsed ~ .go-panel { right: 80px; }
+
+.go-panel {
+  position: absolute;
+  bottom: 16px;
+  right: 304px;
+  z-index: 40;
+  width: 380px;
+  height: 520px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 48px rgba(13,44,61,0.25);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  animation: goFloatEnter 0.22s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  transition: right 0.2s;
+}
+.go-panel.open { display: flex; }
+.go-panel-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--ink);
+  color: #fff;
+}
+.go-panel-head .avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(244,123,58,0.18);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--orange); font-size: 18px;
+}
+.go-panel-head .meta { flex: 1; min-width: 0; }
+.go-panel-head .meta .name { font-size: 13px; font-weight: 500; }
+.go-panel-head .meta .sub { font-size: 10px; color: rgba(255,255,255,0.6); }
+.go-panel-head .actions { display: flex; gap: 4px; }
+.go-panel-head .actions button { color: rgba(255,255,255,0.6); padding: 4px; }
+.go-panel-head .actions button:hover { color: #fff; }
+.go-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: rgba(245,243,238,0.3);
+}
+.msg { display: flex; gap: 10px; margin-bottom: 14px; }
+.msg.user { justify-content: flex-end; }
+.msg .av { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.msg .av.go { background: var(--ink); display: inline-flex; align-items: center; justify-content: center; color: var(--orange); font-size: 14px; }
+.msg .av.you { background: var(--orange-soft); border: 1px solid var(--orange-border); }
+.msg .bubble { flex: 1; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); border-top-left-radius: 4px; padding: 10px 12px; font-size: 12px; line-height: 1.55; }
+.msg.user .bubble { background: var(--orange-soft); border-color: var(--orange-border); border-top-left-radius: var(--radius-md); border-top-right-radius: 4px; flex: 0 1 auto; max-width: 80%; }
+.msg .bubble .eb { color: var(--orange); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+.suggested { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 42px; margin-bottom: 16px; }
+.suggested button {
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+}
+.suggested button:hover { border-color: var(--orange); color: var(--orange-deep); }
+
+.go-suggest-result {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px;
+  padding: 6px 8px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-top: 6px;
+  text-align: left;
+}
+.go-suggest-result:hover { background: var(--orange-soft); }
+.go-suggest-result .place-mark { color: var(--orange); font-size: 12px; }
+.go-suggest-result .region { color: var(--ink-faint); }
+.go-suggest-result .heart { margin-left: auto; color: var(--ink-faint); font-size: 12px; }
+
+.go-input-wrap { padding: 12px; border-top: 1px solid var(--border); background: #fff; }
+.go-input { position: relative; }
+.go-input input {
+  width: 100%;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 40px 8px 16px;
+  font-size: 12px;
+  outline: none;
+}
+.go-input input:focus { border-color: var(--orange); }
+.go-input .send {
+  position: absolute;
+  right: 4px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.go-input .send:hover { background: var(--orange-deep); }
+.go-disclaimer { font-size: 10px; color: var(--ink-faint); font-style: italic; text-align: center; margin-top: 6px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Note section
+───────────────────────────────────────────────────────────────── */
+.notes { max-width: 820px; padding-top: 24px; margin-top: 32px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-faint); line-height: 1.65; }
+.notes b { color: var(--ink-soft); }
+.notes code { background: var(--surface-soft); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="intro">
+    <div class="eb">Design exploration · discover</div>
+    <h1>Discover places · ricerca, mappa, wishlist</h1>
+    <p>
+      Tool di scoperta posti per popolare la wishlist del trip. Mappa full-bleed (ispirata alla Proposta C),
+      <b>Search panel glass</b> a sinistra con macro-categorie e risultati,
+      <b>Wishlist panel</b> a destra collassabile (chevron, stile A/B), <b>Go floating</b> bottom-right.
+      Clicca le chip per filtrare, hover/click sui risultati per evidenziare i pin, cuore per salvare.
+    </p>
+  </div>
+
+  <div class="frame" id="frame">
+    <!-- Top nav -->
+    <div class="topnav">
+      <div class="brand">
+        <span class="logo go-jp">五</span>
+        <span class="name">TRAVEL<em>GO</em></span>
+      </div>
+      <nav>
+        <span class="item active">My trips</span>
+        <span class="item">Explore</span>
+        <span class="item">Guides</span>
+        <span class="item">Budget</span>
+      </nav>
+      <div class="right">
+        <span>Hi, Enrico</span>
+        <span><i class="ti ti-world"></i> EN <i class="ti ti-chevron-down"></i></span>
+        <div class="avatar"></div>
+      </div>
+    </div>
+
+    <!-- Sub-header -->
+    <div class="subheader">
+      <div class="trip-name">
+        <span class="name">JAPAN 2026!</span>
+        <span class="sep">·</span>
+        <span class="meta">20 days</span>
+      </div>
+      <div class="tabs">
+        <span class="tab">Trip</span>
+        <span class="tab">Day by day</span>
+        <span class="tab">Map</span>
+        <span class="tab active">Discover</span>
+        <span class="tab">Budget</span>
+        <span class="tab">Notes</span>
+      </div>
+      <div class="actions">
+        <span class="feedback"><i class="ti ti-message-dots"></i> Feedback</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Search panel -->
+      <div class="search-panel">
+        <div class="search-head">
+          <div class="row">
+            <div>
+              <div class="eb">Discover · Tokyo</div>
+              <h3>Trova posti</h3>
+            </div>
+            <span class="count" id="count">10 risultati</span>
+          </div>
+          <div class="search-input">
+            <i class="ti ti-search"></i>
+            <input id="search" type="text" placeholder="Cerca un posto, una zona, un'idea…">
+          </div>
+          <div class="cats" id="cats"></div>
+        </div>
+        <div class="results scrollbar-thin" id="results"></div>
+      </div>
+
+      <!-- Map -->
+      <div class="map-wrap" id="map-wrap">
+        <svg class="map-svg" id="map" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+          <rect x="0" y="0" width="600" height="400" fill="#e8e3d8"/>
+          <g stroke="#d4cdbd" stroke-width="0.5" id="grid"></g>
+          <g stroke="#c8bfa8" stroke-width="2" fill="none" opacity="0.7">
+            <path d="M 0 140 Q 200 170 400 130 T 600 100"/>
+            <path d="M 0 280 Q 250 240 500 290"/>
+            <path d="M 300 0 Q 320 200 280 400"/>
+            <path d="M 480 0 L 460 400"/>
+          </g>
+          <path d="M 360 0 Q 380 80 370 160 Q 360 240 390 320 L 395 400" stroke="#a8c4d6" stroke-width="14" fill="none" opacity="0.55"/>
+          <g font-family="Georgia, serif" fill="#8a7e63" opacity="0.5">
+            <text x="395" y="155" font-size="13" font-style="italic">Asakusa</text>
+            <text x="265" y="165" font-size="12" font-style="italic">Yanaka</text>
+            <text x="445" y="225" font-size="13" font-style="italic">Sumida</text>
+            <text x="155" y="240" font-size="13" font-style="italic">Shinjuku</text>
+            <text x="165" y="290" font-size="12" font-style="italic">Shibuya</text>
+            <text x="430" y="335" font-size="12" font-style="italic">Toyosu</text>
+          </g>
+          <g id="pins"></g>
+        </svg>
+        <div class="map-info" id="map-info"></div>
+        <div class="map-zoom">
+          <button><i class="ti ti-plus"></i></button>
+          <button><i class="ti ti-minus"></i></button>
+        </div>
+        <div class="map-attr">design mock · not a real map</div>
+        <div id="popover"></div>
+      </div>
+
+      <!-- Wishlist panel -->
+      <aside class="wishlist-panel" id="wishlist">
+        <div class="wishlist-collapsed-top" onclick="toggleWishlist()" title="Espandi wishlist">
+          <i class="ti ti-layout-sidebar-right-expand"></i>
+        </div>
+        <div class="wishlist-collapsed-body">
+          <div class="orb">
+            <i class="ti ti-heart-filled"></i>
+            <span class="num" id="wishCountCollapsed">4</span>
+          </div>
+          <span class="label">Wishlist</span>
+        </div>
+        <div class="wishlist-head">
+          <div>
+            <div class="eb">Wishlist · Tokyo</div>
+            <div class="count-row">
+              <span class="n" id="wishCount">4 places</span>
+              <span class="sub" id="wishSchedCount">2 programmati</span>
+            </div>
+            <div class="hint">Trascina nei giorni o lasciali qui</div>
+          </div>
+          <button class="toggle" onclick="toggleWishlist()" title="Collassa wishlist">
+            <i class="ti ti-layout-sidebar-right-collapse"></i>
+          </button>
+        </div>
+        <div class="wishlist-list scrollbar-thin" id="wishlist-list"></div>
+        <div class="wishlist-foot">
+          <button class="plan-btn"><i class="ti ti-route"></i> Pianifica nei giorni</button>
+        </div>
+      </aside>
+
+      <!-- Go orb -->
+      <button class="go-orb" id="go-orb" onclick="toggleGo()" title="Apri Go chat">
+        <span class="jp go-jp">五</span>
+        <span class="spark"><i class="ti ti-sparkles"></i></span>
+      </button>
+
+      <!-- Go panel -->
+      <div class="go-panel" id="go-panel">
+        <div class="go-panel-head">
+          <div class="avatar go-jp">五</div>
+          <div class="meta">
+            <div class="name">Go</div>
+            <div class="sub">Travel assistant · Tokyo</div>
+          </div>
+          <div class="actions">
+            <button onclick="toggleGo()" title="Minimizza"><i class="ti ti-minus"></i></button>
+            <button onclick="toggleGo()" title="Chiudi"><i class="ti ti-x"></i></button>
+          </div>
+        </div>
+        <div class="go-body">
+          <div class="msg">
+            <div class="av go go-jp">五</div>
+            <div class="bubble">
+              <div class="eb">Hi Enrico</div>
+              Sei a Tokyo per <b>20 giorni</b>. Posso aiutarti a trovare posti per la tua wishlist. Vuoi cose tranquille, iconiche, gastronomiche?
+            </div>
+          </div>
+          <div class="suggested">
+            <button>Templi nascosti</button>
+            <button>Caffè di quartiere</button>
+            <button>Mercati locali</button>
+            <button>Viste al tramonto</button>
+            <button>Esperienze uniche</button>
+          </div>
+          <div class="msg user">
+            <div class="bubble">Cerco qualcosa di tranquillo al mattino, lontano dalle folle.</div>
+            <div class="av you"></div>
+          </div>
+          <div class="msg">
+            <div class="av go go-jp">五</div>
+            <div class="bubble">
+              Ti suggerirei <b>Yanesen</b> all'alba e il <b>giardino Koishikawa Korakuen</b> alle 9. Entrambi tranquilli, lato est della città, vicini.
+              <button class="go-suggest-result">
+                <i class="ti ti-map-pin place-mark"></i> Yanaka Ginza · <span class="region">Yanaka</span>
+                <i class="ti ti-heart heart"></i>
+              </button>
+              <button class="go-suggest-result">
+                <i class="ti ti-map-pin place-mark"></i> Koishikawa Korakuen · <span class="region">Bunkyo</span>
+                <i class="ti ti-heart heart"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="go-input-wrap">
+          <div class="go-input">
+            <input type="text" placeholder="Ask Go...">
+            <button class="send"><i class="ti ti-send"></i></button>
+          </div>
+          <div class="go-disclaimer">Go usa AI · le risposte possono contenere errori</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>Interazioni implementate.</b> Search vivo (digita per filtrare per nome/zona). Chips macro-categorie multi-select. Hover row ↔ pin bidirezionale. Click pin/row → mini-card popover. Cuore = save/unsave. Collapse wishlist (chevron). Go orb apre panel che si sposta con la wishlist.
+    <br><br>
+    <b>Da decidere.</b> Mini-card oggi è centrata per leggibilità — in produzione va ancorata al pin con tooltip-arrow. Drag wishlist → day (decisione 22) vive nel Builder. Badge "Day N" sulle card già programmate mostra dove sono atterrate.
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   Data
+───────────────────────────────────────────────────────────────── */
+const CATEGORIES = [
+  { key: "food",       label: "Cibo & drink",        icon: "ti-tools-kitchen-2", color: "#c4744a", bg: "#fde6d8" },
+  { key: "culture",    label: "Templi & cultura",    icon: "ti-building-temple", color: "#8a5ea8", bg: "#ede0f5" },
+  { key: "nature",     label: "Natura & parchi",     icon: "ti-tree",            color: "#557a45", bg: "#dfecd3" },
+  { key: "shopping",   label: "Shopping & mercati",  icon: "ti-shopping-bag",    color: "#a8487a", bg: "#f5dbe7" },
+  { key: "views",      label: "Viste & panorami",    icon: "ti-mountain",        color: "#3d6e8a", bg: "#d9e7f2" },
+  { key: "experience", label: "Esperienze",          icon: "ti-ticket",          color: "#7a6e0e", bg: "#f5ecc5" },
+  { key: "nightlife",  label: "Vita notturna",       icon: "ti-glass",           color: "#3e3a5c", bg: "#dbd9eb" },
+  { key: "districts",  label: "Quartieri",           icon: "ti-map-2",           color: "#8a6e55", bg: "#ebe1d4" },
+];
+const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+
+const PLACES = [
+  { id: "p1", name: "Senso-ji",             category: "culture",    region: "Asakusa",  rating: 4.6, duration: "60-90 min", deck: "Tempio buddista del VII secolo dedicato a Kannon.",                  gradient: "linear-gradient(160deg,#dfa97e,#c88b65 50%,#3d4a64)", saved: true,  scheduled: 2, x: 400, y: 165 },
+  { id: "p2", name: "Tsukiji Outer Market", category: "food",       region: "Tsukiji",  rating: 4.7, duration: "60-120 min",deck: "Banchi di pesce, dolci e ristoranti aperti dall'alba.",            gradient: "linear-gradient(160deg,#9bbf9a,#557a45)",              saved: true,  scheduled: null, x: 330, y: 290 },
+  { id: "p3", name: "Meiji Shrine",         category: "culture",    region: "Harajuku", rating: 4.5, duration: "45 min",    deck: "Santuario shintoista nel bosco di cipressi giapponesi.",          gradient: "linear-gradient(160deg,#a8d6d2,#5f9e9a)",              saved: false, x: 180, y: 250 },
+  { id: "p4", name: "teamLab Planets",      category: "experience", region: "Toyosu",   rating: 4.7, duration: "120 min",   deck: "Installazione immersiva digitale a piedi nudi nell'acqua.",       gradient: "linear-gradient(160deg,#b8a8c9,#5d4a7a)",              saved: true,  scheduled: 5, x: 470, y: 320 },
+  { id: "p5", name: "Shibuya Crossing",     category: "views",      region: "Shibuya",  rating: 4.6, duration: "20 min",    deck: "L'incrocio più famoso del mondo, viewpoint dalla Starbucks.",     gradient: "linear-gradient(160deg,#7a8aa3,#3d4a64)",              saved: false, x: 175, y: 285 },
+  { id: "p6", name: "Omoide Yokocho",       category: "food",       region: "Shinjuku", rating: 4.4, duration: "60-90 min", deck: "Vicolo di yakitori e izakaya minuscoli, atmosfera retrò.",        gradient: "linear-gradient(160deg,#c4744a,#4c1f0a)",              saved: true,  x: 140, y: 240 },
+  { id: "p7", name: "Tokyo Sky Tower Tree", category: "views",      region: "Sumida",   rating: 4.5, duration: "90 min",    deck: "Torre da 634m, viewpoint al tramonto. Occhio alla last entry.",   gradient: "linear-gradient(160deg,#7a8aa3,#1a2840)",              saved: false, x: 435, y: 195 },
+  { id: "p8", name: "Yanaka Ginza",         category: "districts",  region: "Yanaka",   rating: 4.4, duration: "60 min",    deck: "Quartiere old-Tokyo, mercato di strada e gatti.",                  gradient: "linear-gradient(160deg,#b89260,#7a5430)",              saved: false, x: 290, y: 175 },
+  { id: "p9", name: "Koishikawa Korakuen",  category: "nature",     region: "Bunkyo",   rating: 4.5, duration: "60 min",    deck: "Giardino tradizionale del XVII secolo, uno dei più antichi.",     gradient: "linear-gradient(160deg,#9bbf9a,#3d6e0e)",              saved: false, x: 230, y: 200 },
+  { id: "p10",name: "Akihabara",            category: "shopping",   region: "Chiyoda",  rating: 4.3, duration: "90-120 min",deck: "Anime, manga, elettronica. Mecca dell'otaku culture.",            gradient: "linear-gradient(160deg,#a8487a,#583058)",              saved: false, x: 345, y: 230 },
+];
+
+/* ─────────────────────────────────────────────────────────────────
+   State
+───────────────────────────────────────────────────────────────── */
+let state = {
+  query: "",
+  selectedCats: new Set(),
+  savedIds: new Set(PLACES.filter(p => p.saved).map(p => p.id)),
+  hoverId: null,
+  selectedId: null,
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────────── */
+function getResults() {
+  return PLACES.filter(p => {
+    if (state.selectedCats.size > 0 && !state.selectedCats.has(p.category)) return false;
+    if (state.query.trim()) {
+      const q = state.query.toLowerCase();
+      if (!p.name.toLowerCase().includes(q) && !p.region.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function toggleSave(id) {
+  if (state.savedIds.has(id)) state.savedIds.delete(id);
+  else state.savedIds.add(id);
+  render();
+}
+
+function toggleCat(key) {
+  if (state.selectedCats.has(key)) state.selectedCats.delete(key);
+  else state.selectedCats.add(key);
+  render();
+}
+
+function setHover(id) {
+  state.hoverId = id;
+  render();
+}
+
+function setSelected(id) {
+  state.selectedId = state.selectedId === id ? null : id;
+  render();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Render
+───────────────────────────────────────────────────────────────── */
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  let h = "";
+  for (let i = 0; i < 12; i++) h += `<line x1="0" y1="${i*35}" x2="600" y2="${i*35}"/>`;
+  for (let i = 0; i < 18; i++) h += `<line x1="${i*35}" y1="0" x2="${i*35}" y2="400"/>`;
+  grid.innerHTML = h;
+}
+
+function renderCats() {
+  const el = document.getElementById("cats");
+  el.innerHTML = CATEGORIES.map(c => {
+    const active = state.selectedCats.has(c.key);
+    return `<button class="chip ${active ? "active" : ""}" onclick="toggleCat('${c.key}')" style="${active ? `background:${c.color}` : ""}">
+      <i class="ti ${c.icon}" style="${!active ? `color:${c.color}` : ""}"></i>${c.label}
+    </button>`;
+  }).join("");
+}
+
+function renderResults() {
+  const results = getResults();
+  document.getElementById("count").textContent = `${results.length} risultati`;
+
+  const el = document.getElementById("results");
+  if (results.length === 0) {
+    el.innerHTML = `<div class="results-empty"><i class="ti ti-mood-empty"></i>Nessun risultato. Prova con un'altra zona o togli un filtro.</div>`;
+    return;
+  }
+  el.innerHTML = results.map(p => {
+    const cat = CAT_MAP[p.category];
+    const isHover = state.hoverId === p.id;
+    const isSel = state.selectedId === p.id;
+    const isSaved = state.savedIds.has(p.id);
+    return `<div class="result ${isHover ? "hover" : ""} ${isSel ? "selected" : ""}"
+      onmouseenter="setHover('${p.id}')" onmouseleave="setHover(null)" onclick="setSelected('${p.id}')">
+      <div class="photo">
+        <div class="img" style="background:${p.gradient}"></div>
+        <span class="cat-badge" style="background:${cat.color}"><i class="ti ${cat.icon}"></i></span>
+      </div>
+      <div class="body">
+        <div class="title-row">
+          <div class="name">${p.name}</div>
+          <span class="rating">★ ${p.rating}</span>
+        </div>
+        <div class="meta" style="color:${cat.color}">${p.region} · ${p.duration}</div>
+        <div class="deck">${p.deck}</div>
+        ${p.scheduled ? `<div class="scheduled"><i class="ti ti-calendar-event"></i> in Day ${p.scheduled}</div>` : ""}
+      </div>
+      <button class="save-btn ${isSaved ? "saved" : ""}" onclick="event.stopPropagation();toggleSave('${p.id}')" title="${isSaved ? "Rimuovi" : "Salva"}">
+        <i class="ti ${isSaved ? "ti-heart-filled" : "ti-heart"}"></i>
+      </button>
+    </div>`;
+  }).join("");
+}
+
+function renderPins() {
+  const results = getResults();
+  const el = document.getElementById("pins");
+  el.innerHTML = results.map(p => {
+    const cat = CAT_MAP[p.category];
+    const isHover = state.hoverId === p.id;
+    const isSel = state.selectedId === p.id;
+    const isSaved = state.savedIds.has(p.id);
+    const r = isHover || isSel ? 14 : 10;
+    const fill = isSaved ? cat.color : "white";
+    return `<g class="map-pin" onmouseenter="setHover('${p.id}')" onmouseleave="setHover(null)" onclick="setSelected('${p.id}')">
+      ${(isHover || isSel) ? `<circle class="pulse" cx="${p.x}" cy="${p.y}" r="22" stroke="${cat.color}"/>` : ""}
+      <circle class="pin" cx="${p.x}" cy="${p.y}" r="${r}" fill="${fill}" stroke="${cat.color}"/>
+      ${isSaved ? `<text x="${p.x}" y="${p.y + 3.5}" text-anchor="middle" font-size="9" fill="white" pointer-events="none">★</text>` : ""}
+    </g>`;
+  }).join("");
+}
+
+function renderMapInfo() {
+  const results = getResults();
+  const el = document.getElementById("map-info");
+  el.innerHTML = `<i class="ti ti-map-pin" style="color:var(--orange);font-size:13px"></i>
+    <b>${results.length}</b> posti · <span class="deep"><b>${state.savedIds.size}</b> salvati</span>
+    ${state.selectedCats.size > 0 ? `<span style="color:var(--ink-faint)">· filtri: ${state.selectedCats.size}</span>` : ""}`;
+}
+
+function renderWishlist() {
+  const list = PLACES.filter(p => state.savedIds.has(p.id));
+  document.getElementById("wishCount").textContent = `${list.length} places`;
+  document.getElementById("wishCountCollapsed").textContent = list.length;
+  document.getElementById("wishSchedCount").textContent = `${list.filter(p => p.scheduled).length} programmati`;
+
+  const el = document.getElementById("wishlist-list");
+  if (list.length === 0) {
+    el.innerHTML = `<div class="wishlist-empty"><i class="ti ti-heart"></i>La tua wishlist è vuota. Cerca posti e salvali col cuore.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const cat = CAT_MAP[p.category];
+    const isHover = state.hoverId === p.id;
+    return `<div class="wish-item ${isHover ? "hover" : ""}" onmouseenter="setHover('${p.id}')" onmouseleave="setHover(null)">
+      <div class="photo">
+        <div class="img" style="background:${p.gradient}"></div>
+        <span class="cat-badge" style="background:${cat.color}"><i class="ti ${cat.icon}"></i></span>
+      </div>
+      <div class="body">
+        <div class="name">${p.name}</div>
+        <div class="region">${p.region}</div>
+        ${p.scheduled
+          ? `<div class="scheduled"><i class="ti ti-calendar-event"></i> Day ${p.scheduled}</div>`
+          : `<div class="pending"><span class="dot"></span> non programmato</div>`}
+      </div>
+      <button class="trash" onclick="event.stopPropagation();toggleSave('${p.id}')" title="Rimuovi"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join("");
+}
+
+function renderPopover() {
+  const el = document.getElementById("popover");
+  if (!state.selectedId) { el.innerHTML = ""; return; }
+  const p = PLACES.find(x => x.id === state.selectedId);
+  if (!p) { el.innerHTML = ""; return; }
+  const cat = CAT_MAP[p.category];
+  const isSaved = state.savedIds.has(p.id);
+  el.innerHTML = `<div class="popover">
+    <div class="ph" style="background:${p.gradient}">
+      <button class="close" onclick="setSelected(null)"><i class="ti ti-x"></i></button>
+      <span class="cat-pill"><i class="ti ${cat.icon}"></i> ${cat.label}</span>
+    </div>
+    <div class="pbody">
+      <div class="pname-row">
+        <div class="pname">${p.name}</div>
+        <span class="prating">★ ${p.rating}</span>
+      </div>
+      <div class="pmeta" style="color:${cat.color}">${p.region} · ${p.duration}</div>
+      <div class="pdeck">${p.deck}</div>
+      <div class="pactions">
+        <button class="btn primary ${isSaved ? "saved" : ""}" onclick="toggleSave('${p.id}')">
+          <i class="ti ${isSaved ? "ti-heart-filled" : "ti-heart"}"></i> ${isSaved ? "Salvato" : "Salva"}
+        </button>
+        <button class="btn secondary"><i class="ti ti-info-circle"></i> Dettagli</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render() {
+  renderCats();
+  renderResults();
+  renderPins();
+  renderMapInfo();
+  renderWishlist();
+  renderPopover();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   UI actions
+───────────────────────────────────────────────────────────────── */
+function toggleWishlist() {
+  document.getElementById("wishlist").classList.toggle("collapsed");
+}
+function toggleGo() {
+  document.getElementById("go-panel").classList.toggle("open");
+}
+
+document.getElementById("search").addEventListener("input", e => {
+  state.query = e.target.value;
+  render();
+});
+
+/* Init */
+renderGrid();
+render();
+</script>
+</body>
+</html>
