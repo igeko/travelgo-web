@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLatLng, isPlainObject, parseJsonBody } from "@/lib/api/validation";
 import { requireUser } from "@/lib/api/guards";
+import { mapsConfigured, computeRoutes } from "@/lib/maps/provider";
 import { normalizeTransitResponse } from "./normalize";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -45,8 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
+  if (!mapsConfigured()) {
     return NextResponse.json({ error: "Routes API not configured" }, { status: 500 });
   }
 
@@ -77,16 +77,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": FIELD_MASK,
-    },
-    body: JSON.stringify(requestBody),
-    cache: "no-store",
-  });
+  const res = await computeRoutes(requestBody, FIELD_MASK);
 
   if (!res.ok) {
     // Avoid logging the raw Google response (may include query params / key fragments)

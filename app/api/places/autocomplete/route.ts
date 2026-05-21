@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mapsConfigured, placesAutocomplete } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/autocomplete?input=<query>
@@ -14,26 +15,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ suggestions: [] });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    console.error("[places/autocomplete] GOOGLE_MAPS_API_KEY is not set");
+  if (!mapsConfigured()) {
+    console.error("[places/autocomplete] maps provider is not configured");
     return NextResponse.json(
       { error: "Places API not configured" },
       { status: 500 },
     );
   }
 
-  const url = new URL(
-    "https://maps.googleapis.com/maps/api/place/autocomplete/json",
-  );
-  url.searchParams.set("input", input);
-  url.searchParams.set("key", apiKey);
-  // Use caller-specified types if provided, otherwise default to geocode|establishment
-  url.searchParams.set("types", types ?? "geocode|establishment");
-  url.searchParams.set("language", "en");
-
   // Autocomplete results are stable for a few minutes; cache to reduce billing.
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  const res = await placesAutocomplete(
+    {
+      input,
+      // Caller-specified types if provided, else default to geocode|establishment
+      types: types ?? "geocode|establishment",
+      language: "en",
+    },
+    3600,
+  );
 
   if (!res.ok) {
     return NextResponse.json(

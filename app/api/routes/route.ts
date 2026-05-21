@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLatLng, parseJsonBody } from "@/lib/api/validation";
+import { mapsConfigured, computeRoutes } from "@/lib/maps/provider";
 
 /* ─────────────────────────────────────────────────────────────────
    POST /api/routes
@@ -25,8 +26,7 @@ const TRAVEL_MODE_MAP: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
+  if (!mapsConfigured()) {
     return NextResponse.json({ error: "Routes API not configured" }, { status: 500 });
   }
 
@@ -70,17 +70,8 @@ export async function POST(req: NextRequest) {
     polylineEncoding: "ENCODED_POLYLINE",
   };
 
-  const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      // Only request the polyline field — minimizes billing
-      "X-Goog-FieldMask": "routes.polyline.encodedPolyline",
-    },
-    body: JSON.stringify(requestBody),
-    cache: "no-store",
-  });
+  // Only request the polyline field — minimizes billing.
+  const res = await computeRoutes(requestBody, "routes.polyline.encodedPolyline");
 
   if (!res.ok) {
     // Avoid logging the raw Google response (may include query params / key fragments)

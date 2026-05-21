@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mapsConfigured, placeDetails } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/details?placeId=<id>
@@ -13,29 +14,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "placeId is required" }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    console.error("[places/details] GOOGLE_MAPS_API_KEY is not set");
+  if (!mapsConfigured()) {
+    console.error("[places/details] maps provider is not configured");
     return NextResponse.json(
       { error: "Places API not configured" },
       { status: 500 },
     );
   }
 
-  const url = new URL(
-    "https://maps.googleapis.com/maps/api/place/details/json",
-  );
-  url.searchParams.set("place_id", placeId);
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("language", "en");
-  // Only fetch the fields we actually use — reduces billing cost
-  url.searchParams.set(
-    "fields",
-    "formatted_address,geometry/location,address_components,name",
-  );
-
   // Place details (address, coords) are very stable — cache aggressively.
-  const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
+  // Only fetch the fields we actually use — reduces billing cost.
+  const res = await placeDetails(
+    {
+      place_id: placeId,
+      language: "en",
+      fields: "formatted_address,geometry/location,address_components,name",
+    },
+    86400,
+  );
 
   if (!res.ok) {
     return NextResponse.json(

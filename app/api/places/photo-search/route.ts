@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mapsConfigured, placesTextSearch, placeDetails } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/photo-search?q=<query>
@@ -30,16 +31,10 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q) return NextResponse.json({ error: "q is required" }, { status: 400 });
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  if (!mapsConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   /* ── Step 1: Text Search → place_id ── */
-  const searchUrl = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
-  searchUrl.searchParams.set("query", q);
-  searchUrl.searchParams.set("key", apiKey);
-  searchUrl.searchParams.set("language", "en");
-
-  const searchRes = await fetch(searchUrl.toString(), { next: { revalidate: 86400 } });
+  const searchRes = await placesTextSearch({ query: q, language: "en" }, 86400);
   if (!searchRes.ok) return NextResponse.json({ error: "Text Search upstream error" }, { status: 502 });
 
   const searchData = await searchRes.json();
@@ -47,30 +42,28 @@ export async function GET(req: NextRequest) {
   if (!placeId) return NextResponse.json({});
 
   /* ── Step 2: Place Details → tutti i campi ── */
-  const detailUrl = new URL("https://maps.googleapis.com/maps/api/place/details/json");
-  detailUrl.searchParams.set("place_id", placeId);
-  detailUrl.searchParams.set("key", apiKey);
-  detailUrl.searchParams.set("language", "en");
-  detailUrl.searchParams.set(
-    "fields",
-    [
-      "place_id",
-      "name",
-      "formatted_address",
-      "geometry/location",
-      "rating",
-      "user_ratings_total",
-      "price_level",
-      "opening_hours/open_now",
-      "opening_hours/weekday_text",
-      "website",
-      "types",
-      "editorial_summary",
-      "photos",
-    ].join(","),
+  const detailRes = await placeDetails(
+    {
+      place_id: placeId,
+      language: "en",
+      fields: [
+        "place_id",
+        "name",
+        "formatted_address",
+        "geometry/location",
+        "rating",
+        "user_ratings_total",
+        "price_level",
+        "opening_hours/open_now",
+        "opening_hours/weekday_text",
+        "website",
+        "types",
+        "editorial_summary",
+        "photos",
+      ].join(","),
+    },
+    86400,
   );
-
-  const detailRes = await fetch(detailUrl.toString(), { next: { revalidate: 86400 } });
   if (!detailRes.ok) return NextResponse.json({ error: "Place Details upstream error" }, { status: 502 });
 
   const detailData = await detailRes.json();

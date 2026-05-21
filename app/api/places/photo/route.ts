@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampInt } from "@/lib/api/validation";
+import { mapsConfigured, placePhoto } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/photo?ref=<photo_reference>&maxwidth=<n>
@@ -19,17 +20,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid ref" }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Not configured" }, { status: 500 });
-
-  const url = new URL("https://maps.googleapis.com/maps/api/place/photo");
-  url.searchParams.set("photo_reference", ref);
-  url.searchParams.set("maxwidth", maxwidth);
-  url.searchParams.set("key", apiKey);
+  if (!mapsConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
   // Google Place Photos returns a 302 redirect to the actual image.
-  // We follow it and stream the image back to the client.
-  const res = await fetch(url.toString(), { redirect: "follow" });
+  // The adapter follows it; we stream the image back to the client.
+  const res = await placePhoto({ photo_reference: ref, maxwidth });
 
   if (!res.ok) {
     return NextResponse.json({ error: "Photo not found" }, { status: 502 });
