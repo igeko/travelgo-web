@@ -8,6 +8,7 @@
 export {
   IconAlertCircle,
   IconAlertTriangle,
+  IconArrowRight,
   IconArrowRightCircle,
   IconArrowUp,
   IconArchive,

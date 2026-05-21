@@ -129,6 +129,15 @@
     "cancel": "Annulla",
     "save": "Salva"
   },
+  "DayIncipit": {
+    "wantToFind": "Vuoi trovare",
+    "ask": "Chiedi a me.",
+    "ariaLabel": "Chiedi a Go suggerimenti per il viaggio",
+    "rotating0": "un posto da visitare",
+    "rotating1": "dove mangiare",
+    "rotating2": "una pausa caffè",
+    "rotating3": "un'idea per stasera"
+  },
   "Itinerary": {
     "title": "Itinerario del giorno",
     "hideMap": "Nascondi mappa",

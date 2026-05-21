@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -28,6 +29,9 @@ export type QuoteProps = {
   accent?: QuoteAccent;
   /** Text size preset. Defaults to "md" */
   size?: QuoteSize;
+  /** Optional content rendered inside the bordered block, below the note
+   *  (e.g. a call-to-action) so the accent border spans it too. */
+  footer?: ReactNode;
   className?: string;
 };
 
@@ -54,6 +58,7 @@ export function Quote({
   note,
   accent = "orange",
   size = "md",
+  footer,
   className,
 }: QuoteProps) {
   return (
@@ -77,6 +82,7 @@ export function Quote({
           {note}
         </p>
       )}
+      {footer}
     </blockquote>
   );
 }

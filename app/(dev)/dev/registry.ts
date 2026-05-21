@@ -169,6 +169,14 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Activity",
     description: "Verifica tratta con Go · alternative di trasporto pubblico reali via Routes API → BridgeData, mappa opzionale",
   },
+  // Day subgroup
+  {
+    slug: "day-incipit",
+    title: "DayIncipit",
+    group: "Features",
+    subgroup: "Day",
+    description: "Voce di Go + riassunto del giorno · GoAvatar a sinistra, corpo Quote e CTA 'Chiedi a me.' con parole rotanti · unifica Quote + GoLaunchTrigger",
+  },
   // Trips subgroup
   {
     slug: "create-trip",
