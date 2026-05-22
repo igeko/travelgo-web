@@ -75,6 +75,9 @@
   --radius-lg: 14px;
   --radius-pill: 999px;
 
+  /* Elevazione del pannello flottante (Go chat, toolbar Explore) → shadow-float */
+  --shadow-float: 0 10px 40px rgba(13, 44, 61, 0.18), 0 2px 8px rgba(13, 44, 61, 0.08);
+
   /* Font-size scale semantica (oltre alle utility Tailwind default) */
   --text-micro: 10px;
   --text-tiny: 11px;
@@ -214,7 +217,22 @@ body {
 .go-wobble    { animation: goEnter 0.25s ease-out, goWobble 1.6s ease-in-out 0.25s infinite, goPulseHalo 2s ease-in-out infinite; }
 .go-float-enter { animation: goFloatEnter 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
+/* Map · selected pin (Go focus) — entrance pop; the halo reuses .go-halo */
+@keyframes mapPinPop {
+  0%   { opacity: 0; transform: translate(-50%, -100%) translateY(5px) scale(0.85); }
+  100% { opacity: 1; transform: translate(-50%, -100%) translateY(0) scale(1); }
+}
+.map-selected-pin { animation: mapPinPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Place hover card — gentle entrance */
+@keyframes placeCardIn {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.97); }
+  100% { opacity: 1; transform: none; }
+}
+.place-card-in { animation: placeCardIn 0.16s ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
   .go-halo, .go-sweep, .go-spark, .go-words-rotate,
-  .go-halo-idle, .go-wobble, .go-float-enter { animation: none; }
+  .go-halo-idle, .go-wobble, .go-float-enter,
+  .map-selected-pin, .place-card-in { animation: none; }
 }

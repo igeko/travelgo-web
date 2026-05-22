@@ -56,7 +56,7 @@ export default function AppHeaderStories() {
           onChange: (v) => setActiveTab(v as AppHeaderTab),
           options: [
             { value: "day-by-day", label: "Day by day" },
-            { value: "map",        label: "Map" },
+            { value: "explore",    label: "Explore" },
             { value: "budget",     label: "Budget" },
             { value: "notes",      label: "Notes" },
           ],

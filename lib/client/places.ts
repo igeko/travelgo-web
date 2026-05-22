@@ -32,6 +32,24 @@ export const places = {
     return body.place ?? null;
   },
 
+  /** GET /api/places/enriched → rich Place Details for a known placeId, or null. */
+  enriched: async <P = unknown>(placeId: string): Promise<P | null> => {
+    const body = await requestRaw<{ place?: P }>(
+      "GET",
+      `/api/places/enriched${query({ placeId })}`,
+    );
+    return body.place ?? null;
+  },
+
+  /** GET /api/places/area-search → category places within a circular area. */
+  areaSearch: async <P = unknown>(term: string, lat: number, lng: number, radius: number): Promise<P[]> => {
+    const body = await requestRaw<{ places?: P[] }>(
+      "GET",
+      `/api/places/area-search${query({ query: term, lat, lng, radius })}`,
+    );
+    return body.places ?? [];
+  },
+
   /** Build a photo URL (no request) for use in <img src>. */
   photoUrl: (ref: string, maxwidth = 400): string =>
     `/api/places/photo${query({ ref, maxwidth })}`,

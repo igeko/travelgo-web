@@ -160,18 +160,22 @@ export function ActivityEditForm({
     initialData?.enrichedPlace ? (initialData.title ?? null) : null
   );
 
-  /* ── Register this form as the active edit target in Go context ── */
-  const { registerActiveEdit, unregisterActiveEdit } = useTripGo();
+  /* ── Declare this form as Go's active edit target + apply suggestions ── */
+  const { setActiveEdit, activeEditMatch, subscribe } = useTripGo();
   const effectiveEditId = activityId ?? (isNew ? "new" : undefined);
   useEffect(() => {
     if (!effectiveEditId) return;
-    registerActiveEdit(effectiveEditId, ({ title: t, description: d }) => {
-      if (t) setTitle(t);
-      if (d) setDescription(d);
+    setActiveEdit(effectiveEditId);
+    return () => setActiveEdit(null);
+  }, [effectiveEditId, setActiveEdit]);
+  // Solo l'editor che combacia con la conversazione Go riceve "Applica".
+  useEffect(() => {
+    if (!activeEditMatch) return;
+    return subscribe("activity.apply", ({ data }) => {
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
     });
-    return () => unregisterActiveEdit();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveEditId]);
+  }, [activeEditMatch, subscribe]);
 
   /* ── AI describe state ── */
   const [descLoading, setDescLoading] = useState(false);

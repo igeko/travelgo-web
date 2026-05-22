@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useReducer, useState } from "react";
-import { GoChatFloat } from "@/features/go/GoChatFloat";
+import { GoChatFloat, type GoChatPosition } from "@/features/go/GoChatFloat";
 import { getGoContext, type TripInfo, type GoFocus } from "@/features/go/context";
 import { useTripContext } from "@/features/go/useTripContext";
 import { SandboxRightPanel } from "../_components/SandboxShell";
@@ -85,6 +85,7 @@ function debugReducer(state: DebugState, action: DebugAction): DebugState {
 export default function GoChatFloatPage() {
   const [debugState, debugDispatch] = useReducer(debugReducer, { entries: [], active: null });
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<GoChatPosition>("right");
   const [source, setSource] = useState<"mock" | "real">("mock");
   const DEFAULT_TRIP_ID = "47c851d1-ee78-4a85-99d0-431fb7c0bf8a";
   const [tripIdInput, setTripIdInput] = useState(DEFAULT_TRIP_ID);
@@ -217,6 +218,20 @@ export default function GoChatFloatPage() {
             )}
           </section>
 
+          {/* Position */}
+          <section>
+            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-2">Position (always bottom)</div>
+            <div className="flex gap-2">
+              {(["left", "center", "right"] as const).map((p) => (
+                <button key={p} type="button" onClick={() => setPosition(p)}
+                  className={cn("px-3 py-1.5 rounded-pill text-[11px] font-medium border transition-colors capitalize",
+                    position === p ? "bg-ink text-white border-ink" : "bg-transparent text-ink-soft border-border hover:border-ink-soft")}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </section>
+
           {/* Trigger */}
           <section>
             <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-3">Float panel</div>
@@ -243,6 +258,7 @@ export default function GoChatFloatPage() {
       {/* The float panel itself */}
       <GoChatFloat
         open={open}
+        position={position}
         onClose={() => setOpen(false)}
         tripContext={tripContext}
         onDebugCall={handleDebugCall}

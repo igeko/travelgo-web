@@ -52,7 +52,7 @@ Respond ONLY with a valid JSON object in this exact format — no markdown, no c
   ]
 }
 
-Return 4-5 suggestions. Be specific and concrete — real place names, real tips.
+Decide how many suggestions to return based on the user's request: if they ask for a specific number (e.g. "top 10", "5 restaurants", "a couple of ideas"), return exactly that many; otherwise return a sensible number (around 4-6). Be specific and concrete — real place names, real tips.
 
 ${UNTRUSTED_DATA_INSTRUCTION}`;
 

@@ -1,4 +1,12 @@
 {
+  "Explore": {
+    "wishlist": "Yumeji",
+    "open": "Aperto",
+    "closed": "Chiuso",
+    "close": "Chiudi",
+    "pointLabel": "Punto · {coords}",
+    "placeFallback": "Luogo"
+  },
   "ExploreCategories": {
     "dormi": "Dormi",
     "hotel": "Hotel",
@@ -19,6 +27,9 @@
     "parchi": "Parchi & natura",
     "viste": "Viste panoramiche"
   },
+  "GoChat": {
+    "focusIntro": "Parliamo di questo luogo"
+  },
   "AppHeader": {
     "nav": {
       "myTrips": "I miei viaggi",
@@ -29,7 +40,7 @@
     "tabs": {
       "trip": "Viaggio",
       "dayByDay": "Giorno per giorno",
-      "map": "Mappa",
+      "explore": "Esplora",
       "budget": "Budget",
       "notes": "Note"
     },

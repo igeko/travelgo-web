@@ -26,13 +26,14 @@
  * host. Labels arrive already translated (i18n is the consumer's job).
  */
 
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import {
   IconAdjustmentsHorizontal,
   IconPin,
   IconPinnedFilled,
   type Icon,
 } from "@/components/ui/icons";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 
 export type ExploreToolbarOrientation = "vertical" | "horizontal";
@@ -90,6 +91,9 @@ export function ExploreToolbar({
   const [openMacroId, setOpenMacroId] = useState<string | null>(null);
 
   const isVertical = orientation === "vertical";
+  // Horizontal: the open chip row sits directly below the macro bar, so put
+  // tooltips above it to avoid overlapping the chips.
+  const tooltipSide = isVertical ? "left" : "top";
   const openMacro = categories.find((m) => m.id === openMacroId) ?? null;
   const pinned = resolvePinned(categories, pinnedSubIds);
 
@@ -113,7 +117,7 @@ export function ExploreToolbar({
       role="group"
       aria-label={openMacro.label}
       className={cn(
-        "flex items-center gap-1 rounded-pill border border-border bg-surface p-1.5",
+        "flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
         !isVertical && "max-w-full overflow-x-auto scrollbar-none",
       )}
     >
@@ -176,7 +180,7 @@ export function ExploreToolbar({
       aria-orientation={orientation}
       aria-label="Categories"
       className={cn(
-        "flex gap-1 rounded-pill border border-border bg-surface p-1.5",
+        "flex gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
         isVertical ? "flex-col" : "flex-row items-center",
         !isVertical && "max-w-full overflow-x-auto scrollbar-none",
       )}
@@ -185,15 +189,16 @@ export function ExploreToolbar({
         const MacroIcon = macro.icon;
         const isOpen = macro.id === openMacroId;
         return (
-          <RailButton
-            key={macro.id}
-            label={macro.label}
-            active={isOpen}
-            dot={macroHasSelection(macro)}
-            onClick={() => setOpenMacroId(isOpen ? null : macro.id)}
-          >
-            <MacroIcon size={19} stroke={1.75} />
-          </RailButton>
+          <Tooltip key={macro.id} label={macro.label} side={tooltipSide} disabled={isOpen}>
+            <RailButton
+              label={macro.label}
+              active={isOpen}
+              dot={macroHasSelection(macro)}
+              onClick={() => setOpenMacroId(isOpen ? null : macro.id)}
+            >
+              <MacroIcon size={19} stroke={1.75} />
+            </RailButton>
+          </Tooltip>
         );
       })}
 
@@ -204,15 +209,16 @@ export function ExploreToolbar({
             const SubIcon = sub.icon;
             const active = selectedSubIds.includes(sub.id);
             return (
-              <RailButton
-                key={sub.id}
-                label={sub.label}
-                active={active}
-                tone="pinned"
-                onClick={() => toggle(sub.id)}
-              >
-                <SubIcon size={18} stroke={1.75} />
-              </RailButton>
+              <Tooltip key={sub.id} label={sub.label} side={tooltipSide}>
+                <RailButton
+                  label={sub.label}
+                  active={active}
+                  tone="pinned"
+                  onClick={() => toggle(sub.id)}
+                >
+                  <SubIcon size={18} stroke={1.75} />
+                </RailButton>
+              </Tooltip>
             );
           })}
         </>
@@ -223,13 +229,15 @@ export function ExploreToolbar({
       {showSettings && (
         <>
           {isVertical && <Divider vertical />}
-          <RailButton
-            label="Settings"
-            onClick={onSettingsClick}
-            className={cn(!isVertical && "ml-auto")}
-          >
-            <IconAdjustmentsHorizontal size={18} stroke={1.75} />
-          </RailButton>
+          <Tooltip label="Settings" side={tooltipSide}>
+            <RailButton
+              label="Settings"
+              onClick={onSettingsClick}
+              className={cn(!isVertical && "ml-auto")}
+            >
+              <IconAdjustmentsHorizontal size={18} stroke={1.75} />
+            </RailButton>
+          </Tooltip>
         </>
       )}
     </div>
@@ -262,15 +270,7 @@ export function ExploreToolbar({
 
 /* ─────────────────────────────────────────────────────────────────── */
 
-function RailButton({
-  label,
-  active = false,
-  dot = false,
-  tone = "macro",
-  onClick,
-  className,
-  children,
-}: {
+type RailButtonProps = {
   label: string;
   active?: boolean;
   dot?: boolean;
@@ -278,14 +278,21 @@ function RailButton({
   onClick?: () => void;
   className?: string;
   children: React.ReactNode;
-}) {
+} & Omit<React.ComponentPropsWithoutRef<"button">, "onClick" | "className" | "children">;
+
+// forwardRef + spread of extra props so <Tooltip> can clone it (inject ref +
+// hover/focus handlers).
+const RailButton = forwardRef<HTMLButtonElement, RailButtonProps>(function RailButton(
+  { label, active = false, dot = false, tone = "macro", onClick, className, children, ...rest },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}
-      title={label}
       className={cn(
         "relative inline-flex size-9 flex-shrink-0 items-center justify-center rounded-full transition-colors",
         active && tone === "pinned" && "bg-primary text-white",
@@ -293,6 +300,7 @@ function RailButton({
         !active && "text-ink-soft hover:bg-surface-soft",
         className,
       )}
+      {...rest}
     >
       {children}
       {dot && (
@@ -305,7 +313,7 @@ function RailButton({
       )}
     </button>
   );
-}
+});
 
 function Divider({ vertical }: { vertical: boolean }) {
   return (

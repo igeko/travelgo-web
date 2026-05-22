@@ -13,8 +13,9 @@
  * 7. Card espansa: foto lazy (Google Places) + prose + facts + actions
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconChevronDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -23,7 +24,7 @@ import { imageSearch } from "@/features/media/imageSearch";
 import { api } from "@/lib/client";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
 import type { GoChatDebugFn } from "./GoChat";
-import type { AddToDayPayload, MapFocusTarget } from "./TripGoContext";
+import { GoEmitProvider, useGoEmit, type GoEmit, type GoEmitter, type GoEventType, type GoPlace } from "./events";
 
 /* ─────────────────────────────────────────────────────────────────
    Tipi
@@ -284,27 +285,31 @@ function RichText({ text, streaming = false, className, style }: {
 }
 
 
+/** Hover dwell before a card selects its map pin — cancelled if the cursor leaves first. */
+const HOVER_SELECT_DELAY = 550;
+
 function SuggestionCard({
   suggestion,
   selected,
   onToggleSelect,
+  mapActive,
+  onMapSelect,
   sizeMode,
   tripContext,
   activeEditMatch,
-  onApplyToActivity,
-  onAddToDay,
-  onShowOnMap,
 }: {
   suggestion: GoSuggestion;
   selected: boolean;
   onToggleSelect: () => void;
+  /** true when this card is the single map-selected one (highlighted pin). */
+  mapActive: boolean;
+  /** Make this card the map-selected one (hover-dwell or open). */
+  onMapSelect: () => void;
   sizeMode: SizeMode;
   tripContext?: string;
   activeEditMatch?: boolean;
-  onApplyToActivity?: (data: { title: string; description: string }) => void;
-  onAddToDay?: (payload: AddToDayPayload) => void;
-  onShowOnMap?: (target: MapFocusTarget) => void;
 }) {
+  const { emit, listens } = useGoEmit();
   const [open, setOpen] = useState(suggestion.autoExpand ?? false);
 
   // Place data — persiste dopo la chiusura della card
@@ -318,19 +323,48 @@ function SuggestionCard({
   const [enrichLoading, setEnrichLoading] = useState(false);
   const enrichDone = useRef(false);
 
-  // Dati lazy — solo alla prima apertura, non si ripete
+  // Selezione del pin via hover con debounce: passare sopra la card per
+  // HOVER_SELECT_DELAY la rende la card selezionata. Il mouse-out annulla SOLO
+  // il timer pendente (anti-sweep): NON deseleziona — la selezione resta finché
+  // un'altra card non la prende. La selezione singola è gestita dal parent.
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadData = open || mapActive;
+
+  const startHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => { hoverTimer.current = null; onMapSelect(); }, HOVER_SELECT_DELAY);
+  };
+  const cancelHover = () => {
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null; }
+  };
+  useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); }, []);
+
+  // Dati lazy — quando la card è aperta o map-selezionata; non si ripete.
   useEffect(() => {
-    if (!open || placeFetched.current) return;
+    if (!loadData || placeFetched.current) return;
     placeFetched.current = true;
     setPlaceLoading(true);
     imageSearch.search(suggestion.place_query).then((result) => {
       setPlace(result);
       setPlaceLoading(false);
     });
-  }, [open, suggestion.place_query]);
+  }, [loadData, suggestion.place_query]);
 
   // NON resettiamo photoIndex né place quando la card chiude —
   // così alla riapertura ritroviamo tutto com'era.
+
+  // Emette place.opened/closed solo in base alla selezione mappa (singola nel
+  // parent → una sola card attiva per volta). La pagina ospite evidenzia il pin.
+  useEffect(() => {
+    if (mapActive && place?.placeId) {
+      emit({
+        type: "place.opened",
+        place: { title: suggestion.title, lat: place.lat, lng: place.lng, placeId: place.placeId },
+      });
+    } else if (!mapActive && place?.placeId) {
+      emit({ type: "place.closed", placeId: place.placeId });
+    }
+  }, [mapActive, place?.placeId, place?.lat, place?.lng, suggestion.title, emit]);
 
   async function handleEnrich() {
     if (enrichDone.current || enrichLoading) return;
@@ -371,19 +405,26 @@ function SuggestionCard({
   return (
     <div
       className="mb-[5px] overflow-hidden"
+      onMouseEnter={startHover}
+      onMouseLeave={cancelHover}
       style={{
-        border: selected ? "0.5px solid var(--color-orange)" : "0.5px solid var(--color-border)",
+        border: mapActive
+          ? "1px solid var(--color-ink)"
+          : selected ? "0.5px solid var(--color-orange)" : "0.5px solid var(--color-border)",
         borderRadius: 10,
         background: selected ? "rgba(244,123,58,0.07)" : "rgba(255,255,255,0.78)",
         backdropFilter: "blur(4px)",
-        boxShadow: selected ? "0 0 0 1px rgba(244,123,58,0.18)" : "none",
+        boxShadow: mapActive
+          ? "0 0 0 1px rgba(13,44,61,0.18)"
+          : selected ? "0 0 0 1px rgba(244,123,58,0.18)" : "none",
+        transition: "border-color 0.15s ease, box-shadow 0.15s ease",
       }}
     >
       {/* ── Row ── */}
       <div
         className="grid items-center gap-2 cursor-pointer"
         style={{ gridTemplateColumns: "22px 1fr 14px", padding: "8px 10px" }}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); onMapSelect(); }}
       >
         {/* Checkbox */}
         <div
@@ -648,7 +689,7 @@ function SuggestionCard({
                 </a>
               </Button>
             )}
-            {onShowOnMap && place?.lat != null && place?.lng != null && (
+            {listens("place.focus") && place?.lat != null && place?.lng != null && (
               <Button
                 variant="outline"
                 size="sm"
@@ -656,11 +697,14 @@ function SuggestionCard({
                 tone="neutral"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onShowOnMap({
-                    title: suggestion.title,
-                    lat: place.lat!,
-                    lng: place.lng!,
-                    placeId: place.placeId,
+                  emit({
+                    type: "place.focus",
+                    place: {
+                      title: suggestion.title,
+                      lat: place.lat!,
+                      lng: place.lng!,
+                      placeId: place.placeId,
+                    },
                   });
                 }}
               >
@@ -670,28 +714,33 @@ function SuggestionCard({
             <Button variant="outline" size="sm" iconOnly tone="neutral" aria-label="Wishlist">
               <IconBookmark size={12} />
             </Button>
-            <Button
-              variant="solid"
-              size="sm"
-              iconOnly={false}
-              tone="neutral"
-              className="flex-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToDay?.({
-                  title: suggestion.title,
-                  description: place?.editorialSummary ?? suggestion.why,
-                  slot: categoryToSlot(suggestion.category),
-                  location: place?.address ?? suggestion.location,
-                  locationPlaceId: place?.placeId,
-                  locationLat: place?.lat,
-                  locationLng: place?.lng,
-                });
-              }}
-            >
-              <IconPlus size={12} /> Add to day
-            </Button>
-            {activeEditMatch && onApplyToActivity && (
+            {listens("activity.add") && (
+              <Button
+                variant="solid"
+                size="sm"
+                iconOnly={false}
+                tone="neutral"
+                className="flex-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  emit({
+                    type: "activity.add",
+                    payload: {
+                      title: suggestion.title,
+                      description: place?.editorialSummary ?? suggestion.why,
+                      slot: categoryToSlot(suggestion.category),
+                      location: place?.address ?? suggestion.location,
+                      locationPlaceId: place?.placeId,
+                      locationLat: place?.lat,
+                      locationLng: place?.lng,
+                    },
+                  });
+                }}
+              >
+                <IconPlus size={12} /> Add to day
+              </Button>
+            )}
+            {activeEditMatch && (
               <Button
                 variant="solid"
                 size="sm"
@@ -701,9 +750,12 @@ function SuggestionCard({
                 style={{ background: "rgba(244,123,58,0.10)", color: "var(--color-orange)", borderColor: "rgba(244,123,58,0.30)" }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onApplyToActivity({
-                    title: suggestion.title,
-                    description: place?.editorialSummary ?? suggestion.why,
+                  emit({
+                    type: "activity.apply",
+                    data: {
+                      title: suggestion.title,
+                      description: place?.editorialSummary ?? suggestion.why,
+                    },
                   });
                 }}
               >
@@ -727,31 +779,28 @@ function SuggestionsBlock({
   tripContext,
   onSelectionChange,
   activeEditMatch,
-  onApplyToActivity,
-  onAddToDay,
-  onShowOnMap,
 }: {
   suggestions: GoSuggestion[];
   sizeMode: SizeMode;
   tripContext?: string;
   onSelectionChange?: (s: GoSuggestion | null) => void;
   activeEditMatch?: boolean;
-  onApplyToActivity?: (data: { title: string; description: string }) => void;
-  onAddToDay?: (payload: AddToDayPayload) => void;
-  onShowOnMap?: (target: MapFocusTarget) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Single map-selected card (drives the highlighted pin). Set by hover-dwell or
+  // by opening a card; a mouse-out never clears it — only another card can.
+  const [mapSelectedId, setMapSelectedId] = useState<string | null>(null);
 
   function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      // Notifica la selezione singola verso l'alto
-      const single = next.size === 1 ? suggestions.find((s) => next.has(s.id)) ?? null : null;
-      onSelectionChange?.(single);
-      return next;
-    });
+    // Calcola il prossimo set fuori dall'updater: notificare il parent dentro
+    // l'updater aggiornerebbe GoChatFloat durante il render di SuggestionsBlock.
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+    // Notifica la selezione singola verso l'alto (in event handler, non in render).
+    const single = next.size === 1 ? suggestions.find((s) => next.has(s.id)) ?? null : null;
+    onSelectionChange?.(single);
   }
 
   const count = selected.size;
@@ -777,12 +826,11 @@ function SuggestionsBlock({
           suggestion={s}
           selected={selected.has(s.id)}
           onToggleSelect={() => toggleSelect(s.id)}
+          mapActive={mapSelectedId === s.id}
+          onMapSelect={() => setMapSelectedId(s.id)}
           sizeMode={sizeMode}
           tripContext={tripContext}
           activeEditMatch={activeEditMatch}
-          onApplyToActivity={onApplyToActivity}
-          onAddToDay={onAddToDay}
-          onShowOnMap={onShowOnMap}
         />
       ))}
     </div>
@@ -842,6 +890,37 @@ function ClosedCard({ lastMessage, onClick }: { lastMessage: string; onClick: ()
 
 type SizeMode = "normal" | "wide";
 
+/** Horizontal anchor for the float — always pinned to the bottom. */
+export type GoChatPosition = "left" | "center" | "right";
+
+/**
+ * Horizontal half of the fixed-position style for a given anchor.
+ * Centering uses `margin: auto` (needs a fixed width) rather than a transform,
+ * so it never collides with the panel's entrance animation (which animates
+ * `transform`). For width-less anchors (the closed card) pass `transformCenter`
+ * to fall back to translateX.
+ */
+function horizontalStyle(
+  position: GoChatPosition,
+  offset: number,
+  transformCenter = false,
+): React.CSSProperties {
+  if (position === "left") return { left: offset };
+  if (position === "center") {
+    return transformCenter
+      ? { left: "50%", transform: "translateX(-50%)" }
+      : { left: 0, right: 0, marginLeft: "auto", marginRight: "auto" };
+  }
+  return { right: offset };
+}
+
+/**
+ * Spazio in alto da lasciare libero: l'AppHeader è sticky (riga 1 ~52px +
+ * sub-bar ~42px = ~94px). Il panel non deve crescere oltre, per restare nel
+ * contesto della pagina senza coprire header/sub-header.
+ */
+const HEADER_CLEARANCE = 108;
+
 type FloatPanelProps = {
   messages: Message[];
   input: string;
@@ -853,13 +932,15 @@ type FloatPanelProps = {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
   tripContext?: string;
+  position: GoChatPosition;
+  wideWidth: number;
   activeEditMatch?: boolean;
-  onApplyToActivity?: (data: { title: string; description: string }) => void;
-  onAddToDay?: (payload: AddToDayPayload) => void;
-  onShowOnMap?: (target: MapFocusTarget) => void;
+  focus?: GoPlace | null;
+  onClearFocus?: () => void;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, activeEditMatch, onApplyToActivity, onAddToDay, onShowOnMap }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, position, wideWidth, activeEditMatch, focus, onClearFocus }: FloatPanelProps) {
+  const t = useTranslations("GoChat");
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(() => !window.matchMedia("(min-width: 640px)").matches);
 
@@ -873,12 +954,12 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
   // Calcola stile panel in base a sizeMode + isMobile
   const panelStyle = (): React.CSSProperties => {
     if (isMobile) {
-      return { position: "fixed", bottom: 12, left: 12, right: 12, maxHeight: "calc(100dvh - 80px)" };
+      return { position: "fixed", bottom: 12, left: 12, right: 12, maxHeight: `calc(100dvh - 12px - ${HEADER_CLEARANCE}px)` };
     }
     if (sizeMode === "wide") {
-      return { position: "fixed", bottom: 24, right: 24, width: 600, maxHeight: "calc(100dvh - 48px)" };
+      return { position: "fixed", bottom: 24, ...horizontalStyle(position, 24), width: wideWidth, maxHeight: `calc(100dvh - 24px - ${HEADER_CLEARANCE}px)` };
     }
-    return { position: "fixed", bottom: 24, right: 24, width: 380, maxHeight: 560 };
+    return { position: "fixed", bottom: 24, ...horizontalStyle(position, 24), width: 380, maxHeight: `min(560px, calc(100dvh - 24px - ${HEADER_CLEARANCE}px))` };
   };
 
   const cycleSize = () => {
@@ -1004,29 +1085,30 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
           }
 
           /* Assistant done — with suggestions or deep-dive */
-          return (
-            <div key={msg.id} style={{ marginBottom: 14 }}>
-              {msg.content && (
-                <RichText
-                  text={msg.content}
-                  className={cn("font-serif italic", isPast ? "text-ink-soft opacity-85" : "text-ink")}
-                  style={{ fontSize: 14, lineHeight: 1.6, marginBottom: msg.suggestions ? 10 : 0 }}
-                />
-              )}
-              {msg.suggestions && msg.suggestions.length > 0 && (
-                <SuggestionsBlock
-                  suggestions={msg.suggestions}
-                  sizeMode={sizeMode}
-                  tripContext={tripContext}
-                  onSelectionChange={onSelectionChange}
-                  activeEditMatch={activeEditMatch}
-                  onApplyToActivity={onApplyToActivity}
-                  onAddToDay={onAddToDay}
-                  onShowOnMap={onShowOnMap}
-                />
-              )}
-            </div>
-          );
+          {
+            const hasSuggestions = !!msg.suggestions && msg.suggestions.length > 0;
+            return (
+              <div key={msg.id} style={{ marginBottom: 14 }}>
+                {/* La lista va prima del testo: il commento di Go si legge sotto. */}
+                {hasSuggestions && (
+                  <SuggestionsBlock
+                    suggestions={msg.suggestions!}
+                    sizeMode={sizeMode}
+                    tripContext={tripContext}
+                    onSelectionChange={onSelectionChange}
+                    activeEditMatch={activeEditMatch}
+                  />
+                )}
+                {msg.content && (
+                  <RichText
+                    text={msg.content}
+                    className={cn("font-serif italic", isPast ? "text-ink-soft opacity-85" : "text-ink")}
+                    style={{ fontSize: 14, lineHeight: 1.6, marginTop: hasSuggestions ? 2 : 0 }}
+                  />
+                )}
+              </div>
+            );
+          }
         })}
 
         {/* Idle */}
@@ -1046,19 +1128,53 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input (con, sopra, il luogo a fuoco — connesso nello stesso box) */}
       <div style={{ position: "relative", zIndex: 1, margin: "4px 14px 14px" }}>
         <form onSubmit={onSubmit}>
           <div
-            className="flex items-end gap-2"
             style={{
-              padding: "5px 5px 5px 12px",
-              background: "rgba(255,255,255,0.95)",
               backdropFilter: "blur(6px)",
               border: "0.5px solid var(--color-border-strong)",
               borderRadius: 16,
+              overflow: "hidden",
             }}
           >
+            {/* Focus — luogo selezionato sulla mappa, contesto delle prossime domande */}
+            {focus && (
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  padding: "7px 10px",
+                  background: "var(--color-ink)",
+                  color: "#fff",
+                }}
+              >
+                <IconMapPin size={14} className="shrink-0" style={{ color: "var(--color-orange)" }} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-micro leading-tight" style={{ opacity: 0.7 }}>{t("focusIntro")}</div>
+                  <div className="text-mini font-medium truncate">{focus.title}</div>
+                </div>
+                {onClearFocus && (
+                  <button
+                    type="button"
+                    onClick={onClearFocus}
+                    aria-label="Rimuovi luogo"
+                    className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full transition-colors border-0 bg-transparent cursor-pointer"
+                    style={{ color: "rgba(255,255,255,0.7)" }}
+                  >
+                    <IconX size={12} />
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div
+              className="flex items-end gap-2"
+              style={{
+                padding: "5px 5px 5px 12px",
+                background: "rgba(255,255,255,0.95)",
+              }}
+            >
             <IconSparkles size={13} className="text-orange shrink-0" style={{ marginBottom: 8 }} />
             <textarea
               ref={inputRef}
@@ -1107,6 +1223,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
             >
               <IconArrowUp size={14} />
             </button>
+            </div>
           </div>
         </form>
       </div>
@@ -1122,6 +1239,10 @@ export type GoChatFloatProps = {
   tripContext?: string;
   onDebugCall?: GoChatDebugFn;
   open?: boolean;
+  /** Horizontal anchor (always bottom). Default "right". */
+  position?: GoChatPosition;
+  /** Width of the panel in "wide" size mode. Default 600. */
+  wideWidth?: number;
   onClose?: () => void;
   /** Messaggio da inviare appena il panel è pronto (sopprime il greeting). */
   pendingMessage?: string;
@@ -1129,13 +1250,17 @@ export type GoChatFloatProps = {
   onPendingMessageConsumed?: () => void;
   /** true quando c'è un editor aperto che corrisponde all'attività cercata. */
   activeEditMatch?: boolean;
-  /** Callback per applicare i dati della suggestion alla form attiva. */
-  onApplyToActivity?: (data: { title: string; description: string }) => void;
-  onAddToDay?: (payload: AddToDayPayload) => void;
-  onShowOnMap?: (target: MapFocusTarget) => void;
+  /** Posto messo a fuoco sulla mappa (Mappa → Go): iniettato nel contesto. */
+  focus?: GoPlace | null;
+  /** Pulisce il focus corrente (× sul chip). */
+  onClearFocus?: () => void;
+  /** Bus eventi Go → host. Vedi features/go/events.ts. */
+  onEvent?: GoEmit;
+  /** Tipi di evento attualmente sottoscritti dall'host (gating UI opzionale). */
+  listeningTypes?: Set<GoEventType>;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, onApplyToActivity, onAddToDay, onShowOnMap }: GoChatFloatProps) {
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position = "right", wideWidth = 600, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, focus, onClearFocus, onEvent, listeningTypes }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
   // Sync the controlled `open` prop into local state during render (no effect),
   // so internal toggles and parent control stay coherent without cascading renders.
@@ -1166,6 +1291,28 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
     }
   }, [input]);
 
+  // Emitter esposto al subtree del chat: i componenti profondi emettono via
+  // useGoEmit() senza prop threading. `listens` riflette i tipi sottoscritti.
+  const emitter = useMemo<GoEmitter>(() => ({
+    emit: (e) => onEvent?.(e),
+    listens: (t: GoEventType) => !!listeningTypes?.has(t),
+  }), [onEvent, listeningTypes]);
+
+  // Geocodes the suggestions and emits them as a `places.found` event — the
+  // host page renders them (decoupled: Go owns no map). place_query → coords.
+  const emitPlaces = useCallback(async (suggestions: GoSuggestion[]) => {
+    if (!onEvent || suggestions.length === 0) return;
+    const resolved = await Promise.all(
+      suggestions.map(async (s): Promise<GoPlace | null> => {
+        const place = await imageSearch.search(s.place_query);
+        if (!place) return null;
+        return { title: s.title, lat: place.lat, lng: place.lng, placeId: place.placeId };
+      }),
+    );
+    const places = resolved.filter((p): p is GoPlace => p !== null);
+    if (places.length > 0) onEvent({ type: "places.found", places });
+  }, [onEvent]);
+
   const send = useCallback(async (text: string, silent = false, forceSuggestions = false, activeSuggestion: GoSuggestion | null = null) => {
     const assistantId = crypto.randomUUID();
     const debugId = crypto.randomUUID();
@@ -1187,10 +1334,15 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
 
     onDebugCall?.({ id: debugId, ts: t0, systemPrompt: null, messages: [...history, ...(silent ? [{ role: "user" as const, content: text }] : [])], response: null, error: null, durationMs: null, streaming: true });
 
+    // Inietta il focus mappa nel contesto: Go sa di quale posto si parla.
+    const contextWithFocus = focus
+      ? `${tripContext ?? ""}\n\n## Map focus\nThe user has selected this place on the map: ${focus.title} (lat ${focus.lat.toFixed(5)}, lng ${focus.lng.toFixed(5)}). When they refer to "this", "here", "qui", "questo posto", they mean THIS place — answer about it.`
+      : tripContext;
+
     try {
       const res = await api.go.chat({
         messages: silent ? [...history, { role: "user", content: text }] : history,
-        tripContext,
+        tripContext: contextWithFocus,
         forceSuggestions,
         selectedSuggestion: activeSuggestion ?? undefined,
       });
@@ -1244,6 +1396,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
                 ? { ...m, content: parsed.text ?? "", suggestions: parsed.suggestions ?? [], streaming: false }
                 : m,
             ));
+            if (parsed.suggestions?.length) void emitPlaces(parsed.suggestions);
           }
         } catch {
           setMessages((prev) => prev.map((m) =>
@@ -1276,7 +1429,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
     } finally {
       setLoading(false);
     }
-  }, [messages, tripContext, onDebugCall]);
+  }, [messages, tripContext, focus, onDebugCall, emitPlaces]);
 
   const handleClose = useCallback(() => { setOpen(false); onClose?.(); }, [onClose]);
 
@@ -1288,13 +1441,16 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
     onPendingMessageConsumed?.();         // libera il parent subito
   }, [pendingMessage, onPendingMessageConsumed]);
 
-  // Effect 2: invia il messaggio quando il panel è aperto e Go non sta streamando
+  // Effect 2: invia il messaggio quando il panel è aperto e Go non sta streamando.
+  // `pendingMessage` è in deps così l'invio scatta anche se Go era GIÀ aperto
+  // (es. su Explore): in quel caso `open` non cambia e senza questa dep l'effetto
+  // non si ri-eseguirebbe → il messaggio non partirebbe.
   useEffect(() => {
     if (!open || loading || !pendingRef.current) return;
     const msg = pendingRef.current;
     pendingRef.current = null;
     void send(msg, false, false);
-  }, [open, loading, send]);
+  }, [open, loading, send, pendingMessage]);
 
   // Greeting contestuale alla prima apertura — parte solo quando tripContext è pronto
   useEffect(() => {
@@ -1334,29 +1490,32 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, onClose,
   if (!open && !hasHistory && !hasEverOpened.current) return null;
 
   return createPortal(
-    <div style={{ position: "fixed", bottom: 12, right: 12, zIndex: 9999 }}>
-      {!open && (hasHistory || hasEverOpened.current) && (
-        <ClosedCard lastMessage={lastGoMessage || "Go · resume"} onClick={() => setOpen(true)} />
-      )}
-      {open && (
-        <FloatPanel
-          messages={messages}
-          input={input}
-          loading={loading}
-          onInput={setInput}
-          onSubmit={handleSubmit}
-          onClose={handleClose}
-          onSelectionChange={setSelectedSuggestion}
-          inputRef={inputRef}
-          bottomRef={bottomRef}
-          tripContext={tripContext}
-          activeEditMatch={activeEditMatch}
-          onApplyToActivity={onApplyToActivity}
-          onAddToDay={onAddToDay}
-          onShowOnMap={onShowOnMap}
-        />
-      )}
-    </div>,
+    <GoEmitProvider value={emitter}>
+      <div style={{ position: "fixed", bottom: 12, ...horizontalStyle(position, 12, true), zIndex: 9999 }}>
+        {!open && (hasHistory || hasEverOpened.current) && (
+          <ClosedCard lastMessage={lastGoMessage || "Go · resume"} onClick={() => setOpen(true)} />
+        )}
+        {open && (
+          <FloatPanel
+            messages={messages}
+            input={input}
+            loading={loading}
+            onInput={setInput}
+            onSubmit={handleSubmit}
+            onClose={handleClose}
+            onSelectionChange={setSelectedSuggestion}
+            inputRef={inputRef}
+            bottomRef={bottomRef}
+            tripContext={tripContext}
+            position={position}
+            wideWidth={wideWidth}
+            activeEditMatch={activeEditMatch}
+            focus={focus}
+            onClearFocus={onClearFocus}
+          />
+        )}
+      </div>
+    </GoEmitProvider>,
     document.body,
   );
 }

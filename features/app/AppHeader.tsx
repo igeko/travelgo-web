@@ -15,7 +15,7 @@ import { IconMessageReport, IconNotes } from "@/components/ui/icons";
    This lets the sandbox mobile-frame work correctly at 390px.
 ───────────────────────────────────────────────────────────────── */
 
-export type AppHeaderTab = "trip" | "day-by-day" | "map" | "budget" | "notes";
+export type AppHeaderTab = "trip" | "day-by-day" | "explore" | "budget" | "notes";
 
 export type AppHeaderProps = {
   activeNav?: "trips" | "explore" | "guides" | "budget";
@@ -82,7 +82,7 @@ export function AppHeader({
   const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
     { id: "trip",       label: t("tabs.trip"),      href: (id) => `/trips/${id}/overview` },
     { id: "day-by-day", label: t("tabs.dayByDay"),  href: (id) => `/trips/${id}` },
-    { id: "map",        label: t("tabs.map"),        href: (id) => `/trips/${id}?tab=map` },
+    { id: "explore",    label: t("tabs.explore"),    href: (id) => `/trips/${id}/explore` },
     { id: "budget",     label: t("tabs.budget"),     href: (id) => `/trips/${id}?tab=budget` },
     { id: "notes",      label: t("tabs.notes"),      href: (id) => `/trips/${id}?tab=notes` },
   ];

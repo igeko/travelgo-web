@@ -12,6 +12,7 @@
  */
 
 import {
+  IconBackpack,
   IconBed,
   IconBeer,
   IconBuildingBank,
@@ -35,8 +36,10 @@ import {
 export type ExploreSubcategoryDef = {
   id: string;
   icon: Icon;
-  /** OSM tag filter for the place-search layer. */
+  /** OSM tag filter for the (Overpass) place-search layer. */
   osm: string;
+  /** Google Places Text Search term, used for the in-viewport category search. */
+  google: string;
 };
 
 export type ExploreMacroCategoryDef = {
@@ -50,33 +53,33 @@ export const EXPLORE_CATEGORY_TREE: ExploreMacroCategoryDef[] = [
     id: "dormi",
     icon: IconBed,
     subs: [
-      { id: "hotel", icon: IconBuildingCottage, osm: '"tourism"="hotel"' },
-      { id: "bnb", icon: IconBuildingCommunity, osm: '"tourism"~"guest_house|bed_and_breakfast"' },
-      { id: "ostello", icon: IconBed, osm: '"tourism"="hostel"' },
-      { id: "appartamenti", icon: IconHome, osm: '"tourism"="apartment"' },
-      { id: "camping", icon: IconTent, osm: '"tourism"~"camp_site|caravan_site"' },
+      { id: "hotel", icon: IconBuildingCottage, osm: '"tourism"="hotel"', google: "hotel" },
+      { id: "bnb", icon: IconBuildingCommunity, osm: '"tourism"~"guest_house|bed_and_breakfast"', google: "bed and breakfast" },
+      { id: "ostello", icon: IconBackpack, osm: '"tourism"="hostel"', google: "hostel" },
+      { id: "appartamenti", icon: IconHome, osm: '"tourism"="apartment"', google: "apartment rental" },
+      { id: "camping", icon: IconTent, osm: '"tourism"~"camp_site|caravan_site"', google: "campground" },
     ],
   },
   {
     id: "mangia",
     icon: IconSoup,
     subs: [
-      { id: "ristoranti", icon: IconToolsKitchen2, osm: '"amenity"="restaurant"' },
-      { id: "caffe", icon: IconCoffee, osm: '"amenity"="cafe"' },
-      { id: "bar", icon: IconBeer, osm: '"amenity"~"bar|pub"' },
-      { id: "street", icon: IconBurger, osm: '"amenity"="fast_food"' },
-      { id: "mercati", icon: IconShoppingBag, osm: '"amenity"="marketplace"' },
+      { id: "ristoranti", icon: IconToolsKitchen2, osm: '"amenity"="restaurant"', google: "restaurant" },
+      { id: "caffe", icon: IconCoffee, osm: '"amenity"="cafe"', google: "cafe" },
+      { id: "bar", icon: IconBeer, osm: '"amenity"~"bar|pub"', google: "bar pub" },
+      { id: "street", icon: IconBurger, osm: '"amenity"="fast_food"', google: "street food" },
+      { id: "mercati", icon: IconShoppingBag, osm: '"amenity"="marketplace"', google: "market" },
     ],
   },
   {
     id: "esplora",
     icon: IconCompass,
     subs: [
-      { id: "musei", icon: IconBuildingBank, osm: '"tourism"~"museum|gallery|artwork"' },
-      { id: "monumenti", icon: IconBuildingMonument, osm: '"historic"~"castle|monument|ruins|memorial|fort|palace"' },
-      { id: "culto", icon: IconBuildingChurch, osm: '"historic"~"temple|shrine|cathedral|monastery"' },
-      { id: "parchi", icon: IconTree, osm: '"leisure"~"park|garden|nature_reserve"' },
-      { id: "viste", icon: IconEye, osm: '"tourism"="viewpoint"' },
+      { id: "musei", icon: IconBuildingBank, osm: '"tourism"~"museum|gallery|artwork"', google: "museum" },
+      { id: "monumenti", icon: IconBuildingMonument, osm: '"historic"~"castle|monument|ruins|memorial|fort|palace"', google: "monument landmark" },
+      { id: "culto", icon: IconBuildingChurch, osm: '"historic"~"temple|shrine|cathedral|monastery"', google: "temple church place of worship" },
+      { id: "parchi", icon: IconTree, osm: '"leisure"~"park|garden|nature_reserve"', google: "park" },
+      { id: "viste", icon: IconEye, osm: '"tourism"="viewpoint"', google: "scenic viewpoint" },
     ],
   },
 ];

@@ -12,7 +12,7 @@ import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
 import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { DayMagazine } from "@/features/day/DayMagazine";
-import { useTripGo, type MapFocusTarget } from "@/features/go/TripGoContext";
+import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
 
 type DayViewMode = "lista" | "timeline" | "racconto";
 import type { Activity, Day } from "@/lib/dal/domain";
@@ -67,14 +67,14 @@ export function Itinerary({
 }: Props) {
   const t = useTranslations("Itinerary");
   const tMode = useTranslations("DayViewModeToggle");
-  const { registerShowOnMap, unregisterShowOnMap } = useTripGo();
+  const { subscribe } = useTripGo();
   const [showMap, setShowMap] = useState(initialShowMap);
   const mapRef = useRef<RouteMapHandle>(null);
   // Index queued while the map mounts (when it was hidden at click time).
   const pendingFocusRef = useRef<number | null>(null);
   // Go-suggested place queued while the map (re)mounts: showing it may require
   // switching back to "lista" view and revealing the map first.
-  const pendingCoordFocusRef = useRef<MapFocusTarget | null>(null);
+  const pendingCoordFocusRef = useRef<GoPlace | null>(null);
   const [internalShowAddForm, setShowAddForm] = useState(false);
   // The parent can force the form open (e.g. via the "add" keyboard shortcut);
   // OR with local state so we don't need a setState-in-effect to sync the prop.
@@ -163,7 +163,7 @@ export function Itinerary({
 
   // Go's "Mostra in mappa" trigger: the map only lives in "lista" view when
   // visible, so switch back and reveal it if needed, then drop the ad-hoc pin.
-  const handleShowOnMap = useCallback((target: MapFocusTarget) => {
+  const handleShowOnMap = useCallback((target: GoPlace) => {
     const mapVisibleNow = showMap && viewMode === "lista";
     if (viewMode !== "lista") setViewMode("lista");
     if (!showMap) {
@@ -178,9 +178,8 @@ export function Itinerary({
   }, [showMap, viewMode, setViewMode, onToggleMap]);
 
   useEffect(() => {
-    registerShowOnMap(handleShowOnMap);
-    return () => unregisterShowOnMap();
-  }, [registerShowOnMap, unregisterShowOnMap, handleShowOnMap]);
+    return subscribe("place.focus", ({ place }) => handleShowOnMap(place));
+  }, [subscribe, handleShowOnMap]);
 
   // Apply a queued Go pin once the map is back in view.
   useEffect(() => {

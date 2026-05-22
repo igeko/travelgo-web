@@ -100,7 +100,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
 
-  const { setTripContext, openGo, openGoWith, hasBeenOpened: goHasBeenOpened, registerAddToDay, unregisterAddToDay } = useTripGo();
+  const { setTripContext, openGo, openGoWith, hasBeenOpened: goHasBeenOpened, subscribe } = useTripGo();
 
   const goFocus = useMemo(
     () => selectedDay ? { type: "day" as const, dayNumber: selectedDay.day_number } : undefined,
@@ -132,9 +132,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const selectedDayIdRef = useRef(selectedDayId);
   useEffect(() => { selectedDayIdRef.current = selectedDayId; }, [selectedDayId]);
 
-  // Registra il callback "Add to day" in Go
+  // Go event "activity.add" → crea l'attività nel giorno corrente
   useEffect(() => {
-    registerAddToDay(async (payload) => {
+    return subscribe("activity.add", async ({ payload }) => {
       const dayId = selectedDayIdRef.current;
       try {
         const created = await api.activities.addToDay(dayId, {
@@ -151,8 +151,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         // add failed — leave list unchanged
       }
     });
-    return () => unregisterAddToDay();
-  }, [registerAddToDay, unregisterAddToDay]);
+  }, [subscribe]);
 
   // Reload activities when a remote change arrives (realtime)
   const prevReloadTick = useRef(reloadTick);

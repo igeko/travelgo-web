@@ -76,10 +76,16 @@ export type MapProps = {
   selectedMarkerId?: string | null;
   /** Fired when the user clicks the basemap (empty area). */
   onMapClick?: (latlng: LatLng) => void;
+  /** Fired when the user clicks a Google POI label (placeId + position). */
+  onPoiClick?: (placeId: string, latlng: LatLng) => void;
   /** Fired when the user clicks an existing marker (by its key). */
   onMarkerClick?: (id: string) => void;
   /** Fired (on idle) with the visible area's centre + radius in metres. */
   onViewportChange?: (viewport: { center: LatLng; radiusMeters: number }) => void;
+  /** The place a preview card is anchored to (its pin). null hides the card. */
+  markerCardAnchor?: LatLng | null;
+  /** Reports the anchor's container pixel on every map move (null when hidden). */
+  onCardPixelChange?: (pixel: { x: number; y: number } | null) => void;
 };
 
 /** Great-circle distance in metres between two points. */
@@ -183,19 +189,29 @@ export function Map({
   markers,
   selectedMarkerId,
   onMapClick,
+  onPoiClick,
   onMarkerClick,
   onViewportChange,
+  markerCardAnchor,
+  onCardPixelChange,
 }: MapProps) {
   const status = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersByKey = useRef<Record<string, google.maps.Marker>>({});
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
+  const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
+  const cardAnchorRef = useRef(markerCardAnchor);
+  const onCardPixelChangeRef = useRef(onCardPixelChange);
+  cardAnchorRef.current = markerCardAnchor;
+  onCardPixelChangeRef.current = onCardPixelChange;
   // Latest handlers — kept in refs so listeners need not be re-bound.
   const onMapClickRef = useRef(onMapClick);
+  const onPoiClickRef = useRef(onPoiClick);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onViewportChangeRef = useRef(onViewportChange);
   onMapClickRef.current = onMapClick;
+  onPoiClickRef.current = onPoiClick;
   onMarkerClickRef.current = onMarkerClick;
   onViewportChangeRef.current = onViewportChange;
 
@@ -220,9 +236,17 @@ export function Map({
       gestureHandling: "greedy",
     });
 
-    mapRef.current.addListener("click", (e: google.maps.MapMouseEvent) => {
+    mapRef.current.addListener("click", (e: google.maps.IconMouseEvent) => {
       if (!e.latLng) return;
-      onMapClickRef.current?.({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+      const latlng = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      // Click on a Google POI (Tokyo Budokan, …): select that place, don't drop
+      // an ad-hoc pin, and suppress Google's default info window.
+      if (e.placeId) {
+        e.stop();
+        onPoiClickRef.current?.(e.placeId, latlng);
+        return;
+      }
+      onMapClickRef.current?.(latlng);
     });
 
     mapRef.current.addListener("idle", () => {
@@ -322,9 +346,36 @@ export function Map({
     }
     if (!selectedOverlayRef.current) selectedOverlayRef.current = createSelectedPinOverlay();
     const ov = selectedOverlayRef.current;
-    ov.setData(sel.lat, sel.lng, sel.title ?? "");
+    // Hide the name pill when a richer card is anchored to the same pin.
+    ov.setData(sel.lat, sel.lng, markerCardAnchor ? "" : (sel.title ?? ""));
     if (ov.getMap() !== map) ov.setMap(map);
-  }, [markers, status, selectedMarkerId]);
+  }, [markers, status, selectedMarkerId, markerCardAnchor]);
+
+  // Project the card anchor (latlng) to a container pixel on every map move, so
+  // the host can render the card as a plain React element OUTSIDE the map DOM
+  // (clicks on it then never reach the map). OverlayView is used for projection
+  // only — no DOM card lives on the map panes.
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+    const ov = new google.maps.OverlayView();
+    const div = document.createElement("div"); // required container; stays empty
+    div.style.display = "none";
+    ov.onAdd = function () { this.getPanes()?.overlayLayer.appendChild(div); };
+    ov.draw = function () {
+      const a = cardAnchorRef.current;
+      const cb = onCardPixelChangeRef.current;
+      if (!a) { cb?.(null); return; }
+      const p = this.getProjection()?.fromLatLngToContainerPixel(new google.maps.LatLng(a.lat, a.lng));
+      cb?.(p ? { x: p.x, y: p.y } : null);
+    };
+    ov.onRemove = function () { div.remove(); };
+    ov.setMap(mapRef.current);
+    cardOverlayRef.current = ov;
+    return () => { ov.setMap(null); cardOverlayRef.current = null; };
+  }, [status]);
+
+  // Recompute the pixel when the anchor changes.
+  useEffect(() => { cardOverlayRef.current?.draw(); }, [markerCardAnchor?.lat, markerCardAnchor?.lng]);
 
   // Tear down the overlay on unmount.
   useEffect(() => () => { selectedOverlayRef.current?.setMap(null); }, []);
