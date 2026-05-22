@@ -13,6 +13,7 @@ export {
   IconArrowRightCircle,
   IconArrowUp,
   IconArchive,
+  IconBackpack,
   IconBeer,
   IconBike,
   IconBuildingChurch,

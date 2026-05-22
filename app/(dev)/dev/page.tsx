@@ -23,6 +23,12 @@ const SECTIONS = [
     description: "Specifica OpenAPI 3.0 dei route interni dell'app.",
     icon: "⚡",
   },
+  {
+    href: "/dev/costs",
+    title: "Costi servizi",
+    description: "Riepilogo costi Google Maps Platform e OpenAI usati dall'app.",
+    icon: "💰",
+  },
 ];
 
 /* ─── Dashboard esterne ──────────────────────────────────────── */
@@ -38,6 +44,12 @@ const DASHBOARDS = [
     title: "Vercel",
     description: "Deploy, preview, env vars, logs.",
     icon: "▲",
+  },
+  {
+    href: "https://console.cloud.google.com/",
+    title: "Google Cloud",
+    description: "Maps Platform, API keys, billing, quote.",
+    icon: "☁️",
   },
 ];
 
