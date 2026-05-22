@@ -92,10 +92,10 @@
   --tracking-eyebrow-wide: 0.12em;
 
   /* Z-index layers */
-  --z-dropdown: 30;
-  --z-overlay: 40;
-  --z-modal: 50;
-  --z-toast: 60;
+  --z-index-dropdown: 30;
+  --z-index-overlay: 40;
+  --z-index-modal: 50;
+  --z-index-toast: 60;
 }
 
 /* ─────────────────────────────────────────────────────────────────
