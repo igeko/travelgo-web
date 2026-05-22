@@ -42,6 +42,8 @@ export function YumejiToggle({
   label?: string;
   className?: string;
 }) {
+  // Stesso linguaggio dei tab del sub-header (Viaggio · Giorno per giorno · Esplora):
+  // pill px-3 py-[5px], text-mini, niente bordo; attivo = bg-ink text-white.
   return (
     <button
       type="button"
@@ -49,15 +51,14 @@ export function YumejiToggle({
       aria-pressed={active}
       title={active ? "Chiudi pannello Yumeji" : "Apri pannello Yumeji"}
       className={cn(
-        "inline-flex items-center gap-[7px] whitespace-nowrap cursor-pointer border-0",
-        "rounded-pill py-1.5 pl-3 pr-3.5 text-mini font-medium font-sans text-ink",
-        "transition-colors hover:bg-surface-soft",
+        "inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer border-0 font-sans",
+        "rounded-pill px-3 py-[5px] text-mini transition-colors",
+        active ? "bg-ink text-white font-medium" : "bg-transparent text-ink-soft hover:text-ink",
         "focus-visible:outline-2 focus-visible:outline-orange focus-visible:outline-offset-2",
-        active && "bg-surface-soft",
         className,
       )}
     >
-      <YumejiGlyph size={15} />
+      <YumejiGlyph size={13} />
       <span className="leading-none">{label}</span>
     </button>
   );
@@ -92,13 +93,18 @@ export function YumejiDrawer({
   );
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Reset della ricerca alla chiusura (pattern "adjust state during render").
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) setSearch("");
+  }
+
   // Focus automatico sul campo ricerca all'apertura (Dec 10).
   useEffect(() => {
-    if (open) {
-      const id = window.setTimeout(() => searchRef.current?.focus(), 320);
-      return () => window.clearTimeout(id);
-    }
-    setSearch("");
+    if (!open) return;
+    const id = window.setTimeout(() => searchRef.current?.focus(), 320);
+    return () => window.clearTimeout(id);
   }, [open]);
 
   // Esc chiude il drawer quando è aperto.
@@ -146,7 +152,7 @@ export function YumejiDrawer({
         "absolute top-0 right-0 z-[2] h-full w-[340px] flex flex-col overflow-hidden",
         "bg-surface border-l border-border",
         "transition-transform duration-300",
-        open ? "translate-x-0" : "translate-x-full pointer-events-none",
+        open ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none",
         className,
       )}
       style={{

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { AppHeader } from "@/features/app/AppHeader";
+import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { TripDayView } from "./TripDayView";
 import { useUser } from "@/features/app/UserContext";
 import { useTripRealtime } from "@/hooks/useTripRealtime";
@@ -41,6 +42,12 @@ export function TripShell({ trip, days, initialActivities, initialDayId }: Props
   const [editMode, setEditMode] = useLocalStorageState<boolean>(storageKey, false);
   const [debugMode, setDebugMode] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+
+  // Auto-pin del drawer Yumeji alla prima volta in edit mode (Dec 3).
+  const yumeji = useYumejiDrawer();
+  useEffect(() => {
+    if (editMode) yumeji?.autoPinFirstEdit();
+  }, [editMode, yumeji]);
 
   // Realtime — sincronizzazione tra client
   const handleRemoteChange = useCallback(() => {

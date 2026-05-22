@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
 import { IconMessageReport, IconNotes } from "@/components/ui/icons";
+import { YumejiToggle } from "@/features/yumeji/YumejiDrawer";
+import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 
 /* ─────────────────────────────────────────────────────────────────
    AppHeader · two-row sticky header
@@ -18,7 +20,7 @@ import { IconMessageReport, IconNotes } from "@/components/ui/icons";
 export type AppHeaderTab = "trip" | "day-by-day" | "explore" | "budget" | "notes";
 
 export type AppHeaderProps = {
-  activeNav?: "trips" | "explore" | "guides" | "budget";
+  activeNav?: "trips" | "explore" | "yumeji";
   /** Trip name, e.g. "Japan 2026". When absent the sub-bar is hidden. */
   tripName?: string;
   /** e.g. "Day 4 of 21" */
@@ -71,28 +73,35 @@ export function AppHeader({
   const [kebabOpen, setKebabOpen] = useState(false);
   const kebabRef = useRef<HTMLDivElement>(null);
   const hasTripContext = !!tripName;
+  const yumeji = useYumejiDrawer();
 
   const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
     { id: "trips",   label: t("nav.myTrips"), href: "/trips",   authRequired: true },
     { id: "explore", label: t("nav.explore"), href: "/explore", authRequired: false },
-    { id: "guides",  label: t("nav.guides"),  href: "/guides",  authRequired: false },
-    { id: "budget",  label: t("nav.budget"),  href: "/budget",  authRequired: false },
+    { id: "yumeji",  label: t("nav.yumeji"),  href: "/yumeji",  authRequired: true },
   ];
 
   const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
     { id: "trip",       label: t("tabs.trip"),      href: (id) => `/trips/${id}/overview` },
     { id: "day-by-day", label: t("tabs.dayByDay"),  href: (id) => `/trips/${id}` },
     { id: "explore",    label: t("tabs.explore"),    href: (id) => `/trips/${id}/explore` },
-    { id: "budget",     label: t("tabs.budget"),     href: (id) => `/trips/${id}?tab=budget` },
-    { id: "notes",      label: t("tabs.notes"),      href: (id) => `/trips/${id}?tab=notes` },
   ];
 
   return (
-    <div className={cn("sticky top-0 z-50", className)}>
+    <div
+      className={cn(
+        "sticky top-0 z-50 transition-[margin] duration-300",
+        // Compensa il padding-right del wrapper in pinned: l'header resta full-width
+        // (Row 1 non si sposta) mentre il contenuto sotto scorre.
+        yumeji?.isPinned && "md:-mr-[340px]",
+        className,
+      )}
+      style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
+    >
       <header className="bg-surface border-b border-border">
 
         {/* ══ ROW 1 · brand + nav + account ════════════════════════ */}
-        <div className="flex items-center gap-6 px-5 h-[52px] max-w-[1280px] mx-auto">
+        <div className="flex items-center gap-6 px-5 h-[52px]">
 
           {/* Brand */}
           <Link
@@ -267,7 +276,13 @@ export function AppHeader({
         {/* ══ ROW 2 · trip sub-bar ══════════════════════════════════ */}
         {hasTripContext && (
           <div className="bg-bg border-t border-b border-border">
-            <div className="flex items-center px-5 h-[42px] max-w-[1280px] mx-auto gap-3.5">
+            <div
+              className={cn(
+                "flex items-center px-5 h-[42px] gap-3.5 transition-[padding] duration-300",
+                yumeji?.isOpen && "md:pr-[340px]",
+              )}
+              style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
+            >
 
               {/* Trip name + progress */}
               <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
@@ -402,6 +417,17 @@ export function AppHeader({
                       </>
                     )}
                   </div>
+                )}
+
+                {/* Toggle Yumeji — apre il drawer (solo in trip-context). Quando il
+                    pannello è aperto sparisce del tutto dal layout, così i chip a
+                    sinistra restano a filo del contenitore Yume. */}
+                {yumeji && !yumeji.isOpen && (
+                  <YumejiToggle
+                    active={false}
+                    onClick={yumeji.toggle}
+                    className="hidden md:inline-flex"
+                  />
                 )}
 
               </div>

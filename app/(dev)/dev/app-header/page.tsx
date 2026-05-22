@@ -7,7 +7,7 @@ import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { AppHeader, type AppHeaderTab } from "@/features/app/AppHeader";
 
 export default function AppHeaderStories() {
-  const [activeNav,  setActiveNav]  = useState<"trips" | "explore" | "guides" | "budget">("trips");
+  const [activeNav,  setActiveNav]  = useState<"trips" | "explore" | "yumeji">("trips");
   const [activeTab,  setActiveTab]  = useState<AppHeaderTab>("day-by-day");
   const [editMode,   setEditMode]   = useState(false);
   const [showTrip,   setShowTrip]   = useState(true);
@@ -25,8 +25,7 @@ export default function AppHeaderStories() {
           options: [
             { value: "trips",   label: "My trips" },
             { value: "explore", label: "Explore" },
-            { value: "guides",  label: "Guides" },
-            { value: "budget",  label: "Budget" },
+            { value: "yumeji",  label: "Yumeji" },
           ],
         },
       ],
