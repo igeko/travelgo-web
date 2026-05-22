@@ -133,6 +133,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "App",
     description: "Two-row sticky header · brand + nav + trip context + tabs + edit mode chip",
   },
+  {
+    slug: "yumeji-drawer",
+    title: "YumejiDrawer",
+    group: "Features",
+    subgroup: "App",
+    description: "Pannello «I tuoi Yume» · toggle in Row 2 + pannello che slitta da destra · stati closed/floating/pinned, dati mock",
+  },
   // Activity subgroup
   {
     slug: "activity-row",

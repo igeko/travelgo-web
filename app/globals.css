@@ -77,6 +77,8 @@
 
   /* Elevazione del pannello flottante (Go chat, toolbar Explore) → shadow-float */
   --shadow-float: 0 10px 40px rgba(13, 44, 61, 0.18), 0 2px 8px rgba(13, 44, 61, 0.08);
+  /* Ombra direzionale del drawer Yumeji in modalità floating (overlay da destra) */
+  --shadow-yumeji-drawer: -18px 0 36px rgba(13, 44, 61, 0.1);
 
   /* Font-size scale semantica (oltre alle utility Tailwind default) */
   --text-micro: 10px;
