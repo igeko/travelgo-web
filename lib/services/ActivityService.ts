@@ -94,8 +94,17 @@ export class ActivityService {
       const title = typeof body.title === "string" && body.title.trim()
         ? body.title.trim().slice(0, 200)
         : "New activity";
+      // The entity owner — independent of the trip. Required by the
+      // activities INSERT RLS (created_by = auth.uid()). The trip link lives
+      // only in scheduled_activities now (set by scheduleActivity below).
+      const { data: user } = await this.dal.users.getCurrentUser();
+      if (!user) throw notFound("Not authenticated");
       const activity = unwrap(
-        await this.dal.activities.create({ trip_id: tripId, title, ...entityPatch }),
+        await this.dal.activities.create({
+          created_by: user.id,
+          title,
+          ...entityPatch,
+        }),
       );
       activityId = activity.id;
       createdEntityId = activity.id;

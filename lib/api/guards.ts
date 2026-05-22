@@ -64,17 +64,42 @@ export const requireDayMember = async (dayId: string) =>
 
 // ── Activity-scoped (entity) ──────────────────────────────────────
 
-async function tripIdForActivityOr404(activityId: string): Promise<string> {
+/**
+ * Authorize an action on an activity *entity*, now that activities are
+ * decoupled from trips. Access is granted when the caller is the entity
+ * owner (`created_by`) OR holds an allowed role in any trip the activity is
+ * reachable through (scheduled trips + the legacy trip_id during the
+ * transition). Ground truth is read with the service-role DAL so RLS can't
+ * mask a trip the user actually belongs to.
+ */
+async function requireActivityRole(
+  activityId: string,
+  allowed: readonly string[],
+  respectReadonly = false,
+): Promise<AuthContext> {
   const dal = await serverDal();
-  const tripId = await dal.activities.tripIdForActivity(activityId);
-  if (!tripId) throw notFound();
-  return tripId;
+  const userId = await currentUserId(dal);
+
+  const ctx = await serviceDal().activities.authzContext(activityId);
+  if (!ctx) throw notFound();
+
+  // The creator can always act on their own entity.
+  if (ctx.createdBy === userId) return { userId };
+
+  // A readonly activity is editable only by its creator — trip editors are
+  // not enough. (Does not affect read/member access.)
+  if (respectReadonly && ctx.readonly) throw forbidden();
+
+  for (const tripId of ctx.tripIds) {
+    if (await dal.members.roleInTrip(tripId, userId, allowed)) return { userId };
+  }
+  throw forbidden();
 }
 
-export const requireActivityEditor = async (activityId: string) =>
-  requireTripEditor(await tripIdForActivityOr404(activityId));
-export const requireActivityMember = async (activityId: string) =>
-  requireTripMember(await tripIdForActivityOr404(activityId));
+export const requireActivityEditor = (activityId: string) =>
+  requireActivityRole(activityId, EDITOR_ROLES, true);
+export const requireActivityMember = (activityId: string) =>
+  requireActivityRole(activityId, MEMBER_ROLES);
 
 // ── Scheduled-activity-scoped (instance) ──────────────────────────
 

@@ -121,7 +121,7 @@ const DAY_UI_SELECT =
 const SCHEDULED_SELECT =
   "id, activity_id, day_id, slot, position, time, type, fuzzy, instance_note, booking_status, bridge_in_json, bridge_out_json, created_at, updated_at";
 const SCHEDULED_ACTIVITY_JOIN_SELECT =
-  "id, trip_id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes";
+  "id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes";
 
 // Local row shapes for the joined scheduled_activity ↔ activity reads.
 type ScheduledRow = {
@@ -143,7 +143,6 @@ type ScheduledRow = {
 
 type ActivityJoinRow = {
   id: string;
-  trip_id: string;
   title: string;
   short_desc: string | null;
   details?: string | null;
@@ -453,7 +452,12 @@ export class Trips {
       ((activitiesData ?? []) as ActivityJoinRow[]).map((a) => [a.id, a]),
     );
 
-    return rows.map((sa) => mergeScheduled(sa, actMap.get(sa.activity_id))) as Activity[];
+    // The trip is now reached through the day (activities are trip-agnostic).
+    const tripId = (await this.tripIdForDay(dayId)) ?? undefined;
+
+    return rows.map((sa) =>
+      mergeScheduled(sa, actMap.get(sa.activity_id), tripId),
+    ) as Activity[];
   }
 
   /** Trip + days + every activity of the trip in 4 flat queries. */
@@ -525,7 +529,7 @@ function mergeScheduled(
     id: sa.id,
     activity_id: sa.activity_id,
     day_id: sa.day_id,
-    trip_id: act?.trip_id ?? fallbackTripId ?? "",
+    trip_id: fallbackTripId ?? "",
     slot: sa.slot as Activity["slot"],
     position: sa.position ?? 0,
     time: sa.time,

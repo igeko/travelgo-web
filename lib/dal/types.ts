@@ -89,7 +89,10 @@ export type DbDay = {
 
 export type DbActivity = {
   id: string;
-  trip_id: string;
+  /** Entity owner — independent of any trip (the trip link lives in scheduled_activities). */
+  created_by: string | null;
+  /** When true, only the creator may edit/delete the entity (not trip editors). */
+  readonly: boolean;
   title: string;
   short_desc: string | null;
   details: string | null;

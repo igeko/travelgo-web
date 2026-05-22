@@ -23,7 +23,8 @@ import {
 // ── Input types ───────────────────────────────────────────────────
 
 export type CreateActivityInput = {
-  trip_id: string;
+  /** Entity owner (the user who created it). Independent of any trip. */
+  created_by: string;
   title: string;
   short_desc?: string;
   details?: string;
@@ -35,9 +36,11 @@ export type CreateActivityInput = {
   location_lng?: number;
   hero_image?: string;
   url?: string;
+  /** When true, only the creator can edit/delete the entity. */
+  readonly?: boolean;
 };
 
-export type UpdateActivityInput = Partial<Omit<CreateActivityInput, "trip_id">>;
+export type UpdateActivityInput = Partial<Omit<CreateActivityInput, "created_by">>;
 
 export type ActivityWithSections = DbActivity & {
   sections: DbActivitySection[];
@@ -72,7 +75,7 @@ export type ActivitySearchResult = {
 };
 
 // Entity columns surfaced by the autocomplete search.
-const SEARCH_SELECT = "id, title, short_desc, location, hero_image, trip_id";
+const SEARCH_SELECT = "id, title, short_desc, location, hero_image, created_by, readonly";
 
 /** Escape LIKE wildcards in user input to avoid blind enumeration via `%`/`_`. */
 function escapeLikePattern(input: string): string {
@@ -86,16 +89,34 @@ export class Activities {
 
   // ── Entity rows ──────────────────────────────────────────────────
 
-  /** All activities for an entire trip (entities, independent of days). */
+  /**
+   * All activity entities scheduled anywhere in a trip. The trip link now
+   * lives in scheduled_activities (→ days → trips), so we derive the entity
+   * ids from the schedule rather than from a column on `activities`.
+   */
   async listByTrip(tripId: string): Promise<DalResult<DbActivity[]>> {
+    const ids = await this.activityIdsForTrip(tripId);
+    if (ids.length === 0) return { data: [], error: null };
+
     const { data, error } = await this.db
       .from(ActivityTable.Activities)
       .select("*")
-      .eq("trip_id", tripId)
+      .in("id", ids)
       .order("created_at", { ascending: true });
 
     if (error) return { data: null, error: new DalError(error.message, error.code) };
     return { data: data as DbActivity[], error: null };
+  }
+
+  /** Distinct activity ids scheduled in a trip (via scheduled_activities → days). */
+  private async activityIdsForTrip(tripId: string): Promise<string[]> {
+    const { data } = await this.db
+      .from(TripTable.ScheduledActivities)
+      .select("activity_id, days!inner(trip_id)")
+      .eq("days.trip_id", tripId);
+    return [
+      ...new Set(((data ?? []) as { activity_id: string }[]).map((r) => r.activity_id)),
+    ];
   }
 
   /** Single activity with its sections and sidebar blocks. */
@@ -152,14 +173,41 @@ export class Activities {
     return { data: true, error: null };
   }
 
-  /** Resolve the trip an activity belongs to (authorization helper). */
-  async tripIdForActivity(activityId: string): Promise<string | null> {
-    const { data } = await this.db
+  /**
+   * Authorization context for an activity entity, fully decoupled from trips:
+   * its owner, its `readonly` flag, and every trip it is reachable through via
+   * scheduling. Returns null if the activity does not exist. Intended to be
+   * called on a service-role DAL (ground truth, bypasses RLS).
+   */
+  async authzContext(
+    activityId: string,
+  ): Promise<{ createdBy: string | null; readonly: boolean; tripIds: string[] } | null> {
+    const { data: act } = await this.db
       .from(ActivityTable.Activities)
-      .select("trip_id")
+      .select("created_by, readonly")
       .eq("id", activityId)
       .maybeSingle();
-    return (data as { trip_id: string } | null)?.trip_id ?? null;
+    if (!act) return null;
+    const row = act as { created_by: string | null; readonly: boolean | null };
+
+    const { data: sched } = await this.db
+      .from(TripTable.ScheduledActivities)
+      .select("day_id")
+      .eq("activity_id", activityId);
+    const dayIds = [
+      ...new Set(((sched ?? []) as { day_id: string }[]).map((s) => s.day_id)),
+    ];
+
+    const tripIds = new Set<string>();
+    if (dayIds.length > 0) {
+      const { data: days } = await this.db
+        .from(TripTable.Days)
+        .select("trip_id")
+        .in("id", dayIds);
+      for (const d of (days ?? []) as { trip_id: string }[]) tripIds.add(d.trip_id);
+    }
+
+    return { createdBy: row.created_by, readonly: row.readonly ?? false, tripIds: [...tripIds] };
   }
 
   // ── Sections ─────────────────────────────────────────────────────
@@ -217,16 +265,24 @@ export class Activities {
     const q = (input.query ?? "").trim().slice(0, 100);
     const safeQ = q ? escapeLikePattern(q) : "";
 
+    // "The trip's activities" = entities scheduled anywhere in this trip.
+    const tripActivityIds = await this.activityIdsForTrip(tripId);
+
+    if (tripActivityIds.length === 0) {
+      // Nothing scheduled yet → no wishlist. Platform still searchable below.
+      if (!safeQ) return { wishlist: [], platform: [] };
+    }
+
     let wishlistQuery = this.db
       .from(ActivityTable.Activities)
       .select(SEARCH_SELECT)
-      .eq("trip_id", tripId)
+      .in("id", tripActivityIds)
       .order("title", { ascending: true })
       .limit(30);
 
     if (safeQ) wishlistQuery = wishlistQuery.ilike("title", `%${safeQ}%`);
 
-    const { data: wishlistRaw } = await wishlistQuery;
+    const { data: wishlistRaw } = tripActivityIds.length > 0 ? await wishlistQuery : { data: [] };
 
     // Which of these are already scheduled on the current day?
     let scheduledIds = new Set<string>();
@@ -253,14 +309,20 @@ export class Activities {
 
     if (!safeQ) return { wishlist, platform: [] };
 
-    const { data: platform } = await this.db
+    // Platform = activities the caller can see (RLS: owned + their other trips)
+    // that are NOT already scheduled in this trip. We exclude the trip's own
+    // ids in app code to avoid building a fragile UUID `not.in` filter.
+    const tripIdSet = new Set(tripActivityIds);
+    const { data: platformRaw } = await this.db
       .from(ActivityTable.Activities)
       .select(SEARCH_SELECT)
-      .neq("trip_id", tripId)
       .ilike("title", `%${safeQ}%`)
-      .limit(20);
+      .limit(40);
+    const platform = ((platformRaw ?? []) as SearchRow[])
+      .filter((r) => !tripIdSet.has(r.id))
+      .slice(0, 20);
 
-    return { wishlist, platform: (platform ?? []) as SearchRow[] };
+    return { wishlist, platform };
   }
 
   /**
