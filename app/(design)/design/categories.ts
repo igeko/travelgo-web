@@ -39,12 +39,10 @@ export const designCategories: Record<string, DesignMeta> = {
   discovery: { group: "Explore", title: "Discovery" },
   "discover-places": { group: "Explore", title: "Discover places" },
   wishlist: { group: "Explore", title: "Wishlist" },
-  "explore-toolbar": { group: "Explore", subgroup: "Toolbar", title: "Toolbar" },
-  "explore-mobile-states": {
-    group: "Explore",
-    subgroup: "Toolbar",
-    title: "Mobile states",
-  },
+  yumeji: { group: "Explore", title: "Yumeji" },
+  "place-hover": { group: "Explore", title: "Place hover" },
+  "explore-toolbar": { group: "Explore", title: "Toolbar" },
+  "explore-mobile-states": { group: "Explore", title: "Mobile states" },
 };
 
 /** Declaration order index, used to sort entries within a group. */
