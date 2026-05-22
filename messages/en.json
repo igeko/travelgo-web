@@ -28,7 +28,8 @@
     "viste": "Viewpoints"
   },
   "GoChat": {
-    "focusIntro": "Let's talk about this place"
+    "focusIntro": "Let's talk about this place",
+    "createYume": "Create my Yume"
   },
   "AppHeader": {
     "nav": {

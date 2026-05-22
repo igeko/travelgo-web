@@ -16,12 +16,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconBookmark, IconChevronDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
+import { IconArrowUp, IconArrowsMaximize, IconArrowsMinimize, IconCheck, IconChevronDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconMapPin, IconPlus, IconSparkles, IconStar, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { imageSearch } from "@/features/media/imageSearch";
 import { api } from "@/lib/client";
+import type { YumeCardData } from "@/lib/client/go";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
 import type { GoChatDebugFn } from "./GoChat";
 import { GoEmitProvider, useGoEmit, type GoEmit, type GoEmitter, type GoEventType, type GoPlace } from "./events";
@@ -53,13 +54,28 @@ export type GoSuggestion = {
   autoExpand?: boolean;
 };
 
+/** In-chat Yume card: a place the user asked Go to write up for their Yumeji. */
+type YumeCardState = {
+  status: "loading" | "done" | "error";
+  sourceTitle: string;
+  sourceLocation: string;
+  /** Google Places photos carried over from the source suggestion card. */
+  photos: string[];
+  /** AI-generated editorial content (present when status === "done"). */
+  data?: YumeCardData;
+};
+
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
   suggestions?: GoSuggestion[];
+  yumeCard?: YumeCardState;
 };
+
+/** Callback to spawn a Yume card in the chat thread from a deep child. */
+type GenerateYume = (args: { suggestion: GoSuggestion; photos: string[] }) => void;
 
 /* ─────────────────────────────────────────────────────────────────
    Avatar
@@ -288,6 +304,31 @@ function RichText({ text, streaming = false, className, style }: {
 /** Hover dwell before a card selects its map pin — cancelled if the cursor leaves first. */
 const HOVER_SELECT_DELAY = 550;
 
+/* ─────────────────────────────────────────────────────────────────
+   Yumeji pin glyph — map-pin + sparkle, brand glyph (placeholder until
+   the final asset lands). Outline over surface, filled over ink.
+   Mirrors public/yumeji-pin{,-outline}.svg.
+───────────────────────────────────────────────────────────────── */
+
+function YumePinIcon({ size = 14, filled = false }: { size?: number; filled?: boolean }) {
+  return (
+    <svg
+      viewBox="-1 -1 26 34"
+      width={size * 0.78}
+      height={size}
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth={filled ? 0 : 1.8}
+      strokeLinejoin="round"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 8.5 12 20 12 20s12-11.5 12-20C24 5.373 18.627 0 12 0Z" />
+      <path d="M12 4.5c.2 0 .38.12.46.31l1.18 2.93a4 4 0 0 0 2.62 2.62l2.93 1.18a.5.5 0 0 1 0 .92l-2.93 1.18a4 4 0 0 0-2.62 2.62l-1.18 2.93a.5.5 0 0 1-.92 0l-1.18-2.93a4 4 0 0 0-2.62-2.62L4.81 12.46a.5.5 0 0 1 0-.92l2.93-1.18a4 4 0 0 0 2.62-2.62l1.18-2.93A.5.5 0 0 1 12 4.5Z" />
+    </svg>
+  );
+}
+
 function SuggestionCard({
   suggestion,
   selected,
@@ -297,6 +338,7 @@ function SuggestionCard({
   sizeMode,
   tripContext,
   activeEditMatch,
+  onGenerateYume,
 }: {
   suggestion: GoSuggestion;
   selected: boolean;
@@ -308,7 +350,9 @@ function SuggestionCard({
   sizeMode: SizeMode;
   tripContext?: string;
   activeEditMatch?: boolean;
+  onGenerateYume: GenerateYume;
 }) {
+  const t = useTranslations("GoChat");
   const { emit, listens } = useGoEmit();
   const [open, setOpen] = useState(suggestion.autoExpand ?? false);
 
@@ -711,8 +755,18 @@ function SuggestionCard({
                 <IconMapPin size={12} /> Mappa
               </Button>
             )}
-            <Button variant="outline" size="sm" iconOnly tone="neutral" aria-label="Wishlist">
-              <IconBookmark size={12} />
+            <Button
+              variant="outline"
+              size="sm"
+              iconOnly={false}
+              tone="neutral"
+              aria-label={t("createYume")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onGenerateYume({ suggestion, photos });
+              }}
+            >
+              <YumePinIcon size={14} /> {t("createYume")}
             </Button>
             {listens("activity.add") && (
               <Button
@@ -779,12 +833,14 @@ function SuggestionsBlock({
   tripContext,
   onSelectionChange,
   activeEditMatch,
+  onGenerateYume,
 }: {
   suggestions: GoSuggestion[];
   sizeMode: SizeMode;
   tripContext?: string;
   onSelectionChange?: (s: GoSuggestion | null) => void;
   activeEditMatch?: boolean;
+  onGenerateYume: GenerateYume;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Single map-selected card (drives the highlighted pin). Set by hover-dwell or
@@ -831,8 +887,132 @@ function SuggestionsBlock({
           sizeMode={sizeMode}
           tripContext={tripContext}
           activeEditMatch={activeEditMatch}
+          onGenerateYume={onGenerateYume}
         />
       ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Yume card — dedicated in-chat graphic for an AI-written place.
+   First-pass styling; to be refined with Design.
+───────────────────────────────────────────────────────────────── */
+
+function YumeCardBlock({ state }: { state: YumeCardState }) {
+  const [saved, setSaved] = useState(false);
+  const hero = state.photos[0];
+
+  return (
+    <div style={{ margin: "0 0 14px" }}>
+      {/* Eyebrow */}
+      <div className="flex items-center gap-1.5 mb-1.5 px-[2px]" style={{ color: "var(--color-orange)" }}>
+        <YumePinIcon size={13} />
+        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Yumeji · 夢
+        </span>
+      </div>
+
+      <div
+        className="overflow-hidden"
+        style={{
+          border: "0.5px solid var(--color-border-strong)",
+          borderRadius: 14,
+          background: "var(--color-surface)",
+          boxShadow: "0 6px 22px rgba(13,44,61,0.10)",
+        }}
+      >
+        {/* Hero image */}
+        {hero && (
+          <div style={{ position: "relative", height: 150, background: "rgba(13,44,61,0.06)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={hero} alt={state.sourceTitle} className="w-full h-full object-cover" />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(to top, rgba(13,44,61,0.55) 0%, rgba(13,44,61,0) 55%)",
+              }}
+            />
+            <div style={{ position: "absolute", left: 12, right: 12, bottom: 10, color: "#fff" }}>
+              <div className="flex items-center gap-1 mb-0.5" style={{ fontSize: 11, opacity: 0.85 }}>
+                <IconMapPin size={11} /> {state.sourceLocation}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ padding: "12px 14px 14px" }}>
+          {state.status === "loading" && (
+            <div className="flex items-center gap-2" style={{ fontSize: 13, color: "var(--color-ink-soft)", padding: "4px 0" }}>
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-orange border-t-transparent animate-spin" />
+              Go sta scrivendo il tuo Yume…
+            </div>
+          )}
+
+          {state.status === "error" && (
+            <div style={{ fontSize: 13, color: "var(--color-ink-soft)", padding: "4px 0" }}>
+              Non sono riuscito a creare lo Yume. Riprova tra poco.
+            </div>
+          )}
+
+          {state.status === "done" && state.data && (
+            <>
+              {/* Title + tagline */}
+              <div className="font-medium text-ink" style={{ fontSize: 16, lineHeight: 1.25 }}>
+                {state.data.title}
+              </div>
+              {state.data.tagline && (
+                <div className="font-serif italic" style={{ fontSize: 13, color: "var(--color-orange-deep, #a84818)", marginTop: 3 }}>
+                  {state.data.tagline}
+                </div>
+              )}
+
+              {/* Sections */}
+              {state.data.sections.map((sec, i) => (
+                <div key={i} style={{ marginTop: 11 }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-ink-soft)", marginBottom: 3 }}>
+                    {sec.heading}
+                  </div>
+                  <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--color-ink)", margin: 0 }}>
+                    {sec.body}
+                  </p>
+                </div>
+              ))}
+
+              {/* Highlights */}
+              {state.data.highlights.length > 0 && (
+                <ul style={{ margin: "11px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+                  {state.data.highlights.map((h, i) => (
+                    <li key={i} className="flex gap-2" style={{ fontSize: 13, lineHeight: 1.45, color: "var(--color-ink)" }}>
+                      <span style={{ color: "var(--color-orange)", flexShrink: 0, marginTop: 2 }}>
+                        <YumePinIcon size={11} filled />
+                      </span>
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Add to Yumeji — stub: inline confirmation, no persistence yet */}
+              <div style={{ marginTop: 13, paddingTop: 12, borderTop: "1px dashed rgba(13,44,61,0.08)" }}>
+                <Button
+                  variant={saved ? "outline" : "solid"}
+                  size="sm"
+                  iconOnly={false}
+                  tone="neutral"
+                  className="w-full"
+                  disabled={saved}
+                  onClick={() => setSaved(true)}
+                >
+                  {saved ? <IconCheck size={13} /> : <YumePinIcon size={13} filled />}
+                  {saved ? "Salvato nei tuoi yume" : "Add to Yumeji"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -937,9 +1117,10 @@ type FloatPanelProps = {
   activeEditMatch?: boolean;
   focus?: GoPlace | null;
   onClearFocus?: () => void;
+  onGenerateYume: GenerateYume;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, position, wideWidth, activeEditMatch, focus, onClearFocus }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, position, wideWidth, activeEditMatch, focus, onClearFocus, onGenerateYume }: FloatPanelProps) {
   const t = useTranslations("GoChat");
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(() => !window.matchMedia("(min-width: 640px)").matches);
@@ -1063,6 +1244,16 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
             );
           }
 
+          /* Assistant Yume card */
+          if (msg.yumeCard) {
+            return (
+              <div key={msg.id} style={{ position: "relative", paddingLeft: 38 }}>
+                <Av size={24} style={{ position: "absolute", left: 0, top: 0 }} />
+                <YumeCardBlock state={msg.yumeCard} />
+              </div>
+            );
+          }
+
           /* Assistant streaming */
           if (msg.streaming) {
             return (
@@ -1097,6 +1288,7 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
                     tripContext={tripContext}
                     onSelectionChange={onSelectionChange}
                     activeEditMatch={activeEditMatch}
+                    onGenerateYume={onGenerateYume}
                   />
                 )}
                 {msg.content && (
@@ -1241,7 +1433,7 @@ export type GoChatFloatProps = {
   open?: boolean;
   /** Horizontal anchor (always bottom). Default "right". */
   position?: GoChatPosition;
-  /** Width of the panel in "wide" size mode. Default 600. */
+  /** Width of the panel in "wide" size mode. Default 650. */
   wideWidth?: number;
   onClose?: () => void;
   /** Messaggio da inviare appena il panel è pronto (sopprime il greeting). */
@@ -1260,7 +1452,7 @@ export type GoChatFloatProps = {
   listeningTypes?: Set<GoEventType>;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position = "right", wideWidth = 600, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, focus, onClearFocus, onEvent, listeningTypes }: GoChatFloatProps) {
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position = "right", wideWidth = 650, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, focus, onClearFocus, onEvent, listeningTypes }: GoChatFloatProps) {
   const [open, setOpen] = useState(openProp ?? false);
   // Sync the controlled `open` prop into local state during render (no effect),
   // so internal toggles and parent control stay coherent without cascading renders.
@@ -1433,6 +1625,44 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
 
   const handleClose = useCallback(() => { setOpen(false); onClose?.(); }, [onClose]);
 
+  // Yume: spawn a dedicated AI-written card into the thread for a place.
+  const handleGenerateYume = useCallback<GenerateYume>(({ suggestion, photos }) => {
+    const id = crypto.randomUUID();
+    setMessages((prev) => [...prev, {
+      id,
+      role: "assistant",
+      content: "",
+      yumeCard: {
+        status: "loading",
+        sourceTitle: suggestion.title,
+        sourceLocation: suggestion.location,
+        photos,
+      },
+    }]);
+    void (async () => {
+      try {
+        const data = await api.go.yumeCard({
+          title: suggestion.title,
+          category: suggestion.category,
+          location: suggestion.location,
+          why: suggestion.why,
+          tripContext,
+        });
+        setMessages((prev) => prev.map((m) =>
+          m.id === id && m.yumeCard
+            ? { ...m, yumeCard: { ...m.yumeCard, status: "done", data } }
+            : m,
+        ));
+      } catch {
+        setMessages((prev) => prev.map((m) =>
+          m.id === id && m.yumeCard
+            ? { ...m, yumeCard: { ...m.yumeCard, status: "error" } }
+            : m,
+        ));
+      }
+    })();
+  }, [tripContext]);
+
   // Effect 1: acquisisce il pendingMessage dal parent e sopprime il greeting
   useEffect(() => {
     if (!pendingMessage) return;
@@ -1512,6 +1742,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
             activeEditMatch={activeEditMatch}
             focus={focus}
             onClearFocus={onClearFocus}
+            onGenerateYume={handleGenerateYume}
           />
         )}
       </div>

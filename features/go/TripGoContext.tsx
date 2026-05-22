@@ -93,7 +93,7 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
   const [tripContext, setTripContextState]       = useState<string | undefined>(undefined);
   const [pendingMessage, setPendingMessage]      = useState<string | undefined>(undefined);
   const [goPosition, setGoPositionState]         = useState<GoChatPosition>("right");
-  const [goWideWidth, setGoWideWidthState]       = useState(600);
+  const [goWideWidth, setGoWideWidthState]       = useState(650);
 
   /** ID dell'attività per cui è stata aperta la conversazione corrente */
   const [goOpenedForActivityId, setGoOpenedForActivityId] = useState<string | null>(null);

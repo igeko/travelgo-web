@@ -28,7 +28,7 @@ export function ExploreGoLauncher({
   // On the map, the wide panel grows less in width (400px); reset on leave.
   useEffect(() => {
     setGoWideWidth(400);
-    return () => setGoWideWidth(600);
+    return () => setGoWideWidth(650);
   }, [setGoWideWidth]);
 
   // Keep Go's trip context up to date.
