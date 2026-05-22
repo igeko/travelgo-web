@@ -170,6 +170,40 @@ export function SandboxShell({ children }: { children: ReactNode }) {
                 title="Close navigation"
               />
             </div>
+
+            {/* Bidirectional link to the design scratchpad */}
+            <Link
+              href="/design"
+              className="mx-3 mt-3 flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 text-ink-faint"
+              >
+                <path d="M3 21v-4a4 4 0 1 1 4 4h-4" />
+                <path d="M21 3a16 16 0 0 0 -12.8 10.2" />
+                <path d="M21 3a16 16 0 0 1 -10.2 12.8" />
+                <path d="M10.6 9a9 9 0 0 1 4.4 4.4" />
+              </svg>
+              <span className="flex-1">Design scratchpad</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 text-ink-faint"
+              >
+                <path d="M9 6l6 6l-6 6" />
+              </svg>
+            </Link>
+
             <nav className="px-3 py-4 flex flex-col gap-5 overflow-y-auto">
               {Object.entries(groups).map(([group, entries], i) => {
                 const isHighlighted = group === "Features" || group === "Admin";

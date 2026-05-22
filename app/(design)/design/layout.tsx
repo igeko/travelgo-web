@@ -1,5 +1,83 @@
+import fs from "fs/promises";
+import path from "path";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { DesignShell, type DesignEntry } from "./_components/DesignShell";
+import {
+  designCategories,
+  designOrderIndex,
+  DESIGN_FALLBACK_GROUP,
+  DESIGN_GROUP_ORDER,
+} from "./categories";
+
+const DESIGN_DIR_REL = "app/(design)/design";
+
+function prettify(slug: string): string {
+  return slug
+    .split("/")
+    .pop()!
+    .replace(/-/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+/** Walk the design dir and collect every folder that has a page file. */
+async function collectSlugs(absDir: string, relPrefix = ""): Promise<string[]> {
+  let dirents;
+  try {
+    dirents = await fs.readdir(absDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const out: string[] = [];
+  const subdirs = dirents.filter(
+    (e) =>
+      e.isDirectory() &&
+      !e.name.startsWith("_") &&
+      !e.name.startsWith(".") &&
+      !e.name.startsWith("("),
+  );
+
+  for (const dir of subdirs.sort((a, b) => a.name.localeCompare(b.name))) {
+    const slug = relPrefix ? `${relPrefix}/${dir.name}` : dir.name;
+    const childAbs = path.join(absDir, dir.name);
+    const childEntries = await fs.readdir(childAbs);
+    if (childEntries.some((f) => /^page\.(tsx|jsx|ts|js)$/.test(f))) {
+      out.push(slug);
+    }
+    out.push(...(await collectSlugs(childAbs, slug)));
+  }
+
+  return out;
+}
+
+/** Attach category metadata to discovered slugs and order them group-first. */
+function categorize(slugs: string[]): DesignEntry[] {
+  const groupRank = (group: string) => {
+    const i = DESIGN_GROUP_ORDER.indexOf(group);
+    return i === -1 ? DESIGN_GROUP_ORDER.length : i;
+  };
+
+  return slugs
+    .map((slug) => {
+      const meta = designCategories[slug];
+      return {
+        slug,
+        title: meta?.title ?? prettify(slug),
+        group: meta?.group ?? DESIGN_FALLBACK_GROUP,
+        subgroup: meta?.subgroup,
+      } satisfies DesignEntry;
+    })
+    .sort((a, b) => {
+      const g = groupRank(a.group) - groupRank(b.group);
+      if (g !== 0) return g;
+      const ga = a.group.localeCompare(b.group);
+      if (ga !== 0) return ga;
+      const ia = designOrderIndex[a.slug] ?? Number.MAX_SAFE_INTEGER;
+      const ib = designOrderIndex[b.slug] ?? Number.MAX_SAFE_INTEGER;
+      if (ia !== ib) return ia - ib;
+      return a.slug.localeCompare(b.slug);
+    });
+}
 
 /**
  * Design scratchpad — pagine Next/React per iterare sui mockup
@@ -13,7 +91,7 @@ import Link from "next/link";
  *
  * Gated come il sandbox: 404 in produzione salvo `NEXT_PUBLIC_DEV_SANDBOX=1`.
  */
-export default function DesignLayout({
+export default async function DesignLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -24,6 +102,9 @@ export default function DesignLayout({
   ) {
     notFound();
   }
+
+  const slugs = await collectSlugs(path.join(process.cwd(), DESIGN_DIR_REL));
+  const entries = categorize(slugs);
 
   return (
     <>
@@ -40,19 +121,8 @@ export default function DesignLayout({
         .design-pages, .design-pages * { font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif; font-feature-settings: "ss01", "cv11"; }
         .design-pages .ti { line-height: 1; vertical-align: -1px; }
       `}</style>
-      <div className="design-pages min-h-screen bg-bg flex flex-col">
-        <div className="sticky top-0 z-50 bg-bg/90 backdrop-blur-sm border-b border-border px-4 py-2 text-[11px] text-ink-faint flex items-center gap-2">
-          <Link
-            href="/design"
-            className="hover:text-ink inline-flex items-center gap-1.5 transition-colors"
-          >
-            <i className="ti ti-arrow-left text-[12px]" />
-            <span className="font-medium tracking-[0.12em] uppercase">Design</span>
-          </Link>
-          <span className="text-ink-faint">·</span>
-          <span>scratchpad · non production · iteration-friendly</span>
-        </div>
-        <div className="flex-1">{children}</div>
+      <div className="design-pages">
+        <DesignShell entries={entries}>{children}</DesignShell>
       </div>
     </>
   );
