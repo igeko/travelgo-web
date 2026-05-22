@@ -56,7 +56,7 @@ export function PlaceHoverCard({
   const showImage = photoUrl && !imgError;
 
   return (
-    <div className="place-card-in w-[270px] overflow-hidden rounded-md border border-border bg-surface shadow-float">
+    <div className="place-card-in w-[270px] overflow-hidden rounded-md border border-border-strong bg-surface shadow-float">
       {/* Photo + ink band */}
       <div className="relative">
         {/* Gradient base — always present; the photo fades in over it, and it
