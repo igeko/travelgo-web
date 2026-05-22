@@ -15,6 +15,12 @@ export type SandboxEntry = {
 export const sandboxRegistry: SandboxEntry[] = [
   // ── Atoms ────────────────────────────────────────────────────────
   {
+    slug: "icons",
+    title: "Icons",
+    group: "Atoms",
+    description: "Gallery completa del set Tabler ri-esportato dal barrel @/components/ui/icons · ricerca + click-to-copy",
+  },
+  {
     slug: "button",
     title: "Button",
     group: "Atoms",
@@ -111,6 +117,14 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Numbered orange markers + Routes API polyline · accepts PlaceResult[]",
   },
   // ── Features ─────────────────────────────────────────────────────
+  // Explore subgroup
+  {
+    slug: "explore-toolbar",
+    title: "ExploreToolbar",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Rail verticale macro-categorie + chip row sotto-categorie · selezione singola toggle-off, pin nel rail, settings placeholder · eventi via callback",
+  },
   // App subgroup
   {
     slug: "app-header",

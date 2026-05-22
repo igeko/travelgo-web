@@ -1,4 +1,24 @@
 {
+  "ExploreCategories": {
+    "dormi": "Dormi",
+    "hotel": "Hotel",
+    "bnb": "B&B",
+    "ostello": "Ostelli",
+    "appartamenti": "Appartamenti",
+    "camping": "Campeggi",
+    "mangia": "Mangia",
+    "ristoranti": "Ristoranti",
+    "caffe": "Caffè",
+    "bar": "Bar & pub",
+    "street": "Street food",
+    "mercati": "Mercati",
+    "esplora": "Esplora",
+    "musei": "Musei & arte",
+    "monumenti": "Monumenti & storia",
+    "culto": "Luoghi di culto",
+    "parchi": "Parchi & natura",
+    "viste": "Viste panoramiche"
+  },
   "AppHeader": {
     "nav": {
       "myTrips": "I miei viaggi",

@@ -1,4 +1,24 @@
 {
+  "ExploreCategories": {
+    "dormi": "Sleep",
+    "hotel": "Hotels",
+    "bnb": "B&B",
+    "ostello": "Hostels",
+    "appartamenti": "Rentals",
+    "camping": "Camping",
+    "mangia": "Eat",
+    "ristoranti": "Restaurants",
+    "caffe": "Cafés",
+    "bar": "Bars & pubs",
+    "street": "Street food",
+    "mercati": "Markets",
+    "esplora": "Explore",
+    "musei": "Museums & art",
+    "monumenti": "Landmarks",
+    "culto": "Places of worship",
+    "parchi": "Parks & nature",
+    "viste": "Viewpoints"
+  },
   "AppHeader": {
     "nav": {
       "myTrips": "My trips",

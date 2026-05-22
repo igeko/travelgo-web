@@ -6,17 +6,24 @@
  * Add new icons as needed: find the name at https://tabler.io/icons
  */
 export {
+  IconAdjustmentsHorizontal,
   IconAlertCircle,
   IconAlertTriangle,
   IconArrowRight,
   IconArrowRightCircle,
   IconArrowUp,
   IconArchive,
+  IconBeer,
   IconBike,
+  IconBuildingChurch,
+  IconBuildingCommunity,
+  IconBuildingCottage,
+  IconBurger,
   IconBus,
   IconCar,
   IconCircleMinus,
   IconCoffee,
+  IconCompass,
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconBed,
@@ -42,6 +49,7 @@ export {
   IconFileAlert,
   IconGripVertical,
   IconHeart,
+  IconHome,
   IconHourglass,
   IconKey,
   IconLink,
@@ -56,6 +64,8 @@ export {
   IconPencil,
   IconPhotoDown,
   IconPhotoEdit,
+  IconPin,
+  IconPinnedFilled,
   IconPlayerPlay,
   IconPlayerStop,
   IconPlus,
@@ -66,9 +76,11 @@ export {
   IconSoup,
   IconSparkles,
   IconStar,
+  IconTent,
   IconTestPipe,
   IconThumbUp,
   IconTools,
+  IconToolsKitchen2,
   IconTrash,
   IconTrain,
   IconTree,
@@ -97,4 +109,4 @@ export {
   IconX,
 } from "@tabler/icons-react";
 
-export type { IconProps } from "@tabler/icons-react";
+export type { Icon, IconProps } from "@tabler/icons-react";

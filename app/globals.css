@@ -111,6 +111,13 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Scrollbar nascosta ma scrollabile — classe .scrollbar-none
+   Per chip-row / caroselli swipeable (mobile) senza barra visibile.
+───────────────────────────────────────────────────────────────── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────
    Scrollbar orizzontale stilizzata — classe .scrollbar-x
 ───────────────────────────────────────────────────────────────── */
 .scrollbar-x {
