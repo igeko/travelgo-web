@@ -12,6 +12,7 @@ import type { BlockType, BridgeData } from "@/lib/dal/domain";
 import { SLOT_COLORS, type SlotKey } from "@/features/activity/types";
 import type { PlaceResult } from "./AddressField";
 import { MAP_STYLES, type MapControls } from "./Map";
+import { INK, ORANGE, makePinIcon, makeAdHocPin, iconGlyph, type StopRole } from "./mapPins";
 
 /* ─────────────────────────────────────────────────────────────────
    RouteMap · Google Maps with numbered orange markers and a
@@ -140,9 +141,6 @@ function decodePolyline(encoded: string): google.maps.LatLngLiteral[] {
    wrapping <g>) so the marker is the icon itself — no circle, no number —
    with a white halo for legibility on the map. Memoised per cache key.
 ───────────────────────────────────────────────────────────────── */
-const INK = "#0d2c3d"; // brand blue — markers + route line
-const ORANGE = "#f47b3a"; // brand orange — ad-hoc pin (Go "show on map")
-
 const TYPE_CMP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
   place:  IconMapPin,
   meal:   IconSoup,
@@ -151,108 +149,16 @@ const TYPE_CMP: Record<string, React.ComponentType<{ size?: number; stroke?: num
   move:   IconTrain,
 };
 
-const glyphCache = new Map<string, string>();
-
-type GlyphCmp = React.ComponentType<{ size?: number; stroke?: number }>;
-type SvgChild = { type?: unknown; props?: Record<string, unknown> };
-
-/** camelCase React prop → kebab-case SVG attribute (strokeWidth → stroke-width). */
-function attrName(key: string): string {
-  return key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
-}
-
-/** Serialize one SVG child element (path/circle/line/…) to a self-closing tag. */
-function serializeChild(child: SvgChild): string {
-  if (!child || typeof child.type !== "string") return "";
-  const props = child.props ?? {};
-  const attrs = Object.entries(props)
-    .filter(([k, v]) => k !== "children" && k !== "className" && v != null && typeof v !== "object" && typeof v !== "function")
-    .map(([k, v]) => `${attrName(k)}="${String(v)}"`)
-    .join(" ");
-  return `<${child.type}${attrs ? ` ${attrs}` : ""} />`;
-}
-
-/**
- * Inner geometry of a Tabler icon (uncoloured — stroke inherited from the
- * marker's wrapping <g>). We invoke the component to get its React element
- * tree and serialize the child shapes by hand, so neither react-dom/server
- * nor the client reconciler is pulled in. Cached per icon.
- */
-function glyphInner(cacheKey: string, Cmp: GlyphCmp): string {
-  const cached = glyphCache.get(cacheKey);
-  if (cached !== undefined) return cached;
-  // Tabler icons are forwardRef components (`.render`); fall back to calling
-  // a plain function component if that ever changes.
-  const ref = (Cmp as { render?: (p: object, r: null) => unknown }).render;
-  const element = typeof ref === "function"
-    ? ref({ size: 24, stroke: 2 }, null)
-    : (Cmp as (p: object) => unknown)({ size: 24, stroke: 2 });
-  const kids = (element as SvgChild | null)?.props?.children;
-  const list: SvgChild[] = Array.isArray(kids) ? kids.filter(Boolean) : kids ? [kids as SvgChild] : [];
-  const inner = list.map(serializeChild).join("");
-  glyphCache.set(cacheKey, inner);
-  return inner;
-}
-
 /** Resolve a stop to its icon paths, falling back to a generic map pin. */
 function resolveGlyph(stop: RouteStop): string {
   if (stop.iconKey) {
     const Cmp = getStopIcon(stop.iconKey);
-    if (Cmp) return glyphInner(`stop:${stop.iconKey}`, Cmp);
+    if (Cmp) return iconGlyph(`stop:${stop.iconKey}`, Cmp);
   }
   if (stop.type && TYPE_CMP[stop.type]) {
-    return glyphInner(`type:${stop.type}`, TYPE_CMP[stop.type]);
+    return iconGlyph(`type:${stop.type}`, TYPE_CMP[stop.type]);
   }
-  return glyphInner("type:place", IconMapPin);
-}
-
-type StopRole = "start" | "mid" | "end";
-
-/** Origin flag inner paths (inline; not in the icon barrel). */
-const FLAG_INNER = `<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 5v16"/><path d="M5 5c3 -1.5 6 -1.5 9 0s6 1.5 9 0v9c-3 1.5 -6 1.5 -9 0s-6 -1.5 -9 0"/>`;
-
-/**
- * Build a teardrop pin marker (40×40): a coloured rounded body with a pointer
- * tail, white outline for map contrast, and the stop's icon knocked out in
- * white inside the head. The last stop uses a flag. The body colour defaults
- * to brand ink but is overridden per time-of-day slot. Anchored at the tip.
- */
-function makePinIcon(role: StopRole, glyph: string, color: string = INK): google.maps.Icon {
-  const inner = role === "end" ? FLAG_INNER : glyph;
-  // Rounded teardrop body: head centred at (20,16), tip at the bottom.
-  const body =
-    `<path d="M20 4c-6.6 0-12 5.2-12 11.7 0 8.1 10.4 18.4 11.3 19.3a1 1 0 0 0 1.4 0C21.6 34.1 32 23.8 32 15.7 32 9.2 26.6 4 20 4z" ` +
-    `fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
-  // Icon (24-box) scaled to ~18px and centred in the head.
-  const icon =
-    `<g transform="translate(11 7) scale(0.75)" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">${body}${icon}</svg>`;
-
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 38),
-  };
-}
-
-/**
- * Ad-hoc marker (40×40): an orange teardrop pin with a white dot. Visually
- * distinct from the ink icon-only stop markers, so a Go-suggested place reads
- * as "not part of the route". Anchored at the pin tip.
- */
-function makeAdHocPin(): google.maps.Icon {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">` +
-    `<path d="M20 4c-6.6 0-12 5.2-12 11.7 0 8.1 10.4 18.4 11.3 19.3a1 1 0 0 0 1.4 0C21.6 34.1 32 23.8 32 15.7 32 9.2 26.6 4 20 4z" ` +
-    `fill="${ORANGE}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>` +
-    `<circle cx="20" cy="16" r="4.4" fill="#fff"/>` +
-    `</svg>`;
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 38),
-  };
+  return iconGlyph("type:place", IconMapPin);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -433,12 +339,14 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       mapTypeId,
       styles: MAP_STYLES,
       disableDefaultUI: true,
-      zoomControl:        controls.zoomControl        ?? true,
+      // Native zoom control is replaced by our token-styled MapZoomControls.
+      zoomControl:        false,
       fullscreenControl:  controls.fullscreenControl  ?? false,
       mapTypeControl:     controls.mapTypeControl     ?? false,
       streetViewControl:  controls.streetViewControl  ?? false,
       scaleControl:       controls.scaleControl       ?? false,
-      gestureHandling: "cooperative",
+      // Greedy: scroll/drag zoom directly — no "use Ctrl + scroll" overlay.
+      gestureHandling: "greedy",
     });
 
     // Replay an ad-hoc pin queued before the SDK was ready. The markers effect
