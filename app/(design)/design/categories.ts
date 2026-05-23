@@ -24,6 +24,7 @@ export const DESIGN_HIGHLIGHT_GROUPS = new Set(["Explore"]);
 export const designCategories: Record<string, DesignMeta> = {
   // ── Trip ─────────────────────────────────────────────────────────
   "trip-flow": { group: "Trip", title: "Trip flow" },
+  "trip-home": { group: "Trip", title: "Trip home" },
 
   // ── Day ──────────────────────────────────────────────────────────
   "day-layout": { group: "Day", title: "Day layout" },
