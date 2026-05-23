@@ -5,7 +5,7 @@ import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import { YumejiCatalog } from "@/features/yumeji/YumejiCatalog";
 import { YUMEJI_MANIFEST } from "@/lib/yumeji/manifest";
 import { cn } from "@/lib/cn";
-import { PAGE_PX } from "@/lib/layout";
+import { PAGE_MAX, PAGE_PX } from "@/lib/layout";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export default async function YumejiPage() {
     <>
       <AppHeaderServer activeNav="yumeji" />
 
-      <main className={cn("flex-1 max-w-[1280px] w-full mx-auto py-8", PAGE_PX)}>
+      <main className={cn("flex-1 w-full mx-auto py-8", PAGE_MAX, PAGE_PX)}>
         <div className="text-orange text-tiny font-medium tracking-eyebrow-wide uppercase mb-1">
           Yumeji · 夢路
         </div>

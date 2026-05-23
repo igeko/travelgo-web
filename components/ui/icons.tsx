@@ -57,6 +57,7 @@ export {
   IconKey,
   IconLanguage,
   IconLink,
+  IconMail,
   IconLock,
   IconList,
   IconLoader2,

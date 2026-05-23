@@ -7,6 +7,7 @@ import { useShortcuts } from "@/lib/hooks/useShortcut";
 import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
+import { DayEditForm } from "@/features/day/DayEditForm";
 import { IconArrowRightCircle, IconChevronRight, IconX } from "@/components/ui/icons";
 import { DayIncipit } from "@/features/day/DayIncipit";
 import { Itinerary } from "@/features/activity/Itinerary";
@@ -15,7 +16,7 @@ import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { useYumejiDrawer, YumejiPinnedColumn } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
-import { PAGE_GAP, PAGE_PX, PAGE_PY } from "@/lib/layout";
+import { PAGE_GAP, PAGE_MAX, PAGE_PX, PAGE_PY } from "@/lib/layout";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
 import { api } from "@/lib/client";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
@@ -68,11 +69,13 @@ type Props = {
   initialActivities: Activity[];
   initialDayId: string;
   editMode?: boolean;
+  fullEditMode?: boolean;
+  onExitFullEdit?: () => void;
   debugMode?: boolean;
   reloadTick?: number;
 };
 
-export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false, debugMode = false, reloadTick = 0 }: Props) {
+export function TripDayView({ trip, days: initialDays, initialActivities, initialDayId, editMode = false, fullEditMode = false, onExitFullEdit, debugMode = false, reloadTick = 0 }: Props) {
   const t = useTranslations("TripDayView");
   const locale = useLocale();
   const router = useRouter();
@@ -225,7 +228,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     /* ── Replica esatta di .daybyday dal design · 3ª colonna quando Yume è pinned ── */
     <div
       className={cn(
-        "grid max-w-[1280px] mx-auto [grid-template-columns:1fr]",
+        "grid mx-auto [grid-template-columns:1fr]",
+        PAGE_MAX,
         PAGE_GAP,
         PAGE_PX,
         PAGE_PY,
@@ -278,6 +282,78 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
       {/* ══ MAIN — .day-main ════════════════════════════════════ */}
       <section className="min-w-0">
+
+        {fullEditMode ? (
+          /* ── Full editor — sostituisce il dettaglio del giorno ── */
+          <DayEditForm
+            key={selectedDayId}
+            dayNumber={selectedDay.day_number}
+            dateLabel={selectedDay.date ? `${heroDow} ${heroDate}` : undefined}
+            hero={{
+              title: selectedDay.label ?? undefined,
+              subtitle: selectedDay.city ?? undefined,
+              summary: selectedDay.summary ?? undefined,
+              practicalNote: selectedDay.notes ?? undefined,
+              type: selectedDay.day_type
+                ? (selectedDay.day_type.charAt(0).toUpperCase() + selectedDay.day_type.slice(1)) as HeroBannerType
+                : undefined,
+              imageUrl: selectedDay.image_url ?? undefined,
+            }}
+            lodging={lodging ?? null}
+            imageUpload={{
+              bucket: "trip-media",
+              path: () => `trips/${trip.id}/days/${selectedDayId}/banner/hero.webp`,
+            }}
+            onCancel={() => onExitFullEdit?.()}
+            onSave={async ({ hero, lodging: lodgingData }) => {
+              const day_type = hero.type ? hero.type.toLowerCase() : null;
+              const image_url = hero.imageUrl ? hero.imageUrl.split("?")[0] || null : null;
+              const lodgingPatch = lodgingData
+                ? {
+                    accommodation_type: lodgingData.type?.toLowerCase() ?? null,
+                    accommodation_name: lodgingData.name || null,
+                    accommodation_address: lodgingData.detail ?? null,
+                    accommodation_url: lodgingData.href ?? null,
+                    accommodation_place_id: lodgingData.place?.placeId ?? null,
+                    accommodation_lat: lodgingData.place?.lat ?? null,
+                    accommodation_lng: lodgingData.place?.lng ?? null,
+                    accommodation_cost_amount: lodgingData.budgetAmount ?? null,
+                    accommodation_cost_currency: lodgingData.budgetCurrency ?? null,
+                  }
+                : {
+                    accommodation_type: null, accommodation_name: null, accommodation_address: null,
+                    accommodation_url: null, accommodation_place_id: null, accommodation_lat: null,
+                    accommodation_lng: null, accommodation_cost_amount: null, accommodation_cost_currency: null,
+                  };
+              patchDay(selectedDayId, {
+                city: hero.subtitle || null,
+                label: hero.title || null,
+                day_type,
+                notes: hero.practicalNote || null,
+                summary: hero.summary || null,
+                image_url,
+                accommodation_type: lodgingPatch.accommodation_type,
+                accommodation_name: lodgingPatch.accommodation_name,
+                accommodation_address: lodgingPatch.accommodation_address,
+                accommodation_url: lodgingPatch.accommodation_url,
+                accommodation_place_id: lodgingPatch.accommodation_place_id,
+                accommodation_lat: lodgingPatch.accommodation_lat,
+                accommodation_lng: lodgingPatch.accommodation_lng,
+              });
+              await api.days.update(selectedDayId, {
+                city: hero.subtitle,
+                label: hero.title,
+                day_type,
+                notes: hero.practicalNote,
+                summary: hero.summary,
+                image_url,
+                ...lodgingPatch,
+              }).catch(() => {});
+            }}
+            onDelete={undefined}
+          />
+        ) : (
+        <>
 
         {/* Shortcut hint bar — visible in edit mode, desktop only */}
         {editMode && <div className="hidden md:block"><ShortcutBar /></div>}
@@ -595,6 +671,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             </div>
             <IconChevronRight className="w-5 h-5 text-ink-faint shrink-0" />
           </button>
+        )}
+
+        </>
         )}
 
       </section>

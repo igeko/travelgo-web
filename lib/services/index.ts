@@ -15,18 +15,21 @@
 
 import { serverDal, serviceDal, type Dal } from "@/lib/dal";
 import { TripService } from "./TripService";
+import { MembershipService } from "./MembershipService";
 import { Scheduler } from "./Scheduler";
 import { FeedbackService } from "./FeedbackService";
 import { UserService } from "./UserService";
 import { YumeService } from "./YumeService";
 
-export { TripService, Scheduler, FeedbackService, UserService, YumeService };
-export type { CreateTripRequest } from "./TripService";
+export { TripService, MembershipService, Scheduler, FeedbackService, UserService, YumeService };
+export type { CreateTripRequest, UpdateTripPatch } from "./TripService";
 export type { Me } from "./UserService";
 export type { Yume } from "./YumeService";
 
 export type Services = {
   trips: TripService;
+  /** Trip collaboration: members + pending invites. */
+  members: MembershipService;
   /** Scheduling onto days (scheduled_activities). */
   scheduler: Scheduler;
   feedback: FeedbackService;
@@ -39,6 +42,7 @@ function build(dal: Dal): Services {
   const yumes = new YumeService(dal);
   return {
     trips: new TripService(dal),
+    members: new MembershipService(dal),
     scheduler: new Scheduler(dal, yumes),
     feedback: new FeedbackService(dal),
     users: new UserService(dal),

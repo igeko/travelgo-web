@@ -2,11 +2,8 @@ import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { serverDal } from "@/lib/dal";
 import { serverServices } from "@/lib/services";
-import { AppHeaderServer } from "@/features/app/AppHeaderServer";
-import { BoardingPassLive } from "@/features/trip/BoardingPassLive";
+import { TripHomeView } from "@/features/trip/TripHomeView";
 import { normalizeDestination, type TripHomeMeta } from "@/lib/trip-home/meta";
-import { cn } from "@/lib/cn";
-import { PAGE_PX } from "@/lib/layout";
 
 export default async function TripOverviewPage({
   params,
@@ -34,24 +31,12 @@ export default async function TripOverviewPage({
       : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <AppHeaderServer
-        activeNav="trips"
-        tripName={trip.title}
-        tripProgress={days.length > 0 ? `${days.length} giorni` : undefined}
-        activeTab="trip"
-        tripId={id}
-      />
-      <main className={cn("flex-1 max-w-[1100px] mx-auto w-full py-6 flex flex-col gap-[18px]", PAGE_PX)}>
-        <BoardingPassLive
-          tripId={id}
-          trip={trip}
-          recordLocator={`TG-${id.slice(0, 6).toUpperCase()}`}
-          passengerName={passengerName}
-          destinationTitle={trip.title}
-          initialBoarding={initialBoarding}
-        />
-      </main>
-    </div>
+    <TripHomeView
+      trip={trip}
+      daysCount={days.length}
+      recordLocator={`TG-${id.slice(0, 6).toUpperCase()}`}
+      passengerName={passengerName}
+      initialBoarding={initialBoarding}
+    />
   );
 }

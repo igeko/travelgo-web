@@ -64,7 +64,10 @@
     "tripActions": "Trip actions",
     "showShortcuts": "Show shortcuts",
     "allFeedback": "View all feedback",
-    "tripSection": "Trip · {name}"
+    "tripSection": "Trip · {name}",
+    "fullEdit": "Full edit",
+    "enableFullEdit": "Open full editor",
+    "disableFullEdit": "Close full editor"
   },
   "FeedbackModal": {
     "title": "Leave feedback",
@@ -106,6 +109,71 @@
     "departureIn": "Departure in",
     "days": "{count, plural, one {day} other {days}}",
     "nights": "{count, plural, one {# night} other {# nights}}"
+  },
+  "TripEdit": {
+    "eyebrow": "Edit",
+    "header": "Edit trip",
+    "close": "Close without saving",
+    "notSet": "Not set yet",
+    "cancel": "Cancel",
+    "saveTrip": "Save trip",
+    "saving": "Saving…",
+    "error": "Couldn't save. Try again.",
+    "place": {
+      "label": "Place",
+      "eyebrow": "Section · place",
+      "title": "Where it all begins.",
+      "sub": "The trip's place can't be changed — every trip is born from a place.",
+      "hint": "Want a different destination? Start a new trip."
+    },
+    "dates": {
+      "label": "Dates",
+      "eyebrow": "Section · the dates",
+      "title": "From when to when.",
+      "sub": "The countdown updates live · Go reschedules the stops in progress.",
+      "preview": "{nights, plural, one {# night} other {# nights}}",
+      "nights": "{nights, plural, one {# night} other {# nights}} · countdown to takeoff"
+    },
+    "travelers": {
+      "label": "Travelers",
+      "eyebrow": "Section · travelers",
+      "title": "Who's coming with you.",
+      "sub": "How many in total · rooms, prices and activities adapt.",
+      "preview": "{adults, plural, one {# adult} other {# adults}}{children, plural, =0 {} one { · # child} other { · # children}}",
+      "adults": "Adults",
+      "adultsSub": "18 and over",
+      "children": "Children",
+      "childrenSub": "0 – 17 years"
+    },
+    "invites": {
+      "label": "Invites",
+      "eyebrow": "Section · invites",
+      "title": "Who travels with you.",
+      "sub": "Share the plan and changes with whoever travels with you or helps you organize.",
+      "preview": "{members, plural, one {# person} other {# people}} · {invites} pending",
+      "onTrip": "On the trip",
+      "counts": "{members, plural, one {# person} other {# people}} · {invites, plural, one {# pending invite} other {# pending invites}}",
+      "newTitle": "Invite someone new",
+      "newSub": "They'll get a link by email · if they don't have an account they sign up in one click.",
+      "emailPlaceholder": "email@example.com",
+      "invite": "Invite",
+      "rolesHint": "Editors can change the itinerary, activities and settings — except the place. Viewers see but don't touch.",
+      "roleEditorLong": "Editor — can edit",
+      "roleViewerLong": "Viewer — read only",
+      "role_owner": "Owner",
+      "role_editor": "Editor",
+      "role_viewer": "Viewer",
+      "role_pending": "Pending",
+      "pendingHint": "invite sent · awaiting acceptance",
+      "cancelInvite": "Cancel invite"
+    },
+    "theme": {
+      "label": "Tone",
+      "eyebrow": "Section · trip tone",
+      "title": "How you want to live it.",
+      "sub": "Pick the themes that fit you · tell us in a few lines how you'd like to live it.",
+      "notePlaceholder": "Describe your ideal trip — anything Go should know…"
+    }
   },
   "TripDayView": {
     "sidebar": {
@@ -153,6 +221,7 @@
       "summaryPlaceholder": "A short narrative sentence about the day",
       "practicalNote": "Practical note",
       "practicalNotePlaceholder": "Useful reminder (what to bring, things to watch out for)",
+      "type": "Day type",
       "change": "Change"
     },
     "lodging": {

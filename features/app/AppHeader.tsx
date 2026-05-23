@@ -31,6 +31,9 @@ export type AppHeaderProps = {
   onTabChange?: (tab: AppHeaderTab) => void;
   editMode?: boolean;
   onToggleEditMode?: () => void;
+  /** Parallel, trip-wide "full editor" mode toggled from the kebab menu. */
+  fullEditMode?: boolean;
+  onToggleFullEdit?: () => void;
   /** When true, shows the debug-mode chip (only if isDev) */
   isDev?: boolean;
   debugMode?: boolean;
@@ -58,6 +61,8 @@ export function AppHeader({
   onTabChange,
   editMode = false,
   onToggleEditMode,
+  fullEditMode = false,
+  onToggleFullEdit,
   isDev = false,
   debugMode: debugModeProp,
   onToggleDebugMode: onToggleDebugModeProp,
@@ -372,8 +377,8 @@ export function AppHeader({
                 </button>
               )}
 
-              {/* Actions menu (kebab) — Mostra scorciatoie, Debug, Feedback, tutti i feedback */}
-              {(isDev || isTester || canRestoreShortcuts) && (
+              {/* Actions menu (kebab) — Full edit, Mostra scorciatoie, Debug, Feedback, tutti i feedback */}
+              {(isDev || isTester || canRestoreShortcuts || !!onToggleFullEdit) && (
                 <div ref={kebabRef} className="relative shrink-0">
                   <button
                     type="button"
@@ -393,6 +398,22 @@ export function AppHeader({
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
                       <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+
+                        {/* Full edit — modalità editor completa, trip-wide */}
+                        {onToggleFullEdit && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { onToggleFullEdit(); setKebabOpen(false); }}
+                              aria-pressed={fullEditMode}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                            >
+                              <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", fullEditMode ? "bg-orange" : "bg-ink-faint")} />
+                              {fullEditMode ? t("disableFullEdit") : t("fullEdit")}
+                            </button>
+                            {(canRestoreShortcuts || isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
+                          </>
+                        )}
 
                         {/* Mostra scorciatoie — solo in edit mode, se nascoste */}
                         {canRestoreShortcuts && (

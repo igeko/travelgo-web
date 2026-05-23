@@ -64,7 +64,10 @@
     "tripActions": "Azioni viaggio",
     "showShortcuts": "Mostra scorciatoie",
     "allFeedback": "Vedi tutti i feedback",
-    "tripSection": "Viaggio · {name}"
+    "tripSection": "Viaggio · {name}",
+    "fullEdit": "Modifica completa",
+    "enableFullEdit": "Apri editor completo",
+    "disableFullEdit": "Chiudi editor completo"
   },
   "FeedbackModal": {
     "title": "Lascia un feedback",
@@ -106,6 +109,71 @@
     "departureIn": "Partenza tra",
     "days": "{count, plural, one {giorno} other {giorni}}",
     "nights": "{count, plural, one {# notte} other {# notti}}"
+  },
+  "TripEdit": {
+    "eyebrow": "Modifica",
+    "header": "Modifica viaggio",
+    "close": "Chiudi senza salvare",
+    "notSet": "Non impostato",
+    "cancel": "Annulla",
+    "saveTrip": "Salva viaggio",
+    "saving": "Salvataggio…",
+    "error": "Salvataggio non riuscito. Riprova.",
+    "place": {
+      "label": "Luogo",
+      "eyebrow": "Sezione · luogo",
+      "title": "Il posto da cui tutto nasce.",
+      "sub": "Il luogo del viaggio non si modifica: ogni viaggio nasce da un posto.",
+      "hint": "Vuoi un'altra destinazione? Apri un nuovo viaggio."
+    },
+    "dates": {
+      "label": "Date",
+      "eyebrow": "Sezione · le date",
+      "title": "Da quando a quando.",
+      "sub": "Il countdown si aggiorna in tempo reale · Go ti riprogramma le tappe in corso.",
+      "preview": "{nights, plural, one {# notte} other {# notti}}",
+      "nights": "{nights, plural, one {# notte} other {# notti}} · countdown al decollo"
+    },
+    "travelers": {
+      "label": "Viaggiatori",
+      "eyebrow": "Sezione · viaggiatori",
+      "title": "Chi viene con te.",
+      "sub": "Quanti siete in totale · stanze, prezzi e attività si adattano.",
+      "preview": "{adults, plural, one {# adulto} other {# adulti}}{children, plural, =0 {} one { · # bambino} other { · # bambini}}",
+      "adults": "Adulti",
+      "adultsSub": "dai 18 anni",
+      "children": "Bambini",
+      "childrenSub": "0 – 17 anni"
+    },
+    "invites": {
+      "label": "Inviti",
+      "eyebrow": "Sezione · inviti",
+      "title": "Chi viaggia con te.",
+      "sub": "Condividi piano e modifiche con chi parte con te o ti dà una mano a organizzare.",
+      "preview": "{members, plural, one {# persona} other {# persone}} · {invites} in attesa",
+      "onTrip": "Sul viaggio",
+      "counts": "{members, plural, one {# persona} other {# persone}} · {invites, plural, one {# invito} other {# inviti}} in attesa",
+      "newTitle": "Invita qualcuno di nuovo",
+      "newSub": "Riceverà un link via mail · se non ha l'account si registra in un click.",
+      "emailPlaceholder": "email@esempio.com",
+      "invite": "Invita",
+      "rolesHint": "Gli editor possono modificare itinerario, attività e impostazioni — tranne il luogo. I viewer vedono ma non toccano.",
+      "roleEditorLong": "Editor — può modificare",
+      "roleViewerLong": "Viewer — solo lettura",
+      "role_owner": "Owner",
+      "role_editor": "Editor",
+      "role_viewer": "Viewer",
+      "role_pending": "Pending",
+      "pendingHint": "invito spedito · in attesa di accettazione",
+      "cancelInvite": "Annulla invito"
+    },
+    "theme": {
+      "label": "Tono",
+      "eyebrow": "Sezione · tono del viaggio",
+      "title": "Come vuoi viverlo.",
+      "sub": "Scegli i temi che ti somigliano · racconta in poche righe come vorresti viverlo.",
+      "notePlaceholder": "Descrivi il viaggio ideale — qualsiasi cosa Go dovrebbe sapere…"
+    }
   },
   "TripDayView": {
     "sidebar": {
@@ -153,6 +221,7 @@
       "summaryPlaceholder": "Una breve frase narrativa sul giorno",
       "practicalNote": "Nota pratica",
       "practicalNotePlaceholder": "Promemoria utile (cosa portare, cose a cui fare attenzione)",
+      "type": "Tipo di giornata",
       "change": "Cambia"
     },
     "lodging": {

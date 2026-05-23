@@ -212,6 +212,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Day",
     description: "Voce di Go + riassunto del giorno · GoAvatar a sinistra, corpo Quote e CTA 'Chiedi a me.' con parole rotanti · unifica Quote + GoLaunchTrigger",
   },
+  {
+    slug: "day-edit-form",
+    title: "DayEditForm",
+    group: "Features",
+    subgroup: "Day",
+    description: "Form unica di modifica giorno · anagrafica (titolo, città, tipo, riassunto, note, immagine, mappa) + alloggio (tipo, nome, indirizzo, link, costo, note)",
+  },
   // Trips subgroup
   {
     slug: "create-trip",
@@ -240,6 +247,20 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Features",
     subgroup: "Trips",
     description: "Trip hero shaped like a boarding pass · trip-schema facts + AI-provided airports/times/countdown",
+  },
+  {
+    slug: "day-info-edit-form",
+    title: "DayInfoEditForm",
+    group: "Features",
+    subgroup: "Day",
+    description: "Editor anagrafica del giorno (zona, luogo, riassunto, nota, tipo, immagine) · estratto da HeroBanner, footer opzionale + ref.getData()",
+  },
+  {
+    slug: "lodging-edit-form",
+    title: "LodgingEditForm",
+    group: "Features",
+    subgroup: "Day",
+    description: "Editor alloggio / sub-banner (tipo, nome, indirizzo, link, costo) · estratto da HeroBanner, footer opzionale + ref.getData()",
   },
   // AI subgroup
   {

@@ -25,6 +25,7 @@ export const designCategories: Record<string, DesignMeta> = {
   // ── Trip ─────────────────────────────────────────────────────────
   "trip-flow": { group: "Trip", title: "Trip flow" },
   "trip-home": { group: "Trip", title: "Trip home" },
+  "trip-edit": { group: "Trip", title: "Trip edit" },
 
   // ── Day ──────────────────────────────────────────────────────────
   "day-layout": { group: "Day", title: "Day layout" },

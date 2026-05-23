@@ -3,6 +3,9 @@
  * Single source of truth for the gap between content and viewport edges, and between columns.
  */
 
+/** Max content width for top-level pages. Single source of truth (Explore opts out — it's full-bleed). */
+export const PAGE_MAX = "max-w-[1280px]";
+
 /** Horizontal page padding (content ↔ viewport edges). Lighter through the tablet band, full at desktop. */
 export const PAGE_PX = "px-4 lg:px-5";
 
