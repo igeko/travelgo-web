@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { IconMap, IconPlus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
-import { RouteMap, type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
+import { type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
-import { MapStopsBar } from "./MapStopsBar";
+import { ActivityRouteMap } from "./ActivityRouteMap";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
 import { Timeline } from "./Timeline";
 import { TabSwitcher } from "@/components/ui/TabSwitcher";
@@ -275,18 +275,11 @@ export function Itinerary({
           )}
 
           {showMap && (
-            <RouteMap
+            <ActivityRouteMap
               ref={mapRef}
               points={mapPoints}
-              travelMode="WALKING"
-              className="w-full h-[308px] mb-3"
-            />
-          )}
-
-          {showMap && mapPoints.length > 0 && (
-            <MapStopsBar
-              stops={mapPoints}
-              onFocus={(index) => mapRef.current?.focusPoint(index)}
+              mapClassName="h-[308px]"
+              className="mb-3"
             />
           )}
 

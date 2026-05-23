@@ -7,13 +7,14 @@ import { useShortcuts } from "@/lib/hooks/useShortcut";
 import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
-import { DayEditForm } from "@/features/day/DayEditForm";
+import { DayEditForm, type DayEditSection } from "@/features/day/DayEditForm";
 import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
 import { IconArrowRightCircle, IconChevronLeft, IconChevronRight, IconX } from "@/components/ui/icons";
 import { DayIncipit } from "@/features/day/DayIncipit";
 import { Itinerary } from "@/features/activity/Itinerary";
+import { Timeline } from "@/features/activity/Timeline";
 import { DayItem } from "@/features/day/DayItem";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
@@ -107,6 +108,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  // Full-edit UI state kept across day changes (the editor remounts per day).
+  const [editSection, setEditSection] = useState<DayEditSection>("day");
+  const [editNavCollapsed, setEditNavCollapsed] = useState(false);
 
   const heroBannerRef = useRef<HeroBannerHandle>(null);
 
@@ -245,19 +249,21 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     () =>
       [...activities]
         .sort((a, b) => {
-          // Manual order (position) is authoritative; time only breaks ties
-          // (e.g. before any reorder, when positions are still equal).
-          if (a.position !== b.position) return a.position - b.position;
-          if (!a.time && !b.time) return 0;
+          // Activities are ordered by time; no-time rows sink to the bottom,
+          // position only breaks exact ties.
+          if (!a.time && !b.time) return a.position - b.position;
           if (!a.time) return 1;
           if (!b.time) return -1;
-          return a.time.localeCompare(b.time);
+          return a.time.localeCompare(b.time) || a.position - b.position;
         })
         .map((a) => ({
           id: a.id,
           time: a.time ? a.time.slice(0, 5) : null,
           title: a.title,
           activityId: a.activity_id,
+          lat: a.location_lat,
+          lng: a.location_lng,
+          location: a.location,
         })),
     [activities],
   );
@@ -270,26 +276,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     const prevById = new Map(prev.map((x) => [x.id, x]));
     const nextById = new Map(next.map((x) => [x.id, x]));
 
-    // ── reorder (same set, different order) → persist sequential positions ──
-    const sameSet = prev.length === next.length && prev.every((x) => nextById.has(x.id));
-    const orderChanged = sameSet && prev.some((x, i) => next[i]?.id !== x.id);
-    if (orderChanged) {
-      const newPos = new Map(next.map((x, i) => [x.id, i + 1]));
-      setActivities((list) =>
-        [...list]
-          .map((a) => ({ ...a, position: newPos.get(a.id) ?? a.position }))
-          .sort((a, b) => a.position - b.position),
-      );
-      await Promise.all(
-        next.map((x, i) => {
-          const cur = activities.find((a) => a.id === x.id);
-          return cur && cur.position !== i + 1
-            ? api.activities.updateInstance(x.id, { position: i + 1 }).catch(() => {})
-            : null;
-        }),
-      );
-      return;
-    }
+    // Reorder is expressed as a time change on the moved row (the list is
+    // time-ordered), so it flows through the edit branch below.
 
     // ── delete ──
     const removed = prev.find((x) => !nextById.has(x.id));
@@ -543,6 +531,26 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             activities={dayActivities}
             onActivitiesChange={handleActivitiesChange}
             tripId={trip.id}
+            section={editSection}
+            onSectionChange={setEditSection}
+            navCollapsed={editNavCollapsed}
+            onNavCollapsedChange={setEditNavCollapsed}
+            mapStickyTop="md:top-[94px]"
+            timelineSlot={
+              <Timeline
+                dayId={selectedDayId}
+                tripId={trip.id}
+                initialBlocks={activities}
+                editMode
+                hideSlotLabels
+                onMutated={() => loadActivities(selectedDayId)}
+              />
+            }
+            showMapOnDay={selectedDay.show_map}
+            onShowMapOnDayChange={(show) => {
+              patchDay(selectedDayId, { show_map: show });
+              api.days.update(selectedDayId, { show_map: show }).catch(() => {});
+            }}
             activityEditorFor={(id, close) => {
               const a = activities.find((x) => x.id === id);
               if (!a) return null;
@@ -564,10 +572,28 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               path: () => `trips/${trip.id}/days/${selectedDayId}/banner/hero.webp`,
             }}
             onCancel={() => onExitFullEdit?.()}
-            onSave={async ({ hero, lodging: lodgingData }) => {
+            onSaveDayInfo={async (hero) => {
               const day_type = hero.type ? hero.type.toLowerCase() : null;
               const image_url = hero.imageUrl ? hero.imageUrl.split("?")[0] || null : null;
-              const lodgingPatch = lodgingData
+              patchDay(selectedDayId, {
+                city: hero.subtitle || null,
+                label: hero.title || null,
+                day_type,
+                notes: hero.practicalNote || null,
+                summary: hero.summary || null,
+                image_url,
+              });
+              await api.days.update(selectedDayId, {
+                city: hero.subtitle,
+                label: hero.title,
+                day_type,
+                notes: hero.practicalNote,
+                summary: hero.summary,
+                image_url,
+              }).catch(() => {});
+            }}
+            onSaveLodging={async (lodgingData) => {
+              const patch = lodgingData
                 ? {
                     accommodation_type: lodgingData.type?.toLowerCase() ?? null,
                     accommodation_name: lodgingData.name || null,
@@ -585,31 +611,16 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                     accommodation_lng: null, accommodation_cost_amount: null, accommodation_cost_currency: null,
                   };
               patchDay(selectedDayId, {
-                city: hero.subtitle || null,
-                label: hero.title || null,
-                day_type,
-                notes: hero.practicalNote || null,
-                summary: hero.summary || null,
-                image_url,
-                accommodation_type: lodgingPatch.accommodation_type,
-                accommodation_name: lodgingPatch.accommodation_name,
-                accommodation_address: lodgingPatch.accommodation_address,
-                accommodation_url: lodgingPatch.accommodation_url,
-                accommodation_place_id: lodgingPatch.accommodation_place_id,
-                accommodation_lat: lodgingPatch.accommodation_lat,
-                accommodation_lng: lodgingPatch.accommodation_lng,
+                accommodation_type: patch.accommodation_type,
+                accommodation_name: patch.accommodation_name,
+                accommodation_address: patch.accommodation_address,
+                accommodation_url: patch.accommodation_url,
+                accommodation_place_id: patch.accommodation_place_id,
+                accommodation_lat: patch.accommodation_lat,
+                accommodation_lng: patch.accommodation_lng,
               });
-              await api.days.update(selectedDayId, {
-                city: hero.subtitle,
-                label: hero.title,
-                day_type,
-                notes: hero.practicalNote,
-                summary: hero.summary,
-                image_url,
-                ...lodgingPatch,
-              }).catch(() => {});
+              await api.days.update(selectedDayId, patch).catch(() => {});
             }}
-            onDelete={undefined}
           />
         ) : (
         <>

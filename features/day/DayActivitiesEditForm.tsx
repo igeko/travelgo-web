@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
-import { IconGripVertical, IconPencil, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
+import { IconCheck, IconGripVertical, IconPencil, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
 import { TimeField } from "@/components/ui/TimeField";
 import { ActivitySearchField } from "@/features/activity/ActivitySearchField";
+import { ActivityRouteMap } from "@/features/activity/ActivityRouteMap";
+import type { RouteStop, RouteMapHandle } from "@/components/ui/RouteMap";
 import type { TripActivityOption } from "@/features/activity/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -25,6 +27,10 @@ export type DayActivity = {
   title: string;
   /** Linked trip activity (yume) id when picked from the list; null = free text. */
   activityId?: string | null;
+  /** Coordinates + label — drive the route map (rows without them are off-map). */
+  lat?: number | null;
+  lng?: number | null;
+  location?: string | null;
 };
 
 export type DayActivitiesEditFormProps = {
@@ -40,6 +46,17 @@ export type DayActivitiesEditFormProps = {
    * lightweight inline edit.
    */
   editorFor?: (id: string, close: () => void) => ReactNode;
+  /** Day's "show map on the day page" flag. When the change handler is given,
+   *  a checkbox under the map persists it. */
+  showMapOnDay?: boolean;
+  onShowMapOnDayChange?: (value: boolean) => void;
+  /** "list" (default) shows the editable rows; "timeline" renders `timelineSlot`
+   *  on the right instead — same map/checkbox/layout. */
+  mode?: "list" | "timeline";
+  /** Right-column content for `mode="timeline"` (e.g. the Timeline component). */
+  timelineSlot?: ReactNode;
+  /** Tailwind `top-*` class for the sticky map (clear a fixed header). Default `md:top-4`. */
+  mapStickyTop?: string;
   className?: string;
 };
 
@@ -54,13 +71,26 @@ function genId(): string {
   return `da-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Midpoint between two times, or +90min after `prev`, or 09:00. */
+const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const fmtMin = (min: number) => {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, min));
+  return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
+};
+
+/** Midpoint between two times, or +90min after `prev`, or 09:00. (insert default) */
 function nextTime(prev: string | null | undefined, next: string | null | undefined): string {
-  const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-  const fmt = (min: number) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-  if (prev && next) return fmt(Math.floor((toMin(prev) + toMin(next)) / 2));
-  if (prev) return fmt(toMin(prev) + 90);
+  if (prev && next) return fmtMin(Math.floor((toMin(prev) + toMin(next)) / 2));
+  if (prev) return fmtMin(toMin(prev) + 90);
   return "09:00";
+}
+
+/** Time to give a dragged row so the time-sorted order matches its drop slot:
+ *  midpoint between neighbors, or just outside the edge, or keep when alone. */
+function timeForDrop(prev: string | null, next: string | null, fallback: string | null): string | null {
+  if (prev && next) return fmtMin(Math.floor((toMin(prev) + toMin(next)) / 2));
+  if (prev) return fmtMin(toMin(prev) + 60);
+  if (next) return fmtMin(toMin(next) - 60);
+  return fallback;
 }
 
 /* ── Editorial header — same pattern as trip-edit panes ── */
@@ -79,35 +109,84 @@ function ActivityRow({
   activity,
   dim,
   selected,
+  dragging,
+  armed,
+  dropEdge,
+  pin,
   editLabel,
   deleteLabel,
   reorderLabel,
+  onArm,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+  onDrop,
+  onFocusMap,
   onEdit,
   onDelete,
 }: {
   activity: DayActivity;
   dim?: boolean;
   selected?: boolean;
+  dragging?: boolean;
+  armed?: boolean;
+  dropEdge?: "top" | "bottom" | null;
+  /** 1-based marker number when the row is on the map. */
+  pin?: number | null;
   editLabel: string;
   deleteLabel: string;
   reorderLabel: string;
+  onArm: () => void;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
+  onFocusMap?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
     <div
+      draggable={armed}
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => { e.preventDefault(); onDrop(); }}
+      onDragEnd={onDragEnd}
       className={cn(
         "group relative grid grid-cols-[14px_52px_1fr_auto] gap-3 items-center py-2.5",
         "border-b border-border/70 last:border-b-0",
         "hover:bg-ink/[0.02] hover:rounded-md hover:border-transparent",
         "hover:-mx-2.5 hover:px-2.5 transition-[background-color,padding,margin] duration-100",
         selected && "bg-ink/[0.03] rounded-md -mx-2.5 px-2.5 border-transparent",
+        dragging && "opacity-40",
         dim && "opacity-50",
       )}
     >
-      <IconGripVertical size={14} title={reorderLabel} className="text-ink-faint/40 cursor-grab opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" />
+      {/* Drop indicator */}
+      {dropEdge === "top" && <span aria-hidden className="absolute left-0 right-0 -top-px h-0.5 bg-orange rounded-full z-10" />}
+      {dropEdge === "bottom" && <span aria-hidden className="absolute left-0 right-0 -bottom-px h-0.5 bg-orange rounded-full z-10" />}
+
+      <span
+        onMouseDown={onArm}
+        title={reorderLabel}
+        className="inline-flex items-center justify-center text-ink-faint/40 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      >
+        <IconGripVertical size={14} />
+      </span>
       <span className="font-mono text-tiny text-ink-faint font-medium tabular-nums">{activity.time ?? "--:--"}</span>
-      <span className="text-meta text-ink truncate">{activity.title}</span>
+      {pin != null ? (
+        <button
+          type="button"
+          onClick={onFocusMap}
+          className="flex items-center gap-2 min-w-0 text-left group/title"
+        >
+          <span className="shrink-0 w-[18px] h-[18px] rounded-full bg-orange text-white text-[10px] font-semibold inline-flex items-center justify-center tabular-nums">{pin}</span>
+          <span className="text-meta text-ink truncate group-hover/title:underline decoration-orange/40 underline-offset-2">{activity.title}</span>
+        </button>
+      ) : (
+        <span className="text-meta text-ink truncate">{activity.title}</span>
+      )}
       <div className="flex gap-0.5 opacity-30 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button type="button" onClick={onEdit} title={editLabel}
           className="w-6 h-6 rounded-full text-ink-faint hover:bg-ink/[0.06] hover:text-ink inline-flex items-center justify-center">
@@ -207,10 +286,46 @@ export function DayActivitiesEditForm({
   tripId,
   items,
   editorFor,
+  showMapOnDay,
+  onShowMapOnDayChange,
+  mode = "list",
+  timelineSlot,
+  mapStickyTop = "md:top-4",
   className,
 }: DayActivitiesEditFormProps) {
   const t = useTranslations("DayActivities");
+  const isTimeline = mode === "timeline";
   const [insertion, setInsertion] = useState<Insertion>({ kind: "none" });
+  const mapRef = useRef<RouteMapHandle>(null);
+
+  /* ── Drag & drop reorder (native HTML5, handle-driven) ── */
+  const [armed, setArmed] = useState<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  function resetDrag() {
+    setArmed(null);
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
+  function handleDrop() {
+    if (dragIndex !== null && overIndex !== null && dragIndex !== overIndex) {
+      const copy = [...activities];
+      const [moved] = copy.splice(dragIndex, 1);
+      copy.splice(overIndex, 0, moved);
+      // Activities are ordered by time, so moving a row reassigns its time to
+      // fit between the new neighbors — the time-sorted order then matches.
+      const newTime = timeForDrop(
+        copy[overIndex - 1]?.time ?? null,
+        copy[overIndex + 1]?.time ?? null,
+        moved.time,
+      );
+      copy[overIndex] = { ...moved, time: newTime };
+      onChange(copy);
+    }
+    resetDrag();
+  }
 
   const cancel = () => setInsertion({ kind: "none" });
 
@@ -244,9 +359,57 @@ export function DayActivitiesEditForm({
         ? `${t("stops", { count: activities.length })} · ${t("firstLast", { first, last })}`
         : t("stops", { count: activities.length });
 
+  // Route map points (only rows with coordinates, in the current/time order)
+  // + a lookup row id → point index so a row can focus its marker.
+  const points: RouteStop[] = [];
+  const mapIndexById = new Map<string, number>();
+  for (const a of activities) {
+    if (a.lat == null || a.lng == null) continue;
+    mapIndexById.set(a.id, points.length);
+    points.push({ lat: a.lat, lng: a.lng, name: a.title, formatted: a.location ?? a.title, placeId: "" });
+  }
+
   return (
     <div className={cn(className)}>
-      <SectionHeader eyebrow={t("eyebrow")} title={t("title")} sub={t("sub")} />
+      <SectionHeader
+        eyebrow={isTimeline ? t("timeline.eyebrow") : t("eyebrow")}
+        title={isTimeline ? t("timeline.title") : t("title")}
+        sub={isTimeline ? t("timeline.sub") : t("sub")}
+      />
+
+      <div className="md:grid md:gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        {/* Map (left) — always shown, sticky while the list scrolls */}
+        <div className="mb-5 md:mb-0">
+          <div className={cn("md:sticky flex flex-col gap-3", mapStickyTop)}>
+            {onShowMapOnDayChange && (
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={!!showMapOnDay}
+                onClick={() => onShowMapOnDayChange(!showMapOnDay)}
+                className="inline-flex items-center gap-2 self-start text-mini text-ink-soft hover:text-ink transition-colors"
+              >
+                <span className={cn(
+                  "w-4 h-4 rounded-[5px] border inline-flex items-center justify-center shrink-0 transition-colors",
+                  showMapOnDay ? "bg-orange border-orange text-white" : "bg-surface border-border-strong",
+                )}>
+                  {showMapOnDay && <IconCheck size={11} />}
+                </span>
+                {t("showOnDay")}
+              </button>
+            )}
+            <ActivityRouteMap
+              ref={mapRef}
+              points={points}
+              mapClassName="h-[260px] md:h-[440px]"
+            />
+          </div>
+        </div>
+
+        {/* Right column — timeline slot or the editable list */}
+        <div>
+        {isTimeline ? timelineSlot : (
+          <>
 
       <div className="flex items-baseline gap-2.5 mb-2">
         <span className="text-[9px] tracking-eyebrow uppercase text-orange-deep font-medium">{t("program")}</span>
@@ -281,9 +444,23 @@ export function DayActivitiesEditForm({
                 activity={item}
                 dim={editingActive && !isEditing}
                 selected={isEditing}
+                dragging={dragIndex === i}
+                armed={armed === i && !editingActive}
+                dropEdge={
+                  dragIndex !== null && overIndex === i && dragIndex !== i
+                    ? (overIndex > dragIndex ? "bottom" : "top")
+                    : null
+                }
+                pin={mapIndexById.has(item.id) ? mapIndexById.get(item.id)! + 1 : null}
                 editLabel={t("edit")}
                 deleteLabel={t("delete")}
                 reorderLabel={t("reorder")}
+                onArm={() => { if (!editingActive) setArmed(i); }}
+                onDragStart={() => setDragIndex(i)}
+                onDragEnter={() => { if (dragIndex !== null) setOverIndex(i); }}
+                onDragEnd={resetDrag}
+                onDrop={handleDrop}
+                onFocusMap={() => { const idx = mapIndexById.get(item.id); if (idx != null) mapRef.current?.focusPoint(idx); }}
                 onEdit={() => setInsertion({ kind: "edit", index: i })}
                 onDelete={() => removeAt(i)}
               />
@@ -335,6 +512,10 @@ export function DayActivitiesEditForm({
           onCancel={cancel}
         />
       )}
+          </>
+        )}
+        </div>
+      </div>
     </div>
   );
 }

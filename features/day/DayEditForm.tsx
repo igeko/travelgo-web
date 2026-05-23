@@ -1,21 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
-import { IconBed, IconCalendarTime, IconMapPin, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
+import { IconBed, IconCalendarTime, IconChevronLeft, IconChevronRight, IconMapPin, IconPlus, IconRoute, IconTrash, IconX } from "@/components/ui/icons";
 import type { CompressOptions, UploadOptions } from "@/components/ui/ImagePicker";
 import type { TripActivityOption } from "@/features/activity/types";
 import {
   DayInfoEditForm,
-  type DayInfoEditFormHandle,
   type HeroBannerData,
   type HeroBannerType,
 } from "./DayInfoEditForm";
 import {
   LodgingEditForm,
-  type LodgingEditFormHandle,
   type HeroBannerSubBanner,
   type HeroBannerSubBannerData,
 } from "./LodgingEditForm";
@@ -35,7 +33,7 @@ export type DayData = {
   lodging: HeroBannerSubBannerData | null;
 };
 
-type SectionId = "day" | "lodging" | "activities";
+export type DayEditSection = "day" | "lodging" | "activities" | "timeline";
 
 export type DayEditFormProps = {
   dayNumber?: number;
@@ -64,9 +62,26 @@ export type DayEditFormProps = {
   activityItems?: TripActivityOption[];
   /** Detailed editor for an activity row, rendered inline below it. */
   activityEditorFor?: (id: string, close: () => void) => React.ReactNode;
+  /** Timeline view (e.g. the <Timeline/>). When given, a 4th "Timeline" section
+   *  appears — same map/layout as Activities, with the timeline instead of the list. */
+  timelineSlot?: React.ReactNode;
+  /** Tailwind `top-*` class for the sticky map (clear a fixed header). */
+  mapStickyTop?: string;
+  /** Day's "show map on the day page" flag + persist handler (activities section). */
+  showMapOnDay?: boolean;
+  onShowMapOnDayChange?: (value: boolean) => void;
   imageCompress?: CompressOptions;
   imageUpload?: UploadOptions;
-  onSave: (data: DayData) => void;
+  /** Active section — controlled. Lets a host persist it across day changes. */
+  section?: DayEditSection;
+  onSectionChange?: (section: DayEditSection) => void;
+  /** Collapsed section menu — controlled (persists across day changes). */
+  navCollapsed?: boolean;
+  onNavCollapsedChange?: (collapsed: boolean) => void;
+  /** Save the day-info section (its own footer). */
+  onSaveDayInfo?: (data: HeroBannerData) => void;
+  /** Save the lodging section (its own footer). `null` = lodging removed. */
+  onSaveLodging?: (data: HeroBannerSubBannerData | null) => void;
   onCancel: () => void;
   onDelete?: () => void;
   className?: string;
@@ -89,12 +104,15 @@ function MenuItem({
   icon,
   label,
   preview,
+  collapsed,
   onSelect,
 }: {
   active: boolean;
   icon: React.ReactNode;
   label: string;
   preview: string;
+  /** Collapsed rail (desktop): show only the icon. */
+  collapsed?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -102,9 +120,11 @@ function MenuItem({
       type="button"
       onClick={onSelect}
       aria-current={active ? "true" : undefined}
+      title={collapsed ? label : undefined}
       className={cn(
         "relative flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors rounded-md",
         active ? "bg-surface my-0.5" : "hover:bg-surface/60 cursor-pointer",
+        collapsed && "md:items-center md:justify-center md:gap-0 md:px-0",
       )}
     >
       {active && (
@@ -113,8 +133,8 @@ function MenuItem({
           className="absolute -right-[3px] top-1/2 -translate-y-1/2 w-1.5 h-[30px] bg-orange rounded-[3px]"
         />
       )}
-      <span className={cn("mt-0.5 [&>svg]:size-4 shrink-0", active ? "text-orange" : "text-ink-faint")}>{icon}</span>
-      <div className="flex-1 min-w-0">
+      <span className={cn("mt-0.5 [&>svg]:size-4 shrink-0", active ? "text-orange" : "text-ink-faint", collapsed && "md:mt-0")}>{icon}</span>
+      <div className={cn("flex-1 min-w-0", collapsed && "md:hidden")}>
         <p className="text-mini font-medium m-0 text-ink">{label}</p>
         <p className="font-serif italic text-[10.5px] leading-snug mt-0.5 text-ink-faint truncate">{preview}</p>
       </div>
@@ -132,31 +152,39 @@ export function DayEditForm({
   tripId,
   activityItems,
   activityEditorFor,
+  timelineSlot,
+  mapStickyTop,
+  showMapOnDay,
+  onShowMapOnDayChange,
   imageCompress,
   imageUpload,
-  onSave,
+  section: sectionProp,
+  onSectionChange,
+  navCollapsed: navCollapsedProp,
+  onNavCollapsedChange,
+  onSaveDayInfo,
+  onSaveLodging,
   onCancel,
   onDelete,
   className,
 }: DayEditFormProps) {
   const t = useTranslations("DayEditForm");
-  const heroRef = useRef<DayInfoEditFormHandle>(null);
-  const lodgingRef = useRef<LodgingEditFormHandle>(null);
 
-  const [section, setSection] = useState<SectionId>("day");
+  // Section + collapsed state are controllable so a host can persist them
+  // across day changes (the form remounts per day to re-seed its data).
+  const [internalSection, setInternalSection] = useState<DayEditSection>("day");
+  const section = sectionProp ?? internalSection;
+  const changeSection = (s: DayEditSection) => (onSectionChange ?? setInternalSection)(s);
+
+  const [internalNavCollapsed, setInternalNavCollapsed] = useState(false);
+  const navCollapsed = navCollapsedProp ?? internalNavCollapsed;
+  const setNavCollapsed = (v: boolean) => (onNavCollapsedChange ?? setInternalNavCollapsed)(v);
+
   const [hasLodging, setHasLodging] = useState(!!lodging);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const showActivities = !!onActivitiesChange;
-
-  function handleSave() {
-    const heroData = heroRef.current?.getData();
-    if (!heroData) return;
-    onSave({
-      hero: heroData,
-      lodging: hasLodging ? (lodgingRef.current?.getData() ?? null) : null,
-    });
-  }
+  const showTimeline = !!timelineSlot;
 
   const dayPreview = hero?.subtitle || hero?.title || t("dayPreview");
   const lodgingPreview = hasLodging ? (lodging?.name || t("lodgingPreview")) : t("noLodging");
@@ -190,7 +218,10 @@ export function DayEditForm({
       </div>
 
       {/* ── Two-pane: editor (sx) + menu (dx) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_215px] min-h-[420px]">
+      <div className={cn(
+        "grid grid-cols-1 min-h-[420px]",
+        navCollapsed ? "md:grid-cols-[1fr_60px]" : "md:grid-cols-[1fr_215px]",
+      )}>
         {/* Editor pane */}
         <div className="p-6 md:p-7 order-2 md:order-1">
           {/* Info giorno */}
@@ -201,8 +232,6 @@ export function DayEditForm({
               sub={t("daySection.sub")}
             />
             <DayInfoEditForm
-              ref={heroRef}
-              hideFooter
               hideTitle
               autoFocus={false}
               title={hero?.title ?? ""}
@@ -213,6 +242,8 @@ export function DayEditForm({
               imageUrl={hero?.imageUrl}
               imageCompress={imageCompress}
               imageUpload={imageUpload}
+              onSave={onSaveDayInfo}
+              onCancel={onCancel}
               className="border-0 rounded-none px-0 pt-0 pb-0"
             />
           </div>
@@ -225,26 +256,15 @@ export function DayEditForm({
               sub={t("lodgingSection.sub")}
             />
             {hasLodging ? (
-              <>
-                <div className="flex justify-end -mt-2 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setHasLodging(false)}
-                    className="inline-flex items-center gap-1 text-tiny font-medium text-ink-faint hover:text-danger-fg transition-colors"
-                  >
-                    <IconTrash className="w-3.5 h-3.5" />
-                    {t("removeLodging")}
-                  </button>
-                </div>
-                <LodgingEditForm
-                  ref={lodgingRef}
-                  hideFooter
-                  hideTitle
-                  autoFocus={false}
-                  initial={lodging}
-                  className="border-0 rounded-none px-0 pt-0 pb-0"
-                />
-              </>
+              <LodgingEditForm
+                hideTitle
+                autoFocus={false}
+                initial={lodging}
+                onSave={(d) => onSaveLodging?.(d)}
+                onCancel={onCancel}
+                onRemove={() => { setHasLodging(false); onSaveLodging?.(null); }}
+                className="border-0 rounded-none px-0 pt-0 pb-0"
+              />
             ) : (
               <button
                 type="button"
@@ -257,37 +277,57 @@ export function DayEditForm({
             )}
           </div>
 
-          {/* Attività */}
-          {showActivities && (
-            <div className={cn(section !== "activities" && "hidden")}>
+          {/* Attività / Timeline — stessa shell (mappa + checkbox), contenuto a destra cambia */}
+          {(showActivities || showTimeline) && (
+            <div className={cn(section !== "activities" && section !== "timeline" && "hidden")}>
               <DayActivitiesEditForm
                 activities={activities ?? []}
-                onChange={onActivitiesChange}
+                onChange={onActivitiesChange ?? (() => {})}
                 tripId={tripId}
                 items={activityItems}
                 editorFor={activityEditorFor}
+                showMapOnDay={showMapOnDay}
+                onShowMapOnDayChange={onShowMapOnDayChange}
+                mode={section === "timeline" ? "timeline" : "list"}
+                timelineSlot={timelineSlot}
+                mapStickyTop={mapStickyTop}
               />
             </div>
           )}
         </div>
 
-        {/* Menu pane (destra) */}
+        {/* Menu pane (destra) · collassabile su desktop → solo icone */}
         <aside className="bg-surface-soft border-b md:border-b-0 md:border-l border-border px-3 py-5 order-1 md:order-2">
-          <p className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium px-3 mb-3.5">{t("sections")}</p>
+          <div className={cn("flex items-center mb-3.5 px-3", navCollapsed ? "md:justify-center md:px-0" : "justify-between")}>
+            <span className={cn("text-tiny tracking-eyebrow uppercase text-orange-deep font-medium", navCollapsed && "md:hidden")}>
+              {t("sections")}
+            </span>
+            <button
+              type="button"
+              onClick={() => setNavCollapsed(!navCollapsed)}
+              aria-label={navCollapsed ? t("expandSections") : t("collapseSections")}
+              title={navCollapsed ? t("expandSections") : t("collapseSections")}
+              className="hidden md:inline-flex w-6 h-6 rounded-md items-center justify-center text-ink-faint hover:bg-surface hover:text-ink transition-colors"
+            >
+              {navCollapsed ? <IconChevronLeft size={15} /> : <IconChevronRight size={15} />}
+            </button>
+          </div>
           <nav className="flex flex-col gap-0.5">
             <MenuItem
               active={section === "day"}
               icon={<IconMapPin />}
               label={t("dayMenu")}
               preview={dayPreview}
-              onSelect={() => setSection("day")}
+              collapsed={navCollapsed}
+              onSelect={() => changeSection("day")}
             />
             <MenuItem
               active={section === "lodging"}
               icon={<IconBed />}
               label={t("lodgingMenu")}
               preview={lodgingPreview}
-              onSelect={() => setSection("lodging")}
+              collapsed={navCollapsed}
+              onSelect={() => changeSection("lodging")}
             />
             {showActivities && (
               <MenuItem
@@ -295,17 +335,28 @@ export function DayEditForm({
                 icon={<IconCalendarTime />}
                 label={t("activitiesMenu")}
                 preview={activitiesPreview}
-                onSelect={() => setSection("activities")}
+                collapsed={navCollapsed}
+                onSelect={() => changeSection("activities")}
+              />
+            )}
+            {showTimeline && (
+              <MenuItem
+                active={section === "timeline"}
+                icon={<IconRoute />}
+                label={t("timelineMenu")}
+                preview={activitiesPreview}
+                collapsed={navCollapsed}
+                onSelect={() => changeSection("timeline")}
               />
             )}
           </nav>
         </aside>
       </div>
 
-      {/* ── Footer unico ── */}
-      <div className="flex items-center justify-between px-5 py-3 border-t border-border">
-        {onDelete ? (
-          confirmDelete ? (
+      {/* ── Footer · solo eliminazione giorno (Salva/Annulla vivono nelle sezioni) ── */}
+      {onDelete && (
+        <div className="flex items-center px-5 py-3 border-t border-border">
+          {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-mini text-danger-fg">{t("confirmDelete")}</span>
               <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
@@ -321,17 +372,9 @@ export function DayEditForm({
               <IconTrash />
               {t("deleteDay")}
             </Button>
-          )
-        ) : (
-          <span />
-        )}
-        <div className="flex items-center gap-2">
-          <Button variant="text-only" iconOnly={false} onClick={onCancel}>{t("cancel")}</Button>
-          <Button variant="solid" tone="neutral" iconOnly={false} onClick={handleSave}>
-            {t("save")}
-          </Button>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

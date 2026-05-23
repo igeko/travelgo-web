@@ -281,6 +281,9 @@
     "dayMenu": "Info giorno",
     "lodgingMenu": "Alloggio",
     "activitiesMenu": "Attività",
+    "timelineMenu": "Timeline",
+    "collapseSections": "Comprimi menu",
+    "expandSections": "Espandi menu",
     "dayPreview": "Zona, luogo, riassunto, immagine",
     "lodgingPreview": "Alloggio del giorno",
     "noLodging": "Nessun alloggio",
@@ -317,7 +320,13 @@
     "delete": "Elimina",
     "reorder": "Riordina",
     "insertHere": "Inserisci qui",
-    "cancel": "Annulla"
+    "cancel": "Annulla",
+    "showOnDay": "Mostra la mappa nella pagina del giorno",
+    "timeline": {
+      "eyebrow": "Sezione · timeline",
+      "title": "Il giorno, sulla linea.",
+      "sub": "Trascina e organizza le tappe sulla linea del tempo."
+    }
   },
   "DayIncipit": {
     "wantToFind": "Vuoi trovare",

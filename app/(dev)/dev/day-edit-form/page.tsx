@@ -4,7 +4,7 @@ import { useState } from "react";
 import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
-import { DayEditForm, type DayData } from "@/features/day/DayEditForm";
+import { DayEditForm } from "@/features/day/DayEditForm";
 import type { HeroBannerSubBanner } from "@/features/day/LodgingEditForm";
 import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm } from "@/features/activity/ActivityEditForm";
@@ -31,10 +31,11 @@ export default function DayEditFormStories() {
   const [prefilled, setPrefilled] = useState(true);
   const [withLodging, setWithLodging] = useState(true);
   const [withActivities, setWithActivities] = useState(true);
+  const [withTimeline, setWithTimeline] = useState(true);
   const [withDelete, setWithDelete] = useState(true);
 
   const [activities, setActivities] = useState<DayActivity[]>(INITIAL_ACTIVITIES);
-  const [lastSaved, setLastSaved] = useState<DayData | null>(null);
+  const [lastSaved, setLastSaved] = useState<Record<string, unknown> | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
   const groups: ControlGroup[] = [
@@ -44,6 +45,7 @@ export default function DayEditFormStories() {
         { kind: "toggle", id: "prefilled", label: "Pre-compilato", value: prefilled, onChange: setPrefilled },
         { kind: "toggle", id: "with-lodging", label: "Con alloggio iniziale", value: withLodging, onChange: setWithLodging },
         { kind: "toggle", id: "with-activities", label: "Sezione attività", value: withActivities, onChange: setWithActivities },
+        { kind: "toggle", id: "with-timeline", label: "Sezione timeline", value: withTimeline, onChange: setWithTimeline },
         { kind: "toggle", id: "with-delete", label: "Mostra Elimina", value: withDelete, onChange: setWithDelete },
       ],
     },
@@ -87,8 +89,20 @@ export default function DayEditFormStories() {
               hero={prefilled ? heroSample : undefined}
               lodging={prefilled && withLodging ? lodgingSample : null}
               activities={prefilled ? activities : []}
-              onActivitiesChange={withActivities ? setActivities : undefined}
+              onActivitiesChange={withActivities ? (next) => setActivities(
+                [...next].sort((a, b) => {
+                  if (!a.time && !b.time) return 0;
+                  if (!a.time) return 1;
+                  if (!b.time) return -1;
+                  return a.time.localeCompare(b.time);
+                }),
+              ) : undefined}
               activityItems={YUME_POOL}
+              timelineSlot={withTimeline ? (
+                <div className="rounded-md border border-dashed border-border bg-surface-soft p-8 text-center text-mini text-ink-faint">
+                  &lt;Timeline /&gt; — componente reale in app
+                </div>
+              ) : undefined}
               activityEditorFor={(id, close) => {
                 const a = activities.find((x) => x.id === id);
                 if (!a) return null;
@@ -107,7 +121,8 @@ export default function DayEditFormStories() {
                   />
                 );
               }}
-              onSave={(d) => { setLastSaved(d); setLastAction("saved"); }}
+              onSaveDayInfo={(heroData) => { setLastSaved({ section: "day", hero: heroData }); setLastAction("saved"); }}
+              onSaveLodging={(lodgingData) => { setLastSaved({ section: "lodging", lodging: lodgingData ? { ...lodgingData, place: lodgingData.place?.formatted ?? null } : null }); setLastAction("saved"); }}
               onCancel={() => setLastAction("cancelled")}
               onDelete={withDelete ? () => setLastAction("deleted") : undefined}
             />
@@ -117,16 +132,7 @@ export default function DayEditFormStories() {
                 <div className="text-[10px] uppercase tracking-widest text-ink-faint mb-2">Last callback</div>
                 <div className="mb-1"><span className="text-ink-faint">action: </span><span className="text-ink font-medium">{lastAction}</span></div>
                 {lastSaved && lastAction === "saved" && (
-                  <pre className="whitespace-pre-wrap text-ink">{JSON.stringify(
-                    {
-                      hero: lastSaved.hero,
-                      lodging: lastSaved.lodging
-                        ? { ...lastSaved.lodging, place: lastSaved.lodging.place?.formatted ?? null }
-                        : null,
-                    },
-                    null,
-                    2,
-                  )}</pre>
+                  <pre className="whitespace-pre-wrap text-ink">{JSON.stringify(lastSaved, null, 2)}</pre>
                 )}
               </div>
             )}
@@ -135,7 +141,7 @@ export default function DayEditFormStories() {
 
         <StoryFrame name="Vuoto (nuovo giorno)" description="Form vuota, senza alloggio e senza pulsante Elimina.">
           <div className="w-full max-w-2xl">
-            <DayEditForm dayNumber={1} onSave={() => {}} onCancel={() => {}} />
+            <DayEditForm dayNumber={1} onCancel={() => {}} />
           </div>
         </StoryFrame>
       </StoryPage>

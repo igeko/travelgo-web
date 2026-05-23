@@ -67,8 +67,11 @@ function isSameAdd(a: AddState, afterBlockId: string | undefined, slot: SlotKey)
  * successivo. La spine non viene mai interrotta: nelle sezioni successive
  * la linea continua a scorrere dietro il divider.
  */
-function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) {
+function SectionDivider({ slot, isFirst, hideLabel }: { slot: SlotKey; isFirst: boolean; hideLabel?: boolean }) {
   const tSlots = useTranslations("ActivityList.slots");
+  // No label → no divider at all: the per-section spine already keeps the line
+  // continuous, so we drop the reserved vertical space entirely.
+  if (hideLabel) return null;
   return (
     <div
       className="relative"
@@ -82,19 +85,21 @@ function SectionDivider({ slot, isFirst }: { slot: SlotKey; isFirst: boolean }) 
         style={{ left: SPINE_X, top: 0, bottom: 0 }}
         aria-hidden
       />
-      <span
-        className="absolute text-tiny font-semibold tracking-[0.03em] uppercase text-orange select-none whitespace-nowrap"
-        style={{
-          // Bordo destro allineato a quello degli orari (SPINE_LEFT - 42).
-          left: 0,
-          width: SPINE_LEFT - 42,
-          textAlign: "right",
-          top: "50%",
-          transform: "translateY(-50%)",
-        }}
-      >
-        {tSlots(slot)}
-      </span>
+      {!hideLabel && (
+        <span
+          className="absolute text-tiny font-semibold tracking-[0.03em] uppercase text-orange select-none whitespace-nowrap"
+          style={{
+            // Bordo destro allineato a quello degli orari (SPINE_LEFT - 42).
+            left: 0,
+            width: SPINE_LEFT - 42,
+            textAlign: "right",
+            top: "50%",
+            transform: "translateY(-50%)",
+          }}
+        >
+          {tSlots(slot)}
+        </span>
+      )}
     </div>
   );
 }
@@ -559,11 +564,13 @@ type Props = {
   tripId:        string;
   initialBlocks: Block[];
   editMode?:     boolean;
+  /** Hide the period (morning/afternoon/…) labels — keeps the spine + spacing. */
+  hideSlotLabels?: boolean;
   /** Fired after a persisted timeline edit, so the owner can resync the day's activities. */
   onMutated?:    () => void;
 };
 
-export function Timeline({ dayId, tripId, initialBlocks, editMode = false, onMutated }: Props) {
+export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideSlotLabels = false, onMutated }: Props) {
   const tT = useTranslations("Timeline");
   const {
     blocks,
@@ -767,7 +774,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, onMut
 
         return (
           <div key={slot}>
-            <SectionDivider slot={slot} isFirst={isFirstSection} />
+            <SectionDivider slot={slot} isFirst={isFirstSection} hideLabel={hideSlotLabels} />
 
             {/* Spine section */}
             <div

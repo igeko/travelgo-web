@@ -281,6 +281,9 @@
     "dayMenu": "Day info",
     "lodgingMenu": "Lodging",
     "activitiesMenu": "Activities",
+    "timelineMenu": "Timeline",
+    "collapseSections": "Collapse menu",
+    "expandSections": "Expand menu",
     "dayPreview": "Zone, place, summary, image",
     "lodgingPreview": "Day's lodging",
     "noLodging": "No lodging",
@@ -317,7 +320,13 @@
     "delete": "Delete",
     "reorder": "Reorder",
     "insertHere": "Insert here",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "showOnDay": "Show the map on the day page",
+    "timeline": {
+      "eyebrow": "Section · timeline",
+      "title": "Your day, on a line.",
+      "sub": "Drag and organize the stops along the timeline."
+    }
   },
   "DayIncipit": {
     "wantToFind": "Want to find",
