@@ -27,8 +27,6 @@ export const AI_MODELS = {
   fast: "gpt-4o-mini",
   /** Higher quality: suggestions, deep dive, rich enrichment. */
   smart: "gpt-4o",
-  /** Embeddings for catalog semantic search. */
-  embedding: "text-embedding-3-small",
 } as const;
 
 let client: OpenAI | null = null;

@@ -9,7 +9,7 @@
  *   const block = await api.activities.addToDay(dayId, payload);
  *
  * Methods throw `ApiClientError` on failure (catch where you need to
- * handle it). Streaming methods (go.*, catalog.*Stream) return the live
+ * handle it). Streaming methods (go.*) return the live
  * Response for the caller to read.
  * ─────────────────────────────────────────────────────────────────
  */
@@ -25,7 +25,6 @@ import { places } from "./places";
 import { routes } from "./routes";
 import { ai } from "./ai";
 import { go } from "./go";
-import { catalog } from "./catalog";
 import { storage } from "./storage";
 import { realtime } from "./realtime";
 import { auth } from "./auth";
@@ -42,7 +41,6 @@ export const api = {
   routes,
   ai,
   go,
-  catalog,
   // Direct-to-provider surfaces (Supabase SDK) wrapped behind the layer:
   storage,
   realtime,

@@ -40,7 +40,6 @@ const API_PROTECTED_PREFIXES = [
   "/api/trips",
   "/api/days",
   "/api/blocks",
-  "/api/catalog",
 ];
 
 type RLConfig = { max: number; windowMs: number };

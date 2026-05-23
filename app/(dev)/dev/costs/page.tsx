@@ -83,12 +83,6 @@ const OPENAI_ROWS: AiRow[] = [
     input: "$2.50",
     output: "$10.00",
   },
-  {
-    model: "text-embedding-3-small",
-    usage: "Embedding per ricerca semantica del catalogo",
-    input: "$0.02",
-    output: "—",
-  },
 ];
 
 const LINKS = [

@@ -7,8 +7,8 @@
  * separately from the `ExploreCategories` message namespace via
  * `useExploreCategories()`.
  *
- * The `osm` filter is consumed by the place-search layer (see lib/overpass.ts
- * `OSM_PRESETS`); the ExploreToolbar itself ignores it.
+ * The `osm` filter is reserved for a future place-search layer; the
+ * ExploreToolbar itself ignores it.
  */
 
 import {

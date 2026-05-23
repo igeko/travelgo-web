@@ -12,7 +12,6 @@
  *   dal.photos      Media       photos
  *   dal.journal     Journal     journal_entries
  *   dal.users       Users       auth + profiles + user_platform_roles
- *   dal.catalog     Catalog     import_jobs + catalog_places (admin)
  *   dal.feedback    Feedback    tester_notes (admin)
  *
  * Usage in a Server Component / Route Handler:
@@ -42,7 +41,6 @@ export { Membership }  from "./entities/Membership";
 export { Media }       from "./entities/Media";
 export { Journal }     from "./entities/Journal";
 export { Users }       from "./entities/Users";
-export { Catalog }     from "./entities/Catalog";
 export { Feedback }    from "./entities/Feedback";
 
 export type {
@@ -73,7 +71,6 @@ import { Membership }  from "./entities/Membership";
 import { Media }       from "./entities/Media";
 import { Journal }     from "./entities/Journal";
 import { Users }       from "./entities/Users";
-import { Catalog }     from "./entities/Catalog";
 import { Feedback }    from "./entities/Feedback";
 
 export type Dal = {
@@ -84,7 +81,6 @@ export type Dal = {
   photos:     Media;
   journal:    Journal;
   users:      Users;
-  catalog:    Catalog;
   feedback:   Feedback;
 };
 
@@ -97,7 +93,6 @@ function buildDal(client: SupabaseClient): Dal {
     photos:     new Media(client),
     journal:    new Journal(client),
     users:      new Users(client),
-    catalog:    new Catalog(client),
     feedback:   new Feedback(client),
   };
 }

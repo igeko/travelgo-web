@@ -52,12 +52,6 @@ export enum UserTable {
   PlatformRoles = "user_platform_roles",
 }
 
-/** Place catalog import pipeline. */
-export enum CatalogTable {
-  ImportJobs = "import_jobs",
-  Places = "catalog_places",
-}
-
 /** Tester / QA feedback notes. */
 export enum FeedbackTable {
   TesterNotes = "tester_notes",
