@@ -35,7 +35,7 @@ type TripGoContextValue = {
   setTripContext: (ctx: string) => void;
   /** Imposta l'ancora orizzontale del float ("left" | "center" | "right"). */
   setGoPosition: (position: GoChatPosition) => void;
-  /** Larghezza del panel in modalità "wide" (default 600). */
+  /** Larghezza del panel in modalità "wide" (default 650). */
   setGoWideWidth: (px: number) => void;
   /**
    * Dichiara quale editor attività è aperto (o null). Go mostra "Applica
