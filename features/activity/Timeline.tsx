@@ -140,6 +140,19 @@ function parseClock(clock?: string | null): PeriodTime {
   };
 }
 
+/**
+ * Estrae un orario "HH:mm" visualizzabile dal campo `time`. Il campo dovrebbe
+ * sempre essere "HH:mm" o null, ma import/AI possono averci scritto stringhe
+ * libere ("14:30 - 17:00", "tramonto", "pomeriggio/tramonto"…): in quel caso
+ * mostriamo solo l'orario di partenza se presente, altrimenti niente — così la
+ * colonna orario resta una clock pulita e non deborda mai sulla spine.
+ */
+function displayClock(time?: string | null): string | null {
+  if (!time) return null;
+  const m = time.match(/([0-2]?\d:[0-5]\d)/);
+  return m ? m[1] : null;
+}
+
 /** "HH:mm" + N minuti (wrap a 24h). Null se non parsabile. */
 function addMinutesToClock(clock: string, minutes: number): string | null {
   const [h, m] = clock.split(":").map(Number);
@@ -341,6 +354,7 @@ function SingleBlock({
   const isFuzzy  = block.fuzzy;
   const showActs = editMode && (hovered || popoverOpen || transitOpen);
   const stopIcon = stopIconNode(block.icon);
+  const clock    = displayClock(block.time);
   const tA = useTranslations("Timeline.actions");
   const tIcons = useTranslations("Timeline.stopIcons");
   const iconOptions = useMemo(
@@ -361,7 +375,7 @@ function SingleBlock({
       >
         {/* Time — absolute, left of spine */}
         <span
-          className="absolute text-[12.5px] font-medium tabular-nums text-right select-none transition-colors"
+          className="absolute text-[12.5px] font-medium tabular-nums text-right select-none transition-colors whitespace-nowrap overflow-hidden"
           style={{
             right:     "calc(100% + 42px)",
             width:      38,
@@ -370,7 +384,7 @@ function SingleBlock({
             color:     hovered || popoverOpen ? "var(--color-ink-soft)" : "var(--color-ink-faint)",
           }}
         >
-          {block.time ? block.time : <span className="opacity-30">—</span>}
+          {clock ? clock : <span className="opacity-30">—</span>}
         </span>
 
         {/* Spine icon — absolute, on the spine line. In edit mode è cliccabile
@@ -583,10 +597,12 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, onMut
       groups[s].sort((a, b) => {
         // Tiebreak su position: gli "stop" fuzzy ereditano l'ora del vicino
         // (Modello 1) e la position decide se stanno prima o dopo di esso.
-        if (a.time && b.time)
-          return a.time.localeCompare(b.time) || ((a.position ?? 0) - (b.position ?? 0));
-        if (a.time) return -1;
-        if (b.time) return 1;
+        const at = displayClock(a.time);
+        const bt = displayClock(b.time);
+        if (at && bt)
+          return at.localeCompare(bt) || ((a.position ?? 0) - (b.position ?? 0));
+        if (at) return -1;
+        if (bt) return 1;
         return (a.position ?? 0) - (b.position ?? 0);
       });
     }

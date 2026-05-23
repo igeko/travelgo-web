@@ -95,3 +95,20 @@ const CURRENCY_RE = /^[A-Z]{3}$/;
 export function isCurrencyCode(value: unknown): value is string {
   return typeof value === "string" && CURRENCY_RE.test(value);
 }
+
+const CLOCK_RE = /([0-2]?\d:[0-5]\d)/;
+/**
+ * Normalize a free-form time value to a strict "HH:mm" clock, or null.
+ * `scheduled_activities.time` must be a clock or null, but imports/AI may pass
+ * ranges or descriptive text ("14:30 - 17:00", "check-in entro 16:15",
+ * "pomeriggio/tramonto"): keep only a valid leading clock, zero-padded, so a
+ * bad value can never reach the DB and break the timeline layout.
+ */
+export function normalizeClock(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const m = value.match(CLOCK_RE);
+  if (!m) return null;
+  const [h, min] = m[1].split(":").map(Number);
+  if (h > 23 || min > 59) return null;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}

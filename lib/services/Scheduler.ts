@@ -15,7 +15,7 @@
 import { getAI, AI_MODELS } from "@/lib/ai/provider";
 import type { Dal, Activity } from "@/lib/dal";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
-import { pickFields } from "@/lib/api/validation";
+import { pickFields, normalizeClock } from "@/lib/api/validation";
 import { unwrap } from "./util";
 import type { YumeService } from "./YumeService";
 
@@ -80,12 +80,15 @@ export class Scheduler {
       createdEntityId = activity.id;
     }
 
+    const instance = pickFields(body, INSTANCE_FIELDS);
+    if ("time" in instance) instance.time = normalizeClock(instance.time);
+
     try {
       const scheduled = unwrap(
         await this.dal.trips.scheduleActivity({
           activity_id: activityId,
           day_id: dayId,
-          ...pickFields(body, INSTANCE_FIELDS),
+          ...instance,
         } as Record<string, unknown>),
       );
       const block = (await this.listForDay(dayId)).find((a) => a.id === scheduled.id);
@@ -101,6 +104,7 @@ export class Scheduler {
   async updateInstance(scheduledId: string, body: Record<string, unknown>): Promise<void> {
     const patch = pickFields(body, INSTANCE_FIELDS);
     if (Object.keys(patch).length === 0) throw badRequest("No valid fields to update");
+    if ("time" in patch) patch.time = normalizeClock(patch.time);
     unwrap(await this.dal.trips.updateSchedule(scheduledId, patch as Record<string, unknown>));
   }
 
