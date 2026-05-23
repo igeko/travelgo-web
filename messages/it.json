@@ -5,7 +5,11 @@
     "closed": "Chiuso",
     "close": "Chiudi",
     "pointLabel": "Punto · {coords}",
-    "placeFallback": "Luogo"
+    "placeFallback": "Luogo",
+    "nightRoute": "Percorso notti",
+    "day": "Giorno {n}",
+    "days": "Giorni {from}–{to}",
+    "openLink": "Apri link"
   },
   "ExploreCategories": {
     "dormi": "Dormi",
@@ -88,6 +92,18 @@
       "hint": "Aggiungi un intervallo di date per generare il programma giorno per giorno.",
       "comingSoon": "Funzionalità per modificare le date del viaggio in arrivo."
     }
+  },
+  "BoardingPass": {
+    "title": "Carta d'imbarco",
+    "from": "Da",
+    "to": "A",
+    "passenger": "Passeggero",
+    "date": "Data",
+    "stay": "Soggiorno",
+    "mood": "Mood",
+    "departureIn": "Partenza tra",
+    "days": "{count, plural, one {giorno} other {giorni}}",
+    "nights": "{count, plural, one {# notte} other {# notti}}"
   },
   "TripDayView": {
     "sidebar": {

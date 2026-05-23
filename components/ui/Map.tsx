@@ -3,7 +3,9 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
-import { makeAdHocPin, INK, ORANGE, NEUTRAL } from "./mapPins";
+import { api } from "@/lib/client";
+import { makeAdHocPin, makeNightPin, INK, ORANGE, NEUTRAL, NIGHT } from "./mapPins";
+import { decodePolyline } from "./mapRoute";
 
 /* ─────────────────────────────────────────────────────────────────
    Map · Google Maps JS SDK wrapper.
@@ -36,6 +38,19 @@ export type MapMarker = {
   id?: string;
   /** Inner SVG (from `iconGlyph`) to draw in the pin head instead of the dot. */
   glyph?: string;
+  /** Pin style. "night" uses the dedicated night-route pin (indigo badge). */
+  variant?: "night";
+};
+
+/**
+ * Optional connecting route drawn through `points` in order (the night-route
+ * polyline). The pins themselves are regular `markers` with variant "night", so
+ * they keep full click/card/selection behaviour; this layer only adds the line.
+ */
+export type MapRouteLayer = {
+  points: LatLng[];
+  /** Google travel mode for the connecting route. Default "DRIVING". */
+  travelMode?: string;
 };
 
 /**
@@ -86,6 +101,8 @@ export type MapProps = {
   markerCardAnchor?: LatLng | null;
   /** Reports the anchor's container pixel on every map move (null when hidden). */
   onCardPixelChange?: (pixel: { x: number; y: number } | null) => void;
+  /** Optional night-route overlay (dedicated pins + connecting polyline). */
+  routeLayer?: MapRouteLayer | null;
 };
 
 /** Great-circle distance in metres between two points. */
@@ -194,11 +211,13 @@ export function Map({
   onViewportChange,
   markerCardAnchor,
   onCardPixelChange,
+  routeLayer,
 }: MapProps) {
   const status = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersByKey = useRef<Record<string, google.maps.Marker>>({});
+  const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
   const cardAnchorRef = useRef(markerCardAnchor);
@@ -317,8 +336,15 @@ export function Map({
       const marker = markersByKey.current[key];
       if (!marker) continue;
       const isSelected = selectedMarkerId != null && key === selectedMarkerId;
-      marker.setIcon(makeAdHocPin(isSelected ? INK : NEUTRAL, isSelected ? ORANGE : "#fff", m.glyph));
-      marker.setZIndex(isSelected ? 1000 : 1);
+      if (m.variant === "night") {
+        // Night pins keep their indigo identity regardless of selection; the
+        // halo overlay still marks the selected one.
+        marker.setIcon(makeNightPin(m.glyph ?? ""));
+        marker.setZIndex(isSelected ? 1000 : 500);
+      } else {
+        marker.setIcon(makeAdHocPin(isSelected ? INK : NEUTRAL, isSelected ? ORANGE : "#fff", m.glyph));
+        marker.setZIndex(isSelected ? 1000 : 1);
+      }
     }
 
     if (added) {
@@ -332,6 +358,47 @@ export function Map({
       }
     }
   }, [markers, status, selectedMarkerId]);
+
+  // Night-route polyline: connects the night pins (regular markers with variant
+  // "night") in order. Clears + redraws when the layer changes, and tears itself
+  // down when the layer is removed (toggle off). The pins live in `markers`.
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+    const map = mapRef.current;
+
+    routePolylineRef.current?.setMap(null);
+    routePolylineRef.current = null;
+
+    const points = routeLayer?.points ?? [];
+    if (points.length < 2) return;
+
+    let cancelled = false;
+    api.routes
+      .compute(points, routeLayer?.travelMode ?? "DRIVING")
+      .then((data) => {
+        if (cancelled || !data.polyline) return;
+        const path = decodePolyline(data.polyline);
+        routePolylineRef.current = new google.maps.Polyline({
+          path,
+          map,
+          strokeColor: NIGHT,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+        });
+        const bounds = new google.maps.LatLngBounds();
+        points.forEach((p) => bounds.extend(p));
+        path.forEach((ll) => bounds.extend(ll));
+        map.fitBounds(bounds, 80);
+      })
+      .catch(() => { /* routing failed — keep the pins, skip the line */ });
+
+    return () => { cancelled = true; };
+  }, [routeLayer, status]);
+
+  // Tear down the night-route polyline on unmount.
+  useEffect(() => () => {
+    routePolylineRef.current?.setMap(null);
+  }, []);
 
   // Decorate the selected marker with the hero halo + name label overlay.
   useEffect(() => {

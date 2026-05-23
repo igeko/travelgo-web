@@ -5,7 +5,11 @@
     "closed": "Closed",
     "close": "Close",
     "pointLabel": "Point · {coords}",
-    "placeFallback": "Place"
+    "placeFallback": "Place",
+    "nightRoute": "Night route",
+    "day": "Day {n}",
+    "days": "Days {from}–{to}",
+    "openLink": "Open link"
   },
   "ExploreCategories": {
     "dormi": "Sleep",
@@ -88,6 +92,18 @@
       "hint": "Add a date range to generate the day-by-day itinerary.",
       "comingSoon": "Feature to edit trip dates coming soon."
     }
+  },
+  "BoardingPass": {
+    "title": "Boarding pass",
+    "from": "From",
+    "to": "To",
+    "passenger": "Passenger",
+    "date": "Date",
+    "stay": "Stay",
+    "mood": "Mood",
+    "departureIn": "Departure in",
+    "days": "{count, plural, one {day} other {days}}",
+    "nights": "{count, plural, one {# night} other {# nights}}"
   },
   "TripDayView": {
     "sidebar": {

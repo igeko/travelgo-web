@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { serverDal } from "@/lib/dal";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import type { LatLng } from "@/components/ui/Map";
+import { selectNightRoute } from "@/lib/explore/nightRoute";
 import { ExploreMap } from "./ExploreMap";
 import { ExploreGoLauncher } from "./ExploreGoLauncher";
 import { ExploreDebugPanel } from "./ExploreDebugPanel";
@@ -16,9 +17,10 @@ export default async function TripExplorePage({
 }) {
   const { id } = await params;
   const dal = await serverDal();
-  const [trip, days] = await Promise.all([dal.trips.getTrip(id), dal.trips.getDays(id)]);
+  const snapshot = await dal.trips.getSnapshot(id);
 
-  if (!trip) notFound();
+  if (!snapshot) notFound();
+  const { trip, days } = snapshot;
 
   const located = days.filter(
     (d): d is typeof d & { accommodation_lat: number; accommodation_lng: number } =>
@@ -31,6 +33,10 @@ export default async function TripExplorePage({
       }
     : FALLBACK_CENTER;
 
+  // Pre-analysis: distinct geographical waypoints (last activity + sleep spot,
+  // collapsed by place) for the optional night-route overlay.
+  const nightRoute = selectNightRoute(days);
+
   return (
     <div className="h-screen flex flex-col bg-bg">
       <AppHeaderServer
@@ -41,7 +47,12 @@ export default async function TripExplorePage({
         tripId={id}
       />
       <main className="flex-1 min-h-0">
-        <ExploreMap tripId={id} center={center} zoom={located.length ? 12 : 5} />
+        <ExploreMap
+          tripId={id}
+          center={center}
+          zoom={located.length ? 12 : 5}
+          nightRoute={nightRoute}
+        />
       </main>
       <ExploreGoLauncher tripId={id} position="left" />
       <ExploreDebugPanel />

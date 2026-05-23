@@ -42,6 +42,10 @@
   --color-lime: #e6f254;
   --color-lime-text: #5a6206;
 
+  /* Night — indigo, used by the Explore night-route layer (pins + route) */
+  --color-night: #4338ca;
+  --color-night-soft: #eef0fb;
+
   /* Status colors */
   --color-status-todo-bg: #fde6e1;
   --color-status-todo-fg: #9a3015;

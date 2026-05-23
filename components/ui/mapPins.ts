@@ -13,6 +13,7 @@ import type { ComponentType } from "react";
 export const INK = "#0d2c3d"; // brand blue — markers + route line
 export const ORANGE = "#f47b3a"; // brand orange — ad-hoc pin (Go places / "show on map")
 export const NEUTRAL = "#5b6b78"; // muted slate — unselected Go places (ink-soft)
+export const NIGHT = "#4338ca"; // indigo — Explore night-route layer (--color-night)
 
 export type StopRole = "start" | "mid" | "end";
 
@@ -97,6 +98,30 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK):
  * white). Pass `glyph` (inner SVG from `iconGlyph`) to draw a category icon in
  * the head instead of the dot. Anchored at the tip.
  */
+/**
+ * Night-route marker (44×52): a circular badge with a short pointer stem —
+ * deliberately a different silhouette from the teardrop route/ad-hoc pins so
+ * the Explore "night route" layer reads as its own thing. Indigo body, white
+ * ring, the stop's glyph (bed for a sleep spot, the activity icon otherwise)
+ * knocked out white in the centre. Anchored at the tip.
+ */
+export function makeNightPin(glyph: string, color: string = NIGHT): google.maps.Icon {
+  const stem = `<path d="M14 30c2.5 4 6 8.5 8 12 2-3.5 5.5-8 8-12z" fill="${color}"/>`;
+  const head = `<circle cx="22" cy="20" r="15" fill="${color}" stroke="#fff" stroke-width="3"/>`;
+  const icon =
+    `<g transform="translate(13.6 11.6) scale(0.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">` +
+    `<defs><filter id="np" x="-40%" y="-20%" width="180%" height="150%">` +
+    `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter></defs>` +
+    `<g filter="url(#np)">${stem}${head}${icon}</g></svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(44, 52),
+    anchor: new google.maps.Point(22, 46),
+  };
+}
+
 export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string): google.maps.Icon {
   // Either the category icon (knocked out white, centred in the head) or a dot.
   const center = glyph
