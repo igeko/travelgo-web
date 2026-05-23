@@ -34,6 +34,12 @@ type YumejiPanelProps = {
   filterable?: boolean;
   showOwner?: boolean;
   autoFocusSearch?: boolean;
+  loading?: boolean;
+  searchValue?: string;
+  onSearchChange?: (q: string) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   className?: string;
 };
 
@@ -49,6 +55,12 @@ export function YumejiPanel({
   filterable = true,
   showOwner = false,
   autoFocusSearch = false,
+  loading = false,
+  searchValue,
+  onSearchChange,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
   className,
 }: YumejiPanelProps) {
   return (
@@ -104,6 +116,12 @@ export function YumejiPanel({
         filterable={filterable}
         showOwner={showOwner}
         autoFocusSearch={autoFocusSearch}
+        loading={loading}
+        searchValue={searchValue}
+        onSearchChange={onSearchChange}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={onLoadMore}
         className="flex-1"
       />
     </aside>

@@ -914,9 +914,39 @@ function SuggestionsBlock({
    First-pass styling; to be refined with Design.
 ───────────────────────────────────────────────────────────────── */
 
+/** Compone i `details` dello yume dall'editorial generato da Go. */
+function detailsFromCard(d: YumeCardData): string {
+  const parts = d.sections.map((s) => `${s.heading}\n${s.body}`);
+  if (d.highlights.length > 0) parts.push(d.highlights.map((h) => `• ${h}`).join("\n"));
+  return parts.join("\n\n");
+}
+
 function YumeCardBlock({ state }: { state: YumeCardState }) {
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
   const hero = state.photos[0];
+
+  // Add to Yumeji: salva le info estratte come yume (activity dell'utente).
+  async function saveYume() {
+    if (!state.data || saving || saved) return;
+    setSaving(true);
+    setError(false);
+    try {
+      await api.yumes.create({
+        title: state.data.title || state.sourceTitle,
+        short_desc: state.data.tagline || undefined,
+        details: detailsFromCard(state.data) || undefined,
+        location: state.sourceLocation || undefined,
+        hero_image: state.photos[0] || undefined,
+      });
+      setSaved(true);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div style={{ margin: "0 0 14px" }}>
@@ -1009,7 +1039,7 @@ function YumeCardBlock({ state }: { state: YumeCardState }) {
                 </ul>
               )}
 
-              {/* Add to Yumeji — stub: inline confirmation, no persistence yet */}
+              {/* Add to Yumeji — salva le info estratte come yume */}
               <div style={{ marginTop: 13, paddingTop: 12, borderTop: "1px dashed rgba(13,44,61,0.08)" }}>
                 <Button
                   variant={saved ? "outline" : "solid"}
@@ -1017,12 +1047,20 @@ function YumeCardBlock({ state }: { state: YumeCardState }) {
                   iconOnly={false}
                   tone="neutral"
                   className="w-full"
-                  disabled={saved}
-                  onClick={() => setSaved(true)}
+                  disabled={saved || saving}
+                  onClick={saveYume}
                 >
                   {saved ? <IconCheck size={13} /> : <YumePinIcon size={13} filled />}
-                  {saved ? "Salvato nei tuoi yume" : "Add to Yumeji"}
+                  {saved ? "Salvato nei tuoi yume" : saving ? "Salvataggio…" : "Add to Yumeji"}
                 </Button>
+                {error && (
+                  <p
+                    className="text-center"
+                    style={{ fontSize: 11, color: "var(--color-danger-fg)", marginTop: 6 }}
+                  >
+                    Non sono riuscito a salvare. Riprova.
+                  </p>
+                )}
               </div>
             </>
           )}

@@ -49,6 +49,8 @@ type YumeListProps = {
   loadingMore?: boolean;
   /** Carica la pagina successiva. Richiesto perché l'endless scroll si attivi. */
   onLoadMore?: () => void;
+  /** Caricamento iniziale in corso (mostra un placeholder al posto dell'empty). */
+  loading?: boolean;
   className?: string;
 };
 
@@ -59,6 +61,7 @@ export function YumeList({
   chips = [],
   showOwner = false,
   autoFocusSearch = false,
+  loading = false,
   searchValue,
   onSearchChange,
   hasMore = false,
@@ -179,8 +182,12 @@ export function YumeList({
         </div>
       )}
 
-      {/* Lista o empty state */}
-      {visible.length > 0 ? (
+      {/* Lista · loading · empty state */}
+      {loading && visible.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-mini text-ink-faint">
+          Caricamento…
+        </div>
+      ) : visible.length > 0 ? (
         <ol
           ref={scrollRef}
           className="m-0 p-0 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin"

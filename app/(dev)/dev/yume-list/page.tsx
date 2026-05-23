@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 import { YumeList } from "@/features/yumeji/YumeList";
 import { MOCK_YUMES, type YumeChip, type YumeListItem } from "@/features/yumeji/mockData";
 import { api, type Yume } from "@/lib/client";
+import { yumeToListItem } from "@/features/yumeji/toListItem";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 
 const CHIPS: YumeChip[] = [
@@ -32,27 +33,6 @@ const CHIPS: YumeChip[] = [
 
 /** Page size piccola per mostrare bene "Carica altri" in sandbox (la default API è 24). */
 const SANDBOX_PAGE = 8;
-
-const CURRENCY_SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", JPY: "¥" };
-
-function formatBudget(amount: number | null, currency: string | null): string | null {
-  if (amount == null) return null;
-  if (amount === 0) return "Gratis";
-  const sym = currency ? (CURRENCY_SYMBOL[currency] ?? `${currency} `) : "";
-  return `${sym}${amount}`;
-}
-
-/** Map del modello reale (Yume = DbActivity + shared_trip_ids) → view-model lista. */
-function toListItem(y: Yume): YumeListItem {
-  return {
-    id: y.id,
-    title: y.title,
-    location: y.location,
-    price: formatBudget(y.budget_amount, y.budget_currency),
-    imageUrl: y.hero_image,
-    owner: y.owner ? { name: y.owner.displayName ?? "Senza nome", avatarUrl: y.owner.avatarUrl } : null,
-  };
-}
 
 type Source = "mock" | "real";
 type MockDataset = "all" | "shared" | "empty";
@@ -125,7 +105,7 @@ export default function YumeListSandbox() {
   }
 
   const items =
-    source === "real" ? realRaw.map(toListItem) : MOCK_DATASETS[mockDataset];
+    source === "real" ? realRaw.map(yumeToListItem) : MOCK_DATASETS[mockDataset];
 
   return (
     <div className="min-h-screen bg-bg p-8">
