@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
-import { IconMessageReport, IconNotes } from "@/components/ui/icons";
+import { IconMessageReport, IconNotes, IconPencil } from "@/components/ui/icons";
 import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { YumejiGlyph } from "@/features/yumeji/YumejiGlyph";
 
@@ -322,92 +322,27 @@ export function AppHeader({
               {/* ── Action chips ── */}
               <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
 
-                {/* Debug-mode chip — only for devs */}
-                {isDev && (
-                  <button
-                    type="button"
-                    onClick={onToggleDebugMode}
-                    title={debugMode ? t("disableDebug") : t("enableDebug")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans font-mono",
-                      debugMode
-                        ? "bg-[#1a1a2e] border-[#1a1a2e] text-[#7ee8a2] font-medium"
-                        : "bg-transparent border-border text-ink-faint hover:border-border-strong hover:text-ink-soft",
-                    )}
-                  >
-                    <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
-                    <span>{t("debug")}</span>
-                  </button>
-                )}
-
                 {/* Edit-state chip — always visible */}
                 <button
                   type="button"
                   onClick={onToggleEditMode}
+                  aria-pressed={editMode}
                   title={editMode ? t("disableEditMode") : t("enableEditMode")}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans",
+                    "inline-flex items-center gap-1.5 px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border shrink-0",
                     editMode
-                      ? "bg-orange border-orange text-white font-medium"
-                      : "bg-transparent border-border text-ink-soft hover:border-border-strong",
+                      ? "bg-warning-bg text-warning-fg border-warning-border font-medium"
+                      : "bg-transparent border-transparent text-ink-soft hover:text-ink",
                   )}
                 >
-                  <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", editMode ? "bg-white" : "bg-ink-faint")} />
-                  <span>{editMode ? t("editMode") : t("viewMode")}</span>
+                  <IconPencil size={13} />
+                  <span>{t("editMode")}</span>
                 </button>
-
-                {/* Feedback — solo per tester */}
-                {isTester && (
-                  <button
-                    type="button"
-                    onClick={() => setFeedbackOpen(true)}
-                    title={t("leaveFeedback")}
-                    className="inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-tiny border cursor-pointer transition-colors shrink-0 font-sans bg-transparent border-border text-ink-soft hover:border-border-strong hover:text-ink"
-                  >
-                    <IconMessageReport size={13} />
-                    {t("feedback")}
-                  </button>
-                )}
-
-                {/* Kebab — per tester, dev e admin */}
-                {isTester && (
-                  <div ref={kebabRef} className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setKebabOpen((v) => !v)}
-                      aria-label={t("tripActions")}
-                      title={t("tripActions")}
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                        <circle cx="12" cy="5"  r="1.5" />
-                        <circle cx="12" cy="12" r="1.5" />
-                        <circle cx="12" cy="19" r="1.5" />
-                      </svg>
-                    </button>
-
-                    {kebabOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
-                        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
-                          <Link
-                            href="/admin/tester-notes"
-                            onClick={() => setKebabOpen(false)}
-                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
-                          >
-                            <IconNotes size={15} className="shrink-0" />
-                            {t("allFeedback")}
-                          </Link>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
 
               </div>
               {/* ── end action chips ── */}
 
-              {/* Yume — tab al pari degli altri, con glifo, primo a destra */}
+              {/* Yume — tab al pari degli altri, con glifo */}
               {yumeji && (
                 <button
                   type="button"
@@ -423,6 +358,71 @@ export function AppHeader({
                   <YumejiGlyph size={13} />
                   Yume
                 </button>
+              )}
+
+              {/* Actions menu (kebab) — ultima voce: Debug, Feedback, tutti i feedback */}
+              {(isDev || isTester) && (
+                <div ref={kebabRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setKebabOpen((v) => !v)}
+                    aria-label={t("tripActions")}
+                    title={t("tripActions")}
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <circle cx="12" cy="5"  r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                  </button>
+
+                  {kebabOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+
+                        {/* Debug toggle — solo per dev */}
+                        {isDev && (
+                          <button
+                            type="button"
+                            onClick={() => { onToggleDebugMode?.(); setKebabOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                          >
+                            <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
+                            <span className="font-mono">{t("debug")}</span>
+                          </button>
+                        )}
+
+                        {isDev && isTester && <div aria-hidden className="my-1 h-px bg-border" />}
+
+                        {/* Feedback — solo per tester */}
+                        {isTester && (
+                          <button
+                            type="button"
+                            onClick={() => { setFeedbackOpen(true); setKebabOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                          >
+                            <IconMessageReport size={15} className="shrink-0" />
+                            {t("feedback")}
+                          </button>
+                        )}
+
+                        {/* Tutti i feedback — solo per tester */}
+                        {isTester && (
+                          <Link
+                            href="/admin/tester-notes"
+                            onClick={() => setKebabOpen(false)}
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
+                          >
+                            <IconNotes size={15} className="shrink-0" />
+                            {t("allFeedback")}
+                          </Link>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
             </div>
