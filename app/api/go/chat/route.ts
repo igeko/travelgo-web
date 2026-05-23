@@ -10,8 +10,7 @@
  * forceSuggestions=true bypassa il classifier (usato dal greeting iniziale).
  */
 
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { getAI, AI_MODELS } from "@/lib/ai/provider";
+import { chatJson, chatStream, type LlmMessage } from "@/lib/ai/llm";
 import { runDeepDive } from "../_deepDive";
 import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted, sanitizeUntrustedText } from "@/lib/api/go-untrusted";
 
@@ -101,17 +100,14 @@ async function classifyIntent(
     ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${safeTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${safeTitle}" }.`
     : CLASSIFIER_SYSTEM;
 
-  const completion = await getAI().chat.completions.create({
-    model: AI_MODELS.fast,
-    response_format: { type: "json_object" },
-    max_tokens: 60,
+  const raw = (await chatJson({
+    tier: "fast",
+    maxTokens: 60,
     messages: [
       { role: "system", content: systemWithContext },
-      ...recent as ChatCompletionMessageParam[],
+      ...(recent as LlmMessage[]),
     ],
-  });
-
-  const raw = completion.choices[0]?.message?.content ?? '{"mode":"chat"}';
+  })) || '{"mode":"chat"}';
   try {
     return JSON.parse(raw) as IntentResult;
   } catch {
@@ -186,24 +182,21 @@ export async function POST(req: Request): Promise<Response> {
 
   // Trip context is user-supplied — wrap it as untrusted data in a user message
   // (never concatenate into the system prompt).
-  const tripContextMessage: ChatCompletionMessageParam | null = tripContext
+  const tripContextMessage: LlmMessage | null = tripContext
     ? { role: "user", content: wrapUntrusted("trip-context", tripContext) }
     : null;
 
   /* ── Mode: suggestions ── */
   if (intent.mode === "suggestions") {
     try {
-      const completion = await getAI().chat.completions.create({
-        model: AI_MODELS.smart,
-        response_format: { type: "json_object" },
+      const rawText = (await chatJson({
+        tier: "smart",
         messages: [
           { role: "system", content: SUGGESTIONS_SYSTEM_PROMPT },
           ...(tripContextMessage ? [tripContextMessage] : []),
           ...messages,
         ],
-      });
-
-      const rawText = completion.choices[0]?.message?.content ?? "{}";
+      })) || "{}";
       const parsed = JSON.parse(rawText) as { text?: string; suggestions?: unknown[] };
 
       return new Response(JSON.stringify({ mode: "suggestions", ...parsed }), {
@@ -216,9 +209,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   /* ── Mode: chat (streaming) ── */
-  const stream = await getAI().chat.completions.create({
-    model: AI_MODELS.fast,
-    stream: true,
+  const stream = chatStream({
+    tier: "fast",
     messages: [
       { role: "system", content: BASE_SYSTEM_PROMPT },
       ...(tripContextMessage ? [tripContextMessage] : []),
@@ -229,9 +221,8 @@ export async function POST(req: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) controller.enqueue(encoder.encode(delta));
+      for await (const delta of stream) {
+        controller.enqueue(encoder.encode(delta));
       }
       controller.close();
     },

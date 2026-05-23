@@ -3,7 +3,7 @@
  * che da /api/go/chat quando viene rilevato un location-info intent.
  */
 
-import { getAI, AI_MODELS } from "@/lib/ai/provider";
+import { chatJson } from "@/lib/ai/llm";
 import { UNTRUSTED_DATA_INSTRUCTION, sanitizeUntrustedText, wrapUntrusted } from "@/lib/api/go-untrusted";
 
 export const DEEP_DIVE_SYSTEM = `You are Go, TravelGo's expert travel assistant.
@@ -54,15 +54,14 @@ export async function runDeepDive(input: DeepDiveInput): Promise<DeepDiveResult>
     ? `${headerLines}\n\n${wrapUntrusted("trip-context", input.tripContext)}`
     : headerLines;
 
-  const completion = await getAI().chat.completions.create({
-    model: AI_MODELS.smart,
-    response_format: { type: "json_object" },
+  const raw = await chatJson({
+    tier: "smart",
     messages: [
       { role: "system", content: DEEP_DIVE_SYSTEM },
       { role: "user", content: userMsg },
     ],
   });
 
-  return JSON.parse(completion.choices[0]?.message?.content ?? "{}") as DeepDiveResult;
+  return JSON.parse(raw || "{}") as DeepDiveResult;
 }
 
