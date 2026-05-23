@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
-import { IconCheck, IconGripVertical, IconPencil, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
+import { IconCheck, IconGripVertical, IconPencil, IconPlus, IconUnlink, IconX } from "@/components/ui/icons";
 import { TimeField } from "@/components/ui/TimeField";
 import { ActivitySearchField } from "@/features/activity/ActivitySearchField";
 import { ActivityRouteMap } from "@/features/activity/ActivityRouteMap";
@@ -193,8 +193,8 @@ function ActivityRow({
           <IconPencil size={12} />
         </button>
         <button type="button" onClick={onDelete} title={deleteLabel}
-          className="w-6 h-6 rounded-full text-ink-faint hover:bg-danger-bg hover:text-danger-fg inline-flex items-center justify-center">
-          <IconTrash size={12} />
+          className="w-6 h-6 rounded-full text-ink-faint hover:bg-ink/[0.06] hover:text-ink inline-flex items-center justify-center">
+          <IconUnlink size={12} />
         </button>
       </div>
     </div>
@@ -453,7 +453,7 @@ export function DayActivitiesEditForm({
                 }
                 pin={mapIndexById.has(item.id) ? mapIndexById.get(item.id)! + 1 : null}
                 editLabel={t("edit")}
-                deleteLabel={t("delete")}
+                deleteLabel={t("unschedule")}
                 reorderLabel={t("reorder")}
                 onArm={() => { if (!editingActive) setArmed(i); }}
                 onDragStart={() => setDragIndex(i)}

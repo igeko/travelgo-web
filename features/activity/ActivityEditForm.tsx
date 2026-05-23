@@ -10,7 +10,7 @@ import { PeriodBar, DEFAULT_PERIODS, type Period } from "@/components/ui/PeriodB
 import { BudgetInput, type Currency } from "@/components/ui/BudgetInput";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
 import { ImagePicker } from "@/components/ui/ImagePicker";
-import { IconMessage, IconSparkles, IconTrash, IconX } from "@/components/ui/icons";
+import { IconMessage, IconSparkles, IconUnlink, IconX } from "@/components/ui/icons";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { api } from "@/lib/client";
@@ -146,7 +146,6 @@ export function ActivityEditForm({
     initialData?.budgetAmount !== undefined && initialData.budgetAmount > 0
   );
   const [heroImage, setHeroImage] = useState<string>(initialData?.heroImage ?? "");
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   /* ── Place enrichment state ── */
   const [enriched, setEnriched] = useState<PlaceEnriched | null>(
@@ -561,23 +560,16 @@ export function ActivityEditForm({
       {/* ── Footer (full width) ── */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-0.5">
         {!isNew && onDelete ? (
-          confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-mini text-danger-fg">{t("areYouSure")}</span>
-              <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
-                <IconTrash />
-                {t("delete")}
-              </Button>
-              <Button variant="text-only" iconOnly={false} onClick={() => setConfirmDelete(false)}>
-                {t("cancel")}
-              </Button>
-            </div>
-          ) : (
-            <Button variant="ghost" tone="danger" iconOnly={false} onClick={() => setConfirmDelete(true)}>
-              <IconTrash />
-              {t("deleteActivity")}
-            </Button>
-          )
+          <Button
+            variant="ghost"
+            tone="neutral"
+            iconOnly
+            onClick={onDelete}
+            title={t("unschedule")}
+            aria-label={t("unschedule")}
+          >
+            <IconUnlink />
+          </Button>
         ) : (
           <span />
         )}
