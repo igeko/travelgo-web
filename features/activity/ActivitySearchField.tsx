@@ -127,16 +127,28 @@ export function ActivitySearchField({
   const locale = useLocale();
 
   const [fetched, setFetched] = useState<TripActivityOption[]>([]);
+  // Risultati di una ricerca server-side sul termine digitato: includono il
+  // "platform" (gli yume dell'utente non ancora nel trip), che il fetch iniziale
+  // — fatto con query vuota — non restituisce.
+  const [searched, setSearched] = useState<TripActivityOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputText, setInputText] = useState(value?.title ?? "");
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listboxId = useId();
 
-  // Data source: explicit items win; otherwise the fetched trip activities.
-  const allItems = items ?? fetched;
+  // Data source: explicit items win; altrimenti unione (deduplicata) delle
+  // activity del trip + i risultati di ricerca (incluso il platform/yume).
+  const allItems = useMemo(() => {
+    if (items) return items;
+    const map = new Map<string, TripActivityOption>();
+    for (const a of fetched) map.set(a.id, a);
+    for (const a of searched) if (!map.has(a.id)) map.set(a.id, a);
+    return [...map.values()];
+  }, [items, fetched, searched]);
 
   // Sync the input text when the controlled value changes from outside, and
   // reset the active option when the query changes — both adjusted during
@@ -172,6 +184,37 @@ export function ActivitySearchField({
       cancelled = true;
     };
   }, [tripId, items]);
+
+  // Ricerca server-side sul termine digitato (debounced): porta anche il
+  // platform (yume dell'utente fuori dal trip) tra i risultati selezionabili.
+  useEffect(() => {
+    if (items || !tripId) return;
+    const q = inputText.trim();
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
+      if (!q || q === (value?.title ?? "")) {
+        setSearched([]);
+        return;
+      }
+      try {
+        const res = await api.activities.search({ tripId, query: q });
+        setSearched([
+          ...mapWishlist(res.wishlist),
+          ...res.platform.map((r) => ({
+            id: r.id,
+            title: String(r.title ?? ""),
+            location: (r.location as string | null) ?? null,
+            scheduled: [],
+          })),
+        ]);
+      } catch {
+        // keep previous results on failure
+      }
+    }, 250);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [inputText, items, tripId, value]);
 
   const excludeKey = excludeIds?.join(",") ?? "";
   const { toPlan, planned, flat } = useMemo(() => {
