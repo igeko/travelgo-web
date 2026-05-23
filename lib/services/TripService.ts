@@ -14,10 +14,11 @@ import { chatJson } from "@/lib/ai/llm";
 import {
   normalizeDestination,
   type BoardingMeta,
+  type PlaceMeta,
   type HomeMeta,
   type TripHomeMeta,
 } from "@/lib/trip-home/meta";
-import { buildBoardingMessages, parseBoardingMeta } from "@/lib/trip-home/boarding-prompt";
+import { buildHomeMessages, parseHomeMeta } from "@/lib/trip-home/home-prompt";
 import { type TripAirport } from "@/lib/trip-home/airports";
 import { unwrap } from "./util";
 
@@ -283,27 +284,27 @@ export class TripService {
   }
 
   /**
-   * AI content for the Trip Home, projected for `locale`. Each section is
-   * cached on `trips.home_meta` and reused until its inputs change; missing
-   * sections are generated and persisted on a miss.
-   *
-   * Today this resolves the boarding section (country, most-probable airport,
-   * localized welcome); future sections plug in here.
+   * AI content for the Trip Home, projected for `locale`. Sections (boarding
+   * pass + place card) are cached on `trips.home_meta` and reused until the
+   * destination changes; a miss triggers ONE LLM call that fills them all.
    */
   async getHomeMeta(tripId: string, locale: string): Promise<HomeMeta> {
     const trip = unwrap(await this.dal.trips.findById(tripId));
     const home = (trip.home_meta as TripHomeMeta | null) ?? {};
 
     const source = normalizeDestination(trip.title);
-    const cached = home.boarding;
-    if (cached && cached.source === source && cached.byLocale[locale]) {
-      return { boarding: cached.byLocale[locale] };
+    const fresh = (m?: { source: string; byLocale: Record<string, unknown> }) =>
+      m && m.source === source && m.byLocale[locale] !== undefined;
+
+    // Both sections already resolved for this destination + locale → no call.
+    if (fresh(home.boarding) && fresh(home.place)) {
+      return { boarding: home.boarding!.byLocale[locale], place: home.place!.byLocale[locale] };
     }
 
     const raw = await chatJson({
       tier: "fast",
-      maxTokens: 300,
-      messages: buildBoardingMessages({
+      maxTokens: 380,
+      messages: buildHomeMessages({
         destination: trip.title,
         startDate: trip.start_date,
         endDate: trip.end_date,
@@ -314,17 +315,21 @@ export class TripService {
       }),
     });
 
-    const boardingLocale = parseBoardingMeta(raw, trip.title);
-    if (!boardingLocale) throw upstream("Could not resolve destination info");
+    const parsed = parseHomeMeta(raw, trip.title);
+    if (!parsed.boarding) throw upstream("Could not resolve destination info");
 
-    // Reuse other locales only when the destination hasn't changed.
-    const byLocale = cached && cached.source === source ? { ...cached.byLocale } : {};
-    byLocale[locale] = boardingLocale;
-    const boarding: BoardingMeta = { source, byLocale };
+    // Merge per-locale, resetting a section's cache when the destination moved.
+    const boarding: BoardingMeta = {
+      source,
+      byLocale: { ...(home.boarding?.source === source ? home.boarding.byLocale : {}), [locale]: parsed.boarding },
+    };
+    const place: PlaceMeta | undefined = parsed.place
+      ? { source, byLocale: { ...(home.place?.source === source ? home.place.byLocale : {}), [locale]: parsed.place } }
+      : home.place?.source === source ? home.place : undefined;
 
     // Persist; a write failure shouldn't deny the freshly computed answer.
-    await this.dal.trips.update(tripId, { home_meta: { ...home, boarding } });
+    await this.dal.trips.update(tripId, { home_meta: { ...home, boarding, place } });
 
-    return { boarding: boardingLocale };
+    return { boarding: parsed.boarding, place: parsed.place };
   }
 }

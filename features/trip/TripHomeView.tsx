@@ -4,21 +4,24 @@
  * TripHomeView — client shell for the Trip Home.
  *
  * Reads the per-trip edit-mode flag (shared with the day-by-day via the same
- * localStorage key) and adapts: edit mode off shows the boarding-pass home,
- * edit mode on shows the trip settings editor. The header's Edit chip toggles
- * that same flag.
+ * localStorage key) and adapts: edit mode off shows the boarding-pass home
+ * (place card + boarding pass), edit mode on shows the trip settings editor.
+ * The header's Edit chip toggles that same flag. A single useHomeMeta call
+ * feeds every home widget.
  */
 
 import { useTranslations } from "next-intl";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { useUser } from "@/features/app/UserContext";
 import { AppHeader } from "@/features/app/AppHeader";
-import { BoardingPassLive } from "./BoardingPassLive";
+import { BoardingPass } from "./BoardingPass";
+import { PlaceCard } from "./PlaceCard";
 import { TripEdit } from "./TripEdit";
+import { useHomeMeta } from "./useHomeMeta";
 import { cn } from "@/lib/cn";
 import { PAGE_MAX, PAGE_PX } from "@/lib/layout";
 import type { DbTrip } from "@/lib/dal/types";
-import type { BoardingLocaleMeta } from "@/lib/trip-home/meta";
+import type { BoardingLocaleMeta, PlaceLocaleMeta } from "@/lib/trip-home/meta";
 import { parseAirport } from "@/lib/trip-home/airports";
 
 type Props = {
@@ -27,12 +30,25 @@ type Props = {
   recordLocator: string;
   passengerName?: string;
   initialBoarding?: BoardingLocaleMeta | null;
+  initialPlace?: PlaceLocaleMeta | null;
 };
 
-export function TripHomeView({ trip, daysCount, recordLocator, passengerName, initialBoarding }: Props) {
+export function TripHomeView({ trip, daysCount, recordLocator, passengerName, initialBoarding, initialPlace }: Props) {
   const t = useTranslations("TripShell");
   const { user, isLoggedIn, isDev, isTester } = useUser();
   const [editMode, setEditMode] = useLocalStorageState<boolean>(`trip-edit-mode-${trip.id}`, false);
+
+  const { boarding, place } = useHomeMeta(trip.id, {
+    boarding: initialBoarding ?? null,
+    place: initialPlace ?? null,
+  });
+
+  // Boarding-pass legs: user-set airports win over the AI guess.
+  const dep = parseAirport(trip.departure_airport);
+  const arr = parseAirport(trip.arrival_airport);
+  const origin = dep && (dep.city || dep.iata) ? { city: dep.city, code: dep.iata || undefined } : undefined;
+  const destCity = arr?.city || boarding?.city || trip.title;
+  const destCode = arr?.iata || boarding?.airport || undefined;
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -57,16 +73,29 @@ export function TripHomeView({ trip, daysCount, recordLocator, passengerName, in
             <TripEdit tripId={trip.id} trip={trip} onClose={() => setEditMode(false)} />
           </div>
         ) : (
-          <BoardingPassLive
-            tripId={trip.id}
-            trip={trip}
-            recordLocator={recordLocator}
-            passengerName={passengerName}
-            destinationTitle={trip.title}
-            initialBoarding={initialBoarding ?? null}
-            departureAirport={parseAirport(trip.departure_airport)}
-            arrivalAirport={parseAirport(trip.arrival_airport)}
-          />
+          <div className="flex flex-col gap-[18px] md:flex-row md:items-stretch">
+            <PlaceCard
+              className="md:w-[280px] md:shrink-0"
+              city={trip.title}
+              country={boarding?.country}
+              facts={place?.facts || undefined}
+              caption={place?.caption || undefined}
+            />
+            <BoardingPass
+              className="md:flex-1"
+              trip={trip}
+              recordLocator={recordLocator}
+              passengerName={passengerName}
+              origin={origin}
+              destination={{
+                city: destCity,
+                code: destCode,
+                country: boarding?.country,
+                countryColor: boarding?.countryColor ?? undefined,
+              }}
+              goQuote={boarding?.welcome || undefined}
+            />
+          </div>
         )}
       </main>
     </div>

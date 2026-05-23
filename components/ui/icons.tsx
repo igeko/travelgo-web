@@ -104,6 +104,7 @@ export {
   IconShoppingBag,
   IconBuildingStore,
   IconTicket,
+  IconTorii,
   IconGlassFull,
   IconCake,
   IconBeach,

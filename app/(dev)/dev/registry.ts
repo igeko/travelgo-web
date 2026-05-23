@@ -263,6 +263,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "«Know before you go» country card · 6 tabs (currency/visa/weather/power/language/safety), data-driven",
   },
   {
+    slug: "place-card",
+    title: "PlaceCard",
+    group: "Features",
+    subgroup: "Trips",
+    description: "Compact destination card · landmark glyph + city + country + facts/caption · left of the boarding pass",
+  },
+  {
     slug: "day-info-edit-form",
     title: "DayInfoEditForm",
     group: "Features",

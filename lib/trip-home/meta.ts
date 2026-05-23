@@ -31,6 +31,19 @@ export type BoardingMeta = {
   byLocale: Record<string, BoardingLocaleMeta>;
 };
 
+/** Place-card meta resolved by the AI, for a single locale. */
+export type PlaceLocaleMeta = {
+  /** Compact facts line, e.g. "37 MLN · UTC+9" (population · timezone). */
+  facts: string;
+  /** One-line notable caption, e.g. "Capitale dal 1868." */
+  caption: string;
+};
+
+export type PlaceMeta = {
+  source: string;
+  byLocale: Record<string, PlaceLocaleMeta>;
+};
+
 /**
  * Everything stored in `trips.home_meta` — the AI content for the whole Trip
  * Home. Sections are added here as the home grows (know-before-you-go, trip
@@ -38,6 +51,7 @@ export type BoardingMeta = {
  */
 export type TripHomeMeta = {
   boarding?: BoardingMeta;
+  place?: PlaceMeta;
 };
 
 /**
@@ -46,6 +60,7 @@ export type TripHomeMeta = {
  */
 export type HomeMeta = {
   boarding: BoardingLocaleMeta | null;
+  place: PlaceLocaleMeta | null;
 };
 
 /** Normalizes a trip title/destination for staleness comparison. */

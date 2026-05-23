@@ -22,13 +22,14 @@ export default async function TripOverviewPage({
 
   const passengerName = user?.fullName?.trim().split(/\s+/)[0] || undefined;
 
-  // Seed the client with the boarding section already cached on the trip for
-  // this locale, so a returning visit paints the full pass with no fetch.
-  const boarding = (trip.home_meta as TripHomeMeta | null)?.boarding;
+  // Seed the client with sections already cached on the trip for this locale,
+  // so a returning visit paints the home with no fetch.
+  const home = trip.home_meta as TripHomeMeta | null;
+  const src = normalizeDestination(trip.title);
   const initialBoarding =
-    boarding && boarding.source === normalizeDestination(trip.title)
-      ? boarding.byLocale[locale] ?? null
-      : null;
+    home?.boarding && home.boarding.source === src ? home.boarding.byLocale[locale] ?? null : null;
+  const initialPlace =
+    home?.place && home.place.source === src ? home.place.byLocale[locale] ?? null : null;
 
   return (
     <TripHomeView
@@ -37,6 +38,7 @@ export default async function TripOverviewPage({
       recordLocator={`TG-${id.slice(0, 6).toUpperCase()}`}
       passengerName={passengerName}
       initialBoarding={initialBoarding}
+      initialPlace={initialPlace}
     />
   );
 }

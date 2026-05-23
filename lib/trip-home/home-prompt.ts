@@ -1,18 +1,19 @@
 /**
- * lib/trip-home/boarding-prompt.ts
+ * lib/trip-home/home-prompt.ts
  * ─────────────────────────────────────────────────────────────────
- * Builds the LLM messages that resolve the boarding-pass meta for a
- * destination (country, most-probable airport, a localized welcome) and
- * parses the model's JSON answer defensively.
+ * Builds the single LLM call that resolves the Trip Home AI content for a
+ * destination — both the boarding-pass meta (country, airport, welcome) and
+ * the place-card meta (facts, caption) — and parses the JSON answer
+ * defensively. One call fills every home widget.
  *
  * Provider-neutral: it only produces `LlmMessage[]` and consumes raw text.
  * ─────────────────────────────────────────────────────────────────
  */
 
 import type { LlmMessage } from "@/lib/ai/llm";
-import type { BoardingLocaleMeta } from "./meta";
+import type { BoardingLocaleMeta, PlaceLocaleMeta } from "./meta";
 
-export type BoardingPromptInput = {
+export type HomePromptInput = {
   /** Free-text destination (the trip title). Worst case this is all we have. */
   destination: string;
   startDate: string | null;
@@ -20,8 +21,13 @@ export type BoardingPromptInput = {
   adults: number | null;
   children: number | null;
   themes: string[] | null;
-  /** Target language for `country` and `welcome` ("en" | "it" | …). */
+  /** Target language for localized strings ("en" | "it" | …). */
   locale: string;
+};
+
+export type HomeMetaParsed = {
+  boarding: BoardingLocaleMeta | null;
+  place: PlaceLocaleMeta | null;
 };
 
 const LANGUAGE_NAME: Record<string, string> = {
@@ -29,7 +35,7 @@ const LANGUAGE_NAME: Record<string, string> = {
   it: "Italian",
 };
 
-export function buildBoardingMessages(input: BoardingPromptInput): LlmMessage[] {
+export function buildHomeMessages(input: HomePromptInput): LlmMessage[] {
   const language = LANGUAGE_NAME[input.locale] ?? "English";
 
   const facts = [
@@ -44,14 +50,16 @@ export function buildBoardingMessages(input: BoardingPromptInput): LlmMessage[] 
     .join("\n");
 
   const system = [
-    "You are Go, a travel assistant. From a free-text destination you infer boarding-pass facts.",
+    "You are Go, a travel assistant. From a free-text destination you infer facts for the trip home.",
     "Reply with ONE JSON object, no prose, no markdown fence, with exactly these keys:",
     '- "city": the destination city/place name, cleaned (drop years, emoji, trailing words). string.',
     '- "country": the country the destination is in. string.',
     '- "countryColor": a single representative hex color of that country\'s flag (e.g. "#bc002d"), or null if unsure.',
-    '- "airport": the IATA code (3 uppercase letters) of the MOST PROBABLE international airport a traveler flies into for this destination. string.',
-    '- "welcome": one short, warm sentence (max ~110 chars) to greet the traveler, contextual to the destination and trip. string.',
-    `Write "country" and "welcome" in ${language}. Keep "city" in its common local/English spelling.`,
+    '- "airport": the IATA code (3 uppercase letters) of the MOST PROBABLE international airport a traveler flies into. string.',
+    '- "welcome": one short, warm sentence (max ~110 chars) greeting the traveler, contextual to the trip. string.',
+    '- "facts": a compact stat line "<population> · UTC<offset>" for the destination, e.g. "37 MLN · UTC+9". string.',
+    '- "caption": one short notable one-liner about the place (max ~40 chars), e.g. "Capitale dal 1868." string.',
+    `Write "country", "welcome", "facts" and "caption" in ${language}. Keep "city" in its common local/English spelling.`,
     "If the destination is vague or multi-country, pick the single most likely interpretation.",
   ].join("\n");
 
@@ -81,31 +89,35 @@ function cleanString(value: unknown): string | null {
 }
 
 /**
- * Parses the model's raw JSON answer into a `BoardingLocaleMeta`.
- * Returns null when the payload is unusable (caller decides the fallback).
+ * Parses the model's raw JSON into boarding + place sections. Either may be
+ * null when its required fields are missing (the caller decides fallbacks).
  * Falls back to `destination` for the city when the model omits it.
  */
-export function parseBoardingMeta(raw: string, destination: string): BoardingLocaleMeta | null {
+export function parseHomeMeta(raw: string, destination: string): HomeMetaParsed {
   let obj: Record<string, unknown>;
   try {
     obj = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    return null;
+    return { boarding: null, place: null };
   }
 
-  const city = cleanString(obj.city) ?? destination.trim();
   const country = cleanString(obj.country);
   const airport = cleanAirport(obj.airport);
-  const welcome = cleanString(obj.welcome);
+  const boarding: BoardingLocaleMeta | null =
+    country && airport
+      ? {
+          city: cleanString(obj.city) ?? destination.trim(),
+          country,
+          countryColor: cleanHexColor(obj.countryColor),
+          airport,
+          welcome: cleanString(obj.welcome) ?? "",
+        }
+      : null;
 
-  // Country + airport are the point of this call — without them it's not usable.
-  if (!country || !airport) return null;
+  const facts = cleanString(obj.facts);
+  const caption = cleanString(obj.caption);
+  const place: PlaceLocaleMeta | null =
+    facts || caption ? { facts: facts ?? "", caption: caption ?? "" } : null;
 
-  return {
-    city,
-    country,
-    countryColor: cleanHexColor(obj.countryColor),
-    airport,
-    welcome: welcome ?? "",
-  };
+  return { boarding, place };
 }
