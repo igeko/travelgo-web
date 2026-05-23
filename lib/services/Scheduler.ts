@@ -1,37 +1,29 @@
 /**
- * lib/services/ActivityService.ts
+ * lib/services/Scheduler.ts
  * ─────────────────────────────────────────────────────────────────
- * The single, canonical way to work with day activities.
+ * The single, canonical way to SCHEDULE activities onto days.
  *
- * Model: an activity is an entity (`activities`); putting it on a day
- * is a scheduled instance (`scheduled_activities`). Entity fields and
- * instance/timeline fields are edited through distinct methods — no
- * more "blocks vs scheduled" duplication.
+ * Model: an activity is an entity (`activities`, owned & edited via
+ * YumeService); putting it on a day is a scheduled instance
+ * (`scheduled_activities`). This service touches ONLY scheduling/
+ * timeline state — it never creates, edits or searches entities
+ * (those live in YumeService). For a brand-new activity added to a
+ * day it delegates entity creation to YumeService.
  * ─────────────────────────────────────────────────────────────────
  */
 
 import { getAI, AI_MODELS } from "@/lib/ai/provider";
-import type { Dal, Activity, ActivitySearchResult } from "@/lib/dal";
+import type { Dal, Activity } from "@/lib/dal";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
-import { pickFields, safeHttpUrl } from "@/lib/api/validation";
+import { pickFields } from "@/lib/api/validation";
 import { unwrap } from "./util";
-
-const ENTITY_FIELDS = [
-  "short_desc", "details", "category", "icon",
-  "location", "location_place_id", "location_lat", "location_lng",
-  "hero_image", "url",
-  "booking", "budget_amount", "budget_currency", "budget_paid", "budget_category", "notes",
-] as const;
-
-const ENTITY_PATCH_FIELDS = ["title", ...ENTITY_FIELDS] as const;
+import type { YumeService } from "./YumeService";
 
 const INSTANCE_FIELDS = [
   "slot", "time", "position",
   "type", "fuzzy", "instance_note", "booking_status",
   "bridge_in_json", "bridge_out_json",
 ] as const;
-
-const URL_FIELDS = new Set(["url", "hero_image"]);
 
 const ORGANIZE_PROMPT = `Sei un pianificatore di itinerari di viaggio esperto.
 Ricevi la lista delle attività di un singolo giorno in JSON.
@@ -42,19 +34,12 @@ Rispondi SOLO con un array JSON delle attività riordinate, con position da 1 in
 Non aggiungere o rimuovere attività. Non modificare campi diversi da position e slot.
 Formato: [{ "id": "...", "position": 1, "slot": "morning" }, ...]`;
 
-function validateUrls(patch: Record<string, unknown>): void {
-  for (const key of URL_FIELDS) {
-    const value = patch[key];
-    if (key in patch && value != null && value !== "") {
-      const safe = safeHttpUrl(value);
-      if (!safe) throw badRequest(`Invalid URL in ${key}`);
-      patch[key] = safe;
-    }
-  }
-}
-
-export class ActivityService {
-  constructor(private readonly dal: Dal) {}
+export class Scheduler {
+  constructor(
+    private readonly dal: Dal,
+    /** Entity service — owns activity create/edit; used to add new entities. */
+    private readonly yumes: YumeService,
+  ) {}
 
   /** All activities scheduled on a day (entity + instance merged). */
   listForDay(dayId: string): Promise<Activity[]> {
@@ -63,8 +48,8 @@ export class ActivityService {
 
   /**
    * Schedule an activity on a day. If `entity_id` (or `activity_id`) is
-   * given, the existing entity is scheduled; otherwise a new entity is
-   * created from the body and rolled back if scheduling fails.
+   * given, the existing entity is scheduled; otherwise a NEW entity is
+   * created via YumeService and rolled back if scheduling fails.
    * Returns the merged block.
    */
   async addToDay(dayId: string, body: Record<string, unknown>): Promise<Activity> {
@@ -89,23 +74,8 @@ export class ActivityService {
       if (existing) return existing;
       activityId = existingId;
     } else {
-      const entityPatch = pickFields(body, ENTITY_FIELDS);
-      validateUrls(entityPatch);
-      const title = typeof body.title === "string" && body.title.trim()
-        ? body.title.trim().slice(0, 200)
-        : "New activity";
-      // The entity owner — independent of the trip. Required by the
-      // activities INSERT RLS (created_by = auth.uid()). The trip link lives
-      // only in scheduled_activities now (set by scheduleActivity below).
-      const { data: user } = await this.dal.users.getCurrentUser();
-      if (!user) throw notFound("Not authenticated");
-      const activity = unwrap(
-        await this.dal.activities.create({
-          created_by: user.id,
-          title,
-          ...entityPatch,
-        }),
-      );
+      // New activity → delegate entity creation to the entity service.
+      const activity = await this.yumes.create(body);
       activityId = activity.id;
       createdEntityId = activity.id;
     }
@@ -122,23 +92,9 @@ export class ActivityService {
       if (!block) throw notFound("Scheduled activity not found after creation");
       return block;
     } catch (err) {
-      if (createdEntityId) await this.dal.activities.delete(createdEntityId);
+      if (createdEntityId) await this.yumes.remove(createdEntityId);
       throw err;
     }
-  }
-
-  /** Update entity-level fields (shared across every day it appears on). */
-  async updateEntity(activityId: string, body: Record<string, unknown>): Promise<Activity | null> {
-    const patch = pickFields(body, ENTITY_PATCH_FIELDS);
-    validateUrls(patch);
-    if (Object.keys(patch).length === 0) throw badRequest("No valid fields to update");
-    const entity = unwrap(await this.dal.activities.update(activityId, patch));
-    return entity as unknown as Activity;
-  }
-
-  /** Delete an activity entity entirely (cascades its scheduled occurrences). */
-  async deleteEntity(activityId: string): Promise<void> {
-    unwrap(await this.dal.activities.delete(activityId));
   }
 
   /** Update instance/timeline fields for one scheduled occurrence. */
@@ -212,16 +168,11 @@ export class ActivityService {
       const parsed = JSON.parse(raw);
       reordered = Array.isArray(parsed) ? parsed : (parsed.blocks ?? parsed.result ?? []);
     } catch (err) {
-      console.error("[ActivityService.organize] OpenAI error:", err);
+      console.error("[Scheduler.organize] OpenAI error:", err);
       throw upstream("AI organize failed");
     }
 
     if (reordered.length === 0) return blocks;
     return this.reorder(dayId, reordered);
-  }
-
-  /** Wishlist + platform autocomplete search. */
-  search(input: { tripId: string; dayId?: string | null; query?: string }): Promise<ActivitySearchResult> {
-    return this.dal.activities.search(input);
   }
 }

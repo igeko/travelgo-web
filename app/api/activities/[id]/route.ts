@@ -7,13 +7,13 @@ export const PATCH = route<{ id: string }>(async ({ req, params }) => {
   await requireActivityEditor(params.id);
   const body = await readJson<Record<string, unknown>>(req);
   const services = await serverServices();
-  return ok(await services.activities.updateEntity(params.id, body));
+  return ok(await services.yumes.update(params.id, body));
 });
 
 /** DELETE /api/activities/[id] — delete the entity (cascades scheduling). */
 export const DELETE = route<{ id: string }>(async ({ params }) => {
   await requireActivityEditor(params.id);
   const services = await serverServices();
-  await services.activities.deleteEntity(params.id);
+  await services.yumes.remove(params.id);
   return ok(null);
 });

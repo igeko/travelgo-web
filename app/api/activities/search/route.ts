@@ -17,5 +17,5 @@ export const GET = route(async ({ req }) => {
   const q = queryParam(req, "q") ?? "";
 
   const services = await serverServices();
-  return ok(await services.activities.search({ tripId, dayId, query: q }));
+  return ok(await services.yumes.search({ tripId, dayId, query: q }));
 });

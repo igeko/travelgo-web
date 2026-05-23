@@ -13,18 +13,35 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { Dal, DbActivity, ActivityVisibility } from "@/lib/dal";
+import type { Dal, DbActivity, ActivityVisibility, ActivitySearchResult } from "@/lib/dal";
 import { notFound, badRequest, unauthorized } from "@/lib/api/errors";
-import { pickFields, isUuid } from "@/lib/api/validation";
+import { pickFields, isUuid, safeHttpUrl } from "@/lib/api/validation";
 import { DEFAULT_PAGE_SIZE, type Page } from "@/lib/pagination";
 import { unwrap } from "./util";
 
-/** Entity fields a caller may set when creating a yume. */
-const YUME_CREATE_FIELDS = [
+/** Entity fields a caller may set on an activity (create). */
+const ENTITY_FIELDS = [
   "short_desc", "details", "category", "icon",
   "location", "location_place_id", "location_lat", "location_lng",
   "hero_image", "url",
+  "booking", "budget_amount", "budget_currency", "budget_paid", "budget_category", "notes",
 ] as const;
+
+/** Updatable entity fields (title included). */
+const ENTITY_PATCH_FIELDS = ["title", ...ENTITY_FIELDS] as const;
+
+const URL_FIELDS = new Set(["url", "hero_image"]);
+
+function validateUrls(patch: Record<string, unknown>): void {
+  for (const key of URL_FIELDS) {
+    const value = patch[key];
+    if (key in patch && value != null && value !== "") {
+      const safe = safeHttpUrl(value);
+      if (!safe) throw badRequest(`Invalid URL in ${key}`);
+      patch[key] = safe;
+    }
+  }
+}
 
 const VISIBILITIES: readonly ActivityVisibility[] = ["public", "private", "shared"];
 
@@ -114,23 +131,41 @@ export class YumeService {
     };
   }
 
-  /** Create a yume (an activity owned by the current user). Defaults private. */
+  /**
+   * Create an activity owned by the current user (defaults private).
+   * Punto unico di creazione dell'entity: lo usa anche lo Scheduler quando si
+   * aggiunge a un giorno un'attività nuova.
+   */
   async create(body: Record<string, unknown>): Promise<DbActivity> {
     const userId = await this.currentUserId();
     const title = typeof body.title === "string" && body.title.trim()
       ? body.title.trim().slice(0, 200)
       : "New yume";
     const visibility = parseVisibility(body.visibility) ?? undefined;
-    const patch = pickFields(body, YUME_CREATE_FIELDS);
+    const patch = pickFields(body, ENTITY_FIELDS);
+    validateUrls(patch);
 
     return unwrap(
       await this.dal.activities.create({ created_by: userId, title, visibility, ...patch }),
     );
   }
 
-  /** Remove a yume entity (owner-only; enforced by the route guard + RLS). */
+  /** Update entity-level fields (shared across every day the activity appears on). */
+  async update(id: string, body: Record<string, unknown>): Promise<DbActivity> {
+    const patch = pickFields(body, ENTITY_PATCH_FIELDS);
+    validateUrls(patch);
+    if (Object.keys(patch).length === 0) throw badRequest("No valid fields to update");
+    return unwrap(await this.dal.activities.update(id, patch));
+  }
+
+  /** Remove an activity entity (owner-only; enforced by the route guard + RLS). */
   async remove(id: string): Promise<void> {
     unwrap(await this.dal.activities.delete(id));
+  }
+
+  /** Wishlist + platform autocomplete search over the activity entities. */
+  search(input: { tripId: string; dayId?: string | null; query?: string }): Promise<ActivitySearchResult> {
+    return this.dal.activities.search(input);
   }
 
   /** Change a yume's visibility. */

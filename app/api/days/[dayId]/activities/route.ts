@@ -6,7 +6,7 @@ import { serverServices } from "@/lib/services";
 export const GET = route<{ dayId: string }>(async ({ params }) => {
   await requireDayMember(params.dayId);
   const services = await serverServices();
-  return ok(await services.activities.listForDay(params.dayId));
+  return ok(await services.scheduler.listForDay(params.dayId));
 });
 
 /** POST /api/days/[dayId]/activities — create an activity and schedule it. */
@@ -14,6 +14,6 @@ export const POST = route<{ dayId: string }>(async ({ req, params }) => {
   await requireDayEditor(params.dayId);
   const body = await readJson<Record<string, unknown>>(req);
   const services = await serverServices();
-  const block = await services.activities.addToDay(params.dayId, body);
+  const block = await services.scheduler.addToDay(params.dayId, body);
   return ok(block, { status: 201 });
 });
