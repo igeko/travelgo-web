@@ -8,6 +8,7 @@ import {
   IconMapPin,
   IconPencil,
   IconPlayerPlay,
+  IconUnlink,
 } from "@/components/ui/icons";
 import { StatusBadge, type ActivityStatus } from "@/components/ui/StatusBadge";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
@@ -64,6 +65,9 @@ export type ActivityRowProps = {
    * the badge fall back to opening Google Maps in a new tab.
    */
   onMapClick?: () => boolean | void;
+  /** Labels for the row actions (edit / unschedule). */
+  editLabel?: string;
+  unscheduleLabel?: string;
   className?: string;
 };
 
@@ -97,6 +101,8 @@ export function ActivityRow({
   onDelete,
   onAskGo,
   onMapClick,
+  editLabel = "Edit",
+  unscheduleLabel = "Remove from day",
   className,
 }: ActivityRowProps) {
   const [editOpen, setEditOpen] = useState(false);
@@ -182,21 +188,35 @@ export function ActivityRow({
           <StatusBadge status={status} className="shrink-0 mt-px" />
         )}
 
-        {/* Edit pencil — visible on hover in edit mode */}
+        {/* Row actions — edit + unschedule, visible on hover in edit mode */}
         {editMode && (
-          <Button
-            variant="outline"
-            size="sm"
-            iconOnly
-            aria-hidden
-            tabIndex={-1}
+          <div
             className={cn(
-              "shrink-0 transition-opacity duration-100",
-              editOpen ? "opacity-100" : "opacity-30 group-hover:opacity-100 focus-visible:opacity-100",
+              "flex items-center gap-1.5 shrink-0 transition-opacity duration-100",
+              editOpen ? "opacity-100" : "opacity-30 group-hover:opacity-100 focus-within:opacity-100",
             )}
           >
-            <IconPencil />
-          </Button>
+            <Button
+              variant="outline"
+              iconOnly
+              aria-label={editLabel}
+              title={editLabel}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditOpen((v) => !v); }}
+            >
+              <IconPencil />
+            </Button>
+            {onDelete && (
+              <Button
+                variant="outline"
+                iconOnly
+                aria-label={unscheduleLabel}
+                title={unscheduleLabel}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
+              >
+                <IconUnlink />
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

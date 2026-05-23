@@ -5,7 +5,38 @@ import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { DayActivitiesEditForm, type DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
 import { TripGoProvider } from "@/features/go/TripGoContext";
+import { writeYumeDrag } from "@/features/yumeji/yumeDrag";
 import type { TripActivityOption } from "@/features/activity/types";
+
+/** Mini palette of draggable yume to demo the drag→drop onto the list. */
+function YumePalette() {
+  const yume = [
+    { id: "y-skytree", title: "Tokyo Skytree", location: "Sumida" },
+    { id: "y-meiji", title: "Meiji Jingu", location: "Shibuya" },
+    { id: "y-tsukiji", title: "Mercato Tsukiji", location: "Chuo" },
+  ];
+  return (
+    <div className="w-44 shrink-0">
+      <p className="text-[9px] tracking-eyebrow uppercase text-orange-deep font-medium mb-2">Yume (trascina →)</p>
+      <ul className="flex flex-col gap-1.5">
+        {yume.map((y) => (
+          <li
+            key={y.id}
+            draggable
+            onDragStart={(e) => writeYumeDrag(e.dataTransfer, y)}
+            className="flex items-center gap-2 px-2.5 py-2 rounded-md border border-border bg-surface text-mini text-ink cursor-grab active:cursor-grabbing hover:border-border-strong"
+          >
+            <span className="w-7 h-7 rounded-md bg-surface-soft shrink-0" />
+            <span className="min-w-0">
+              <span className="block font-medium truncate">{y.title}</span>
+              <span className="block text-tiny text-ink-faint truncate">{y.location}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const YUME_POOL: TripActivityOption[] = [
   { id: "y1", title: "teamLab Planets", location: "Toyosu", scheduled: [] },
@@ -80,17 +111,20 @@ export default function DayActivitiesEditFormStories() {
       >
         <StoryFrame
           name="Lista pre-compilata"
-          description="Hover sulle righe per le azioni · '+' tra due righe per inserire (digita 'team' per l'autocomplete o un titolo nuovo per 'crea nuova') · matita = editor completo sotto."
+          description="Hover sulle righe per le azioni · '+' tra due righe per inserire · matita = editor completo sotto · trascina uno Yume dalla palette nella lista per programmarlo."
         >
-          <div className="w-full max-w-4xl bg-surface border border-border rounded-md px-7 py-6">
-            <DayActivitiesEditForm
-              activities={items}
-              onChange={(next) => setItems(sortByTime(next))}
-              items={YUME_POOL}
-              editorFor={(id, close) => renderEditor(items, setItems, id, close)}
-              showMapOnDay={showOnDay}
-              onShowMapOnDayChange={setShowOnDay}
-            />
+          <div className="flex w-full max-w-5xl items-start gap-5">
+            <YumePalette />
+            <div className="flex-1 min-w-0 bg-surface border border-border rounded-md px-7 py-6">
+              <DayActivitiesEditForm
+                activities={items}
+                onChange={(next) => setItems(sortByTime(next))}
+                items={YUME_POOL}
+                editorFor={(id, close) => renderEditor(items, setItems, id, close)}
+                showMapOnDay={showOnDay}
+                onShowMapOnDayChange={setShowOnDay}
+              />
+            </div>
           </div>
         </StoryFrame>
 

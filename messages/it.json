@@ -353,6 +353,8 @@
   },
   "ActivityList": {
     "empty": "Nessuna attività per questo giorno.",
+    "edit": "Modifica",
+    "unschedule": "Rimuovi dal giorno",
     "slots": {
       "morning": "Mattina",
       "afternoon": "Pomeriggio",

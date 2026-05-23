@@ -9,6 +9,7 @@ import { ActivitySearchField } from "@/features/activity/ActivitySearchField";
 import { ActivityRouteMap } from "@/features/activity/ActivityRouteMap";
 import type { RouteStop, RouteMapHandle } from "@/components/ui/RouteMap";
 import type { TripActivityOption } from "@/features/activity/types";
+import { isYumeDrag, readYumeDrag } from "@/features/yumeji/yumeDrag";
 
 /* ─────────────────────────────────────────────────────────────────
    DayActivitiesEditForm · the activity-list section of DayEditForm.
@@ -303,6 +304,24 @@ export function DayActivitiesEditForm({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
+  /* ── Drop a Yume from the panel → schedule it on the day ── */
+  const [yumeOver, setYumeOver] = useState(false);
+
+  function handleYumeDrop(e: React.DragEvent) {
+    const payload = readYumeDrag(e.dataTransfer);
+    setYumeOver(false);
+    if (!payload) return;
+    e.preventDefault();
+    // Skip if the yume is already scheduled on this day.
+    if (activities.some((a) => a.activityId === payload.id)) return;
+    const last = activities[activities.length - 1];
+    const time = activities.length ? nextTime(last?.time ?? null, null) : "09:00";
+    onChange([
+      ...activities,
+      { id: genId(), time, title: payload.title, activityId: payload.id, location: payload.location ?? null, lat: null, lng: null },
+    ]);
+  }
+
   function resetDrag() {
     setArmed(null);
     setDragIndex(null);
@@ -409,7 +428,15 @@ export function DayActivitiesEditForm({
         {/* Right column — timeline slot or the editable list */}
         <div>
         {isTimeline ? timelineSlot : (
-          <>
+          <div
+            onDragOver={(e) => { if (isYumeDrag(e.dataTransfer)) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setYumeOver(true); } }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setYumeOver(false); }}
+            onDrop={handleYumeDrop}
+            className={cn(
+              "rounded-md transition-colors",
+              yumeOver && "outline-2 outline-dashed outline-orange/50 -outline-offset-2 bg-orange/[0.04]",
+            )}
+          >
 
       <div className="flex items-baseline gap-2.5 mb-2">
         <span className="text-[9px] tracking-eyebrow uppercase text-orange-deep font-medium">{t("program")}</span>
@@ -512,7 +539,7 @@ export function DayActivitiesEditForm({
           onCancel={cancel}
         />
       )}
-          </>
+          </div>
         )}
         </div>
       </div>

@@ -20,6 +20,7 @@ import { SoftField } from "@/components/ui/SoftField";
 import { AddressLabel } from "@/components/ui/AddressLabel";
 import { IconSearch, IconPlus } from "@/components/ui/icons";
 import type { YumeListItem, YumeChip, YumeOwner } from "./mockData";
+import { writeYumeDrag } from "./yumeDrag";
 
 /** Placeholder immagine condiviso con ActivityList (ActivityRow.DEFAULT_THUMB). */
 const PLACEHOLDER_THUMB = "/media/day-default-banner.png";
@@ -228,7 +229,9 @@ function YumeRow({ item, showOwner }: { item: YumeListItem; showOwner: boolean }
     <li className="border-b border-dashed border-border last:border-0">
       <button
         type="button"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left cursor-pointer border-0 bg-transparent transition-colors hover:bg-surface-soft"
+        draggable
+        onDragStart={(e) => writeYumeDrag(e.dataTransfer, { id: item.id, title: item.title, location: item.location })}
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-left cursor-grab active:cursor-grabbing border-0 bg-transparent transition-colors hover:bg-surface-soft"
       >
         <span
           style={{ backgroundImage: `url(${item.imageUrl ?? PLACEHOLDER_THUMB})` }}

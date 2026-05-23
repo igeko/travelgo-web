@@ -97,6 +97,8 @@ export function ActivityList({
         onDelete={() => onActivityDelete?.(a.id)}
         onAskGo={onAskGo}
         onMapClick={onActivityMapClick ? () => onActivityMapClick(a.id) : undefined}
+        editLabel={t("edit")}
+        unscheduleLabel={t("unschedule")}
       />
     );
   }
