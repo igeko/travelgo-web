@@ -68,16 +68,19 @@ export const realtime = {
       // single handler that recomputes the full set is sufficient.
       channel.on("presence", { event: "sync" }, () => {
         const state = channel.presenceState<ViewerPresence>();
-        const viewers = Object.values(state)
-          .flat()
-          .filter((p) => p.userId !== opts.self.userId)
-          .map((p) => ({
+        // A user with multiple tabs/connections appears multiple times; keep
+        // one entry per userId so consumers can key on it safely.
+        const byUser = new Map<string, ViewerPresence>();
+        for (const p of Object.values(state).flat()) {
+          if (p.userId === opts.self.userId || byUser.has(p.userId)) continue;
+          byUser.set(p.userId, {
             userId: p.userId,
             fullName: p.fullName,
             avatarUrl: p.avatarUrl,
             onlineAt: p.onlineAt,
-          }));
-        opts.onViewers!(viewers);
+          });
+        }
+        opts.onViewers!([...byUser.values()]);
       });
     }
 
