@@ -30,6 +30,7 @@ export const designCategories: Record<string, DesignMeta> = {
   // ── Day ──────────────────────────────────────────────────────────
   "day-layout": { group: "Day", title: "Day layout" },
   "day-incipit": { group: "Day", title: "Day incipit" },
+  "day-activities": { group: "Day", title: "Day activities" },
 
   // ── Activities ───────────────────────────────────────────────────
   "activity-search": { group: "Activities", title: "Activity search" },

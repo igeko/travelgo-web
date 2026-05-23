@@ -37,6 +37,18 @@ export type ActivitySlot = "morning" | "afternoon" | "evening" | "night";
 
 // ── Database row types ───────────────────────────────────────────
 
+/** Read-only airport reference row (seeded from OurAirports). */
+export type DbAirport = {
+  iata: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+  type: string | null;
+  keywords: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
 export type DbTrip = {
   id: string;
   title: string;

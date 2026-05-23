@@ -36,6 +36,7 @@ export { Activities }  from "./entities/Activities";
 export { Membership }  from "./entities/Membership";
 export { Users }       from "./entities/Users";
 export { Feedback }    from "./entities/Feedback";
+export { Airports }    from "./entities/Airports";
 
 export type {
   CreateTripInput, UpdateTripInput,
@@ -60,6 +61,7 @@ import { Activities }  from "./entities/Activities";
 import { Membership }  from "./entities/Membership";
 import { Users }       from "./entities/Users";
 import { Feedback }    from "./entities/Feedback";
+import { Airports }    from "./entities/Airports";
 
 export type Dal = {
   trips:      Trips;
@@ -67,6 +69,7 @@ export type Dal = {
   members:    Membership;
   users:      Users;
   feedback:   Feedback;
+  airports:   Airports;
 };
 
 function buildDal(client: SupabaseClient): Dal {
@@ -76,6 +79,7 @@ function buildDal(client: SupabaseClient): Dal {
     members:    new Membership(client),
     users:      new Users(client),
     feedback:   new Feedback(client),
+    airports:   new Airports(client),
   };
 }
 

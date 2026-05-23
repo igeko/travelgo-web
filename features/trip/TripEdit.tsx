@@ -13,7 +13,7 @@
  * new input components.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
@@ -24,7 +24,8 @@ import { SoftField } from "@/components/ui/SoftField";
 import { IconInfoCircle, IconLock, IconMail, IconMapPin, IconSend, IconX } from "@/components/ui/icons";
 import type { DbTrip } from "@/lib/dal/types";
 import type { UpdateTripPayload } from "@/lib/client/trips";
-import { parseAirport, cleanAirport, type TripAirport } from "@/lib/trip-home/airports";
+import { AirportField } from "@/components/ui/AirportField";
+import { parseAirport, type TripAirport } from "@/lib/trip-home/airports";
 
 type SectionId = "place" | "dates" | "airports" | "travelers" | "invites" | "theme";
 
@@ -79,10 +80,8 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
 
   const initialDep = parseAirport(trip.departure_airport);
   const initialArr = parseAirport(trip.arrival_airport);
-  const [depCity, setDepCity] = useState(initialDep?.city ?? "");
-  const [depIata, setDepIata] = useState(initialDep?.iata ?? "");
-  const [arrCity, setArrCity] = useState(initialArr?.city ?? "");
-  const [arrIata, setArrIata] = useState(initialArr?.iata ?? "");
+  const [departure, setDeparture] = useState<TripAirport | null>(initialDep);
+  const [arrival, setArrival] = useState<TripAirport | null>(initialArr);
 
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -112,10 +111,8 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
     if (themes.join("|") !== (trip.theme_tags ?? []).join("|")) patch.theme_tags = themes;
     if (themeNote !== (trip.theme_description ?? "")) patch.theme_description = themeNote;
 
-    const dep = cleanAirport(depCity, depIata);
-    const arr = cleanAirport(arrCity, arrIata);
-    if (!sameAirport(dep, initialDep)) patch.departure_airport = dep;
-    if (!sameAirport(arr, initialArr)) patch.arrival_airport = arr;
+    if (!sameAirport(departure, initialDep)) patch.departure_airport = departure;
+    if (!sameAirport(arrival, initialArr)) patch.arrival_airport = arrival;
     return patch;
   }
 
@@ -137,10 +134,11 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   const items: { id: SectionId; label: string; preview: string; locked?: boolean }[] = [
     { id: "place", label: t("place.label"), preview: trip.title, locked: true },
     { id: "dates", label: t("dates.label"), preview: dates.start && dates.end ? t("dates.preview", { nights }) : t("notSet") },
-    { id: "airports", label: t("airports.label"), preview: airportsPreview(depIata, arrIata) || t("notSet") },
     { id: "travelers", label: t("travelers.label"), preview: t("travelers.preview", { adults, children: kids }) },
     { id: "invites", label: t("invites.label"), preview: t("invites.preview", { members: members.length, invites: invites.length }) },
     { id: "theme", label: t("theme.label"), preview: themes.length ? themes.slice(0, 3).join(" · ") : t("notSet") },
+    // Optional, kept apart at the bottom — a trip might not have a flight.
+    { id: "airports", label: t("airports.label"), preview: airportsPreview(departure?.iata ?? "", arrival?.iata ?? "") || t("notSet") },
   ];
 
   return (
@@ -172,28 +170,32 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
             {items.map((item) => {
               const isActive = item.id === section;
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => !item.locked && setSection(item.id)}
-                  disabled={item.locked}
-                  aria-current={isActive ? "true" : undefined}
-                  className={cn(
-                    "relative flex items-start gap-2 px-3 py-2.5 text-left rounded-md transition-colors",
-                    isActive && "bg-surface my-0.5",
-                    !isActive && !item.locked && "hover:bg-surface/60 cursor-pointer",
-                    item.locked && "opacity-55 cursor-not-allowed",
+                <Fragment key={item.id}>
+                  {item.id === "airports" && (
+                    <span aria-hidden className="my-1.5 border-t border-dashed border-border" />
                   )}
-                >
-                  {isActive && (
-                    <span aria-hidden className="absolute -left-[3px] top-1/2 -translate-y-1/2 w-1.5 h-[30px] bg-orange rounded-[3px]" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-mini font-medium m-0", item.locked ? "text-ink-faint" : "text-ink")}>{item.label}</p>
-                    <p className="font-serif italic text-[10.5px] leading-snug mt-0.5 text-ink-faint truncate">{item.preview}</p>
-                  </div>
-                  {item.locked && <IconLock size={10} className="text-ink-faint shrink-0 mt-1" />}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => !item.locked && setSection(item.id)}
+                    disabled={item.locked}
+                    aria-current={isActive ? "true" : undefined}
+                    className={cn(
+                      "relative flex items-start gap-2 px-3 py-2.5 text-left rounded-md transition-colors",
+                      isActive && "bg-surface my-0.5",
+                      !isActive && !item.locked && "hover:bg-surface/60 cursor-pointer",
+                      item.locked && "opacity-55 cursor-not-allowed",
+                    )}
+                  >
+                    {isActive && (
+                      <span aria-hidden className="absolute -left-[3px] top-1/2 -translate-y-1/2 w-1.5 h-[30px] bg-orange rounded-[3px]" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-mini font-medium m-0", item.locked ? "text-ink-faint" : "text-ink")}>{item.label}</p>
+                      <p className="font-serif italic text-[10.5px] leading-snug mt-0.5 text-ink-faint truncate">{item.preview}</p>
+                    </div>
+                    {item.locked && <IconLock size={10} className="text-ink-faint shrink-0 mt-1" />}
+                  </button>
+                </Fragment>
               );
             })}
           </nav>
@@ -203,10 +205,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
           {section === "place" && <PlacePane place={trip.title} />}
           {section === "dates" && <DatesPane dates={dates} setDates={setDates} nights={nights} />}
           {section === "airports" && (
-            <AirportsPane
-              depCity={depCity} setDepCity={setDepCity} depIata={depIata} setDepIata={setDepIata}
-              arrCity={arrCity} setArrCity={setArrCity} arrIata={arrIata} setArrIata={setArrIata}
-            />
+            <AirportsPane departure={departure} setDeparture={setDeparture} arrival={arrival} setArrival={setArrival} />
           )}
           {section === "travelers" && (
             <TravelersPane adults={adults} setAdults={setAdults} kids={kids} setKids={setKids} />
@@ -288,57 +287,26 @@ function DatesPane({ dates, setDates, nights }: { dates: DateRange; setDates: (r
 /* ── AIRPORTS ──────────────────────────────────────────────────────── */
 
 function AirportsPane({
-  depCity, setDepCity, depIata, setDepIata,
-  arrCity, setArrCity, arrIata, setArrIata,
+  departure, setDeparture, arrival, setArrival,
 }: {
-  depCity: string; setDepCity: (v: string) => void; depIata: string; setDepIata: (v: string) => void;
-  arrCity: string; setArrCity: (v: string) => void; arrIata: string; setArrIata: (v: string) => void;
+  departure: TripAirport | null; setDeparture: (a: TripAirport | null) => void;
+  arrival: TripAirport | null; setArrival: (a: TripAirport | null) => void;
 }) {
   const t = useTranslations("TripEdit");
   return (
     <div>
       <SectionHeader eyebrow={t("airports.eyebrow")} title={t("airports.title")} sub={t("airports.sub")} />
-      <div className="flex flex-col gap-6">
-        <AirportLeg
-          legLabel={t("airports.departure")}
-          city={depCity} setCity={setDepCity} iata={depIata} setIata={setDepIata}
-          cityLabel={t("airports.city")} iataLabel={t("airports.code")}
-          cityPlaceholder={t("airports.depCityPlaceholder")}
-        />
-        <AirportLeg
-          legLabel={t("airports.arrival")}
-          city={arrCity} setCity={setArrCity} iata={arrIata} setIata={setArrIata}
-          cityLabel={t("airports.city")} iataLabel={t("airports.code")}
-          cityPlaceholder={t("airports.arrCityPlaceholder")}
-        />
+      <div className="flex flex-col gap-5">
+        <div>
+          <p className="text-micro tracking-eyebrow uppercase text-orange-deep font-medium mb-2">{t("airports.departure")}</p>
+          <AirportField value={departure} onChange={setDeparture} placeholder={t("airports.searchPlaceholder")} />
+        </div>
+        <div>
+          <p className="text-micro tracking-eyebrow uppercase text-orange-deep font-medium mb-2">{t("airports.arrival")}</p>
+          <AirportField value={arrival} onChange={setArrival} placeholder={t("airports.searchPlaceholder")} />
+        </div>
       </div>
       <p className="mt-4 font-serif italic text-tiny text-ink-faint leading-snug">{t("airports.hint")}</p>
-    </div>
-  );
-}
-
-function AirportLeg({
-  legLabel, city, setCity, iata, setIata, cityLabel, iataLabel, cityPlaceholder,
-}: {
-  legLabel: string;
-  city: string; setCity: (v: string) => void;
-  iata: string; setIata: (v: string) => void;
-  cityLabel: string; iataLabel: string; cityPlaceholder: string;
-}) {
-  return (
-    <div>
-      <p className="text-micro tracking-eyebrow uppercase text-orange-deep font-medium mb-2">{legLabel}</p>
-      <div className="grid grid-cols-[1fr_110px] gap-2">
-        <SoftField label={cityLabel} value={city} onChange={setCity} placeholder={cityPlaceholder} hideCounter />
-        <SoftField
-          label={iataLabel}
-          value={iata}
-          onChange={(v) => setIata(v.toUpperCase().slice(0, 3))}
-          placeholder="FCO"
-          maxLength={3}
-          hideCounter
-        />
-      </div>
     </div>
   );
 }

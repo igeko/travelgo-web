@@ -135,16 +135,13 @@
       "nights": "{nights, plural, one {# night} other {# nights}} · countdown to takeoff"
     },
     "airports": {
-      "label": "Airports",
-      "eyebrow": "Section · airports",
+      "label": "Flight",
+      "eyebrow": "Section · flight",
       "title": "Where you take off and land.",
       "sub": "Set the departure and arrival airports — they show on the boarding pass.",
       "departure": "Departure",
       "arrival": "Arrival",
-      "city": "City",
-      "code": "IATA",
-      "depCityPlaceholder": "e.g. Rome",
-      "arrCityPlaceholder": "e.g. Tokyo",
+      "searchPlaceholder": "Search airport or city…",
       "hint": "Leave blank to let Go infer the most likely airport from your destination."
     },
     "travelers": {

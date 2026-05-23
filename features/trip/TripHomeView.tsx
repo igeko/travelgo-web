@@ -53,7 +53,9 @@ export function TripHomeView({ trip, daysCount, recordLocator, passengerName, in
       />
       <main className={cn("flex-1 w-full mx-auto py-6 flex flex-col gap-[18px]", PAGE_MAX, PAGE_PX)}>
         {editMode ? (
-          <TripEdit tripId={trip.id} trip={trip} onClose={() => setEditMode(false)} />
+          <div className="w-full max-w-[900px] mx-auto">
+            <TripEdit tripId={trip.id} trip={trip} onClose={() => setEditMode(false)} />
+          </div>
         ) : (
           <BoardingPassLive
             tripId={trip.id}

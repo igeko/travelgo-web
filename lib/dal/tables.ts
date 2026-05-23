@@ -41,3 +41,8 @@ export enum UserTable {
 export enum FeedbackTable {
   TesterNotes = "tester_notes",
 }
+
+/** Read-only airport reference data. */
+export enum AirportTable {
+  Airports = "airports",
+}

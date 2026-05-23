@@ -135,16 +135,13 @@
       "nights": "{nights, plural, one {# notte} other {# notti}} · countdown al decollo"
     },
     "airports": {
-      "label": "Aeroporti",
-      "eyebrow": "Sezione · aeroporti",
+      "label": "Volo",
+      "eyebrow": "Sezione · volo",
       "title": "Da dove parti e dove atterri.",
       "sub": "Imposta gli aeroporti di partenza e arrivo — compaiono sulla carta d'imbarco.",
       "departure": "Partenza",
       "arrival": "Arrivo",
-      "city": "Città",
-      "code": "IATA",
-      "depCityPlaceholder": "es. Roma",
-      "arrCityPlaceholder": "es. Tokyo",
+      "searchPlaceholder": "Cerca aeroporto o città…",
       "hint": "Lascia vuoto per far dedurre a Go l'aeroporto più probabile dalla destinazione."
     },
     "travelers": {
