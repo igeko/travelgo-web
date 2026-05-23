@@ -7,7 +7,6 @@
  * One class per domain entity:
  *   dal.trips       Trips       trips + days + scheduling (scheduled_activities)
  *   dal.activities  Activities  activities + sections + sidebar + search
- *   dal.budget      Budget      budget_items
  *   dal.members     Membership  trip_members + trip_invites
  *   dal.photos      Media       photos
  *   dal.journal     Journal     journal_entries
@@ -36,7 +35,6 @@ export * from "./supabase";
 
 export { Trips }       from "./entities/Trips";
 export { Activities }  from "./entities/Activities";
-export { Budget }      from "./entities/Budget";
 export { Membership }  from "./entities/Membership";
 export { Media }       from "./entities/Media";
 export { Journal }     from "./entities/Journal";
@@ -54,7 +52,6 @@ export type {
   ActivitySearchInput, ActivitySearchResult,
   ActivityScheduledInstance, ActivitySearchWishlistRow,
 } from "./entities/Activities";
-export type { CreateBudgetItemInput, UpdateBudgetItemInput, BudgetSummary } from "./entities/Budget";
 export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";
 export type { CreatePhotoInput, UpdatePhotoInput } from "./entities/Media";
 export type { CreateJournalEntryInput, UpdateJournalEntryInput } from "./entities/Journal";
@@ -66,7 +63,6 @@ export type { CreateTesterNoteInput } from "./entities/Feedback";
 import { getBrowserClient, getServerClient, getServiceClient, type SupabaseClient } from "./supabase";
 import { Trips }       from "./entities/Trips";
 import { Activities }  from "./entities/Activities";
-import { Budget }      from "./entities/Budget";
 import { Membership }  from "./entities/Membership";
 import { Media }       from "./entities/Media";
 import { Journal }     from "./entities/Journal";
@@ -76,7 +72,6 @@ import { Feedback }    from "./entities/Feedback";
 export type Dal = {
   trips:      Trips;
   activities: Activities;
-  budget:     Budget;
   members:    Membership;
   photos:     Media;
   journal:    Journal;
@@ -88,7 +83,6 @@ function buildDal(client: SupabaseClient): Dal {
   return {
     trips:      new Trips(client),
     activities: new Activities(client),
-    budget:     new Budget(client),
     members:    new Membership(client),
     photos:     new Media(client),
     journal:    new Journal(client),

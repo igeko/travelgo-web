@@ -25,11 +25,6 @@ export enum ActivityTable {
   Shares = "activity_shares",
 }
 
-/** Budget items. */
-export enum BudgetTable {
-  Items = "budget_items",
-}
-
 /** Trip collaboration: members and pending invites. */
 export enum MembershipTable {
   Members = "trip_members",
