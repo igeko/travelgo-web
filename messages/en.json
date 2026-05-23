@@ -351,10 +351,28 @@
     "timeline": "Timeline",
     "racconto": "Story"
   },
+  "Yumeji": {
+    "panelLabel": "Yumeji panel",
+    "pin": "Pin panel",
+    "unpin": "Unpin panel",
+    "close": "Close Yumeji panel",
+    "searchPlaceholder": "Search your yume…",
+    "filterUnscheduled": "To plan",
+    "filterScheduled": "Scheduled",
+    "moreFilters": "More filters",
+    "loading": "Loading…",
+    "loadingMore": "Loading…",
+    "emptySearchTitle": "No yume found",
+    "emptySearchBody": "No results for your search. Try another term.",
+    "emptyTitle": "You haven't saved anything yet",
+    "emptyBody": "Explore Discovery and save the places that intrigue you: you'll find them here."
+  },
   "ActivityList": {
     "empty": "No activities for this day.",
     "edit": "Edit",
     "unschedule": "Remove from day",
+    "unscheduleConfirm": "Remove?",
+    "cancel": "Cancel",
     "slots": {
       "morning": "Morning",
       "afternoon": "Afternoon",

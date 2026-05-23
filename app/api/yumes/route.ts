@@ -19,9 +19,13 @@ export const GET = route(async ({ req }) => {
     : undefined;
   const { limit, offset } = parsePageParams(queryParam(req, "limit"), queryParam(req, "offset"));
   const search = queryParam(req, "q")?.trim() || undefined;
+  // Scheduled filter (scoped to ?trip=): true | false | undefined (all).
+  const scheduledRaw = queryParam(req, "scheduled");
+  const scheduled = scheduledRaw === "true" ? true : scheduledRaw === "false" ? false : undefined;
+  const tripId = queryParam(req, "trip")?.trim() || undefined;
 
   const services = await serverServices();
-  return ok(await services.yumes.listMine({ visibility, limit, offset, search }));
+  return ok(await services.yumes.listMine({ visibility, limit, offset, search, scheduled, tripId }));
 });
 
 export const POST = route(async ({ req }) => {

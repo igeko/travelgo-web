@@ -32,12 +32,15 @@ import { usePathname } from "next/navigation";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { api, type Yume } from "@/lib/client";
 import { YumejiPanel } from "./YumejiPanel";
+import type { YumeScheduleFilter } from "./YumeList";
 import { yumeToListItem } from "./toListItem";
 import type { YumeListItem } from "./mockData";
 
 const LS_PINNED = "travelgo-yumeji-pinned";
 const LS_AUTOPINNED = "travelgo-yumeji-autopinned";
 const PAGE = 24;
+/** All'apertura il pannello mostra ciò che resta da pianificare nel trip. */
+const DEFAULT_FILTER: YumeScheduleFilter = "unscheduled";
 
 export type YumejiState = "closed" | "floating" | "pinned";
 
@@ -48,6 +51,9 @@ export type YumeCollection = {
   error: string | null;
   search: string;
   onSearchChange: (q: string) => void;
+  /** Filtro schedulazione nel trip corrente (server-side). */
+  scheduleFilter: YumeScheduleFilter;
+  onScheduleFilterChange: (f: YumeScheduleFilter) => void;
   hasMore: boolean;
   loadingMore: boolean;
   loadMore: () => void;
@@ -73,37 +79,56 @@ export function useYumejiDrawer(): YumejiContextValue | null {
   return useContext(YumejiContext);
 }
 
-/** Carica e pagina la collezione dell'utente; ricerca server-side. */
-function useYumeCollection(active: boolean): YumeCollection {
+/** Traduce il filtro UI nel parametro `scheduled` dell'API. */
+function scheduledParam(f: YumeScheduleFilter): boolean | undefined {
+  return f === "all" ? undefined : f === "scheduled";
+}
+
+/**
+ * Carica e pagina la collezione dell'utente; ricerca + filtro schedulazione
+ * server-side. Il filtro "schedulato/da pianificare" è relativo a `tripId`
+ * (il viaggio nel cui contesto è aperto il pannello).
+ */
+function useYumeCollection(active: boolean, tripId: string | undefined): YumeCollection {
   const [raw, setRaw] = useState<Yume[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<YumeScheduleFilter>(DEFAULT_FILTER);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const searchTimer = useRef<number | null>(null);
 
-  const fetchFirst = useCallback(async (q: string, silent: boolean) => {
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
-      const page = await api.yumes.list({ q: q.trim() || undefined, limit: PAGE, offset: 0 });
-      setRaw(page.items);
-      setHasMore(page.hasMore);
-      setLoadedOnce(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore nel caricamento");
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, []);
+  const fetchFirst = useCallback(
+    async (q: string, f: YumeScheduleFilter, silent: boolean) => {
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+        const page = await api.yumes.list({
+          q: q.trim() || undefined,
+          scheduled: scheduledParam(f),
+          tripId,
+          limit: PAGE,
+          offset: 0,
+        });
+        setRaw(page.items);
+        setHasMore(page.hasMore);
+        setLoadedOnce(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Errore nel caricamento");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [tripId],
+  );
 
   // Caricamento pigro alla prima apertura del pannello (differito così il
   // setState non avviene sincrono nel corpo dell'effect).
   useEffect(() => {
     if (!active || loadedOnce) return;
-    const id = window.setTimeout(() => void fetchFirst("", false), 0);
+    const id = window.setTimeout(() => void fetchFirst("", DEFAULT_FILTER, false), 0);
     return () => window.clearTimeout(id);
   }, [active, loadedOnce, fetchFirst]);
 
@@ -111,9 +136,18 @@ function useYumeCollection(active: boolean): YumeCollection {
     (q: string) => {
       setSearch(q);
       if (searchTimer.current) window.clearTimeout(searchTimer.current);
-      searchTimer.current = window.setTimeout(() => void fetchFirst(q, true), 300);
+      searchTimer.current = window.setTimeout(() => void fetchFirst(q, filter, true), 300);
     },
-    [fetchFirst],
+    [fetchFirst, filter],
+  );
+
+  // Cambio filtro → ricarica subito dalla prima pagina (no debounce).
+  const onScheduleFilterChange = useCallback(
+    (f: YumeScheduleFilter) => {
+      setFilter(f);
+      void fetchFirst(search, f, false);
+    },
+    [fetchFirst, search],
   );
 
   const loadMore = useCallback(async () => {
@@ -122,6 +156,8 @@ function useYumeCollection(active: boolean): YumeCollection {
     try {
       const page = await api.yumes.list({
         q: search.trim() || undefined,
+        scheduled: scheduledParam(filter),
+        tripId,
         limit: PAGE,
         offset: raw.length,
       });
@@ -132,16 +168,28 @@ function useYumeCollection(active: boolean): YumeCollection {
     } finally {
       setLoadingMore(false);
     }
-  }, [search, raw.length]);
+  }, [search, filter, tripId, raw.length]);
 
   const items = useMemo(() => raw.map(yumeToListItem), [raw]);
 
-  return { items, loading, error, search, onSearchChange, hasMore, loadingMore, loadMore };
+  return {
+    items,
+    loading,
+    error,
+    search,
+    onSearchChange,
+    scheduleFilter: filter,
+    onScheduleFilterChange,
+    hasMore,
+    loadingMore,
+    loadMore,
+  };
 }
 
 export function YumejiFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const inTrip = /^\/trips\/[^/]+/.test(pathname ?? "");
+  const tripId = pathname?.match(/^\/trips\/([^/]+)/)?.[1];
+  const inTrip = !!tripId;
 
   const [open, setOpen] = useState(false);
   const [pinnedPref, setPinnedPref] = useLocalStorageState<boolean>(LS_PINNED, false);
@@ -150,7 +198,7 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
   const isOpen = state !== "closed";
   const isPinned = state === "pinned";
 
-  const data = useYumeCollection(isOpen);
+  const data = useYumeCollection(isOpen, tripId);
 
   const toggle = useCallback(() => setOpen((o) => !o), []);
   const togglePin = useCallback(() => setPinnedPref((p) => !p), [setPinnedPref]);
@@ -198,6 +246,8 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
             loading={data.loading}
             searchValue={data.search}
             onSearchChange={data.onSearchChange}
+            scheduleFilter={data.scheduleFilter}
+            onScheduleFilterChange={data.onScheduleFilterChange}
             hasMore={data.hasMore}
             loadingMore={data.loadingMore}
             onLoadMore={data.loadMore}
@@ -239,6 +289,8 @@ export function YumejiPinnedColumn({
       loading={data.loading}
       searchValue={data.search}
       onSearchChange={data.onSearchChange}
+      scheduleFilter={data.scheduleFilter}
+      onScheduleFilterChange={data.onScheduleFilterChange}
       hasMore={data.hasMore}
       loadingMore={data.loadingMore}
       onLoadMore={data.loadMore}

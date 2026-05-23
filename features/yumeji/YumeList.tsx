@@ -15,9 +15,11 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { SoftField } from "@/components/ui/SoftField";
 import { AddressLabel } from "@/components/ui/AddressLabel";
+import { TabSwitcher } from "@/components/ui/TabSwitcher";
 import { IconSearch, IconPlus } from "@/components/ui/icons";
 import type { YumeListItem, YumeChip, YumeOwner } from "./mockData";
 import { writeYumeDrag } from "./yumeDrag";
@@ -25,13 +27,23 @@ import { writeYumeDrag } from "./yumeDrag";
 /** Placeholder immagine condiviso con ActivityList (ActivityRow.DEFAULT_THUMB). */
 const PLACEHOLDER_THUMB = "/media/day-default-banner.png";
 
+/** Filtro per stato di schedulazione nel trip corrente (server-side). */
+export type YumeScheduleFilter = "all" | "scheduled" | "unscheduled";
+
 type YumeListProps = {
   items: YumeListItem[];
   /** Mostra la barra di ricerca. Default true. */
   searchable?: boolean;
-  /** Mostra i chip filtri (richiede `chips`). Default true. */
+  /** Mostra i chip filtri. Default true. */
   filterable?: boolean;
   chips?: YumeChip[];
+  /**
+   * Filtro schedulazione CONTROLLATO (server-side). Se passi `onScheduleFilterChange`
+   * il componente mostra i chip reali "Schedulati / Da pianificare" (mutuamente
+   * esclusivi) al posto dei `chips` mock e l'host rifà la query.
+   */
+  scheduleFilter?: YumeScheduleFilter;
+  onScheduleFilterChange?: (f: YumeScheduleFilter) => void;
   /** Mostra l'avatar dell'owner sulle righe condivise da altri. Default false. */
   showOwner?: boolean;
   /** Focus automatico sul campo ricerca al mount. */
@@ -60,6 +72,8 @@ export function YumeList({
   searchable = true,
   filterable = true,
   chips = [],
+  scheduleFilter = "all",
+  onScheduleFilterChange,
   showOwner = false,
   autoFocusSearch = false,
   loading = false,
@@ -70,6 +84,7 @@ export function YumeList({
   onLoadMore,
   className,
 }: YumeListProps) {
+  const t = useTranslations("Yumeji");
   // Ricerca controllata (server) se l'host passa onSearchChange; altrimenti FE.
   const searchControlled = onSearchChange != null;
   const [internalSearch, setInternalSearch] = useState("");
@@ -130,7 +145,9 @@ export function YumeList({
     });
   }
 
-  const showChips = filterable && chips.length > 0;
+  // Filtro schedulazione controllato dall'host → TabSwitcher; altrimenti chip mock.
+  const scheduleControlled = onScheduleFilterChange != null;
+  const showChips = filterable && (scheduleControlled || chips.length > 0);
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
@@ -141,7 +158,7 @@ export function YumeList({
             ref={searchRef as React.Ref<HTMLInputElement>}
             value={search}
             onChange={setSearch}
-            placeholder="Cerca nei tuoi yume…"
+            placeholder={t("searchPlaceholder")}
             size="sm"
             type="search"
           >
@@ -152,41 +169,56 @@ export function YumeList({
         </div>
       )}
 
-      {/* Chip filtri (mock · il filtraggio reale è parte dati) */}
+      {/* Chip filtri */}
       {showChips && (
         <div className="px-3.5 py-2 border-b border-dashed border-border flex flex-wrap gap-1 shrink-0">
-          {chips.map((c) => {
-            const isOn = activeChips.has(c.id);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => toggleChip(c.id)}
-                className={cn(
-                  "text-micro px-2 py-[3px] rounded-pill border cursor-pointer transition-colors whitespace-nowrap",
-                  isOn
-                    ? "bg-ink border-ink text-white font-medium"
-                    : "bg-surface border-border text-ink-soft hover:border-border-strong",
-                )}
-              >
-                {c.label}
-                {c.count !== undefined && (
-                  <span className={cn("ml-0.5", isOn && "opacity-80")}>· {c.count}</span>
-                )}
-              </button>
-            );
-          })}
-          <span className="text-micro px-2 py-[3px] rounded-pill border border-border bg-surface text-ink-soft inline-flex items-center gap-0.5 cursor-pointer hover:border-border-strong">
-            <IconPlus size={10} />
-            Altri filtri
-          </span>
+          {scheduleControlled ? (
+            // Filtro reale: schedulazione nel trip corrente.
+            <TabSwitcher<YumeScheduleFilter>
+              size="xs"
+              value={scheduleFilter}
+              onChange={(f) => onScheduleFilterChange?.(f)}
+              tabs={[
+                { key: "unscheduled", label: t("filterUnscheduled") },
+                { key: "scheduled", label: t("filterScheduled") },
+              ]}
+            />
+          ) : (
+            <>
+              {chips.map((c) => {
+                const isOn = activeChips.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleChip(c.id)}
+                    className={cn(
+                      "text-micro px-2 py-[3px] rounded-pill border cursor-pointer transition-colors whitespace-nowrap",
+                      isOn
+                        ? "bg-ink border-ink text-white font-medium"
+                        : "bg-surface border-border text-ink-soft hover:border-border-strong",
+                    )}
+                  >
+                    {c.label}
+                    {c.count !== undefined && (
+                      <span className={cn("ml-0.5", isOn && "opacity-80")}>· {c.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+              <span className="text-micro px-2 py-[3px] rounded-pill border border-border bg-surface text-ink-soft inline-flex items-center gap-0.5 cursor-pointer hover:border-border-strong">
+                <IconPlus size={10} />
+                {t("moreFilters")}
+              </span>
+            </>
+          )}
         </div>
       )}
 
       {/* Lista · loading · empty state */}
       {loading && visible.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-mini text-ink-faint">
-          Caricamento…
+          {t("loading")}
         </div>
       ) : visible.length > 0 ? (
         <ol
@@ -202,19 +234,17 @@ export function YumeList({
               ref={sentinelRef}
               className="px-3 py-3 flex items-center justify-center text-mini text-ink-faint"
             >
-              {loadingMore ? "Carico…" : <span aria-hidden className="opacity-0">·</span>}
+              {loadingMore ? t("loadingMore") : <span aria-hidden className="opacity-0">·</span>}
             </li>
           )}
         </ol>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-8">
           <p className="text-meta font-medium text-ink mb-1">
-            {search.trim() ? "Nessuno yume trovato" : "Non hai ancora salvato niente"}
+            {search.trim() ? t("emptySearchTitle") : t("emptyTitle")}
           </p>
           <p className="text-mini text-ink-faint max-w-[240px] leading-snug">
-            {search.trim()
-              ? "Nessun risultato per la ricerca. Prova un altro termine."
-              : "Esplora Discovery e salva i luoghi che ti incuriosiscono: li ritroverai qui."}
+            {search.trim() ? t("emptySearchBody") : t("emptyBody")}
           </p>
         </div>
       )}

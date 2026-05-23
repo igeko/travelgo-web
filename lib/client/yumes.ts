@@ -13,14 +13,25 @@ export type YumeCreator = { id: string; displayName: string | null; avatarUrl: s
 export type Yume = DbActivity & { shared_trip_ids: string[]; owner: YumeCreator | null };
 
 export const yumes = {
-  /** GET /api/yumes — a page of my collection (filter by visibility, free-text q). */
-  list: (params?: { visibility?: ActivityVisibility; q?: string; limit?: number; offset?: number }) =>
+  /** GET /api/yumes — a page of my collection (filter by visibility, free-text q, schedule). */
+  list: (params?: {
+    visibility?: ActivityVisibility;
+    q?: string;
+    limit?: number;
+    offset?: number;
+    /** Keep only yumes scheduled (true) / not scheduled (false) in `tripId`. */
+    scheduled?: boolean;
+    /** Trip context required by `scheduled` ("scheduled" = on a day of this trip). */
+    tripId?: string;
+  }) =>
     get<Page<Yume>>(
       `/api/yumes${query({
         visibility: params?.visibility,
         q: params?.q,
         limit: params?.limit,
         offset: params?.offset,
+        scheduled: params?.scheduled?.toString(),
+        trip: params?.tripId,
       })}`,
     ),
 

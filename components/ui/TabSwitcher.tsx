@@ -43,6 +43,7 @@ const containerVariants = cva(
   {
     variants: {
       size: {
+        xs: "text-micro",
         sm: "text-tiny",
         md: "text-xs",
         lg: "text-meta",
@@ -77,6 +78,7 @@ const buttonVariants = cva(
   {
     variants: {
       size: {
+        xs: "h-5 px-2 text-micro",
         sm: "h-6 px-2.5 text-tiny",
         md: "h-8 px-3.5 text-xs",
         lg: "h-10 px-4.5 text-meta",

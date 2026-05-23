@@ -109,6 +109,11 @@ export class Activities {
     return { data: data as DbActivity[], error: null };
   }
 
+  /** Public: activity ids scheduled anywhere in a trip (via scheduled_activities → days). */
+  scheduledIdsInTrip(tripId: string): Promise<string[]> {
+    return this.activityIdsForTrip(tripId);
+  }
+
   /** Distinct activity ids scheduled in a trip (via scheduled_activities → days). */
   private async activityIdsForTrip(tripId: string): Promise<string[]> {
     const { data } = await this.db
@@ -218,8 +223,24 @@ export class Activities {
   /** Activities owned by a user (their yume collection), newest first. */
   async listOwnedBy(
     userId: string,
-    opts?: { visibility?: ActivityVisibility; limit?: number; offset?: number; search?: string },
+    opts?: {
+      visibility?: ActivityVisibility;
+      limit?: number;
+      offset?: number;
+      search?: string;
+      /**
+       * Constrain by membership in a set of ids. `mode: "in"` keeps only the
+       * given ids (empty set → no rows); `mode: "out"` excludes them (empty
+       * set → no constraint). Used by the scheduled / to-plan filter.
+       */
+      idFilter?: { ids: string[]; mode: "in" | "out" };
+    },
   ): Promise<DalResult<DbActivity[]>> {
+    // Empty whitelist can never match → short-circuit before hitting the DB.
+    if (opts?.idFilter?.mode === "in" && opts.idFilter.ids.length === 0) {
+      return { data: [], error: null };
+    }
+
     let q = this.db
       .from(ActivityTable.Activities)
       .select("*")
@@ -227,6 +248,11 @@ export class Activities {
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
     if (opts?.visibility) q = q.eq("visibility", opts.visibility);
+    if (opts?.idFilter) {
+      const { ids, mode } = opts.idFilter;
+      if (mode === "in") q = q.in("id", ids);
+      else if (ids.length > 0) q = q.not("id", "in", `(${ids.join(",")})`);
+    }
     // Ricerca server-side su titolo + location. L'input finisce nella sintassi
     // del filtro PostgREST `.or(...)`: ripuliamo i caratteri che la romperebbero
     // ( , ( ) * % \ ) prima di interpolare. `*` è il wildcard PostgREST.

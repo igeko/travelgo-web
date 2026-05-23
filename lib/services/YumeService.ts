@@ -89,11 +89,27 @@ export class YumeService {
 
   /** A page of the current user's yume collection (their activities), optionally filtered. */
   async listMine(
-    opts?: { visibility?: ActivityVisibility; limit?: number; offset?: number; search?: string },
+    opts?: {
+      visibility?: ActivityVisibility;
+      limit?: number;
+      offset?: number;
+      search?: string;
+      /** Trip context for the scheduled filter — "scheduled" means "on a day of this trip". */
+      tripId?: string;
+      /** true → only scheduled in `tripId`; false → only not scheduled there; undefined → all. */
+      scheduled?: boolean;
+    },
   ): Promise<Page<Yume>> {
     const userId = await this.currentUserId();
     const limit = opts?.limit ?? DEFAULT_PAGE_SIZE;
     const offset = opts?.offset ?? 0;
+
+    // Scheduled / to-plan filter (server-side, scoped to the current trip).
+    let idFilter: { ids: string[]; mode: "in" | "out" } | undefined;
+    if (opts?.scheduled != null && opts.tripId) {
+      const scheduledIds = await this.dal.activities.scheduledIdsInTrip(opts.tripId);
+      idFilter = { ids: scheduledIds, mode: opts.scheduled ? "in" : "out" };
+    }
 
     // Fetch one extra row to detect whether a further page exists.
     const rows = unwrap(
@@ -102,6 +118,7 @@ export class YumeService {
         offset,
         limit: limit + 1,
         search: opts?.search,
+        idFilter,
       }),
     );
     const hasMore = rows.length > limit;

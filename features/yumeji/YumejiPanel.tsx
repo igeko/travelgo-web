@@ -13,10 +13,11 @@
  * Dati ancora mock (mockData.ts) — il data layer reale è la fase successiva.
  */
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { IconPin, IconX } from "@/components/ui/icons";
 import { YumejiGlyph } from "./YumejiGlyph";
-import { YumeList } from "./YumeList";
+import { YumeList, type YumeScheduleFilter } from "./YumeList";
 import type { YumeListItem, YumeChip } from "./mockData";
 
 type YumejiPanelProps = {
@@ -32,6 +33,8 @@ type YumejiPanelProps = {
   /** Forwarded a YumeList */
   searchable?: boolean;
   filterable?: boolean;
+  scheduleFilter?: YumeScheduleFilter;
+  onScheduleFilterChange?: (f: YumeScheduleFilter) => void;
   showOwner?: boolean;
   autoFocusSearch?: boolean;
   loading?: boolean;
@@ -53,6 +56,8 @@ export function YumejiPanel({
   onClose,
   searchable = true,
   filterable = true,
+  scheduleFilter,
+  onScheduleFilterChange,
   showOwner = false,
   autoFocusSearch = false,
   loading = false,
@@ -63,9 +68,10 @@ export function YumejiPanel({
   onLoadMore,
   className,
 }: YumejiPanelProps) {
+  const t = useTranslations("Yumeji");
   return (
     <aside
-      aria-label="Pannello Yumeji"
+      aria-label={t("panelLabel")}
       className={cn(
         "flex flex-col min-h-0 bg-surface rounded-lg border border-border overflow-hidden",
         className,
@@ -85,7 +91,7 @@ export function YumejiPanel({
                 type="button"
                 onClick={onTogglePin}
                 aria-pressed={pinned}
-                title={pinned ? "Sgancia il pannello" : "Ancora il pannello"}
+                title={pinned ? t("unpin") : t("pin")}
                 className="inline-flex items-center justify-center cursor-pointer border-0 bg-transparent p-0 transition-colors hover:text-ink"
               >
                 <IconPin
@@ -98,7 +104,7 @@ export function YumejiPanel({
               <button
                 type="button"
                 onClick={onClose}
-                title="Chiudi pannello Yumeji"
+                title={t("close")}
                 className="inline-flex items-center justify-center cursor-pointer border-0 bg-transparent p-0 transition-colors hover:text-ink"
               >
                 <IconX size={15} />
@@ -114,6 +120,8 @@ export function YumejiPanel({
         chips={chips}
         searchable={searchable}
         filterable={filterable}
+        scheduleFilter={scheduleFilter}
+        onScheduleFilterChange={onScheduleFilterChange}
         showOwner={showOwner}
         autoFocusSearch={autoFocusSearch}
         loading={loading}
