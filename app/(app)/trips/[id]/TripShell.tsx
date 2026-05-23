@@ -68,7 +68,7 @@ export function TripShell({ trip, days, initialActivities, initialDayId }: Props
     <div className="min-h-screen flex flex-col bg-bg">
       <AppHeader
         activeNav="trips"
-        tripName={trip.title}
+        tripName={trip.subtitle || trip.title}
         tripProgress={days.length > 0 ? t("daysCount", { count: days.length }) : undefined}
         activeTab="day-by-day"
         tripId={trip.id}

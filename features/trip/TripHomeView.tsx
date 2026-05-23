@@ -54,7 +54,7 @@ export function TripHomeView({ trip, daysCount, recordLocator, passengerName, in
     <div className="min-h-screen flex flex-col bg-bg">
       <AppHeader
         activeNav="trips"
-        tripName={trip.title}
+        tripName={trip.subtitle || trip.title}
         tripProgress={daysCount > 0 ? t("daysCount", { count: daysCount }) : undefined}
         activeTab="trip"
         tripId={trip.id}

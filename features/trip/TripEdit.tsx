@@ -21,7 +21,7 @@ import { api, ApiClientError } from "@/lib/client";
 import { Button } from "@/components/ui/Button";
 import { DatePickerField, type DateRange } from "@/components/ui/DatePickerField";
 import { SoftField } from "@/components/ui/SoftField";
-import { IconInfoCircle, IconLock, IconMail, IconMapPin, IconSend, IconX } from "@/components/ui/icons";
+import { IconInfoCircle, IconLock, IconMail, IconSend, IconX } from "@/components/ui/icons";
 import type { DbTrip } from "@/lib/dal/types";
 import type { UpdateTripPayload } from "@/lib/client/trips";
 import { AirportField } from "@/components/ui/AirportField";
@@ -36,7 +36,7 @@ const THEMES = [
 
 type TripFacts = Pick<
   DbTrip,
-  "title" | "start_date" | "end_date" | "adults_count" | "children_count"
+  "title" | "subtitle" | "start_date" | "end_date" | "adults_count" | "children_count"
   | "theme_tags" | "theme_description" | "departure_airport" | "arrival_airport"
 >;
 
@@ -72,6 +72,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   const [error, setError] = useState(false);
 
   // ── Field state (the footer Save diffs this against the initial values) ──
+  const [name, setName] = useState(trip.subtitle ?? "");
   const [dates, setDates] = useState<DateRange>({ start: fromIso(trip.start_date), end: fromIso(trip.end_date) });
   const [adults, setAdults] = useState(trip.adults_count ?? 2);
   const [kids, setKids] = useState(trip.children_count ?? 0);
@@ -102,6 +103,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   // Diff current field state against the persisted values.
   function buildPatch(): UpdateTripPayload {
     const patch: UpdateTripPayload = {};
+    if (name.trim() !== (trip.subtitle ?? "")) patch.subtitle = name.trim() || null;
     const startIso = dates.start ? toIso(dates.start) : null;
     const endIso = dates.end ? toIso(dates.end) : null;
     if (startIso !== trip.start_date) patch.start_date = startIso;
@@ -132,7 +134,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   }
 
   const items: { id: SectionId; label: string; preview: string; locked?: boolean }[] = [
-    { id: "place", label: t("place.label"), preview: trip.title, locked: true },
+    { id: "place", label: t("place.label"), preview: name || trip.title },
     { id: "dates", label: t("dates.label"), preview: dates.start && dates.end ? t("dates.preview", { nights }) : t("notSet") },
     { id: "travelers", label: t("travelers.label"), preview: t("travelers.preview", { adults, children: kids }) },
     { id: "invites", label: t("invites.label"), preview: t("invites.preview", { members: members.length, invites: invites.length }) },
@@ -150,7 +152,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
       <div className="flex items-center justify-between px-5 py-3 border-b border-border">
         <div className="flex items-baseline gap-2">
           <span className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium">{t("header")}</span>
-          <span className="text-mini font-medium text-ink truncate">{trip.title}</span>
+          <span className="text-mini font-medium text-ink truncate">{trip.subtitle || trip.title}</span>
         </div>
         <button
           type="button"
@@ -202,7 +204,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
         </aside>
 
         <div className="p-6 md:p-7">
-          {section === "place" && <PlacePane place={trip.title} />}
+          {section === "place" && <PlacePane name={name} onName={setName} destination={trip.title} />}
           {section === "dates" && <DatesPane dates={dates} setDates={setDates} nights={nights} />}
           {section === "airports" && (
             <AirportsPane departure={departure} setDeparture={setDeparture} arrival={arrival} setArrival={setArrival} />
@@ -251,21 +253,27 @@ function SectionHeader({ eyebrow, title, sub }: { eyebrow: string; title: string
 
 /* ── PLACE ─────────────────────────────────────────────────────────── */
 
-function PlacePane({ place }: { place: string }) {
+function PlacePane({ name, onName, destination }: { name: string; onName: (v: string) => void; destination: string }) {
   const t = useTranslations("TripEdit");
   return (
     <div>
       <SectionHeader eyebrow={t("place.eyebrow")} title={t("place.title")} sub={t("place.sub")} />
-      <div className="bg-ink/[0.04] border border-dashed border-border-strong rounded-md px-4 py-4 flex items-center gap-3">
-        <span className="w-9 h-9 rounded-full bg-surface text-orange-deep border border-border inline-flex items-center justify-center shrink-0">
-          <IconMapPin size={16} />
-        </span>
-        <div className="flex-1">
-          <p className="text-micro tracking-meta uppercase text-ink-faint font-medium m-0">{t("place.label")}</p>
-          <p className="font-serif italic text-[17px] text-ink font-medium mt-0.5">{place}</p>
-          <p className="font-serif italic text-tiny text-ink-faint mt-1">{t("place.hint")}</p>
+      <div className="flex flex-col gap-4">
+        <SoftField
+          label={t("place.nameLabel")}
+          value={name}
+          onChange={onName}
+          placeholder={t("place.namePlaceholder")}
+          maxLength={120}
+          hideCounter
+        />
+        <div>
+          <SoftField label={t("place.fieldLabel")} value={destination} onChange={() => {}} disabled hideCounter />
+          <p className="mt-2 flex items-start gap-2 font-serif text-tiny italic leading-snug text-ink-faint">
+            <IconInfoCircle size={13} className="mt-0.5 shrink-0 text-orange-deep" />
+            {t("place.hint")}
+          </p>
         </div>
-        <IconLock size={13} className="text-ink-faint" />
       </div>
     </div>
   );

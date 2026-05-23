@@ -120,11 +120,14 @@
     "saving": "Salvataggio…",
     "error": "Salvataggio non riuscito. Riprova.",
     "place": {
-      "label": "Luogo",
-      "eyebrow": "Sezione · luogo",
-      "title": "Il posto da cui tutto nasce.",
-      "sub": "Il luogo del viaggio non si modifica: ogni viaggio nasce da un posto.",
-      "hint": "Vuoi un'altra destinazione? Apri un nuovo viaggio."
+      "label": "Viaggio",
+      "eyebrow": "Sezione · viaggio",
+      "title": "Nome e destinazione.",
+      "sub": "Dai un nome al viaggio — la destinazione resta quella impostata.",
+      "nameLabel": "Nome del viaggio",
+      "namePlaceholder": "es. Estate in Giappone",
+      "fieldLabel": "Destinazione",
+      "hint": "La destinazione non si modifica qui — è il luogo attorno a cui nasce tutto il viaggio."
     },
     "dates": {
       "label": "Date",

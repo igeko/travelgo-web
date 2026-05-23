@@ -120,11 +120,14 @@
     "saving": "Saving…",
     "error": "Couldn't save. Try again.",
     "place": {
-      "label": "Place",
-      "eyebrow": "Section · place",
-      "title": "Where it all begins.",
-      "sub": "The trip's place can't be changed — every trip is born from a place.",
-      "hint": "Want a different destination? Start a new trip."
+      "label": "Trip",
+      "eyebrow": "Section · trip",
+      "title": "Name and destination.",
+      "sub": "Give the trip a name — the destination stays as you set it.",
+      "nameLabel": "Trip name",
+      "namePlaceholder": "e.g. Summer in Japan",
+      "fieldLabel": "Destination",
+      "hint": "The destination can't be changed here — it's the place the whole trip is built around."
     },
     "dates": {
       "label": "Dates",
