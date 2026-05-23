@@ -88,6 +88,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Day-period segmented control · morning/afternoon/evening/night",
   },
   {
+    slug: "time-field",
+    title: "TimeField",
+    group: "Atoms",
+    subgroup: "Fields",
+    description: "Time picker compatto HH:MM · pill trigger + popover griglia ore/minuti (stesso stile del picker di PeriodBar)",
+  },
+  {
     slug: "soft-field",
     title: "SoftField",
     group: "Atoms",
@@ -249,6 +256,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Trip hero shaped like a boarding pass · trip-schema facts + AI-provided airports/times/countdown",
   },
   {
+    slug: "place-info",
+    title: "PlaceInfoPanel",
+    group: "Features",
+    subgroup: "Trips",
+    description: "«Know before you go» country card · 6 tabs (currency/visa/weather/power/language/safety), data-driven",
+  },
+  {
     slug: "day-info-edit-form",
     title: "DayInfoEditForm",
     group: "Features",
@@ -261,6 +275,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Features",
     subgroup: "Day",
     description: "Editor alloggio / sub-banner (tipo, nome, indirizzo, link, costo) · estratto da HeroBanner, footer opzionale + ref.getData()",
+  },
+  {
+    slug: "day-activities-edit-form",
+    title: "DayActivitiesEditForm",
+    group: "Features",
+    subgroup: "Day",
+    description: "Sezione lista attività · righe dense ora+titolo, inserimento inline, titolo via ActivitySearchField (autocomplete + crea nuova), ora via TimeField",
   },
   // AI subgroup
   {

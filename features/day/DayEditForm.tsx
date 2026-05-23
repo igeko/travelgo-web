@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
-import { IconBed, IconMapPin, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
+import { IconBed, IconCalendarTime, IconMapPin, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
 import type { CompressOptions, UploadOptions } from "@/components/ui/ImagePicker";
+import type { TripActivityOption } from "@/features/activity/types";
 import {
   DayInfoEditForm,
   type DayInfoEditFormHandle,
@@ -18,6 +19,7 @@ import {
   type HeroBannerSubBanner,
   type HeroBannerSubBannerData,
 } from "./LodgingEditForm";
+import { DayActivitiesEditForm, type DayActivity } from "./DayActivitiesEditForm";
 
 /* ─────────────────────────────────────────────────────────────────
    DayEditForm · modifica giorno con switch in stile trip-edit.
@@ -33,7 +35,7 @@ export type DayData = {
   lodging: HeroBannerSubBannerData | null;
 };
 
-type SectionId = "day" | "lodging";
+type SectionId = "day" | "lodging" | "activities";
 
 export type DayEditFormProps = {
   dayNumber?: number;
@@ -49,6 +51,19 @@ export type DayEditFormProps = {
   };
   /** Alloggio iniziale; null/undefined = nessun alloggio. */
   lodging?: HeroBannerSubBanner | null;
+  /**
+   * Activity list. Activities are separate entities persisted independently,
+   * so the section commits via `onActivitiesChange` (not the unified Save).
+   * The section is only shown when `onActivitiesChange` is provided.
+   */
+  activities?: DayActivity[];
+  onActivitiesChange?: (next: DayActivity[]) => void;
+  /** Trip id for the activity autocomplete. */
+  tripId?: string;
+  /** Pre-supplied activities for the autocomplete (tests / sandbox). */
+  activityItems?: TripActivityOption[];
+  /** Detailed editor for an activity row, rendered inline below it. */
+  activityEditorFor?: (id: string, close: () => void) => React.ReactNode;
   imageCompress?: CompressOptions;
   imageUpload?: UploadOptions;
   onSave: (data: DayData) => void;
@@ -112,6 +127,11 @@ export function DayEditForm({
   dateLabel,
   hero,
   lodging,
+  activities,
+  onActivitiesChange,
+  tripId,
+  activityItems,
+  activityEditorFor,
   imageCompress,
   imageUpload,
   onSave,
@@ -127,6 +147,8 @@ export function DayEditForm({
   const [hasLodging, setHasLodging] = useState(!!lodging);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const showActivities = !!onActivitiesChange;
+
   function handleSave() {
     const heroData = heroRef.current?.getData();
     if (!heroData) return;
@@ -138,12 +160,13 @@ export function DayEditForm({
 
   const dayPreview = hero?.subtitle || hero?.title || t("dayPreview");
   const lodgingPreview = hasLodging ? (lodging?.name || t("lodgingPreview")) : t("noLodging");
+  const activitiesPreview = t("activitiesPreview", { count: activities?.length ?? 0 });
 
   return (
     <div
       onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onCancel(); } }}
       className={cn(
-        "bg-surface border border-border-strong rounded-lg overflow-hidden flex flex-col",
+        "bg-surface border border-border-strong rounded-lg flex flex-col",
         className,
       )}
     >
@@ -233,6 +256,19 @@ export function DayEditForm({
               </button>
             )}
           </div>
+
+          {/* Attività */}
+          {showActivities && (
+            <div className={cn(section !== "activities" && "hidden")}>
+              <DayActivitiesEditForm
+                activities={activities ?? []}
+                onChange={onActivitiesChange}
+                tripId={tripId}
+                items={activityItems}
+                editorFor={activityEditorFor}
+              />
+            </div>
+          )}
         </div>
 
         {/* Menu pane (destra) */}
@@ -253,6 +289,15 @@ export function DayEditForm({
               preview={lodgingPreview}
               onSelect={() => setSection("lodging")}
             />
+            {showActivities && (
+              <MenuItem
+                active={section === "activities"}
+                icon={<IconCalendarTime />}
+                label={t("activitiesMenu")}
+                preview={activitiesPreview}
+                onSelect={() => setSection("activities")}
+              />
+            )}
           </nav>
         </aside>
       </div>

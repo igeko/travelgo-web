@@ -29,6 +29,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   IconSearch,
   IconX,
+  IconPlus,
   IconCalendarTime,
   IconCircleDashed,
   IconMapPin,
@@ -84,6 +85,11 @@ function mapWishlist(rows: ActivitySearchWishlistRow[]): TripActivityOption[] {
 export type ActivitySearchFieldProps = {
   value: TripActivityOption | null;
   onChange: (activity: TripActivityOption | null) => void;
+  /**
+   * When set, a "create new" row appears at the end of the results whenever
+   * the typed query has no exact title match. Called with the trimmed text.
+   */
+  onCreate?: (title: string) => void;
   /** Fetch the trip's activities. Ignored when `items` is provided. */
   tripId?: string;
   /** Pre-supplied activities (skips fetching). For tests / sandbox. */
@@ -112,6 +118,7 @@ export type ActivitySearchFieldProps = {
 export function ActivitySearchField({
   value,
   onChange,
+  onCreate,
   tripId,
   items,
   placeholder,
@@ -261,6 +268,15 @@ export function ActivitySearchField({
     if (value && text !== value.title) onChange(null);
   };
 
+  const trimmedQuery = inputText.trim();
+  const hasExactMatch = flat.some((a) => a.title.toLowerCase() === trimmedQuery.toLowerCase());
+  const canCreate = !!onCreate && trimmedQuery.length > 0 && !hasExactMatch;
+  const handleCreate = () => {
+    if (!canCreate) return;
+    setIsOpen(false);
+    onCreate?.(trimmedQuery);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -276,6 +292,9 @@ export function ActivitySearchField({
       if (isOpen && flat[activeIndex]) {
         e.preventDefault();
         selectActivity(flat[activeIndex]);
+      } else if (isOpen && canCreate) {
+        e.preventDefault();
+        handleCreate();
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
@@ -376,6 +395,33 @@ export function ActivitySearchField({
     </div>
   );
 
+  const createRow = canCreate ? (
+    <button
+      type="button"
+      onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
+      className={cn(
+        "w-full flex items-center gap-2.5 text-left transition-colors bg-primary-soft/40 hover:bg-primary-soft",
+        size === "sm" ? "px-3 py-2" : "px-4 py-2.5",
+        flat.length > 0 && "border-t border-dashed border-primary-border",
+      )}
+    >
+      <span className="w-6 h-6 rounded-full bg-primary text-white inline-flex items-center justify-center shrink-0">
+        <IconPlus size={13} />
+      </span>
+      <span className="text-mini text-primary-deep font-medium truncate">
+        {t("createNew", { title: trimmedQuery })}
+      </span>
+    </button>
+  ) : null;
+
+  /** Body shared by inline + floating: matches (or empty/create state). */
+  const dropdownBody = (
+    <>
+      {flat.length > 0 ? listContent : (canCreate ? null : emptyState)}
+      {createRow}
+    </>
+  );
+
   // ── Inline panel ─────────────────────────────────────────────────
   // Bare input on top, results in their own bordered box below.
   if (defaultOpen) {
@@ -386,7 +432,7 @@ export function ActivitySearchField({
         {showResults && (
           <div className="mt-2 bg-surface border border-border rounded-lg overflow-hidden">
             <div className="max-h-[360px] overflow-y-auto scrollbar-thin">
-              {flat.length > 0 ? listContent : emptyState}
+              {dropdownBody}
             </div>
           </div>
         )}
@@ -399,7 +445,7 @@ export function ActivitySearchField({
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
       {inputElement}
 
-      {isOpen && flat.length > 0 && (
+      {isOpen && (flat.length > 0 || inputText.trim().length > 0) && (
         <div
           className={cn(
             "absolute z-dropdown top-[calc(100%+6px)] left-0 right-0",
@@ -407,19 +453,7 @@ export function ActivitySearchField({
             "shadow-[0_4px_24px_rgba(13,44,61,0.10)]",
           )}
         >
-          <div className="max-h-[360px] overflow-y-auto scrollbar-thin">{listContent}</div>
-        </div>
-      )}
-
-      {isOpen && flat.length === 0 && inputText.trim() && (
-        <div
-          className={cn(
-            "absolute z-dropdown top-[calc(100%+6px)] left-0 right-0",
-            "bg-surface border border-border rounded-lg",
-            "shadow-[0_4px_24px_rgba(13,44,61,0.10)]",
-          )}
-        >
-          {emptyState}
+          <div className="max-h-[360px] overflow-y-auto scrollbar-thin">{dropdownBody}</div>
         </div>
       )}
     </div>

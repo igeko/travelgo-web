@@ -185,6 +185,18 @@
       "notePlaceholder": "Descrivi il viaggio ideale — qualsiasi cosa Go dovrebbe sapere…"
     }
   },
+  "PlaceInfo": {
+    "goTip": "Go tip",
+    "empty": "Aggiungi una destinazione per vedere le info sul paese.",
+    "tabs": {
+      "currency": "Valuta",
+      "visa": "Visto",
+      "weather": "Clima",
+      "power": "Corrente",
+      "language": "Lingua",
+      "safety": "Sicurezza"
+    }
+  },
   "TripDayView": {
     "sidebar": {
       "itinerary": "Itinerario",
@@ -266,9 +278,11 @@
     "sections": "Sezioni",
     "dayMenu": "Info giorno",
     "lodgingMenu": "Alloggio",
+    "activitiesMenu": "Attività",
     "dayPreview": "Zona, luogo, riassunto, immagine",
     "lodgingPreview": "Alloggio del giorno",
     "noLodging": "Nessun alloggio",
+    "activitiesPreview": "{count, plural, one {# tappa} other {# tappe}}",
     "daySection": {
       "eyebrow": "Sezione · info giorno",
       "title": "Com'è fatto questo giorno.",
@@ -286,6 +300,22 @@
     "deleteDay": "Elimina giorno",
     "cancel": "Annulla",
     "save": "Salva giorno"
+  },
+  "DayActivities": {
+    "eyebrow": "Sezione · attività",
+    "title": "Cosa fai oggi.",
+    "sub": "Aggiungi, sposta, modifica. Le yume del viaggio sono pronte da pescare.",
+    "program": "Programma",
+    "metaEmpty": "Nessuna tappa ancora",
+    "stops": "{count, plural, one {# tappa} other {# tappe}}",
+    "firstLast": "prima alle {first} · ultima alle {last}",
+    "placeholder": "Cosa aggiungiamo?",
+    "addActivity": "Aggiungi attività",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "reorder": "Riordina",
+    "insertHere": "Inserisci qui",
+    "cancel": "Annulla"
   },
   "DayIncipit": {
     "wantToFind": "Vuoi trovare",
@@ -376,6 +406,7 @@
     "wishlistOnly": "Solo in wishlist",
     "noResults": "Nessun risultato per «{query}»",
     "clear": "Pulisci ricerca",
+    "createNew": "Crea «{title}»",
     "statusTodo": "Da fare",
     "statusBooked": "Prenotato",
     "statusPaid": "Pagato"

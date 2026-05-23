@@ -8,6 +8,9 @@ import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
 import { DayEditForm } from "@/features/day/DayEditForm";
+import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
+import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
+import type { ActivityStatus } from "@/components/ui/StatusBadge";
 import { IconArrowRightCircle, IconChevronRight, IconX } from "@/components/ui/icons";
 import { DayIncipit } from "@/features/day/DayIncipit";
 import { Itinerary } from "@/features/activity/Itinerary";
@@ -25,6 +28,17 @@ import type { Trip, Day, Activity } from "@/lib/dal/domain";
 function localDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+/** Derive the scheduling slot from an "HH:MM" time (mirrors PeriodBar ranges). */
+function slotFromTime(time: string | null): Activity["slot"] {
+  if (!time) return null;
+  const h = parseInt(time.slice(0, 2), 10);
+  if (Number.isNaN(h)) return null;
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 18) return "afternoon";
+  if (h >= 18 && h < 22) return "evening";
+  return "night";
 }
 
 /* ─── ShortcutBar ─── */
@@ -222,6 +236,177 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   /* ─── Next day ─── */
   const nextDayDow = nextDay?.date ? getDow(nextDay.date) : "";
 
+  /* ─── Activity list section (full-edit) ───
+     Map the day's Activity[] → the lightweight DayActivity model the section
+     consumes. Time is normalized to "HH:MM" so the diff below never sees a
+     spurious "HH:MM" vs "HH:MM:SS" change. */
+  const dayActivities: DayActivity[] = useMemo(
+    () =>
+      [...activities]
+        .sort((a, b) => {
+          if (!a.time && !b.time) return a.position - b.position;
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          return a.time.localeCompare(b.time) || a.position - b.position;
+        })
+        .map((a) => ({
+          id: a.id,
+          time: a.time ? a.time.slice(0, 5) : null,
+          title: a.title,
+          activityId: a.activity_id,
+        })),
+    [activities],
+  );
+
+  /* The section emits the whole list after a single mutation; diff it against
+     the current mapping to derive the one add / edit / delete and persist it
+     through the canonical activity endpoints. */
+  async function handleActivitiesChange(next: DayActivity[]) {
+    const prev = dayActivities;
+    const prevById = new Map(prev.map((x) => [x.id, x]));
+    const nextById = new Map(next.map((x) => [x.id, x]));
+
+    // ── delete ──
+    const removed = prev.find((x) => !nextById.has(x.id));
+    if (removed) {
+      setActivities((list) => list.filter((x) => x.id !== removed.id));
+      await api.activities.removeFromDay(removed.id).catch(() => {});
+      return;
+    }
+
+    // ── add (new row carries a synthetic id from the section) ──
+    const added = next.find((x) => !prevById.has(x.id));
+    if (added) {
+      const slot = slotFromTime(added.time);
+      const body = added.activityId
+        ? { entity_id: added.activityId, slot, time: added.time }
+        : { title: added.title, slot, time: added.time };
+      try {
+        await api.activities.addToDay(selectedDayId, body);
+        await loadActivities(selectedDayId);
+      } catch {
+        // add failed — leave list unchanged
+      }
+      return;
+    }
+
+    // ── edit (time and/or title) ──
+    const edited = next.find((x) => {
+      const o = prevById.get(x.id);
+      return o && (o.time !== x.time || o.title !== x.title);
+    });
+    if (edited) {
+      const before = prevById.get(edited.id)!;
+      const slot = slotFromTime(edited.time);
+      const entity = activities.find((x) => x.id === edited.id);
+      setActivities((list) =>
+        list.map((x) => (x.id === edited.id ? { ...x, time: edited.time, title: edited.title, slot } : x)),
+      );
+      try {
+        if (before.time !== edited.time) await api.activities.updateInstance(edited.id, { time: edited.time, slot });
+        if (before.title !== edited.title && entity) await api.activities.updateEntity(entity.activity_id, { title: edited.title });
+      } catch {
+        // edit failed — a later reload will reconcile
+      }
+    }
+  }
+
+  /* ─── Activity entity save / delete (shared by Itinerary + the full-edit
+     detailed editor) ─── */
+  async function saveActivity(id: string, data: ActivityData) {
+    const time = (data.hour !== undefined && data.minute !== undefined)
+      ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+      : null;
+    const hero_image = data.heroImage ? data.heroImage.split("?")[0] || null : null;
+    const budget_paid = data.status === "paid";
+    const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
+
+    const activity = activities.find((a) => a.id === id);
+    if (!activity) return;
+
+    setActivities((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              title: data.title,
+              short_desc: data.description,
+              slot: data.period as Activity["slot"],
+              time,
+              location: data.place?.formatted ?? null,
+              location_place_id: data.place?.placeId ?? null,
+              location_lat: data.place?.lat ?? null,
+              location_lng: data.place?.lng ?? null,
+              budget_amount: data.budgetAmount ?? null,
+              budget_currency: data.budgetCurrency,
+              budget_paid,
+              booking,
+              hero_image,
+            }
+          : a,
+      ),
+    );
+
+    const entityPatch = {
+      title: data.title,
+      short_desc: data.description,
+      location: data.place?.formatted ?? null,
+      location_place_id: data.place?.placeId ?? null,
+      location_lat: data.place?.lat ?? null,
+      location_lng: data.place?.lng ?? null,
+      place_enriched: data.enrichedPlace ?? null,
+      hero_image,
+      booking,
+      budget_amount: data.budgetAmount ?? null,
+      budget_currency: data.budgetCurrency,
+      budget_paid,
+    };
+    const instancePatch = { slot: data.period, time };
+
+    try {
+      await api.activities.updateEntity(activity.activity_id, entityPatch);
+      await api.activities.updateInstance(id, instancePatch);
+      if (selectedDay?.id) await loadActivities(selectedDay.id);
+    } catch (error) {
+      console.error("Error saving activity:", error);
+    }
+  }
+
+  async function deleteActivity(id: string) {
+    setActivities((prev) => prev.filter((a) => a.id !== id));
+    await api.activities.removeFromDay(id).catch(() => {});
+  }
+
+  /** Map a full Activity → ActivityData to seed the detailed editor. */
+  function activityToData(a: Activity): Partial<ActivityData> {
+    let status: ActivityStatus | undefined;
+    if (a.budget_paid) status = "paid";
+    else if (a.booking === "booked" || a.booking === true) status = "booked";
+    else if (a.booking === "todo") status = "todo";
+    else if (a.budget_amount) status = "todo";
+    return {
+      title: a.title,
+      description: a.short_desc ?? "",
+      period: a.slot ?? "morning",
+      hour: a.time ? parseInt(a.time.split(":")[0], 10) : undefined,
+      minute: a.time ? parseInt(a.time.split(":")[1], 10) : undefined,
+      place: (a.location_lat != null && a.location_lng != null)
+        ? {
+            name: a.location ?? "",
+            formatted: a.location ?? "",
+            placeId: a.location_place_id ?? "",
+            lat: a.location_lat,
+            lng: a.location_lng,
+          }
+        : null,
+      budgetAmount: a.budget_amount ?? undefined,
+      budgetCurrency: a.budget_currency ?? "EUR",
+      status: status ?? null,
+      enrichedPlace: (a.place_enriched as ActivityData["enrichedPlace"]) ?? null,
+      heroImage: a.hero_image ?? null,
+    };
+  }
+
   const yumeji = useYumejiDrawer();
 
   return (
@@ -300,6 +485,25 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               imageUrl: selectedDay.image_url ?? undefined,
             }}
             lodging={lodging ?? null}
+            activities={dayActivities}
+            onActivitiesChange={handleActivitiesChange}
+            tripId={trip.id}
+            activityEditorFor={(id, close) => {
+              const a = activities.find((x) => x.id === id);
+              if (!a) return null;
+              return (
+                <ActivityEditForm
+                  isNew={false}
+                  activityId={a.activity_id}
+                  tripId={trip.id}
+                  initialData={activityToData(a)}
+                  onSave={async (data) => { await saveActivity(id, data); close(); }}
+                  onCancel={close}
+                  onDelete={async () => { await deleteActivity(id); close(); }}
+                  onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
+                />
+              );
+            }}
             imageUpload={{
               bucket: "trip-media",
               path: () => `trips/${trip.id}/days/${selectedDayId}/banner/hero.webp`,
@@ -481,82 +685,8 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
             onToggleMap={async (show) => {
               await api.days.update(selectedDayId, { show_map: show }).catch(() => {});
             }}
-            onActivitySave={async (id, data) => {
-              const time = (data.hour !== undefined && data.minute !== undefined)
-                ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
-                : null;
-              const hero_image = data.heroImage
-                ? data.heroImage.split("?")[0] || null
-                : null;
-              const budget_paid = data.status === "paid";
-              const booking = data.status === "booked" ? "booked" : data.status === "todo" ? "todo" : null;
-
-              // Find activity to get activity_id
-              const activity = activities.find((a) => a.id === id);
-              if (!activity) return;
-
-              setActivities((prev) =>
-                prev.map((a) =>
-                  a.id === id
-                    ? {
-                        ...a,
-                        title: data.title,
-                        short_desc: data.description,
-                        slot: data.period as Activity["slot"],
-                        time,
-                        location: data.place?.formatted ?? null,
-                        location_place_id: data.place?.placeId ?? null,
-                        location_lat: data.place?.lat ?? null,
-                        location_lng: data.place?.lng ?? null,
-                        budget_amount: data.budgetAmount ?? null,
-                        budget_currency: data.budgetCurrency,
-                        budget_paid,
-                        booking,
-                        hero_image,
-                      }
-                    : a
-                )
-              );
-
-              // Split into entity and instance fields
-              // Entity fields (title, location, etc.) go to /api/activities/{activity_id}
-              const entityPatch = {
-                title: data.title,
-                short_desc: data.description,
-                location: data.place?.formatted ?? null,
-                location_place_id: data.place?.placeId ?? null,
-                location_lat: data.place?.lat ?? null,
-                location_lng: data.place?.lng ?? null,
-                place_enriched: data.enrichedPlace ?? null,
-                hero_image,
-                booking,
-                budget_amount: data.budgetAmount ?? null,
-                budget_currency: data.budgetCurrency,
-                budget_paid,
-              };
-
-              // Instance fields (slot, time) go to /api/scheduled-activities/{id}.
-              // Note: booking/budget live on the entity, so they go in entityPatch above.
-              const instancePatch = {
-                slot: data.period,
-                time,
-              };
-
-              try {
-                await api.activities.updateEntity(activity.activity_id, entityPatch);
-                await api.activities.updateInstance(id, instancePatch);
-                if (selectedDay?.id) {
-                  await loadActivities(selectedDay.id);
-                }
-              } catch (error) {
-                console.error("Error saving activity:", error);
-              }
-            }}
-            onActivityDelete={async (id) => {
-              setActivities((prev) => prev.filter((a) => a.id !== id));
-              // Unschedule the instance (the entity is kept)
-              await api.activities.removeFromDay(id).catch(() => {});
-            }}
+            onActivitySave={saveActivity}
+            onActivityDelete={deleteActivity}
             onCreateActivity={async (data) => {
               const time = (data.hour !== undefined && data.minute !== undefined)
                 ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`

@@ -185,6 +185,18 @@
       "notePlaceholder": "Describe your ideal trip — anything Go should know…"
     }
   },
+  "PlaceInfo": {
+    "goTip": "Go tip",
+    "empty": "Add a destination to see country info.",
+    "tabs": {
+      "currency": "Currency",
+      "visa": "Visa",
+      "weather": "Weather",
+      "power": "Power",
+      "language": "Language",
+      "safety": "Safety"
+    }
+  },
   "TripDayView": {
     "sidebar": {
       "itinerary": "Itinerary",
@@ -266,9 +278,11 @@
     "sections": "Sections",
     "dayMenu": "Day info",
     "lodgingMenu": "Lodging",
+    "activitiesMenu": "Activities",
     "dayPreview": "Zone, place, summary, image",
     "lodgingPreview": "Day's lodging",
     "noLodging": "No lodging",
+    "activitiesPreview": "{count, plural, one {# stop} other {# stops}}",
     "daySection": {
       "eyebrow": "Section · day info",
       "title": "What this day looks like.",
@@ -286,6 +300,22 @@
     "deleteDay": "Delete day",
     "cancel": "Cancel",
     "save": "Save day"
+  },
+  "DayActivities": {
+    "eyebrow": "Section · activities",
+    "title": "What you do today.",
+    "sub": "Add, move, edit. The trip's yume are ready to pick from.",
+    "program": "Schedule",
+    "metaEmpty": "No stops yet",
+    "stops": "{count, plural, one {# stop} other {# stops}}",
+    "firstLast": "first at {first} · last at {last}",
+    "placeholder": "What are we adding?",
+    "addActivity": "Add activity",
+    "edit": "Edit",
+    "delete": "Delete",
+    "reorder": "Reorder",
+    "insertHere": "Insert here",
+    "cancel": "Cancel"
   },
   "DayIncipit": {
     "wantToFind": "Want to find",
@@ -376,6 +406,7 @@
     "wishlistOnly": "Wishlist only",
     "noResults": "No results for “{query}”",
     "clear": "Clear search",
+    "createNew": "Create «{title}»",
     "statusTodo": "To do",
     "statusBooked": "Booked",
     "statusPaid": "Paid"
