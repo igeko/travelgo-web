@@ -50,6 +50,7 @@ export const api = {
 };
 
 export { ApiClientError } from "./errors";
+export type { Page } from "@/lib/pagination";
 export type { Yume } from "./yumes";
 export type { CreateTripPayload } from "./trips";
 export type { SubmitNotePayload } from "./feedback";

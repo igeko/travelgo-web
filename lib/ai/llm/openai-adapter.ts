@@ -9,7 +9,14 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { getAI } from "../provider";
 import { LLM_MODELS } from "./models";
-import type { ChatJsonOptions, ChatStreamOptions, LlmAdapter, LlmMessage } from "./types";
+import type {
+  ChatGroundedOptions,
+  ChatJsonOptions,
+  ChatStreamOptions,
+  GroundedResult,
+  LlmAdapter,
+  LlmMessage,
+} from "./types";
 
 function toOpenAI(messages: LlmMessage[]): ChatCompletionMessageParam[] {
   return messages.map((m) => ({ role: m.role, content: m.content })) as ChatCompletionMessageParam[];
@@ -36,5 +43,21 @@ export const openaiAdapter: LlmAdapter = {
       const delta = chunk.choices[0]?.delta?.content;
       if (delta) yield delta;
     }
+  },
+
+  // OpenAI has no Maps grounding: behaves as JSON mode, no grounded places.
+  async chatGrounded({ tier, messages }: ChatGroundedOptions): Promise<GroundedResult> {
+    const model = LLM_MODELS.openai[tier];
+    const completion = await getAI().chat.completions.create({
+      model,
+      response_format: { type: "json_object" },
+      messages: toOpenAI(messages),
+    });
+    return {
+      text: completion.choices[0]?.message?.content ?? "",
+      places: [],
+      provider: "openai",
+      model,
+    };
   },
 };

@@ -18,7 +18,15 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Content, GenerateContentConfig } from "@google/genai";
 import { LLM_MODELS } from "./models";
-import type { ChatJsonOptions, ChatStreamOptions, LlmAdapter, LlmMessage, LlmTier } from "./types";
+import type {
+  ChatGroundedOptions,
+  ChatJsonOptions,
+  ChatStreamOptions,
+  GroundedResult,
+  LlmAdapter,
+  LlmMessage,
+  LlmTier,
+} from "./types";
 
 let client: GoogleGenAI | null = null;
 
@@ -85,5 +93,38 @@ export const geminiAdapter: LlmAdapter = {
       const text = chunk.text;
       if (text) yield text;
     }
+  },
+
+  async chatGrounded({ tier, messages, near }: ChatGroundedOptions): Promise<GroundedResult> {
+    const model = LLM_MODELS.gemini[tier];
+    const { system, contents } = split(messages);
+
+    // The googleMaps tool is incompatible with responseMimeType=json, so the
+    // JSON shape must come from the prompt. Locality bias via retrievalConfig.
+    const res = await getGemini().models.generateContent({
+      model,
+      contents,
+      config: {
+        ...baseConfig(tier, system),
+        tools: [{ googleMaps: {} }],
+        ...(near
+          ? { toolConfig: { retrievalConfig: { latLng: { latitude: near.lat, longitude: near.lng } } } }
+          : {}),
+      },
+    });
+
+    const chunks = res.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+    const places = chunks
+      .map((c) => c.maps)
+      .filter((m): m is NonNullable<typeof m> => Boolean(m))
+      .map((m) => ({
+        title: m.title ?? "",
+        // Grounding returns "places/ChIJ…"; the Places Details API wants the bare id.
+        placeId: (m.placeId ?? "").replace(/^places\//, ""),
+        uri: m.uri ?? "",
+      }))
+      .filter((p) => p.placeId);
+
+    return { text: res.text ?? "", places, provider: "gemini", model };
   },
 };

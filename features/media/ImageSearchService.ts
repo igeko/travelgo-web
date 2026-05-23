@@ -23,6 +23,8 @@ export type PlaceDetails = {
 
 export interface ImageSearchProvider {
   search(query: string): Promise<PlaceDetails | null>;
+  /** Resolve a place directly by its Google place_id (skips text search). */
+  searchByPlaceId(placeId: string): Promise<PlaceDetails | null>;
 }
 
 export class ImageSearchService {
@@ -30,5 +32,9 @@ export class ImageSearchService {
 
   search(query: string): Promise<PlaceDetails | null> {
     return this.provider.search(query);
+  }
+
+  searchByPlaceId(placeId: string): Promise<PlaceDetails | null> {
+    return this.provider.searchByPlaceId(placeId);
   }
 }

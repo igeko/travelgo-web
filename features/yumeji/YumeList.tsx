@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { SoftField } from "@/components/ui/SoftField";
+import { AddressLabel } from "@/components/ui/AddressLabel";
 import { IconSearch, IconPlus } from "@/components/ui/icons";
 import type { YumeListItem, YumeChip, YumeOwner } from "./mockData";
 
@@ -34,6 +35,20 @@ type YumeListProps = {
   showOwner?: boolean;
   /** Focus automatico sul campo ricerca al mount. */
   autoFocusSearch?: boolean;
+  /**
+   * Ricerca CONTROLLATA dall'host (server-side). Se passi `onSearchChange`, il
+   * componente non filtra in FE: `items` è già il risultato filtrato dal server
+   * (la ricerca interroga il DB). Senza callback resta una ricerca FE locale,
+   * utile solo per liste statiche/mock.
+   */
+  searchValue?: string;
+  onSearchChange?: (q: string) => void;
+  /** Esiste un'altra pagina dopo `items` → abilita l'endless scroll. */
+  hasMore?: boolean;
+  /** La pagina successiva è in caricamento (mostra "Carico…" sul sentinel). */
+  loadingMore?: boolean;
+  /** Carica la pagina successiva. Richiesto perché l'endless scroll si attivi. */
+  onLoadMore?: () => void;
   className?: string;
 };
 
@@ -44,25 +59,63 @@ export function YumeList({
   chips = [],
   showOwner = false,
   autoFocusSearch = false,
+  searchValue,
+  onSearchChange,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
   className,
 }: YumeListProps) {
-  const [search, setSearch] = useState("");
+  // Ricerca controllata (server) se l'host passa onSearchChange; altrimenti FE.
+  const searchControlled = onSearchChange != null;
+  const [internalSearch, setInternalSearch] = useState("");
+  const search = searchControlled ? (searchValue ?? "") : internalSearch;
+  const setSearch = (v: string) => (onSearchChange ? onSearchChange(v) : setInternalSearch(v));
   const [activeChips, setActiveChips] = useState<Set<string>>(
     () => new Set(chips.filter((c) => c.active).map((c) => c.id)),
   );
   const searchRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLOListElement>(null);
+  const sentinelRef = useRef<HTMLLIElement>(null);
+  const onLoadMoreRef = useRef(onLoadMore);
 
   useEffect(() => {
     if (autoFocusSearch) searchRef.current?.focus();
   }, [autoFocusSearch]);
 
+  // Tieni l'ultima callback in un ref così l'observer non si ricrea a ogni render.
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+  }, [onLoadMore]);
+
+  // Endless scroll: quando il sentinel entra in viewport carica la pagina dopo.
+  // In ricerca FE è disattivato (filtra solo ciò che è già caricato); in ricerca
+  // controllata/server resta attivo (l'host pagina i risultati già filtrati).
+  const canPaginate = hasMore && !!onLoadMore && (searchControlled || !search.trim());
+  useEffect(() => {
+    if (!canPaginate) return;
+    const root = scrollRef.current;
+    const target = sentinelRef.current;
+    if (!root || !target) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore) onLoadMoreRef.current?.();
+      },
+      { root, rootMargin: "160px" },
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [canPaginate, loadingMore]);
+
   const visible = useMemo(() => {
+    // Ricerca controllata → il server ha già filtrato: mostra items così com'è.
+    if (searchControlled) return items;
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
       (i) => i.title.toLowerCase().includes(q) || (i.location ?? "").toLowerCase().includes(q),
     );
-  }, [items, search]);
+  }, [items, search, searchControlled]);
 
   function toggleChip(id: string) {
     setActiveChips((prev) => {
@@ -128,10 +181,22 @@ export function YumeList({
 
       {/* Lista o empty state */}
       {visible.length > 0 ? (
-        <ol className="m-0 p-0 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+        <ol
+          ref={scrollRef}
+          className="m-0 p-0 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin"
+        >
           {visible.map((it) => (
             <YumeRow key={it.id} item={it} showOwner={showOwner} />
           ))}
+          {/* Sentinel endless-scroll · solo senza ricerca attiva */}
+          {canPaginate && (
+            <li
+              ref={sentinelRef}
+              className="px-3 py-3 flex items-center justify-center text-mini text-ink-faint"
+            >
+              {loadingMore ? "Carico…" : <span aria-hidden className="opacity-0">·</span>}
+            </li>
+          )}
         </ol>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-8">
@@ -152,7 +217,6 @@ export function YumeList({
 /* ── Riga · pattern DayItem (thumb · info · owner) ─────────────────── */
 
 function YumeRow({ item, showOwner }: { item: YumeListItem; showOwner: boolean }) {
-  const eyebrow = [item.location, item.price].filter(Boolean).join(" · ");
   return (
     <li className="border-b border-dashed border-border last:border-0">
       <button
@@ -164,14 +228,20 @@ function YumeRow({ item, showOwner }: { item: YumeListItem; showOwner: boolean }
           className="w-10 h-10 rounded-md shrink-0 bg-cover bg-center"
         />
         <span className="flex-1 min-w-0">
-          {eyebrow && (
-            <span className="block text-micro tracking-eyebrow uppercase text-orange font-medium leading-tight truncate">
-              {eyebrow}
-            </span>
-          )}
-          <span className="block mt-0.5 text-meta text-ink font-medium leading-tight truncate">
+          <span className="block text-meta text-ink font-medium leading-tight truncate">
             {item.title}
           </span>
+          {(item.location || item.price) && (
+            <span className="mt-0.5 flex items-center gap-1.5 min-w-0 leading-tight">
+              <AddressLabel
+                address={item.location}
+                className="min-w-0 flex-1 text-mini text-ink-soft"
+              />
+              {item.price && (
+                <span className="shrink-0 text-mini font-medium text-orange">{item.price}</span>
+              )}
+            </span>
+          )}
         </span>
         {showOwner && item.owner && <OwnerAvatar owner={item.owner} />}
       </button>

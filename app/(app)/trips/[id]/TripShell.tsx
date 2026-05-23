@@ -10,11 +10,13 @@ import { useUser } from "@/features/app/UserContext";
 import { useTripRealtime } from "@/hooks/useTripRealtime";
 import { TripViewers } from "@/features/trip/TripViewers";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
+import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 
 function EmptyTripState({ trip }: { trip: Trip }) {
   const t = useTranslations("TripShell");
   return (
-    <div className="max-w-[1280px] mx-auto px-5 py-16 flex flex-col items-center text-center gap-4">
+    <div className={cn("max-w-[1280px] mx-auto py-16 flex flex-col items-center text-center gap-4", PAGE_PX)}>
       <div className="text-[48px]">🗺️</div>
       <h2 className="text-[22px] font-semibold text-ink">{trip.title}</h2>
       <p className="text-[14px] text-ink-soft max-w-[340px]">
@@ -82,7 +84,7 @@ export function TripShell({ trip, days, initialActivities, initialDayId }: Props
       />
       {/* Presenza altri utenti — sotto l'header, sopra il contenuto */}
       {viewers.length > 0 && (
-        <div className="bg-surface border-b border-border px-5 py-2 flex items-center">
+        <div className={cn("bg-surface border-b border-border py-2 flex items-center", PAGE_PX)}>
           <TripViewers viewers={viewers} isConnected={isConnected} />
         </div>
       )}

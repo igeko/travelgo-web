@@ -9,6 +9,8 @@ import { CreateTripForm, type CreateTripData } from "@/features/trips/CreateTrip
 import { IconPlus, IconX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
+import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 
 type TripSummary = {
   id: string;
@@ -63,7 +65,7 @@ export default function TripsPage() {
     <div className="min-h-screen flex flex-col bg-bg">
       <AppHeader activeNav="trips" isLoggedIn />
 
-      <main className="max-w-[1280px] mx-auto w-full px-5 py-10">
+      <main className={cn("max-w-[1280px] mx-auto w-full py-10", PAGE_PX)}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-[24px] font-semibold text-ink">{t("title")}</h1>
           <Button variant="solid" tone="neutral" iconOnly={false} onClick={() => setShowCreate(true)}>

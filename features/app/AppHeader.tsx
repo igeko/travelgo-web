@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
-import { IconMessageReport, IconNotes, IconPencil } from "@/components/ui/icons";
+import { IconMessageReport, IconNotes, IconPencil, IconKey } from "@/components/ui/icons";
+import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
+import { useDebugMode } from "@/lib/hooks/useDebugMode";
 import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { YumejiGlyph } from "@/features/yumeji/YumejiGlyph";
 
@@ -57,8 +59,8 @@ export function AppHeader({
   editMode = false,
   onToggleEditMode,
   isDev = false,
-  debugMode = false,
-  onToggleDebugMode,
+  debugMode: debugModeProp,
+  onToggleDebugMode: onToggleDebugModeProp,
   tripId,
   isTester = false,
   initials = "",
@@ -68,12 +70,22 @@ export function AppHeader({
   className,
 }: AppHeaderProps) {
   const t = useTranslations("AppHeader");
+  // Fall back to the persisted app-wide debug toggle when a host page doesn't
+  // manage debug state itself (e.g. the Explore page).
+  const [hookDebug, hookToggle] = useDebugMode();
+  const debugMode = debugModeProp ?? hookDebug;
+  const onToggleDebugMode = onToggleDebugModeProp ?? hookToggle;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [kebabOpen, setKebabOpen] = useState(false);
   const kebabRef = useRef<HTMLDivElement>(null);
   const hasTripContext = !!tripName;
   const yumeji = useYumejiDrawer();
+  const { dismissed: shortcutsDismissed, show: showShortcuts } = useShortcutBar();
+
+  // The shortcut hint bar is an edit-mode affordance; offer "show shortcuts"
+  // only when the user has previously dismissed it while editing.
+  const canRestoreShortcuts = editMode && shortcutsDismissed;
 
   const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
     { id: "trips",   label: t("nav.myTrips"), href: "/trips",   authRequired: true },
@@ -360,8 +372,8 @@ export function AppHeader({
                 </button>
               )}
 
-              {/* Actions menu (kebab) — ultima voce: Debug, Feedback, tutti i feedback */}
-              {(isDev || isTester) && (
+              {/* Actions menu (kebab) — Mostra scorciatoie, Debug, Feedback, tutti i feedback */}
+              {(isDev || isTester || canRestoreShortcuts) && (
                 <div ref={kebabRef} className="relative shrink-0">
                   <button
                     type="button"
@@ -381,6 +393,20 @@ export function AppHeader({
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
                       <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+
+                        {/* Mostra scorciatoie — solo in edit mode, se nascoste */}
+                        {canRestoreShortcuts && (
+                          <button
+                            type="button"
+                            onClick={() => { showShortcuts(); setKebabOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                          >
+                            <IconKey size={15} className="shrink-0" />
+                            {t("showShortcuts")}
+                          </button>
+                        )}
+
+                        {canRestoreShortcuts && (isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
 
                         {/* Debug toggle — solo per dev */}
                         {isDev && (

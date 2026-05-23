@@ -16,6 +16,7 @@
 import type { Dal, DbActivity, ActivityVisibility } from "@/lib/dal";
 import { notFound, badRequest, unauthorized } from "@/lib/api/errors";
 import { pickFields, isUuid } from "@/lib/api/validation";
+import { DEFAULT_PAGE_SIZE, type Page } from "@/lib/pagination";
 import { unwrap } from "./util";
 
 /** Entity fields a caller may set when creating a yume. */
@@ -27,8 +28,11 @@ const YUME_CREATE_FIELDS = [
 
 const VISIBILITIES: readonly ActivityVisibility[] = ["public", "private", "shared"];
 
-/** A yume = an activity plus the trips it is explicitly shared with. */
-export type Yume = DbActivity & { shared_trip_ids: string[] };
+/** Profilo del creatore allegato a uno yume (utile per la vista "condivisi da altri"). */
+export type YumeCreator = { id: string; displayName: string | null; avatarUrl: string | null };
+
+/** A yume = an activity plus the trips it is shared with and its creator profile. */
+export type Yume = DbActivity & { shared_trip_ids: string[]; owner: YumeCreator | null };
 
 function parseVisibility(value: unknown): ActivityVisibility | null {
   return typeof value === "string" && (VISIBILITIES as readonly string[]).includes(value)
@@ -45,10 +49,37 @@ export class YumeService {
     return user.id;
   }
 
-  /** The current user's yume collection (their activities), optionally filtered. */
-  async listMine(opts?: { visibility?: ActivityVisibility }): Promise<Yume[]> {
+  /** Risolve i profili dei creatori (per `created_by`) di un set di activity. */
+  private async ownersByCreator(items: DbActivity[]): Promise<Map<string, YumeCreator>> {
+    const ids = [...new Set(items.map((i) => i.created_by).filter((x): x is string => !!x))];
+    const map = new Map<string, YumeCreator>();
+    if (ids.length === 0) return map;
+    const profiles = unwrap(await this.dal.users.getProfiles(ids));
+    for (const p of profiles) {
+      map.set(p.id, { id: p.id, displayName: p.display_name, avatarUrl: p.avatar_url });
+    }
+    return map;
+  }
+
+  /** A page of the current user's yume collection (their activities), optionally filtered. */
+  async listMine(
+    opts?: { visibility?: ActivityVisibility; limit?: number; offset?: number; search?: string },
+  ): Promise<Page<Yume>> {
     const userId = await this.currentUserId();
-    const items = unwrap(await this.dal.activities.listOwnedBy(userId, opts));
+    const limit = opts?.limit ?? DEFAULT_PAGE_SIZE;
+    const offset = opts?.offset ?? 0;
+
+    // Fetch one extra row to detect whether a further page exists.
+    const rows = unwrap(
+      await this.dal.activities.listOwnedBy(userId, {
+        visibility: opts?.visibility,
+        offset,
+        limit: limit + 1,
+        search: opts?.search,
+      }),
+    );
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
 
     const shares = await this.dal.activities.listSharesByActivityIds(items.map((a) => a.id));
     const byActivity = new Map<string, string[]>();
@@ -58,7 +89,16 @@ export class YumeService {
       byActivity.set(s.activity_id, list);
     }
 
-    return items.map((a) => ({ ...a, shared_trip_ids: byActivity.get(a.id) ?? [] }));
+    const owners = await this.ownersByCreator(items);
+
+    return {
+      items: items.map((a) => ({
+        ...a,
+        shared_trip_ids: byActivity.get(a.id) ?? [],
+        owner: a.created_by ? owners.get(a.created_by) ?? null : null,
+      })),
+      hasMore,
+    };
   }
 
   /** A single yume by id (RLS enforces visibility). */
@@ -66,7 +106,12 @@ export class YumeService {
     const entity = unwrap(await this.dal.activities.findById(id));
     if (!entity) throw notFound("Yume not found");
     const shared_trip_ids = await this.dal.activities.listShareTripIds(id);
-    return { ...entity, shared_trip_ids };
+    const owners = await this.ownersByCreator([entity]);
+    return {
+      ...entity,
+      shared_trip_ids,
+      owner: entity.created_by ? owners.get(entity.created_by) ?? null : null,
+    };
   }
 
   /** Create a yume (an activity owned by the current user). Defaults private. */

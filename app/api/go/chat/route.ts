@@ -10,12 +10,43 @@
  * forceSuggestions=true bypassa il classifier (usato dal greeting iniziale).
  */
 
-import { chatJson, chatStream, type LlmMessage } from "@/lib/ai/llm";
+import { activeProvider, chatGrounded, chatJson, chatStream, type GroundedPlace, type LlmLatLng, type LlmMessage } from "@/lib/ai/llm";
 import { runDeepDive } from "../_deepDive";
 import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted, sanitizeUntrustedText } from "@/lib/api/go-untrusted";
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_LENGTH = 4_000;
+
+/** Strip ```json fences a grounded model may wrap its JSON in. */
+function parseJsonLoose<T>(text: string): T {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  return JSON.parse(cleaned || "{}") as T;
+}
+
+/** Normalize a place title for fuzzy matching against grounded chunks. */
+function normTitle(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/**
+ * Attach the Google `place_id` from grounded chunks onto each suggestion by
+ * title match. Lets the frontend skip the Places text-search step.
+ */
+function attachPlaceIds(
+  suggestions: Array<Record<string, unknown>>,
+  places: GroundedPlace[],
+): void {
+  if (!places.length) return;
+  const indexed = places.map((p) => ({ p, n: normTitle(p.title) }));
+  for (const s of suggestions) {
+    const title = typeof s.title === "string" ? normTitle(s.title) : "";
+    if (!title) continue;
+    const hit =
+      indexed.find((x) => x.n === title) ??
+      indexed.find((x) => x.n.includes(title) || title.includes(x.n));
+    if (hit) s.place_id = hit.p.placeId;
+  }
+}
 
 /* ─────────────────────────────────────────────────────────────────
    System prompts
@@ -124,6 +155,8 @@ export async function POST(req: Request): Promise<Response> {
   let tripContext: string | undefined;
   let forceSuggestions = false;
   let selectedSuggestion: { title: string; location?: string; place_query?: string } | undefined;
+  let near: LlmLatLng | undefined;
+  let debug = false;
 
   try {
     const body = await req.json() as {
@@ -131,6 +164,8 @@ export async function POST(req: Request): Promise<Response> {
       tripContext?: string;
       forceSuggestions?: boolean;
       selectedSuggestion?: typeof selectedSuggestion;
+      near?: { lat?: unknown; lng?: unknown };
+      debug?: boolean;
     };
     if (!Array.isArray(body.messages)) {
       return new Response("messages must be an array", { status: 400 });
@@ -142,6 +177,10 @@ export async function POST(req: Request): Promise<Response> {
     tripContext = body.tripContext;
     forceSuggestions = body.forceSuggestions ?? false;
     selectedSuggestion = body.selectedSuggestion;
+    debug = body.debug === true;
+    if (typeof body.near?.lat === "number" && typeof body.near?.lng === "number") {
+      near = { lat: body.near.lat, lng: body.near.lng };
+    }
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
@@ -172,7 +211,11 @@ export async function POST(req: Request): Promise<Response> {
         place_query: title,
       };
       return new Response(JSON.stringify({ mode: "deepdive", suggestion, ...result }), {
-        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" },
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "X-LLM-Provider": activeProvider(),
+        },
       });
     } catch (err) {
       console.error("[go/chat] deepdive error:", err);
@@ -189,18 +232,39 @@ export async function POST(req: Request): Promise<Response> {
   /* ── Mode: suggestions ── */
   if (intent.mode === "suggestions") {
     try {
-      const rawText = (await chatJson({
+      const t0 = Date.now();
+      const grounded = await chatGrounded({
         tier: "smart",
+        near,
         messages: [
           { role: "system", content: SUGGESTIONS_SYSTEM_PROMPT },
           ...(tripContextMessage ? [tripContextMessage] : []),
           ...messages,
         ],
-      })) || "{}";
-      const parsed = JSON.parse(rawText) as { text?: string; suggestions?: unknown[] };
+      });
+      const parsed = parseJsonLoose<{ text?: string; suggestions?: Array<Record<string, unknown>> }>(grounded.text);
 
-      return new Response(JSON.stringify({ mode: "suggestions", ...parsed }), {
-        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" },
+      // Gemini grounding gives real Google place_ids → attach them so the
+      // frontend resolves places by id instead of a Places text search.
+      if (Array.isArray(parsed.suggestions)) attachPlaceIds(parsed.suggestions, grounded.places);
+
+      const payload: Record<string, unknown> = { mode: "suggestions", ...parsed };
+      if (debug) {
+        payload._debug = {
+          provider: grounded.provider,
+          model: grounded.model,
+          durationMs: Date.now() - t0,
+          grounded: grounded.places.map((p) => ({ title: p.title, placeId: p.placeId })),
+        };
+      }
+
+      return new Response(JSON.stringify(payload), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "X-LLM-Provider": grounded.provider,
+          "X-LLM-Model": grounded.model,
+        },
       });
     } catch (err) {
       console.error("[go/chat] suggestions error:", err);
@@ -233,6 +297,7 @@ export async function POST(req: Request): Promise<Response> {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
       "X-Accel-Buffering": "no",
+      "X-LLM-Provider": activeProvider(),
     },
   });
 }

@@ -58,6 +58,7 @@
     "feedback": "Feedback",
     "leaveFeedback": "Lascia un feedback",
     "tripActions": "Azioni viaggio",
+    "showShortcuts": "Mostra scorciatoie",
     "allFeedback": "Vedi tutti i feedback",
     "tripSection": "Viaggio · {name}"
   },
@@ -115,7 +116,8 @@
       "editDay": "Modifica giorno",
       "editLodging": "Modifica alloggio",
       "addActivity": "Aggiungi attività",
-      "closePanel": "Chiudi pannello"
+      "closePanel": "Chiudi pannello",
+      "dismiss": "Nascondi scorciatoie"
     },
     "nextDay": "Successivo · Giorno {number} · {dow}"
   },

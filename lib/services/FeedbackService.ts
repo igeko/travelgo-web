@@ -7,7 +7,6 @@
  */
 
 import type { Dal } from "@/lib/dal";
-import { getServiceClient } from "@/lib/dal";
 import { badRequest, forbidden, notFound } from "@/lib/api/errors";
 import { isUuid, safeHttpUrl } from "@/lib/api/validation";
 import { unwrap } from "./util";
@@ -56,18 +55,13 @@ export class FeedbackService {
       [k: string]: unknown;
     }[];
 
-    const adminAuth = getServiceClient().auth.admin;
+    // Nomi autore dalla sorgente unica (user_profiles via DAL service-role),
+    // una sola query invece di N chiamate admin ad auth.
     const userIds = [...new Set(notes.map((n) => n.user_id).filter((id): id is string => !!id))];
-    const names: Record<string, string> = {};
-    await Promise.all(
-      userIds.map(async (id) => {
-        const { data } = await adminAuth.getUserById(id);
-        const fullName = data?.user?.user_metadata?.full_name;
-        names[id] = typeof fullName === "string" && fullName ? fullName : "Unknown";
-      }),
-    );
+    const profiles = unwrap(await this.dal.users.getProfiles(userIds));
+    const names = new Map(profiles.map((p) => [p.id, p.display_name || "Unknown"]));
 
-    return notes.map((n) => ({ ...n, author_name: names[n.user_id] ?? "Unknown" }));
+    return notes.map((n) => ({ ...n, author_name: names.get(n.user_id) ?? "Unknown" }));
   }
 
   /** Update a note. status/fix_notes are admin-only; note edit is author-or-admin. */

@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { imageSearch } from "@/features/media/imageSearch";
+import { useDebugMode } from "@/lib/hooks/useDebugMode";
+import { publishLlmDebug } from "@/lib/debug/llmDebug";
 import { api } from "@/lib/client";
 import type { YumeCardData } from "@/lib/client/go";
 import type { PlaceDetails } from "@/features/media/ImageSearchService";
@@ -48,11 +50,24 @@ export type GoSuggestion = {
   why: string;
   location: string;
   place_query: string;
+  /** Google place_id from Maps grounding (Gemini) — resolves without text search. */
+  place_id?: string;
   /** Presente quando la card viene da un deep-dive */
   deepDiveData?: GoDeepDiveData;
   /** Se true, la card si apre subito */
   autoExpand?: boolean;
 };
+
+/**
+ * Resolve a suggestion to full place data. When Gemini grounding provided a
+ * `place_id` we fetch details by id (no Places text search); otherwise we fall
+ * back to a text search on the query string.
+ */
+function resolvePlace(s: GoSuggestion): Promise<PlaceDetails | null> {
+  return s.place_id
+    ? imageSearch.searchByPlaceId(s.place_id)
+    : imageSearch.search(s.place_query);
+}
 
 /** In-chat Yume card: a place the user asked Go to write up for their Yumeji. */
 type YumeCardState = {
@@ -388,11 +403,11 @@ function SuggestionCard({
     if (!loadData || placeFetched.current) return;
     placeFetched.current = true;
     setPlaceLoading(true);
-    imageSearch.search(suggestion.place_query).then((result) => {
+    resolvePlace(suggestion).then((result) => {
       setPlace(result);
       setPlaceLoading(false);
     });
-  }, [loadData, suggestion.place_query]);
+  }, [loadData, suggestion]);
 
   // NON resettiamo photoIndex né place quando la card chiude —
   // così alla riapertura ritroviamo tutto com'era.
@@ -1464,6 +1479,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [debugMode] = useDebugMode();
   const mounted = useHydrated();
   // Suggestion attualmente selezionata (singola) — usata come contesto per il classifier
   const [selectedSuggestion, setSelectedSuggestion] = useState<GoSuggestion | null>(null);
@@ -1496,7 +1512,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
     if (!onEvent || suggestions.length === 0) return;
     const resolved = await Promise.all(
       suggestions.map(async (s): Promise<GoPlace | null> => {
-        const place = await imageSearch.search(s.place_query);
+        const place = await resolvePlace(s);
         if (!place) return null;
         return { title: s.title, lat: place.lat, lng: place.lng, placeId: place.placeId };
       }),
@@ -1537,6 +1553,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
         tripContext: contextWithFocus,
         forceSuggestions,
         selectedSuggestion: activeSuggestion ?? undefined,
+        debug: debugMode,
       });
 
       if (!res.body) throw new Error("No response body");
@@ -1561,6 +1578,18 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
             avoid?: string | null;
             nearbyIdeas?: string[];
           };
+
+          const dbg = (parsed as { _debug?: { model?: string; durationMs?: number; grounded?: { title: string; placeId: string }[] } })._debug;
+          publishLlmDebug({
+            id: debugId,
+            ts: t0,
+            provider: res.headers.get("X-LLM-Provider"),
+            model: res.headers.get("X-LLM-Model") ?? dbg?.model ?? null,
+            mode: parsed.mode ?? "suggestions",
+            durationMs: dbg?.durationMs ?? Date.now() - t0,
+            raw,
+            grounded: dbg?.grounded,
+          });
 
           if (parsed.mode === "deepdive" && parsed.suggestion) {
             // Costruiamo una GoSuggestion arricchita con i dati del deep dive
@@ -1614,6 +1643,14 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
 
       setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, streaming: false } : m));
       onDebugCall?.({ id: debugId, ts: t0, systemPrompt: null, messages: history, response: accumulated, error: null, durationMs: Date.now() - t0, streaming: false });
+      publishLlmDebug({
+        id: debugId,
+        ts: t0,
+        provider: res.headers.get("X-LLM-Provider"),
+        mode: "chat",
+        durationMs: Date.now() - t0,
+        raw: accumulated,
+      });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "Sorry, something went wrong.", streaming: false } : m));

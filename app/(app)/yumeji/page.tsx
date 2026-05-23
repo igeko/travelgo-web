@@ -1,5 +1,7 @@
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import { MOCK_YUME_ALL } from "@/features/yumeji/mockData";
+import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 
 /**
  * /yumeji · pagina dedicata alla collezione (stub).
@@ -13,7 +15,7 @@ export default function YumejiPage() {
     <>
       <AppHeaderServer activeNav="yumeji" />
 
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-5 py-8">
+      <main className={cn("flex-1 max-w-[1280px] w-full mx-auto py-8", PAGE_PX)}>
         <div className="text-orange text-tiny font-medium tracking-eyebrow-wide uppercase mb-1">
           Yumeji · 夢路
         </div>

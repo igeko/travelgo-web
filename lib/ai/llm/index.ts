@@ -11,7 +11,14 @@
 
 import { openaiAdapter } from "./openai-adapter";
 import { geminiAdapter } from "./gemini-adapter";
-import type { ChatJsonOptions, ChatStreamOptions, LlmAdapter, LlmProvider } from "./types";
+import type {
+  ChatGroundedOptions,
+  ChatJsonOptions,
+  ChatStreamOptions,
+  GroundedResult,
+  LlmAdapter,
+  LlmProvider,
+} from "./types";
 
 /** The engine selected by env. Unknown/unset values fall back to OpenAI. */
 export function activeProvider(): LlmProvider {
@@ -32,9 +39,18 @@ export function chatStream(opts: ChatStreamOptions): AsyncIterable<string> {
   return adapter().chatStream(opts);
 }
 
+/** JSON completion with optional Maps-grounded places (Gemini only). */
+export function chatGrounded(opts: ChatGroundedOptions): Promise<GroundedResult> {
+  return adapter().chatGrounded(opts);
+}
+
 export type {
+  ChatGroundedOptions,
   ChatJsonOptions,
   ChatStreamOptions,
+  GroundedPlace,
+  GroundedResult,
+  LlmLatLng,
   LlmMessage,
   LlmProvider,
   LlmRole,

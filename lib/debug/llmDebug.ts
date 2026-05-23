@@ -1,0 +1,49 @@
+"use client";
+
+/**
+ * lib/debug/llmDebug.ts
+ * ─────────────────────────────────────────────────────────────────
+ * Tiny client-side pub/sub ring buffer for LLM call observability.
+ * Go publishes each /api/go/chat response here; the Explore debug panel
+ * subscribes. Decoupled — no prop threading, survives across the page.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+export type LlmDebugEntry = {
+  id: string;
+  ts: number;
+  /** "openai" | "gemini" | null (from the X-LLM-Provider header). */
+  provider: string | null;
+  model?: string | null;
+  /** "suggestions" | "chat" | "deepdive". */
+  mode: string;
+  durationMs?: number | null;
+  /** Raw assistant output — JSON string (JSON modes) or accumulated text. */
+  raw: string;
+  /** Places grounded via Google Maps (Gemini), when the server reports them. */
+  grounded?: { title: string; placeId: string }[];
+};
+
+const MAX_ENTRIES = 20;
+
+let entries: LlmDebugEntry[] = [];
+const listeners = new Set<() => void>();
+
+export function publishLlmDebug(entry: LlmDebugEntry): void {
+  entries = [entry, ...entries].slice(0, MAX_ENTRIES);
+  for (const l of listeners) l();
+}
+
+export function getLlmDebug(): LlmDebugEntry[] {
+  return entries;
+}
+
+export function clearLlmDebug(): void {
+  entries = [];
+  for (const l of listeners) l();
+}
+
+export function subscribeLlmDebug(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}

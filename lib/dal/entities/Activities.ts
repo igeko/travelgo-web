@@ -218,14 +218,24 @@ export class Activities {
   /** Activities owned by a user (their yume collection), newest first. */
   async listOwnedBy(
     userId: string,
-    opts?: { visibility?: ActivityVisibility },
+    opts?: { visibility?: ActivityVisibility; limit?: number; offset?: number; search?: string },
   ): Promise<DalResult<DbActivity[]>> {
     let q = this.db
       .from(ActivityTable.Activities)
       .select("*")
       .eq("created_by", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
     if (opts?.visibility) q = q.eq("visibility", opts.visibility);
+    // Ricerca server-side su titolo + location. L'input finisce nella sintassi
+    // del filtro PostgREST `.or(...)`: ripuliamo i caratteri che la romperebbero
+    // ( , ( ) * % \ ) prima di interpolare. `*` è il wildcard PostgREST.
+    const search = opts?.search?.replace(/[,()*%\\]/g, " ").trim();
+    if (search) q = q.or(`title.ilike.*${search}*,location.ilike.*${search}*`);
+    if (opts?.limit != null) {
+      const offset = opts.offset ?? 0;
+      q = q.range(offset, offset + opts.limit - 1);
+    }
 
     const { data, error } = await q;
     if (error) return { data: null, error: new DalError(error.message, error.code) };

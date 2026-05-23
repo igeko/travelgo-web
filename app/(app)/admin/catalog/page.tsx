@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/icons";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 import { OSM_PRESETS } from "@/lib/overpass";
 import { REGION_PRESETS, type RegionPreset } from "@/lib/region-presets";
 import { api } from "@/lib/client";
@@ -345,7 +346,7 @@ export default function CatalogPage() {
         initials={user?.initials ?? ""} avatarUrl={user?.avatarUrl ?? ""} fullName={user?.fullName ?? ""}
       />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-5 py-10 space-y-8">
+      <main className={cn("flex-1 max-w-[1200px] mx-auto w-full py-10 space-y-8", PAGE_PX)}>
 
         {/* Header */}
         <div className="space-y-4">

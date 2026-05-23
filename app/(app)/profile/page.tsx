@@ -1,28 +1,32 @@
 import { redirect } from "next/navigation";
 import { serverDal } from "@/lib/dal";
+import { serverServices } from "@/lib/services";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const dal = await serverDal();
-  const { data: user } = await dal.users.getCurrentUser();
-  if (!user) redirect("/login");
+  // Identità (per il redirect + created_at). Display e ruoli arrivano dalla
+  // sorgente canonica UserService.me() (display da public.user_profiles).
+  const { data: authUser } = await dal.users.getCurrentUser();
+  if (!authUser) redirect("/login");
 
-  const fullName = user.user_metadata?.full_name ?? user.email ?? "";
-  const avatarUrl = user.user_metadata?.avatar_url ?? "";
-  const email = user.email ?? "";
+  const services = await serverServices();
+  const { user, roles } = await services.users.me();
+
+  const fullName = user?.fullName ?? authUser.email ?? "";
+  const avatarUrl = user?.avatarUrl ?? "";
+  const email = user?.email ?? authUser.email ?? "";
   const initials = fullName
     .split(/\s+/)
     .map((w: string) => w[0]?.toUpperCase() ?? "")
     .slice(0, 2)
     .join("");
 
-  // Roles
-  const roles: string[] = await dal.users.getPlatformRoles(user.id);
-
-  const joinedAt = new Date(user.created_at).toLocaleDateString("it-IT", {
+  const joinedAt = new Date(authUser.created_at).toLocaleDateString("it-IT", {
     day: "numeric", month: "long", year: "numeric",
   });
 
@@ -30,7 +34,7 @@ export default async function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-bg">
       <AppHeaderServer activeNav="trips" />
 
-      <main className="flex-1 max-w-[640px] mx-auto w-full px-5 py-10">
+      <main className={cn("flex-1 max-w-[640px] mx-auto w-full py-10", PAGE_PX)}>
 
         {/* Avatar + name */}
         <div className="flex items-center gap-5 mb-8">
@@ -56,7 +60,7 @@ export default async function ProfilePage() {
         <div className="bg-surface rounded-lg border border-border divide-y divide-border">
           <Row label="Email" value={email} />
           <Row label="Membro dal" value={joinedAt} />
-          <Row label="ID utente" value={user.id} mono />
+          <Row label="ID utente" value={authUser.id} mono />
         </div>
 
         {/* Roles */}

@@ -48,7 +48,7 @@ export enum JournalTable {
 
 /** User profiles and platform-level roles. */
 export enum UserTable {
-  Profiles = "profiles",
+  Profiles = "user_profiles",
   PlatformRoles = "user_platform_roles",
 }
 

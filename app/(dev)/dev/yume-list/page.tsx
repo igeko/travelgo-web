@@ -17,7 +17,7 @@
  * I campi Trip/Utente qui sono predisposti per quando il backend offrirà la query.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { YumeList } from "@/features/yumeji/YumeList";
 import { MOCK_YUMES, type YumeChip, type YumeListItem } from "@/features/yumeji/mockData";
@@ -29,6 +29,9 @@ const CHIPS: YumeChip[] = [
   { id: "unscheduled", label: "Da schedulare", count: 6, active: true },
   { id: "shared", label: "Condivisi", count: 3 },
 ];
+
+/** Page size piccola per mostrare bene "Carica altri" in sandbox (la default API è 24). */
+const SANDBOX_PAGE = 8;
 
 const CURRENCY_SYMBOL: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", JPY: "¥" };
 
@@ -47,8 +50,7 @@ function toListItem(y: Yume): YumeListItem {
     location: y.location,
     price: formatBudget(y.budget_amount, y.budget_currency),
     imageUrl: y.hero_image,
-    // L'API non restituisce il profilo dell'owner (solo created_by): niente avatar.
-    owner: null,
+    owner: y.owner ? { name: y.owner.displayName ?? "Senza nome", avatarUrl: y.owner.avatarUrl } : null,
   };
 }
 
@@ -71,27 +73,59 @@ export default function YumeListSandbox() {
 
   const [tripInput, setTripInput] = useState("Japan 2026!");
   const [userInput, setUserInput] = useState("enrico del greco");
-  const [realItems, setRealItems] = useState<YumeListItem[]>([]);
+  const [realRaw, setRealRaw] = useState<Yume[]>([]);
+  const [realHasMore, setRealHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [realSearch, setRealSearch] = useState("");
+  const searchTimer = useRef<number | null>(null);
 
-  async function loadReal() {
-    setLoading(true);
+  // Carica la prima pagina filtrata server-side per `q`. `silent` evita lo
+  // spinner a tutto schermo (per il refetch durante la digitazione).
+  async function loadReal(opts?: { silent?: boolean; q?: string }) {
+    const q = (opts?.q ?? realSearch).trim() || undefined;
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
-      const list = await api.yumes.list();
-      setRealItems(list.map(toListItem));
+      const page = await api.yumes.list({ q, limit: SANDBOX_PAGE, offset: 0 });
+      setRealRaw(page.items);
+      setRealHasMore(page.hasMore);
       setLoaded(true);
       setSource("real");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore nel caricamento");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }
 
-  const items = source === "real" ? realItems : MOCK_DATASETS[mockDataset];
+  async function loadMoreReal() {
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const q = realSearch.trim() || undefined;
+      const page = await api.yumes.list({ q, limit: SANDBOX_PAGE, offset: realRaw.length });
+      setRealRaw((prev) => [...prev, ...page.items]);
+      setRealHasMore(page.hasMore);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore nel caricamento");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  // Ricerca server-side (debounced) sui dati reali: re-interroga l'API e
+  // riparte da pagina 0. Su mock la ricerca resta FE (gestita da YumeList).
+  function onRealSearchChange(v: string) {
+    setRealSearch(v);
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => void loadReal({ silent: true, q: v }), 300);
+  }
+
+  const items =
+    source === "real" ? realRaw.map(toListItem) : MOCK_DATASETS[mockDataset];
 
   return (
     <div className="min-h-screen bg-bg p-8">
@@ -122,6 +156,12 @@ export default function YumeListSandbox() {
               searchable={searchable}
               filterable={filterable}
               showOwner={showOwner}
+              // In modalità reale la ricerca è server-side (controlled); su mock resta FE.
+              searchValue={source === "real" ? realSearch : undefined}
+              onSearchChange={source === "real" ? onRealSearchChange : undefined}
+              hasMore={source === "real" && realHasMore}
+              loadingMore={loadingMore}
+              onLoadMore={loadMoreReal}
               className="flex-1"
             />
           )}
@@ -150,7 +190,7 @@ export default function YumeListSandbox() {
             />
             <button
               type="button"
-              onClick={loadReal}
+              onClick={() => loadReal()}
               disabled={loading}
               className="w-full rounded-md bg-ink text-white text-sm font-medium px-3 py-2 cursor-pointer hover:bg-ink-hover transition-colors disabled:opacity-50"
             >

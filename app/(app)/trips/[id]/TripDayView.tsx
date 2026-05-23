@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useAltLabel } from "@/lib/hooks/useOS";
 import { useShortcuts } from "@/lib/hooks/useShortcut";
+import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
 import { useRouter } from "next/navigation";
 import { HeroBanner, type HeroBannerType, type LodgingType, type HeroBannerHandle } from "@/features/day/HeroBanner";
-import { IconArrowRightCircle, IconChevronRight } from "@/components/ui/icons";
+import { IconArrowRightCircle, IconChevronRight, IconX } from "@/components/ui/icons";
 import { DayIncipit } from "@/features/day/DayIncipit";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { DayItem } from "@/features/day/DayItem";
@@ -14,6 +15,7 @@ import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { useYumejiDrawer, YumejiPinnedColumn } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
+import { PAGE_GAP, PAGE_PX, PAGE_PY } from "@/lib/layout";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
 import { api } from "@/lib/client";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
@@ -36,6 +38,10 @@ function Kbd({ children }: { children: React.ReactNode }) {
 function ShortcutBar() {
   const t = useTranslations("TripDayView");
   const alt = useAltLabel();
+  const { dismissed, dismiss } = useShortcutBar();
+
+  if (dismissed) return null;
+
   return (
     <div className="flex items-center gap-4 px-3 py-2 mb-3 rounded-md bg-ink text-white/70 text-tiny flex-wrap">
       <span className="text-white/40 text-micro uppercase tracking-[0.08em] font-medium shrink-0">{t("shortcuts.title")}</span>
@@ -43,6 +49,15 @@ function ShortcutBar() {
       <span className="flex items-center gap-1.5"><Kbd>{alt}L</Kbd> {t("shortcuts.editLodging")}</span>
       <span className="flex items-center gap-1.5"><Kbd>{alt}A</Kbd> {t("shortcuts.addActivity")}</span>
       <span className="flex items-center gap-1.5"><Kbd>Esc</Kbd> {t("shortcuts.closePanel")}</span>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label={t("shortcuts.dismiss")}
+        title={t("shortcuts.dismiss")}
+        className="ml-auto shrink-0 flex items-center justify-center w-5 h-5 rounded-[4px] text-white/40 hover:text-white hover:bg-white/15 transition-colors cursor-pointer border-0 bg-transparent"
+      >
+        <IconX size={14} />
+      </button>
     </div>
   );
 }
@@ -210,7 +225,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     /* ── Replica esatta di .daybyday dal design · 3ª colonna quando Yume è pinned ── */
     <div
       className={cn(
-        "grid gap-[18px] max-w-[1280px] mx-auto px-2 py-3 sm:px-5 sm:py-5 [grid-template-columns:1fr]",
+        "grid max-w-[1280px] mx-auto [grid-template-columns:1fr]",
+        PAGE_GAP,
+        PAGE_PX,
+        PAGE_PY,
         yumeji?.isPinned
           ? "md:[grid-template-columns:260px_1fr_340px]"
           : "md:[grid-template-columns:260px_1fr]",

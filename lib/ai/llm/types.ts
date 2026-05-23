@@ -37,6 +37,32 @@ export type ChatStreamOptions = {
   messages: LlmMessage[];
 };
 
+/** Geographic bias for Maps grounding (Gemini only). */
+export type LlmLatLng = { lat: number; lng: number };
+
+/** A place surfaced by Maps grounding. `placeId` is the bare Google id. */
+export type GroundedPlace = { title: string; placeId: string; uri: string };
+
+/** Request for a JSON completion that may also ground places via Maps. */
+export type ChatGroundedOptions = {
+  tier: LlmTier;
+  messages: LlmMessage[];
+  /** Optional locality bias (Gemini Maps grounding only). */
+  near?: LlmLatLng;
+};
+
+/**
+ * Result of a grounded completion. `places` is empty for providers that
+ * have no Maps grounding (e.g. OpenAI). `provider`/`model` are carried for
+ * debug surfaces.
+ */
+export type GroundedResult = {
+  text: string;
+  places: GroundedPlace[];
+  provider: LlmProvider;
+  model: string;
+};
+
 /** The surface every provider adapter implements. */
 export interface LlmAdapter {
   /**
@@ -47,4 +73,11 @@ export interface LlmAdapter {
   chatJson(opts: ChatJsonOptions): Promise<string>;
   /** Streaming completion. Yields text deltas as they arrive. */
   chatStream(opts: ChatStreamOptions): AsyncIterable<string>;
+  /**
+   * JSON completion that also returns places grounded in Google Maps when
+   * the provider supports it. Callers must put the JSON-shape instruction
+   * in the prompt (grounding is incompatible with forced JSON mode on
+   * Gemini), then `JSON.parse` the returned `text`.
+   */
+  chatGrounded(opts: ChatGroundedOptions): Promise<GroundedResult>;
 }

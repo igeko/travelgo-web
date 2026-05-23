@@ -162,6 +162,19 @@ The Go context is hydrated with trip/day data via `features/go/TripGoContext.tsx
 
 Supabase Auth. Platform roles stored in `user_platform_roles` table: `admin`, `dev`, `tester`, `user`.
 
+### User identity vs user data — single source
+
+The application user **is** the Supabase user. There is one id everywhere (`auth.users.id`, used by `auth.uid()` and every `created_by`/`user_id` FK).
+
+- **Identity** (id, email, created_at, session) → `auth.users` (managed by Supabase; never written by us, only seeded into profiles).
+- **Display data** (name, avatar, locale) → **`public.user_profiles`** (1:1, shared PK + FK to `auth.users`, `on delete cascade`). Seeded from OAuth metadata by the `handle_new_user` trigger; editable in-app via `Users.upsertProfile`.
+
+**Rule:** never read `user.user_metadata` / `raw_user_meta_data` for display. Always go through the canonical access points:
+- current user → `UserService.me()` (and `AppHeaderServer` for the header — the only place that injects the user into the header);
+- other users (owner/author lists) → `UserService.displays(ids)` or `dal.users.getProfiles(ids)`.
+
+DB access to user data stays in the `Users` DAL entity (`lib/dal/entities/Users.ts`), which targets `user_profiles` via `UserTable.Profiles`.
+
 Authorization guards live in `lib/api/guards.ts`. They **throw `ApiError`** (the `route()` wrapper turns it into the failure envelope) and return `{ userId }` on success — call them at the top of a handler, do not branch on a return value:
 - `requireUser()` — logged-in only
 - `requireTripEditor(tripId)` / `requireTripMember(tripId)` — `trip_members` role

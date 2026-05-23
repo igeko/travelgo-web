@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/icons";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { cn } from "@/lib/cn";
+import { PAGE_PX } from "@/lib/layout";
 import { api } from "@/lib/client";
 
 // ---------------------------------------------------------------------------
@@ -252,7 +253,7 @@ export default function TesterNotesPage() {
         fullName={user?.fullName ?? ""}
       />
 
-      <main className="flex-1 max-w-[1100px] mx-auto w-full px-5 py-10">
+      <main className={cn("flex-1 max-w-[1100px] mx-auto w-full py-10", PAGE_PX)}>
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-[20px] font-semibold text-ink">

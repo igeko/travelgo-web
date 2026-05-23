@@ -58,6 +58,7 @@
     "feedback": "Feedback",
     "leaveFeedback": "Leave feedback",
     "tripActions": "Trip actions",
+    "showShortcuts": "Show shortcuts",
     "allFeedback": "View all feedback",
     "tripSection": "Trip · {name}"
   },
@@ -115,7 +116,8 @@
       "editDay": "Edit day",
       "editLodging": "Edit lodging",
       "addActivity": "Add activity",
-      "closePanel": "Close panel"
+      "closePanel": "Close panel",
+      "dismiss": "Hide shortcuts"
     },
     "nextDay": "Next · Day {number} · {dow}"
   },
