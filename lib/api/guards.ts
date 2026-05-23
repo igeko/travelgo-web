@@ -75,7 +75,6 @@ export const requireDayMember = async (dayId: string) =>
 async function requireActivityRole(
   activityId: string,
   allowed: readonly string[],
-  respectReadonly = false,
 ): Promise<AuthContext> {
   const dal = await serverDal();
   const userId = await currentUserId(dal);
@@ -86,10 +85,6 @@ async function requireActivityRole(
   // The creator can always act on their own entity.
   if (ctx.createdBy === userId) return { userId };
 
-  // A readonly activity is editable only by its creator — trip editors are
-  // not enough. (Does not affect read/member access.)
-  if (respectReadonly && ctx.readonly) throw forbidden();
-
   for (const tripId of ctx.tripIds) {
     if (await dal.members.roleInTrip(tripId, userId, allowed)) return { userId };
   }
@@ -97,7 +92,7 @@ async function requireActivityRole(
 }
 
 export const requireActivityEditor = (activityId: string) =>
-  requireActivityRole(activityId, EDITOR_ROLES, true);
+  requireActivityRole(activityId, EDITOR_ROLES);
 export const requireActivityMember = (activityId: string) =>
   requireActivityRole(activityId, MEMBER_ROLES);
 

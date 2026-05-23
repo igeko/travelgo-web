@@ -21,6 +21,8 @@ export enum ActivityTable {
   Activities = "activities",
   Sections = "activity_sections",
   Sidebar = "activity_sidebar",
+  /** Which trips a 'shared' activity is shared with. */
+  Shares = "activity_shares",
 }
 
 /** Budget items. */

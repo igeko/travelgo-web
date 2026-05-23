@@ -87,12 +87,15 @@ export type DbDay = {
   updated_at: string;
 };
 
+/** Activity visibility state (extensible — backed by a text+CHECK column). */
+export type ActivityVisibility = "public" | "private" | "shared";
+
 export type DbActivity = {
   id: string;
   /** Entity owner — independent of any trip (the trip link lives in scheduled_activities). */
   created_by: string | null;
-  /** When true, only the creator may edit/delete the entity (not trip editors). */
-  readonly: boolean;
+  /** Visibility state. 'shared' activities list their trips in `activity_shares`. */
+  visibility: ActivityVisibility;
   title: string;
   short_desc: string | null;
   details: string | null;

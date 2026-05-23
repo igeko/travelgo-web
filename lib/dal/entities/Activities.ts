@@ -14,6 +14,7 @@ import type { BookingStatus } from "../domain";
 import { ActivityTable, TripTable } from "../tables";
 import {
   DalError,
+  type ActivityVisibility,
   type DalResult,
   type DbActivity,
   type DbActivitySection,
@@ -36,8 +37,8 @@ export type CreateActivityInput = {
   location_lng?: number;
   hero_image?: string;
   url?: string;
-  /** When true, only the creator can edit/delete the entity. */
-  readonly?: boolean;
+  /** Visibility state; defaults to 'private' at the DB level. */
+  visibility?: ActivityVisibility;
 };
 
 export type UpdateActivityInput = Partial<Omit<CreateActivityInput, "created_by">>;
@@ -75,7 +76,7 @@ export type ActivitySearchResult = {
 };
 
 // Entity columns surfaced by the autocomplete search.
-const SEARCH_SELECT = "id, title, short_desc, location, hero_image, created_by, readonly";
+const SEARCH_SELECT = "id, title, short_desc, location, hero_image, created_by, visibility";
 
 /** Escape LIKE wildcards in user input to avoid blind enumeration via `%`/`_`. */
 function escapeLikePattern(input: string): string {
@@ -175,20 +176,20 @@ export class Activities {
 
   /**
    * Authorization context for an activity entity, fully decoupled from trips:
-   * its owner, its `readonly` flag, and every trip it is reachable through via
-   * scheduling. Returns null if the activity does not exist. Intended to be
-   * called on a service-role DAL (ground truth, bypasses RLS).
+   * its owner and every trip it is reachable through via scheduling. Returns
+   * null if the activity does not exist. Intended to be called on a
+   * service-role DAL (ground truth, bypasses RLS).
    */
   async authzContext(
     activityId: string,
-  ): Promise<{ createdBy: string | null; readonly: boolean; tripIds: string[] } | null> {
+  ): Promise<{ createdBy: string | null; tripIds: string[] } | null> {
     const { data: act } = await this.db
       .from(ActivityTable.Activities)
-      .select("created_by, readonly")
+      .select("created_by")
       .eq("id", activityId)
       .maybeSingle();
     if (!act) return null;
-    const row = act as { created_by: string | null; readonly: boolean | null };
+    const row = act as { created_by: string | null };
 
     const { data: sched } = await this.db
       .from(TripTable.ScheduledActivities)
@@ -207,7 +208,7 @@ export class Activities {
       for (const d of (days ?? []) as { trip_id: string }[]) tripIds.add(d.trip_id);
     }
 
-    return { createdBy: row.created_by, readonly: row.readonly ?? false, tripIds: [...tripIds] };
+    return { createdBy: row.created_by, tripIds: [...tripIds] };
   }
 
   // ── Sections ─────────────────────────────────────────────────────
