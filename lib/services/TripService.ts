@@ -8,8 +8,16 @@
  */
 
 import type { Dal, TripSummary, TripSnapshot } from "@/lib/dal";
-import { notFound, badRequest } from "@/lib/api/errors";
+import { notFound, badRequest, upstream } from "@/lib/api/errors";
 import { isCurrencyCode } from "@/lib/api/validation";
+import { chatJson } from "@/lib/ai/llm";
+import {
+  normalizeDestination,
+  type BoardingMeta,
+  type HomeMeta,
+  type TripHomeMeta,
+} from "@/lib/trip-home/meta";
+import { buildBoardingMessages, parseBoardingMeta } from "@/lib/trip-home/boarding-prompt";
 import { unwrap } from "./util";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -100,5 +108,51 @@ export class TripService {
   /** Patch day metadata (route validates/whitelists the patch). */
   async updateDay(dayId: string, patch: Record<string, unknown>): Promise<void> {
     unwrap(await this.dal.trips.patchDay(dayId, patch));
+  }
+
+  /**
+   * AI content for the Trip Home, projected for `locale`. Each section is
+   * cached on `trips.home_meta` and reused until its inputs change; missing
+   * sections are generated and persisted on a miss.
+   *
+   * Today this resolves the boarding section (country, most-probable airport,
+   * localized welcome); future sections plug in here.
+   */
+  async getHomeMeta(tripId: string, locale: string): Promise<HomeMeta> {
+    const trip = unwrap(await this.dal.trips.findById(tripId));
+    const home = (trip.home_meta as TripHomeMeta | null) ?? {};
+
+    const source = normalizeDestination(trip.title);
+    const cached = home.boarding;
+    if (cached && cached.source === source && cached.byLocale[locale]) {
+      return { boarding: cached.byLocale[locale] };
+    }
+
+    const raw = await chatJson({
+      tier: "fast",
+      maxTokens: 300,
+      messages: buildBoardingMessages({
+        destination: trip.title,
+        startDate: trip.start_date,
+        endDate: trip.end_date,
+        adults: trip.adults_count,
+        children: trip.children_count,
+        themes: trip.theme_tags,
+        locale,
+      }),
+    });
+
+    const boardingLocale = parseBoardingMeta(raw, trip.title);
+    if (!boardingLocale) throw upstream("Could not resolve destination info");
+
+    // Reuse other locales only when the destination hasn't changed.
+    const byLocale = cached && cached.source === source ? { ...cached.byLocale } : {};
+    byLocale[locale] = boardingLocale;
+    const boarding: BoardingMeta = { source, byLocale };
+
+    // Persist; a write failure shouldn't deny the freshly computed answer.
+    await this.dal.trips.update(tripId, { home_meta: { ...home, boarding } });
+
+    return { boarding: boardingLocale };
   }
 }

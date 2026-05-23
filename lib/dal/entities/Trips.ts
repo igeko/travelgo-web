@@ -27,6 +27,7 @@ import {
   type ActivitySlot,
 } from "../types";
 import type { Trip, Day, Activity, TripSnapshot, BlockType, BookingStatus } from "../domain";
+import type { TripHomeMeta } from "@/lib/trip-home/meta";
 
 // ── Input types ───────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ export type CreateTripInput = {
   children_count?: number;
   theme_tags?: string[];
   theme_description?: string;
+  home_meta?: TripHomeMeta | null;
   created_by?: string;
 };
 

@@ -2,6 +2,7 @@
  * lib/client/trips.ts — frontend client for trip endpoints.
  */
 import type { TripSummary, TripSnapshot } from "@/lib/dal";
+import type { HomeMeta } from "@/lib/trip-home/meta";
 import { get, post } from "./http";
 
 export type CreateTripPayload = {
@@ -21,4 +22,8 @@ export const trips = {
 
   /** POST /api/trips */
   create: (payload: CreateTripPayload) => post<{ id: string }>("/api/trips", payload),
+
+  /** GET /api/trips/[id]/home-meta — AI-resolved Trip Home content for a locale. */
+  homeMeta: (id: string, locale: string) =>
+    get<HomeMeta>(`/api/trips/${id}/home-meta?locale=${encodeURIComponent(locale)}`),
 };

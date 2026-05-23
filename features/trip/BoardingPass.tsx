@@ -20,14 +20,17 @@ import { IconPlane } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import type { DbTrip } from "@/lib/dal/types";
 
-/** One leg of the journey (origin or destination). */
+/**
+ * One leg of the journey (origin or destination).
+ * Only `city` is guaranteed — code and time are filled in as they become known.
+ */
 export type BoardingEndpoint = {
   /** City name, shown large. */
   city: string;
   /** IATA-style airport code, e.g. "FCO". */
-  code: string;
+  code?: string;
   /** Free-form time label, e.g. "13:25" or "08:50 +1". */
-  time: string;
+  time?: string;
 };
 
 /** Trip facts reused verbatim from the persisted row — same schema. */
@@ -39,18 +42,22 @@ type TripFacts = Pick<
 export type BoardingPassProps = {
   /** Trip data — identical schema to the stored trip row. */
   trip: TripFacts;
-  /** Record locator / PNR-style code, e.g. "TG-2026-TOK". AI/consumer-provided. */
-  recordLocator: string;
-  /** Lead passenger display name (not stored on the trip). */
-  passengerName: string;
-  /** Origin leg — not part of the trip schema. */
-  origin: BoardingEndpoint;
-  /** Destination leg + country (also outside the trip schema). */
+  /**
+   * Destination leg + country. The destination `city` is the only thing the
+   * worst-case trip is guaranteed to have; everything else is optional and the
+   * pass degrades gracefully when missing.
+   */
   destination: BoardingEndpoint & {
-    country: string;
+    country?: string;
     /** Flag accent color (data-driven, rendered as a dot). */
     countryColor?: string;
   };
+  /** Record locator / PNR-style code, e.g. "TG-2026-TOK". AI/consumer-provided. */
+  recordLocator?: string;
+  /** Lead passenger display name (not stored on the trip). */
+  passengerName?: string;
+  /** Origin leg — not part of the trip schema, often unknown until Go fills it. */
+  origin?: BoardingEndpoint;
   /** Optional Go one-liner shown on the stub. */
   goQuote?: string;
   /** Today, for the countdown. Injectable for tests; defaults to now. */
@@ -86,6 +93,12 @@ function nightsBetween(startIso: string, endIso: string): number {
   return Math.max(0, Math.round((parseIsoLocal(endIso).getTime() - parseIsoLocal(startIso).getTime()) / MS_PER_DAY));
 }
 
+/** Joins the present parts of an endpoint sub-line ("HND · 08:50 · Japan"). */
+function metaLine(...parts: (string | null | undefined)[]): string | null {
+  const present = parts.filter((p): p is string => Boolean(p && p.trim()));
+  return present.length > 0 ? present.join(" · ") : null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────
 
 export function BoardingPass({
@@ -103,15 +116,24 @@ export function BoardingPass({
 
   const { start_date, end_date, adults_count, children_count, theme_tags } = trip;
 
-  const dateLabel = start_date ? formatTicketDate(start_date, locale) : "—";
+  const dateLabel = start_date ? formatTicketDate(start_date, locale) : null;
   const nights = start_date && end_date ? nightsBetween(start_date, end_date) : null;
   const daysToGo = start_date ? Math.max(0, diffDays(now, start_date)) : null;
 
   const travelers = (adults_count ?? 0) + (children_count ?? 0);
   const extraPax = Math.max(0, travelers - 1);
-  const passengerLabel = extraPax > 0 ? `${passengerName} +${extraPax}` : passengerName;
+  const passengerLabel = passengerName
+    ? extraPax > 0 ? `${passengerName} +${extraPax}` : passengerName
+    : null;
 
-  const mood = theme_tags && theme_tags.length > 0 ? theme_tags.join(" · ") : "—";
+  const mood = theme_tags && theme_tags.length > 0 ? theme_tags.join(" · ") : null;
+
+  const originMeta = origin ? metaLine(origin.code, origin.time) : null;
+  const destinationMeta = metaLine(destination.code, destination.time, destination.country);
+
+  // Bottom strip is the ticket's identity, but a row of em-dashes reads as
+  // broken — only show it once at least one fact is known.
+  const hasFacts = Boolean(passengerLabel) || Boolean(dateLabel) || nights != null || Boolean(mood);
 
   return (
     <section
@@ -130,58 +152,68 @@ export function BoardingPass({
 
       {/* Ticket body */}
       <div className="px-7 py-6">
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <span className="text-tiny font-medium uppercase tracking-eyebrow-wide text-ink-faint">
-            {t("title")} · {recordLocator}
+            {t("title")}{recordLocator ? ` · ${recordLocator}` : ""}
           </span>
-          <span className="inline-flex items-center gap-1.5 text-tiny font-medium uppercase tracking-eyebrow text-orange-deep">
-            <span
-              className={cn("inline-block size-4 rounded-full", !destination.countryColor && "bg-orange")}
-              style={destination.countryColor ? { backgroundColor: destination.countryColor } : undefined}
-            />
-            {destination.country}
-          </span>
+          {destination.country && (
+            <span className="inline-flex items-center gap-1.5 text-tiny font-medium uppercase tracking-eyebrow text-orange-deep">
+              <span
+                className={cn("inline-block size-4 rounded-full", !destination.countryColor && "bg-orange")}
+                style={destination.countryColor ? { backgroundColor: destination.countryColor } : undefined}
+              />
+              {destination.country}
+            </span>
+          )}
         </div>
 
         <div className="mb-5 flex items-end gap-6">
+          {origin && (
+            <>
+              <div>
+                <p className="m-0 text-tiny uppercase tracking-eyebrow text-ink-faint">{t("from")}</p>
+                <p className="mb-1 mt-1 font-serif text-[28px] font-medium italic leading-none text-ink">{origin.city}</p>
+                {originMeta && <p className="m-0 text-tiny text-ink-faint">{originMeta}</p>}
+              </div>
+              <span className="mb-1.5 text-orange-deep">
+                <IconPlane size={26} />
+              </span>
+            </>
+          )}
           <div>
-            <p className="m-0 text-tiny uppercase tracking-eyebrow text-ink-faint">{t("from")}</p>
-            <p className="mb-1 mt-1 font-serif text-[28px] font-medium italic leading-none text-ink">{origin.city}</p>
-            <p className="m-0 text-tiny text-ink-faint">{origin.code} · {origin.time}</p>
-          </div>
-          <span className="mb-1.5 text-orange-deep">
-            <IconPlane size={26} />
-          </span>
-          <div>
-            <p className="m-0 text-tiny uppercase tracking-eyebrow text-ink-faint">{t("to")}</p>
+            <p className="m-0 text-tiny uppercase tracking-eyebrow text-ink-faint">
+              {origin ? t("to") : t("destination")}
+            </p>
             <p className="mb-1 mt-0.5 font-serif text-[50px] font-medium italic leading-[0.95] text-ink">
               {destination.city}
             </p>
-            <p className="m-0 text-tiny text-ink-faint">
-              {destination.code} · {destination.time} · {destination.country}
-            </p>
+            {destinationMeta && <p className="m-0 text-tiny text-ink-faint">{destinationMeta}</p>}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3.5 border-t border-dashed border-border pt-4 sm:grid-cols-4">
-          <TicketField label={t("passenger")} value={passengerLabel} />
-          <TicketField label={t("date")} value={dateLabel} />
-          <TicketField label={t("stay")} value={nights != null ? t("nights", { count: nights }) : "—"} />
-          <TicketField label={t("mood")} value={mood} />
-        </div>
+        {hasFacts && (
+          <div className="grid grid-cols-2 gap-3.5 border-t border-dashed border-border pt-4 sm:grid-cols-4">
+            <TicketField label={t("passenger", { count: travelers || 1 })} value={passengerLabel ?? "—"} />
+            <TicketField label={t("date")} value={dateLabel ?? "—"} />
+            <TicketField label={t("stay")} value={nights != null ? t("nights", { count: nights }) : "—"} />
+            <TicketField label={t("mood")} value={mood ?? "—"} />
+          </div>
+        )}
       </div>
 
       {/* Stub */}
       <div className="flex flex-col items-center justify-center bg-ink px-5 py-5 text-center text-white lg:pl-8">
-        <p className="m-0 text-tiny uppercase tracking-eyebrow-wide text-primary-soft">{t("departureIn")}</p>
-        <div className="my-1.5 flex items-baseline gap-1.5">
-          <span className="font-serif text-[78px] font-medium italic leading-[0.85] text-white">
-            {daysToGo ?? "—"}
-          </span>
-          {daysToGo != null && (
-            <span className="font-serif text-meta italic text-white/75">{t("days", { count: daysToGo })}</span>
-          )}
-        </div>
+        {daysToGo != null ? (
+          <>
+            <p className="m-0 text-tiny uppercase tracking-eyebrow-wide text-primary-soft">{t("departureIn")}</p>
+            <div className="my-1.5 flex items-baseline gap-1.5">
+              <span className="font-serif text-[78px] font-medium italic leading-[0.85] text-white">{daysToGo}</span>
+              <span className="font-serif text-meta italic text-white/75">{t("days", { count: daysToGo })}</span>
+            </div>
+          </>
+        ) : (
+          <p className="m-0 font-serif text-mini italic leading-snug text-primary-soft">{t("datesPending")}</p>
+        )}
         {goQuote && (
           <p className="mt-1.5 font-serif text-mini italic leading-snug text-white/75">{goQuote}</p>
         )}

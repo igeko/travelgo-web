@@ -28,6 +28,7 @@ const MOCK_TRIP_INFO: TripInfo = {
     children_count: 2,
     theme_tags: ["Nature", "Food", "Culture"],
     theme_description: null,
+    home_meta: null,
     created_by: "user-001",
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",

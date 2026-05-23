@@ -52,6 +52,8 @@ export type DbTrip = {
   children_count: number | null;
   theme_tags: string[] | null;
   theme_description: string | null;
+  /** AI-generated Trip Home content (see lib/trip-home/meta.ts). Untyped at the DB layer. */
+  home_meta: unknown | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
