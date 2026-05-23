@@ -134,6 +134,19 @@
       "preview": "{nights, plural, one {# night} other {# nights}}",
       "nights": "{nights, plural, one {# night} other {# nights}} · countdown to takeoff"
     },
+    "airports": {
+      "label": "Airports",
+      "eyebrow": "Section · airports",
+      "title": "Where you take off and land.",
+      "sub": "Set the departure and arrival airports — they show on the boarding pass.",
+      "departure": "Departure",
+      "arrival": "Arrival",
+      "city": "City",
+      "code": "IATA",
+      "depCityPlaceholder": "e.g. Rome",
+      "arrCityPlaceholder": "e.g. Tokyo",
+      "hint": "Leave blank to let Go infer the most likely airport from your destination."
+    },
     "travelers": {
       "label": "Travelers",
       "eyebrow": "Section · travelers",
@@ -248,6 +261,34 @@
     "pressEnterToSave": "Press Enter to save",
     "cancel": "Cancel",
     "save": "Save"
+  },
+  "DayEditForm": {
+    "title": "Edit day",
+    "day": "Day {number}",
+    "close": "Close without saving",
+    "sections": "Sections",
+    "dayMenu": "Day info",
+    "lodgingMenu": "Lodging",
+    "dayPreview": "Zone, place, summary, image",
+    "lodgingPreview": "Day's lodging",
+    "noLodging": "No lodging",
+    "daySection": {
+      "eyebrow": "Section · day info",
+      "title": "What this day looks like.",
+      "sub": "Zone, title, the summary and the practical note · the cover image."
+    },
+    "lodgingSection": {
+      "eyebrow": "Section · lodging",
+      "title": "Where you sleep tonight.",
+      "sub": "Type, name, address · booking link and cost per night."
+    },
+    "addLodging": "Add lodging",
+    "removeLodging": "Remove lodging",
+    "confirmDelete": "Sure?",
+    "delete": "Delete",
+    "deleteDay": "Delete day",
+    "cancel": "Cancel",
+    "save": "Save day"
   },
   "DayIncipit": {
     "wantToFind": "Want to find",

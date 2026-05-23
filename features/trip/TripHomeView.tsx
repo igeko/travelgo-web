@@ -19,6 +19,7 @@ import { cn } from "@/lib/cn";
 import { PAGE_MAX, PAGE_PX } from "@/lib/layout";
 import type { DbTrip } from "@/lib/dal/types";
 import type { BoardingLocaleMeta } from "@/lib/trip-home/meta";
+import { parseAirport } from "@/lib/trip-home/airports";
 
 type Props = {
   trip: DbTrip;
@@ -61,6 +62,8 @@ export function TripHomeView({ trip, daysCount, recordLocator, passengerName, in
             passengerName={passengerName}
             destinationTitle={trip.title}
             initialBoarding={initialBoarding ?? null}
+            departureAirport={parseAirport(trip.departure_airport)}
+            arrivalAirport={parseAirport(trip.arrival_airport)}
           />
         )}
       </main>

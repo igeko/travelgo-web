@@ -134,6 +134,19 @@
       "preview": "{nights, plural, one {# notte} other {# notti}}",
       "nights": "{nights, plural, one {# notte} other {# notti}} · countdown al decollo"
     },
+    "airports": {
+      "label": "Aeroporti",
+      "eyebrow": "Sezione · aeroporti",
+      "title": "Da dove parti e dove atterri.",
+      "sub": "Imposta gli aeroporti di partenza e arrivo — compaiono sulla carta d'imbarco.",
+      "departure": "Partenza",
+      "arrival": "Arrivo",
+      "city": "Città",
+      "code": "IATA",
+      "depCityPlaceholder": "es. Roma",
+      "arrCityPlaceholder": "es. Tokyo",
+      "hint": "Lascia vuoto per far dedurre a Go l'aeroporto più probabile dalla destinazione."
+    },
     "travelers": {
       "label": "Viaggiatori",
       "eyebrow": "Sezione · viaggiatori",
@@ -248,6 +261,34 @@
     "pressEnterToSave": "Premi Invio per salvare",
     "cancel": "Annulla",
     "save": "Salva"
+  },
+  "DayEditForm": {
+    "title": "Modifica giorno",
+    "day": "Giorno {number}",
+    "close": "Chiudi senza salvare",
+    "sections": "Sezioni",
+    "dayMenu": "Info giorno",
+    "lodgingMenu": "Alloggio",
+    "dayPreview": "Zona, luogo, riassunto, immagine",
+    "lodgingPreview": "Alloggio del giorno",
+    "noLodging": "Nessun alloggio",
+    "daySection": {
+      "eyebrow": "Sezione · info giorno",
+      "title": "Com'è fatto questo giorno.",
+      "sub": "Zona, titolo, il riassunto e la nota pratica · l'immagine di copertina."
+    },
+    "lodgingSection": {
+      "eyebrow": "Sezione · alloggio",
+      "title": "Dove dormi stanotte.",
+      "sub": "Tipo, nome, indirizzo · link di prenotazione e costo a notte."
+    },
+    "addLodging": "Aggiungi alloggio",
+    "removeLodging": "Rimuovi alloggio",
+    "confirmDelete": "Sicuro?",
+    "delete": "Elimina",
+    "deleteDay": "Elimina giorno",
+    "cancel": "Annulla",
+    "save": "Salva giorno"
   },
   "DayIncipit": {
     "wantToFind": "Vuoi trovare",

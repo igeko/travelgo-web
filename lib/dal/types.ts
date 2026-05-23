@@ -54,6 +54,9 @@ export type DbTrip = {
   theme_description: string | null;
   /** AI-generated Trip Home content (see lib/trip-home/meta.ts). Untyped at the DB layer. */
   home_meta: unknown | null;
+  /** User-set departure / arrival airports (see lib/trip-home/airports.ts). */
+  departure_airport: unknown | null;
+  arrival_airport: unknown | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

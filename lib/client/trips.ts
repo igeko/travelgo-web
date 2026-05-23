@@ -3,6 +3,7 @@
  */
 import type { TripSummary, TripSnapshot, DbTrip, MemberRole, InviteRole } from "@/lib/dal";
 import type { HomeMeta } from "@/lib/trip-home/meta";
+import type { TripAirport } from "@/lib/trip-home/airports";
 import type { TripMemberView, TripInviteView } from "@/lib/trip-members/types";
 import { get, post, patch, del } from "./http";
 
@@ -23,6 +24,8 @@ export type UpdateTripPayload = {
   children_count?: number | null;
   theme_tags?: string[];
   theme_description?: string | null;
+  departure_airport?: TripAirport | null;
+  arrival_airport?: TripAirport | null;
 };
 
 export const trips = {

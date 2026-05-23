@@ -18,6 +18,7 @@ import {
   type TripHomeMeta,
 } from "@/lib/trip-home/meta";
 import { buildBoardingMessages, parseBoardingMeta } from "@/lib/trip-home/boarding-prompt";
+import { type TripAirport } from "@/lib/trip-home/airports";
 import { unwrap } from "./util";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -40,6 +41,8 @@ export type UpdateTripPatch = {
   children_count?: number | null;
   theme_tags?: string[];
   theme_description?: string | null;
+  departure_airport?: TripAirport | null;
+  arrival_airport?: TripAirport | null;
 };
 
 const MAX_TRIP_DAYS = 366;
@@ -49,6 +52,16 @@ function safeIsoDate(value: unknown): string | null {
   if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : value;
+}
+
+/** Validate/normalize a user-set airport; null clears it. IATA must be 3 letters. */
+function normalizeAirport(input: TripAirport | null): TripAirport | null {
+  if (!input) return null;
+  const city = (input.city ?? "").trim();
+  const iata = (input.iata ?? "").trim().toUpperCase();
+  if (iata && !/^[A-Z]{3}$/.test(iata)) throw badRequest("Airport code must be 3 letters");
+  if (!city && !iata) return null;
+  return { city, iata };
 }
 
 /** Every ISO date from start..end inclusive (capped). */
@@ -128,6 +141,12 @@ export class TripService {
     if (patch.theme_tags !== undefined) update.theme_tags = patch.theme_tags;
     if (patch.theme_description !== undefined) {
       update.theme_description = patch.theme_description ?? undefined;
+    }
+    if (patch.departure_airport !== undefined) {
+      update.departure_airport = normalizeAirport(patch.departure_airport);
+    }
+    if (patch.arrival_airport !== undefined) {
+      update.arrival_airport = normalizeAirport(patch.arrival_airport);
     }
 
     const datesChanged = patch.start_date !== undefined || patch.end_date !== undefined;

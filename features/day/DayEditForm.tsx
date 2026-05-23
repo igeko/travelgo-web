@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { IconBed, IconMapPin, IconPlus, IconTrash, IconX } from "@/components/ui/icons";
@@ -118,6 +119,7 @@ export function DayEditForm({
   onDelete,
   className,
 }: DayEditFormProps) {
+  const t = useTranslations("DayEditForm");
   const heroRef = useRef<DayInfoEditFormHandle>(null);
   const lodgingRef = useRef<LodgingEditFormHandle>(null);
 
@@ -134,8 +136,8 @@ export function DayEditForm({
     });
   }
 
-  const dayPreview = hero?.subtitle || hero?.title || "Zona, luogo, riassunto, immagine";
-  const lodgingPreview = hasLodging ? (lodging?.name || "Alloggio del giorno") : "Nessun alloggio";
+  const dayPreview = hero?.subtitle || hero?.title || t("dayPreview");
+  const lodgingPreview = hasLodging ? (lodging?.name || t("lodgingPreview")) : t("noLodging");
 
   return (
     <div
@@ -148,9 +150,9 @@ export function DayEditForm({
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-border">
         <div className="flex items-baseline gap-2">
-          <span className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium">Modifica giorno</span>
+          <span className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium">{t("title")}</span>
           {dayNumber !== undefined && (
-            <span className="text-mini font-medium text-ink">Giorno {dayNumber}</span>
+            <span className="text-mini font-medium text-ink">{t("day", { number: dayNumber })}</span>
           )}
           {dateLabel && <span className="text-mini text-ink-faint">· {dateLabel}</span>}
         </div>
@@ -158,7 +160,7 @@ export function DayEditForm({
           type="button"
           onClick={onCancel}
           className="w-6 h-6 rounded-full inline-flex items-center justify-center text-ink-faint hover:bg-surface-soft hover:text-ink transition-colors"
-          aria-label="Chiudi senza salvare"
+          aria-label={t("close")}
         >
           <IconX className="w-3.5 h-3.5" />
         </button>
@@ -171,9 +173,9 @@ export function DayEditForm({
           {/* Info giorno */}
           <div className={cn(section !== "day" && "hidden")}>
             <SectionHeader
-              eyebrow="Sezione · info giorno"
-              title="Com'è fatto questo giorno."
-              sub="Zona, titolo, il riassunto e la nota pratica · l'immagine di copertina."
+              eyebrow={t("daySection.eyebrow")}
+              title={t("daySection.title")}
+              sub={t("daySection.sub")}
             />
             <DayInfoEditForm
               ref={heroRef}
@@ -195,9 +197,9 @@ export function DayEditForm({
           {/* Alloggio */}
           <div className={cn(section !== "lodging" && "hidden")}>
             <SectionHeader
-              eyebrow="Sezione · alloggio"
-              title="Dove dormi stanotte."
-              sub="Tipo, nome, indirizzo · link di prenotazione e costo a notte."
+              eyebrow={t("lodgingSection.eyebrow")}
+              title={t("lodgingSection.title")}
+              sub={t("lodgingSection.sub")}
             />
             {hasLodging ? (
               <>
@@ -208,7 +210,7 @@ export function DayEditForm({
                     className="inline-flex items-center gap-1 text-tiny font-medium text-ink-faint hover:text-danger-fg transition-colors"
                   >
                     <IconTrash className="w-3.5 h-3.5" />
-                    Rimuovi alloggio
+                    {t("removeLodging")}
                   </button>
                 </div>
                 <LodgingEditForm
@@ -227,7 +229,7 @@ export function DayEditForm({
                 className="inline-flex items-center justify-center gap-1.5 self-start text-mini font-medium rounded-pill px-4 py-2 border border-dashed border-border text-ink-soft hover:border-border-strong hover:text-ink transition-colors"
               >
                 <IconPlus className="w-3.5 h-3.5 text-orange" />
-                Aggiungi alloggio
+                {t("addLodging")}
               </button>
             )}
           </div>
@@ -235,19 +237,19 @@ export function DayEditForm({
 
         {/* Menu pane (destra) */}
         <aside className="bg-surface-soft border-b md:border-b-0 md:border-l border-border px-3 py-5 order-1 md:order-2">
-          <p className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium px-3 mb-3.5">Sezioni</p>
+          <p className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium px-3 mb-3.5">{t("sections")}</p>
           <nav className="flex flex-col gap-0.5">
             <MenuItem
               active={section === "day"}
               icon={<IconMapPin />}
-              label="Info giorno"
+              label={t("dayMenu")}
               preview={dayPreview}
               onSelect={() => setSection("day")}
             />
             <MenuItem
               active={section === "lodging"}
               icon={<IconBed />}
-              label="Alloggio"
+              label={t("lodgingMenu")}
               preview={lodgingPreview}
               onSelect={() => setSection("lodging")}
             />
@@ -260,28 +262,28 @@ export function DayEditForm({
         {onDelete ? (
           confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-mini text-danger-fg">Sicuro?</span>
+              <span className="text-mini text-danger-fg">{t("confirmDelete")}</span>
               <Button variant="ghost" tone="danger" iconOnly={false} onClick={onDelete}>
                 <IconTrash />
-                Elimina
+                {t("delete")}
               </Button>
               <Button variant="text-only" iconOnly={false} onClick={() => setConfirmDelete(false)}>
-                Annulla
+                {t("cancel")}
               </Button>
             </div>
           ) : (
             <Button variant="ghost" tone="danger" iconOnly={false} onClick={() => setConfirmDelete(true)}>
               <IconTrash />
-              Elimina giorno
+              {t("deleteDay")}
             </Button>
           )
         ) : (
           <span />
         )}
         <div className="flex items-center gap-2">
-          <Button variant="text-only" iconOnly={false} onClick={onCancel}>Annulla</Button>
+          <Button variant="text-only" iconOnly={false} onClick={onCancel}>{t("cancel")}</Button>
           <Button variant="solid" tone="neutral" iconOnly={false} onClick={handleSave}>
-            Salva giorno
+            {t("save")}
           </Button>
         </div>
       </div>

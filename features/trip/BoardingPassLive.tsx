@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import { api } from "@/lib/client";
 import type { BoardingLocaleMeta } from "@/lib/trip-home/meta";
+import type { TripAirport } from "@/lib/trip-home/airports";
 import { BoardingPass } from "./BoardingPass";
 
 type Props = {
@@ -26,6 +27,9 @@ type Props = {
   destinationTitle: string;
   /** Boarding section already cached on the trip for the current locale, if any. */
   initialBoarding?: BoardingLocaleMeta | null;
+  /** User-set airports — override the AI-inferred legs when present. */
+  departureAirport?: TripAirport | null;
+  arrivalAirport?: TripAirport | null;
 };
 
 export function BoardingPassLive({
@@ -35,6 +39,8 @@ export function BoardingPassLive({
   passengerName,
   destinationTitle,
   initialBoarding,
+  departureAirport,
+  arrivalAirport,
 }: Props) {
   const locale = useLocale();
   const [boarding, setBoarding] = useState<BoardingLocaleMeta | null>(initialBoarding ?? null);
@@ -53,21 +59,27 @@ export function BoardingPassLive({
     };
   }, [tripId, locale, boarding]);
 
+  // User-set airports win over the AI guess; otherwise fall back to the boarding meta.
+  const origin =
+    departureAirport && (departureAirport.city || departureAirport.iata)
+      ? { city: departureAirport.city, code: departureAirport.iata || undefined }
+      : undefined;
+
+  const destCity = arrivalAirport?.city || boarding?.city || destinationTitle;
+  const destCode = arrivalAirport?.iata || boarding?.airport || undefined;
+
   return (
     <BoardingPass
       trip={trip}
       recordLocator={recordLocator}
       passengerName={passengerName}
-      destination={
-        boarding
-          ? {
-              city: boarding.city,
-              code: boarding.airport,
-              country: boarding.country,
-              countryColor: boarding.countryColor ?? undefined,
-            }
-          : { city: destinationTitle }
-      }
+      origin={origin}
+      destination={{
+        city: destCity,
+        code: destCode,
+        country: boarding?.country,
+        countryColor: boarding?.countryColor ?? undefined,
+      }}
       goQuote={boarding?.welcome || undefined}
     />
   );

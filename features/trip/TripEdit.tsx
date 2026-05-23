@@ -24,8 +24,9 @@ import { SoftField } from "@/components/ui/SoftField";
 import { IconInfoCircle, IconLock, IconMail, IconMapPin, IconSend, IconX } from "@/components/ui/icons";
 import type { DbTrip } from "@/lib/dal/types";
 import type { UpdateTripPayload } from "@/lib/client/trips";
+import { parseAirport, cleanAirport, type TripAirport } from "@/lib/trip-home/airports";
 
-type SectionId = "place" | "dates" | "travelers" | "invites" | "theme";
+type SectionId = "place" | "dates" | "airports" | "travelers" | "invites" | "theme";
 
 const THEMES = [
   "Nature", "Food", "Culture", "Sport",
@@ -34,7 +35,8 @@ const THEMES = [
 
 type TripFacts = Pick<
   DbTrip,
-  "title" | "start_date" | "end_date" | "adults_count" | "children_count" | "theme_tags" | "theme_description"
+  "title" | "start_date" | "end_date" | "adults_count" | "children_count"
+  | "theme_tags" | "theme_description" | "departure_airport" | "arrival_airport"
 >;
 
 type Member = Awaited<ReturnType<typeof api.trips.members>>[number];
@@ -47,6 +49,18 @@ function fromIso(s: string | null): Date | null {
   if (!s) return null;
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function sameAirport(a: TripAirport | null, b: TripAirport | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.city === b.city && a.iata === b.iata;
+}
+
+function airportsPreview(depIata: string, arrIata: string): string {
+  const dep = depIata.trim().toUpperCase();
+  const arr = arrIata.trim().toUpperCase();
+  if (dep && arr) return `${dep} → ${arr}`;
+  return dep || arr || "";
 }
 
 export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: TripFacts; onClose: () => void }) {
@@ -62,6 +76,13 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   const [kids, setKids] = useState(trip.children_count ?? 0);
   const [themes, setThemes] = useState<string[]>(trip.theme_tags ?? []);
   const [themeNote, setThemeNote] = useState(trip.theme_description ?? "");
+
+  const initialDep = parseAirport(trip.departure_airport);
+  const initialArr = parseAirport(trip.arrival_airport);
+  const [depCity, setDepCity] = useState(initialDep?.city ?? "");
+  const [depIata, setDepIata] = useState(initialDep?.iata ?? "");
+  const [arrCity, setArrCity] = useState(initialArr?.city ?? "");
+  const [arrIata, setArrIata] = useState(initialArr?.iata ?? "");
 
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -90,6 +111,11 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
     if (kids !== (trip.children_count ?? 0)) patch.children_count = kids;
     if (themes.join("|") !== (trip.theme_tags ?? []).join("|")) patch.theme_tags = themes;
     if (themeNote !== (trip.theme_description ?? "")) patch.theme_description = themeNote;
+
+    const dep = cleanAirport(depCity, depIata);
+    const arr = cleanAirport(arrCity, arrIata);
+    if (!sameAirport(dep, initialDep)) patch.departure_airport = dep;
+    if (!sameAirport(arr, initialArr)) patch.arrival_airport = arr;
     return patch;
   }
 
@@ -111,6 +137,7 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
   const items: { id: SectionId; label: string; preview: string; locked?: boolean }[] = [
     { id: "place", label: t("place.label"), preview: trip.title, locked: true },
     { id: "dates", label: t("dates.label"), preview: dates.start && dates.end ? t("dates.preview", { nights }) : t("notSet") },
+    { id: "airports", label: t("airports.label"), preview: airportsPreview(depIata, arrIata) || t("notSet") },
     { id: "travelers", label: t("travelers.label"), preview: t("travelers.preview", { adults, children: kids }) },
     { id: "invites", label: t("invites.label"), preview: t("invites.preview", { members: members.length, invites: invites.length }) },
     { id: "theme", label: t("theme.label"), preview: themes.length ? themes.slice(0, 3).join(" · ") : t("notSet") },
@@ -175,6 +202,12 @@ export function TripEdit({ tripId, trip, onClose }: { tripId: string; trip: Trip
         <div className="p-6 md:p-7">
           {section === "place" && <PlacePane place={trip.title} />}
           {section === "dates" && <DatesPane dates={dates} setDates={setDates} nights={nights} />}
+          {section === "airports" && (
+            <AirportsPane
+              depCity={depCity} setDepCity={setDepCity} depIata={depIata} setDepIata={setDepIata}
+              arrCity={arrCity} setArrCity={setArrCity} arrIata={arrIata} setArrIata={setArrIata}
+            />
+          )}
           {section === "travelers" && (
             <TravelersPane adults={adults} setAdults={setAdults} kids={kids} setKids={setKids} />
           )}
@@ -248,6 +281,64 @@ function DatesPane({ dates, setDates, nights }: { dates: DateRange; setDates: (r
       <SectionHeader eyebrow={t("dates.eyebrow")} title={t("dates.title")} sub={t("dates.sub")} />
       <DatePickerField mode="range" value={dates} onChange={setDates} fromDate={new Date()} />
       {nights > 0 && <p className="mt-3 font-serif italic text-mini text-ink-faint">{t("dates.nights", { nights })}</p>}
+    </div>
+  );
+}
+
+/* ── AIRPORTS ──────────────────────────────────────────────────────── */
+
+function AirportsPane({
+  depCity, setDepCity, depIata, setDepIata,
+  arrCity, setArrCity, arrIata, setArrIata,
+}: {
+  depCity: string; setDepCity: (v: string) => void; depIata: string; setDepIata: (v: string) => void;
+  arrCity: string; setArrCity: (v: string) => void; arrIata: string; setArrIata: (v: string) => void;
+}) {
+  const t = useTranslations("TripEdit");
+  return (
+    <div>
+      <SectionHeader eyebrow={t("airports.eyebrow")} title={t("airports.title")} sub={t("airports.sub")} />
+      <div className="flex flex-col gap-6">
+        <AirportLeg
+          legLabel={t("airports.departure")}
+          city={depCity} setCity={setDepCity} iata={depIata} setIata={setDepIata}
+          cityLabel={t("airports.city")} iataLabel={t("airports.code")}
+          cityPlaceholder={t("airports.depCityPlaceholder")}
+        />
+        <AirportLeg
+          legLabel={t("airports.arrival")}
+          city={arrCity} setCity={setArrCity} iata={arrIata} setIata={setArrIata}
+          cityLabel={t("airports.city")} iataLabel={t("airports.code")}
+          cityPlaceholder={t("airports.arrCityPlaceholder")}
+        />
+      </div>
+      <p className="mt-4 font-serif italic text-tiny text-ink-faint leading-snug">{t("airports.hint")}</p>
+    </div>
+  );
+}
+
+function AirportLeg({
+  legLabel, city, setCity, iata, setIata, cityLabel, iataLabel, cityPlaceholder,
+}: {
+  legLabel: string;
+  city: string; setCity: (v: string) => void;
+  iata: string; setIata: (v: string) => void;
+  cityLabel: string; iataLabel: string; cityPlaceholder: string;
+}) {
+  return (
+    <div>
+      <p className="text-micro tracking-eyebrow uppercase text-orange-deep font-medium mb-2">{legLabel}</p>
+      <div className="grid grid-cols-[1fr_110px] gap-2">
+        <SoftField label={cityLabel} value={city} onChange={setCity} placeholder={cityPlaceholder} hideCounter />
+        <SoftField
+          label={iataLabel}
+          value={iata}
+          onChange={(v) => setIata(v.toUpperCase().slice(0, 3))}
+          placeholder="FCO"
+          maxLength={3}
+          hideCounter
+        />
+      </div>
     </div>
   );
 }

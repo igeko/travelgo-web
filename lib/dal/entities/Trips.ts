@@ -28,6 +28,7 @@ import {
 } from "../types";
 import type { Trip, Day, Activity, TripSnapshot, BlockType, BookingStatus } from "../domain";
 import type { TripHomeMeta } from "@/lib/trip-home/meta";
+import type { TripAirport } from "@/lib/trip-home/airports";
 
 // ── Input types ───────────────────────────────────────────────────
 
@@ -46,6 +47,8 @@ export type CreateTripInput = {
   theme_tags?: string[];
   theme_description?: string;
   home_meta?: TripHomeMeta | null;
+  departure_airport?: TripAirport | null;
+  arrival_airport?: TripAirport | null;
   created_by?: string;
 };
 
