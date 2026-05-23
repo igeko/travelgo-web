@@ -41,9 +41,19 @@ import { BridgeEditor } from "./Timeline/BridgeEditor";
 import { formatMinutes } from "./Timeline/duration";
 import { TYPE_ICON, TRANSPORT_ICON } from "./Timeline/icons";
 
-/* ─── geometry ──────────────────────────────────────────────────── */
-const SPINE_LEFT = 110; // padding-left of spine container (allargata per ospitare le label periodo a sinistra)
-const SPINE_X    = 97;  // x position of the vertical spine line
+/* ─── geometry ──────────────────────────────────────────────────────
+   Two left gutters: the wide one reserves room for the period labels
+   ("MATTINA", …) to the left of the times; the narrow one drops that
+   reserved width when labels are hidden. The spine line sits 13px left of
+   the row content edge; the time/icon are positioned relative to the row
+   so they follow the gutter automatically. Total width shrinks by the same
+   delta as the gutter, so the content column keeps its width.
+─────────────────────────────────────────────────────────────────── */
+const SPINE_LEFT      = 110; // padding-left with period labels
+const SPINE_LEFT_BARE = 84;  // padding-left without labels — reclaims the gutter
+const SPINE_GAP       = 13;  // spine line offset left of the row content edge
+const SPINE_X         = SPINE_LEFT - SPINE_GAP; // 97
+const WIDTH           = 498;
 
 /* ─── add state ──────────────────────────────────────────────────── */
 type AddState =
@@ -591,6 +601,12 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
   // bridge key = "blockId-in" | "blockId-out"
   const [expandedBridgeKey, setExpandedBridgeKey] = useState<string | null>(null);
 
+  // Without period labels the left gutter is narrowed and the whole timeline
+  // shrinks by the same delta — the content column keeps its width.
+  const spineLeft = hideSlotLabels ? SPINE_LEFT_BARE : SPINE_LEFT;
+  const spineX    = spineLeft - SPINE_GAP;
+  const width     = WIDTH - (SPINE_LEFT - spineLeft);
+
   /* ── group blocks by slot ────────────────────────────────────── */
   const slotGroups = useMemo(() => {
     const groups: Record<SlotKey, Block[]> = { morning: [], afternoon: [], evening: [], night: [] };
@@ -734,7 +750,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
     <div
       role="alert"
       className="mb-2 rounded-md border border-danger-border bg-danger-bg px-3 py-1.5 text-mini text-danger-fg"
-      style={{ marginLeft: SPINE_LEFT }}
+      style={{ marginLeft: spineLeft }}
     >
       {dupError}
     </div>
@@ -747,12 +763,12 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
         {dupNotice}
         <div
           className="py-8 text-center text-meta text-ink-faint"
-          style={{ paddingLeft: SPINE_LEFT + 16 }}
+          style={{ paddingLeft: spineLeft + 16 }}
         >
           {tT("noActivities")}.
         </div>
         {editMode && (
-          <div className="relative pb-4" style={{ paddingLeft: SPINE_LEFT }}>
+          <div className="relative pb-4" style={{ paddingLeft: spineLeft }}>
             {renderAddZone(undefined, "morning", true)}
           </div>
         )}
@@ -762,7 +778,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
 
   /* ── main render ─────────────────────────────────────────────── */
   return (
-    <div className="min-w-[498px] max-w-[498px]">
+    <div style={{ minWidth: width, maxWidth: width }}>
       {dupNotice}
       {activeSlots.map((slot, slotIdx) => {
         const slotBlocks = slotGroups[slot];
@@ -779,13 +795,13 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
             {/* Spine section */}
             <div
               className="relative"
-              style={{ paddingLeft: SPINE_LEFT }}
+              style={{ paddingLeft: spineLeft }}
             >
               {/* Vertical spine line */}
               <div
                 className="absolute w-[1.5px] bg-[rgba(13,44,61,0.14)] pointer-events-none"
                 style={{
-                  left:   SPINE_X,
+                  left:   spineX,
                   top:    isFirstSection ? 0 : (firstBlockHasBridgeIn && !editMode ? 12 : 0),
                   bottom: isLastSection  ? 32 : 0,
                 }}
