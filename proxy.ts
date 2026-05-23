@@ -13,7 +13,6 @@
  *       /api/ai/*      — OpenAI (assistente Go v2)
  *       /api/go/*      — OpenAI (assistente Go v1 + deep-dive)
  *       /api/routes    — Google Routes
- *       /api/media/*   — import/upload media (SSRF + quota protection)
  *
  * Rate-limit note: in-memory store works on single instances. For
  * multi-region Vercel deployments, swap with Upstash Redis.
@@ -35,7 +34,6 @@ const API_PROTECTED_PREFIXES = [
   "/api/ai",
   "/api/go",
   "/api/routes",
-  "/api/media",
   "/api/activities",
   "/api/trips",
   "/api/days",
@@ -49,7 +47,6 @@ const RL_CONFIGS: Array<[prefix: string, cfg: RLConfig]> = [
   ["/api/go",     { max: 20,  windowMs: 60_000 }],
   ["/api/places", { max: 120, windowMs: 60_000 }],
   ["/api/routes", { max: 60,  windowMs: 60_000 }],
-  ["/api/media",  { max: 30,  windowMs: 60_000 }],
 ];
 
 const rlStore = new Map<string, { count: number; resetAt: number }>();
@@ -165,6 +162,5 @@ export const config = {
     "/api/ai/:path*",
     "/api/go/:path*",
     "/api/routes",
-    "/api/media/:path*",
   ],
 };

@@ -180,27 +180,6 @@ export function ActivityEditForm({
   /* ── AI describe state ── */
   const [descLoading, setDescLoading] = useState(false);
 
-  /* ── Photo import from enrichment panel ── */
-  const [photoImportLoading, setPhotoImportLoading] = useState(false);
-
-  async function handleImportPhoto() {
-    if (!activityId || !tripId || !enriched?.photoRefs[0] || photoImportLoading) return;
-    setPhotoImportLoading(true);
-    try {
-      const data = await api.media.importUrl({
-        photoRef: enriched.photoRefs[0],
-        bucket: "trip-media",
-        storagePath: `trips/${tripId}/activities/${activityId}/hero.webp`,
-        tripId,
-      });
-      setHeroImage(`${data.publicUrl}?t=${Date.now()}`);
-    } catch {
-      // silent fail — user can upload manually via ImagePicker
-    } finally {
-      setPhotoImportLoading(false);
-    }
-  }
-
   /* ── Photo-search triggered on title blur ── */
   async function handleTitleBlur() {
     const trimmed = title.trim();
@@ -448,7 +427,7 @@ export function ActivityEditForm({
                     </ul>
                   )}
 
-                  {/* Action row: use address + save photo */}
+                  {/* Action row: use address */}
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     {!place && (
                       <button
@@ -457,19 +436,6 @@ export function ActivityEditForm({
                         className="text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans"
                       >
                         {t("useThisAddress")}
-                      </button>
-                    )}
-                    {activityId && tripId && enriched.photoRefs[0] && !heroImage && (
-                      <button
-                        type="button"
-                        onClick={handleImportPhoto}
-                        disabled={photoImportLoading}
-                        className={cn(
-                          "text-orange-deep underline underline-offset-2 decoration-orange-deep/30 hover:decoration-orange-deep transition-colors font-sans",
-                          photoImportLoading && "opacity-50 cursor-wait",
-                        )}
-                      >
-                        {photoImportLoading ? "Saving photo…" : "Use as photo"}
                       </button>
                     )}
                   </div>

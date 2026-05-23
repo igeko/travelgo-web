@@ -20,7 +20,6 @@ import { activities } from "./activities";
 import { yumes } from "./yumes";
 import { user } from "./user";
 import { feedback } from "./feedback";
-import { media } from "./media";
 import { places } from "./places";
 import { routes } from "./routes";
 import { ai } from "./ai";
@@ -36,7 +35,6 @@ export const api = {
   yumes,
   user,
   feedback,
-  media,
   places,
   routes,
   ai,
@@ -53,5 +51,4 @@ export type { Yume } from "./yumes";
 export type { CreateTripPayload } from "./trips";
 export type { SubmitNotePayload } from "./feedback";
 export type { Me } from "./user";
-export type { ImportUrlPayload, ImportedPhoto } from "./media";
 export type { LatLng } from "./routes";

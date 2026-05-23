@@ -31,11 +31,6 @@ export enum MembershipTable {
   Invites = "trip_invites",
 }
 
-/** Photo metadata (storage objects live in Supabase Storage, not here). */
-export enum MediaTable {
-  Photos = "photos",
-}
-
 /** Trip journal entries. */
 export enum JournalTable {
   Entries = "journal_entries",
