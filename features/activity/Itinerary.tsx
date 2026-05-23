@@ -46,6 +46,8 @@ type Props = {
   externalShowAddForm?: boolean;
   onAddFormClose?: () => void;
   onAskGo?: (title: string, activityId?: string) => void;
+  /** Schedule a yume dropped onto the activity list at a chosen slot/time. */
+  onScheduleYume?: (yumeId: string, opts: { title: string; slot: "morning" | "afternoon" | "evening" | "night"; time: string | null }) => void;
 };
 
 export function Itinerary({
@@ -64,6 +66,7 @@ export function Itinerary({
   externalShowAddForm,
   onAddFormClose,
   onAskGo,
+  onScheduleYume,
 }: Props) {
   const t = useTranslations("Itinerary");
   const tMode = useTranslations("DayViewModeToggle");
@@ -292,6 +295,7 @@ export function Itinerary({
             onActivityDelete={onActivityDelete}
             onAskGo={onAskGo}
             onActivityMapClick={handleActivityMapClick}
+            onScheduleYume={onScheduleYume}
           />
         </>
       )}

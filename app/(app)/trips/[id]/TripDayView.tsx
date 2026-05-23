@@ -12,7 +12,8 @@ import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
 import { IconArrowRightCircle, IconChevronLeft, IconChevronRight, IconX } from "@/components/ui/icons";
-import { DayIncipit } from "@/features/day/DayIncipit";
+import { GoPanel } from "@/features/go/GoPanel";
+import type { GoContext } from "@/features/go/types";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { Timeline } from "@/features/activity/Timeline";
 import { DayItem } from "@/features/day/DayItem";
@@ -579,16 +580,12 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 city: hero.subtitle || null,
                 label: hero.title || null,
                 day_type,
-                notes: hero.practicalNote || null,
-                summary: hero.summary || null,
                 image_url,
               });
               await api.days.update(selectedDayId, {
                 city: hero.subtitle,
                 label: hero.title,
                 day_type,
-                notes: hero.practicalNote,
-                summary: hero.summary,
                 image_url,
               }).catch(() => {});
             }}
@@ -656,16 +653,12 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               city: data.subtitle || null,
               label: data.title || null,
               day_type,
-              notes: data.practicalNote || null,
-              summary: data.summary || null,
               image_url,
             });
             await api.days.update(selectedDayId, {
               city: data.subtitle,
               label: data.title,
               day_type,
-              notes: data.practicalNote,
-              summary: data.summary,
               image_url,
             }).catch(() => {});
           }}
@@ -720,17 +713,26 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
 
         <div>
 
-        {/* Day incipit — Go voice + day summary + "ask me" CTA.
-            Unifies the former Quote + GoLaunchTrigger blocks. Go stays
-            reachable via GoChatFloat on days without a summary. */}
-        {(selectedDay.summary || selectedDay.notes) && (
-          <DayIncipit
-            lead={selectedDay.summary ?? selectedDay.notes!}
-            note={selectedDay.summary ? (selectedDay.notes ?? undefined) : undefined}
-            onAsk={openGo}
-            className="mt-7"
-          />
-        )}
+        {/* Go panel — trip/day assistant (trigger → API → widgets) */}
+        <GoPanel
+          context={{
+            page: "day",
+            tripId: trip.id,
+            trigger: { source: "go_banner" },
+            trip: {
+              destination: trip.subtitle || trip.title,
+              dates: { start: trip.start_date, end: trip.end_date },
+              themes: [],
+            },
+            day: {
+              number: selectedDay.day_number,
+              title: selectedDay.label ?? selectedDay.city ?? undefined,
+              activitiesCount: activities.length,
+            },
+          } satisfies GoContext}
+          onTrigger={openGo}
+          className="mt-7"
+        />
 
         {/* Itinerary */}
         <div className={cn("mt-8 transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
@@ -747,6 +749,14 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               if (selectedDay?.id) loadActivities(selectedDay.id);
             }}
             onAskGo={(title, activityId) => openGoWith(`Cerca informazioni su: ${title}`, activityId)}
+            onScheduleYume={async (yumeId, { slot, time }) => {
+              try {
+                await api.activities.addToDay(selectedDayId, { entity_id: yumeId, slot, time });
+                await loadActivities(selectedDayId);
+              } catch {
+                // schedule failed — leave list unchanged
+              }
+            }}
             initialShowMap={selectedDay.show_map}
             onToggleMap={async (show) => {
               await api.days.update(selectedDayId, { show_map: show }).catch(() => {});

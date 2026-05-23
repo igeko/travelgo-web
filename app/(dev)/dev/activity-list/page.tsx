@@ -5,7 +5,38 @@ import { StoryPage, StoryFrame } from "../_components/StoryFrame";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 import { ControlsPanel, type ControlGroup } from "../_components/ControlsPanel";
 import { ActivityList } from "@/features/activity/ActivityList";
+import { writeYumeDrag } from "@/features/yumeji/yumeDrag";
 import type { Activity } from "@/lib/dal/domain";
+
+/** Mini palette of draggable yume to demo dropping into the list. */
+function YumePalette() {
+  const yume = [
+    { id: "y-skytree", title: "Tokyo Skytree", location: "Sumida" },
+    { id: "y-meiji", title: "Meiji Jingu", location: "Shibuya" },
+    { id: "y-akiba", title: "Akihabara", location: "Chiyoda" },
+  ];
+  return (
+    <div className="w-44 shrink-0">
+      <p className="text-[9px] tracking-eyebrow uppercase text-orange-deep font-medium mb-2">Yume (trascina →)</p>
+      <ul className="flex flex-col gap-1.5">
+        {yume.map((y) => (
+          <li
+            key={y.id}
+            draggable
+            onDragStart={(e) => writeYumeDrag(e.dataTransfer, y)}
+            className="flex items-center gap-2 px-2.5 py-2 rounded-md border border-border bg-surface text-mini text-ink cursor-grab active:cursor-grabbing hover:border-border-strong"
+          >
+            <span className="w-7 h-7 rounded-md bg-surface-soft shrink-0" />
+            <span className="min-w-0">
+              <span className="block font-medium truncate">{y.title}</span>
+              <span className="block text-tiny text-ink-faint truncate">{y.location}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const STUB: Pick<Activity, "trip_id" | "activity_id" | "position" | "icon" | "url" | "location_place_id" | "location_lat" | "location_lng" | "place_enriched" | "booking" | "type" | "fuzzy" | "instance_note" | "booking_status" | "bridge_in_json" | "bridge_out_json" | "entity_id"> = {
   trip_id: "trip-1",
@@ -133,12 +164,21 @@ export default function ActivityListStories() {
       >
         <StoryFrame
           name="Debugger"
-          description="Activities grouped by slot (morning, afternoon, evening, night). In edit mode each row reveals affordances and an inline form."
+          description="Activities grouped by slot. In edit mode trascina uno Yume dalla palette su una riga (metà alta = prima, metà bassa = dopo) per programmarlo nella posizione scelta."
         >
-          <div className="w-full">
+          <div className="flex w-full items-start gap-5">
+            {editMode && <YumePalette />}
+            <div className="flex-1 min-w-0">
             <ActivityList
               activities={activities}
               editMode={editMode}
+              onScheduleYume={(yumeId, { title, slot, time }) => {
+                setActivities((prev) => [
+                  ...prev,
+                  { ...STUB, id: `sched-${Date.now()}`, activity_id: yumeId, day_id: "day-1", title, slot, time, short_desc: null, location: null, hero_image: null, budget_amount: null, budget_currency: null, budget_paid: false },
+                ]);
+                setLastAction(`scheduled: ${title} → ${slot} ${time ?? ""}`);
+              }}
               onActivitySave={(id, data) => {
                 setActivities((prev) =>
                   prev.map((a) =>
@@ -161,6 +201,7 @@ export default function ActivityListStories() {
                 <span className="text-ink">{lastAction}</span>
               </div>
             )}
+            </div>
           </div>
         </StoryFrame>
       </StoryPage>

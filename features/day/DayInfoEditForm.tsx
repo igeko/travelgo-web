@@ -88,8 +88,6 @@ export const DayInfoEditForm = forwardRef<DayInfoEditFormHandle, DayInfoEditForm
   resetKey,
   title,
   subtitle,
-  summary,
-  practicalNote,
   type,
   imageUrl,
   imageCompress,
@@ -103,12 +101,10 @@ export const DayInfoEditForm = forwardRef<DayInfoEditFormHandle, DayInfoEditForm
 }, ref) {
   const t = useTranslations("HeroBanner");
 
-  const [draftPlace,         setDraftPlace]         = useState(title);
-  const [draftZone,          setDraftZone]          = useState(subtitle ?? "");
-  const [draftSummary,       setDraftSummary]       = useState(summary ?? "");
-  const [draftPracticalNote, setDraftPracticalNote] = useState(practicalNote ?? "");
-  const [draftImageUrl,      setDraftImageUrl]      = useState(imageUrl ?? "");
-  const [draftHeroType,      setDraftHeroType]      = useState<HeroBannerType | undefined>(type);
+  const [draftPlace,    setDraftPlace]    = useState(title);
+  const [draftZone,     setDraftZone]     = useState(subtitle ?? "");
+  const [draftImageUrl, setDraftImageUrl] = useState(imageUrl ?? "");
+  const [draftHeroType, setDraftHeroType] = useState<HeroBannerType | undefined>(type);
 
   // Re-seed drafts when resetKey changes (mirrors the original HeroBanner
   // behaviour). Done during render via a previous-value guard.
@@ -117,8 +113,6 @@ export const DayInfoEditForm = forwardRef<DayInfoEditFormHandle, DayInfoEditForm
     setPrevResetKey(resetKey);
     setDraftPlace(title);
     setDraftZone(subtitle ?? "");
-    setDraftSummary(summary ?? "");
-    setDraftPracticalNote(practicalNote ?? "");
     setDraftImageUrl(imageUrl ?? "");
     setDraftHeroType(type);
   }
@@ -129,8 +123,6 @@ export const DayInfoEditForm = forwardRef<DayInfoEditFormHandle, DayInfoEditForm
       subtitle: draftZone,
       imageUrl: draftImageUrl,
       type: draftHeroType,
-      summary: draftSummary || undefined,
-      practicalNote: draftPracticalNote || undefined,
     };
   }
 
@@ -181,31 +173,7 @@ export const DayInfoEditForm = forwardRef<DayInfoEditFormHandle, DayInfoEditForm
         {/* col 2, row 2 */}
         <SoftField value={draftPlace} onChange={setDraftPlace} label={t("hero.location")} placeholder={t("hero.locationPlaceholder")} maxLength={120} hideCounter labelAlwaysVisible />
 
-        {/* Remaining fields · empty col-1 cell keeps the shared left edge */}
-        <div aria-hidden />
-        <SoftField
-          value={draftSummary}
-          onChange={setDraftSummary}
-          label={t("hero.summary")}
-          placeholder={t("hero.summaryPlaceholder")}
-          multiline
-          rows={2}
-          maxLength={280}
-          labelAlwaysVisible
-        />
-
-        <div aria-hidden />
-        <SoftField
-          value={draftPracticalNote}
-          onChange={setDraftPracticalNote}
-          label={t("hero.practicalNote")}
-          placeholder={t("hero.practicalNotePlaceholder")}
-          maxLength={120}
-          hideCounter
-          labelAlwaysVisible
-        />
-
-        {/* Type · labelled chip group */}
+        {/* Type · labelled chip group · empty col-1 cell keeps the shared left edge */}
         <div aria-hidden />
         <div className="flex flex-col gap-2">
           <span className="text-[9px] uppercase tracking-[0.08em] text-ink-faint font-medium px-0.5">

@@ -9,6 +9,7 @@ import {
   IconPencil,
   IconPlayerPlay,
   IconUnlink,
+  IconX,
 } from "@/components/ui/icons";
 import { StatusBadge, type ActivityStatus } from "@/components/ui/StatusBadge";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";
@@ -68,6 +69,9 @@ export type ActivityRowProps = {
   /** Labels for the row actions (edit / unschedule). */
   editLabel?: string;
   unscheduleLabel?: string;
+  /** Confirm question shown before unscheduling. */
+  unscheduleConfirmLabel?: string;
+  cancelLabel?: string;
   className?: string;
 };
 
@@ -103,9 +107,12 @@ export function ActivityRow({
   onMapClick,
   editLabel = "Edit",
   unscheduleLabel = "Remove from day",
+  unscheduleConfirmLabel = "Sure?",
+  cancelLabel = "Cancel",
   className,
 }: ActivityRowProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmUnschedule, setConfirmUnschedule] = useState(false);
 
   const isNow      = state === "now";
   const isSelected = state === "selected";
@@ -193,28 +200,55 @@ export function ActivityRow({
           <div
             className={cn(
               "flex items-center gap-1.5 shrink-0 transition-opacity duration-100",
-              editOpen ? "opacity-100" : "opacity-30 group-hover:opacity-100 focus-within:opacity-100",
+              (editOpen || confirmUnschedule) ? "opacity-100" : "opacity-30 group-hover:opacity-100 focus-within:opacity-100",
             )}
           >
-            <Button
-              variant="outline"
-              iconOnly
-              aria-label={editLabel}
-              title={editLabel}
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditOpen((v) => !v); }}
-            >
-              <IconPencil />
-            </Button>
-            {onDelete && (
-              <Button
-                variant="outline"
-                iconOnly
-                aria-label={unscheduleLabel}
-                title={unscheduleLabel}
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
-              >
-                <IconUnlink />
-              </Button>
+            {confirmUnschedule ? (
+              <>
+                <span className="text-tiny text-ink-soft mr-0.5 whitespace-nowrap">{unscheduleConfirmLabel}</span>
+                <Button
+                  variant="ghost"
+                  tone="danger"
+                  iconOnly
+                  aria-label={unscheduleLabel}
+                  title={unscheduleLabel}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete?.(); setConfirmUnschedule(false); }}
+                >
+                  <IconUnlink />
+                </Button>
+                <Button
+                  variant="outline"
+                  iconOnly
+                  aria-label={cancelLabel}
+                  title={cancelLabel}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmUnschedule(false); }}
+                >
+                  <IconX />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  iconOnly
+                  aria-label={editLabel}
+                  title={editLabel}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setEditOpen((v) => !v); }}
+                >
+                  <IconPencil />
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="outline"
+                    iconOnly
+                    aria-label={unscheduleLabel}
+                    title={unscheduleLabel}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmUnschedule(true); }}
+                  >
+                    <IconUnlink />
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

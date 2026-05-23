@@ -92,6 +92,11 @@ export type GoPanelProps = {
   context: GoContext;
   triggerLabel?: string;
   triggerSub?: string;
+  /**
+   * Override the trigger click. When provided, clicking the banner calls this
+   * instead of opening the panel's inline flow — e.g. to open the Go float chat.
+   */
+  onTrigger?: () => void;
   onAction?: (action: GoAction) => void;
   /**
    * Override della fetch verso /api/go.
@@ -117,6 +122,7 @@ export function GoPanel({
   context,
   triggerLabel,
   triggerSub = "Due parole da te, qualche idea da me.",
+  onTrigger,
   onAction,
   fetchFn,
   className,
@@ -179,7 +185,7 @@ export function GoPanel({
       <GoTriggerBanner
         label={triggerLabel}
         sub={triggerSub}
-        onClick={handleOpen}
+        onClick={onTrigger ?? handleOpen}
         className={className}
       />
     );
