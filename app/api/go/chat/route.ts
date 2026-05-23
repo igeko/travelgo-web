@@ -131,17 +131,19 @@ async function classifyIntent(
     ? `${CLASSIFIER_SYSTEM}\n\nCurrent context: the user has selected the card "${safeTitle}". If the message refers to it vaguely (e.g. "this", "that", "it", "quello", "questo", "approfondisci", "tell me more", "expand"), classify as { "mode": "deepdive", "query": "${safeTitle}" }.`
     : CLASSIFIER_SYSTEM;
 
-  const raw = (await chatJson({
-    tier: "fast",
-    maxTokens: 60,
-    messages: [
-      { role: "system", content: systemWithContext },
-      ...(recent as LlmMessage[]),
-    ],
-  })) || '{"mode":"chat"}';
+  // A provider error here must never 500 the route — fall back to chat mode.
   try {
+    const raw = (await chatJson({
+      tier: "fast",
+      maxTokens: 60,
+      messages: [
+        { role: "system", content: systemWithContext },
+        ...(recent as LlmMessage[]),
+      ],
+    })) || '{"mode":"chat"}';
     return JSON.parse(raw) as IntentResult;
-  } catch {
+  } catch (err) {
+    console.error("[go/chat] classify error:", err);
     return { mode: "chat" };
   }
 }
@@ -285,8 +287,14 @@ export async function POST(req: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const delta of stream) {
-        controller.enqueue(encoder.encode(delta));
+      try {
+        for await (const delta of stream) {
+          controller.enqueue(encoder.encode(delta));
+        }
+      } catch (err) {
+        // Provider error mid-stream (rate limit, timeout…): end cleanly so the
+        // client shows its fallback rather than a broken connection.
+        console.error("[go/chat] stream error:", err);
       }
       controller.close();
     },
