@@ -8,7 +8,6 @@
  *   dal.trips       Trips       trips + days + scheduling (scheduled_activities)
  *   dal.activities  Activities  activities + sections + sidebar + search
  *   dal.members     Membership  trip_members + trip_invites
- *   dal.journal     Journal     journal_entries
  *   dal.users       Users       auth + profiles + user_platform_roles
  *   dal.feedback    Feedback    tester_notes (admin)
  *
@@ -35,7 +34,6 @@ export * from "./supabase";
 export { Trips }       from "./entities/Trips";
 export { Activities }  from "./entities/Activities";
 export { Membership }  from "./entities/Membership";
-export { Journal }     from "./entities/Journal";
 export { Users }       from "./entities/Users";
 export { Feedback }    from "./entities/Feedback";
 
@@ -51,7 +49,6 @@ export type {
   ActivityScheduledInstance, ActivitySearchWishlistRow,
 } from "./entities/Activities";
 export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";
-export type { CreateJournalEntryInput, UpdateJournalEntryInput } from "./entities/Journal";
 export type { UserProfile, UpdateProfileInput } from "./entities/Users";
 export type { CreateTesterNoteInput } from "./entities/Feedback";
 
@@ -61,7 +58,6 @@ import { getBrowserClient, getServerClient, getServiceClient, type SupabaseClien
 import { Trips }       from "./entities/Trips";
 import { Activities }  from "./entities/Activities";
 import { Membership }  from "./entities/Membership";
-import { Journal }     from "./entities/Journal";
 import { Users }       from "./entities/Users";
 import { Feedback }    from "./entities/Feedback";
 
@@ -69,7 +65,6 @@ export type Dal = {
   trips:      Trips;
   activities: Activities;
   members:    Membership;
-  journal:    Journal;
   users:      Users;
   feedback:   Feedback;
 };
@@ -79,7 +74,6 @@ function buildDal(client: SupabaseClient): Dal {
     trips:      new Trips(client),
     activities: new Activities(client),
     members:    new Membership(client),
-    journal:    new Journal(client),
     users:      new Users(client),
     feedback:   new Feedback(client),
   };

@@ -222,18 +222,6 @@ export type DbPhoto = {
   created_at: string;
 };
 
-export type DbJournalEntry = {
-  id: string;
-  trip_id: string;
-  day_id: string | null;
-  activity_id: string | null;
-  body: string;
-  mood: string | null;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 export type DbTaxonomy = {
   id: string;
   slug: string;

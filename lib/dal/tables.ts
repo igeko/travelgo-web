@@ -31,11 +31,6 @@ export enum MembershipTable {
   Invites = "trip_invites",
 }
 
-/** Trip journal entries. */
-export enum JournalTable {
-  Entries = "journal_entries",
-}
-
 /** User profiles and platform-level roles. */
 export enum UserTable {
   Profiles = "user_profiles",
