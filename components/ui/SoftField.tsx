@@ -36,6 +36,8 @@ type CommonProps = {
   labelAlwaysVisible?: boolean;
   /** Visual size of the pill. Default "md". */
   size?: "sm" | "md";
+  /** Drop the pill chrome (bg/border/radius/padding) — for embedding inside another container. */
+  bare?: boolean;
   /** Slots: <SoftField.Prefix /> and/or <SoftField.Suffix /> */
   children?: ReactNode;
   /** Extra classes on the outer pill wrapper */
@@ -173,6 +175,7 @@ const SoftFieldBase = forwardRef<
     hideCounter,
     labelAlwaysVisible,
     size = "md",
+    bare = false,
     children,
     className,
     autoComplete,
@@ -202,20 +205,23 @@ const SoftFieldBase = forwardRef<
           // Named `group/sf` so Prefix/Suffix can react to focus-within and
           // to the multiline state on this wrapper.
           "group/sf relative flex",
-          small ? "gap-1 px-3.5 py-1.5" : "gap-1.5 px-[18px] py-[10px]",
+          bare ? "gap-1.5 p-0" : small ? "gap-1 px-3.5 py-1.5" : "gap-1.5 px-[18px] py-[10px]",
           // In sm the auto-sized (h-6) slot buttons are taller than the text
           // line and would stretch the pill — shrink them to match the line.
           small && "[&_button]:h-5 [&_button]:px-2",
           // Slot alignment: top in multiline (next to the first textarea line),
           // centered in single-line.
           multiline ? "items-start" : "items-center",
-          "bg-surface-input border border-border",
-          // Shape: pill for input, generous radius for textarea
-          multiline ? (small ? "rounded-[16px]" : "rounded-[20px]") : "rounded-pill",
-          // Interaction states
-          "transition-[background,border-color,box-shadow] duration-150",
-          "hover:border-border-strong",
-          "focus-within:border-orange focus-within:bg-surface focus-within:shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
+          // Pill chrome — skipped when bare (the field is embedded in another container).
+          !bare && [
+            "bg-surface-input border border-border",
+            // Shape: pill for input, generous radius for textarea
+            multiline ? (small ? "rounded-[16px]" : "rounded-[20px]") : "rounded-pill",
+            // Interaction states
+            "transition-[background,border-color,box-shadow] duration-150",
+            "hover:border-border-strong",
+            "focus-within:border-orange focus-within:bg-surface focus-within:shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
+          ],
           disabled && "opacity-50 pointer-events-none",
         )}
       >

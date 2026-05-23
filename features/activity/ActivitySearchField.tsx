@@ -101,6 +101,10 @@ export type ActivitySearchFieldProps = {
   className?: string;
   /** Visual size of the field, mirroring SoftField. Default "md". */
   size?: "sm" | "md";
+  /** Render the input without pill chrome (transparent) — for embedding in another container. */
+  bare?: boolean;
+  /** Only open the dropdown once the user has typed (no full list on focus). */
+  requireQuery?: boolean;
   /**
    * When `true`, render as an always-open inline panel (input + list).
    * Otherwise the dropdown floats and opens on focus.
@@ -126,6 +130,8 @@ export function ActivitySearchField({
   labelAlwaysVisible,
   className,
   size = "md",
+  bare = false,
+  requireQuery = false,
   defaultOpen = false,
   autoFocus = false,
   excludeIds,
@@ -312,6 +318,7 @@ export function ActivitySearchField({
       label={label}
       labelAlwaysVisible={labelAlwaysVisible}
       size={size}
+      bare={bare}
       autoComplete="off"
       inputProps={{
         autoFocus,
@@ -445,7 +452,7 @@ export function ActivitySearchField({
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
       {inputElement}
 
-      {isOpen && (flat.length > 0 || inputText.trim().length > 0) && (
+      {isOpen && (requireQuery ? inputText.trim().length > 0 : flat.length > 0 || inputText.trim().length > 0) && (
         <div
           className={cn(
             "absolute z-dropdown top-[calc(100%+6px)] left-0 right-0",
