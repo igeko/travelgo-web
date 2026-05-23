@@ -234,6 +234,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Trips",
     description: "Full-bleed hero image with text overlay + optional sub-banner",
   },
+  {
+    slug: "boarding-pass",
+    title: "BoardingPass",
+    group: "Features",
+    subgroup: "Trips",
+    description: "Trip hero shaped like a boarding pass · trip-schema facts + AI-provided airports/times/countdown",
+  },
   // AI subgroup
   {
     slug: "ai-suggest",

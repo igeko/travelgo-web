@@ -1263,9 +1263,10 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
           iconOnly
           tone="neutral"
           onClick={onClose}
-          aria-label="Close"
+          aria-label="Minimize"
+          title="Minimize"
         >
-          <IconX size={13} />
+          <IconChevronDown size={13} />
         </Button>
       </div>
 

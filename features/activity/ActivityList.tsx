@@ -60,6 +60,9 @@ export function ActivityList({
         title={a.title}
         description={a.short_desc ?? undefined}
         location={a.location ?? undefined}
+        placeId={a.location_place_id ?? undefined}
+        lat={a.location_lat}
+        lng={a.location_lng}
         icon={a.icon}
         thumb={a.hero_image ?? undefined}
         cost={a.budget_amount ? `¥${a.budget_amount.toLocaleString("en-US")}` : undefined}

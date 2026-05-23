@@ -17,7 +17,16 @@ import type { Dal, DbActivity, ActivityVisibility, ActivitySearchResult } from "
 import { notFound, badRequest, unauthorized } from "@/lib/api/errors";
 import { pickFields, isUuid, safeHttpUrl } from "@/lib/api/validation";
 import { DEFAULT_PAGE_SIZE, type Page } from "@/lib/pagination";
+import { resolveWidget } from "@/lib/yumeji/select";
+import type { YumejiCatalog, YumejiWidgetSpec } from "@/lib/yumeji/types";
 import { unwrap } from "./util";
+
+/**
+ * Upper bound on the catalog working set. The Yumeji page derives every widget
+ * from this single bounded load, so a collection of thousands never lands in
+ * memory whole — widgets show capped previews and drill down on demand.
+ */
+const CATALOG_WORKING_SET = 300;
 
 /** Entity fields a caller may set on an activity (create). */
 const ENTITY_FIELDS = [
@@ -115,6 +124,22 @@ export class YumeService {
         owner: a.created_by ? owners.get(a.created_by) ?? null : null,
       })),
       hasMore,
+    };
+  }
+
+  /**
+   * Build the Yumeji catalog: one bounded load of the user's collection, then
+   * each manifest widget derives its slice in memory (see lib/yumeji/select).
+   * No per-widget query, no full-collection fetch.
+   */
+  async buildCatalog(specs: YumejiWidgetSpec[]): Promise<YumejiCatalog> {
+    const userId = await this.currentUserId();
+    const workingSet = unwrap(
+      await this.dal.activities.listOwnedBy(userId, { limit: CATALOG_WORKING_SET }),
+    );
+    return {
+      widgets: specs.map((spec) => resolveWidget(spec, workingSet)),
+      isEmpty: workingSet.length === 0,
     };
   }
 

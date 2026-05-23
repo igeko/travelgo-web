@@ -29,6 +29,10 @@ export type ActivityRowProps = {
   location?: string;
   /** Google place_id — when present the location badge links to the exact place on Maps */
   placeId?: string;
+  /** Geocoded latitude. The "Map" badge only renders for a geocoded place (placeId or lat+lng). */
+  lat?: number | null;
+  /** Geocoded longitude. */
+  lng?: number | null;
   /** Map pin number shown on the location badge */
   pin?: number;
   /** Activity category icon key (see Timeline/stopIcons) — used to give the Map badge semantic context */
@@ -75,6 +79,8 @@ export function ActivityRow({
   description,
   location,
   placeId,
+  lat,
+  lng,
   pin,
   icon,
   cost,
@@ -101,6 +107,12 @@ export function ActivityRow({
   const isActive   = isNow || isSelected;
 
   const categoryIcon = getStopIcon(icon);
+
+  // The "Map" badge only makes sense for a geocoded place: a Google place_id
+  // or explicit coordinates. A free-text `location` alone is NOT a saved
+  // address and must not surface the map action.
+  const hasCoords = lat != null && lng != null;
+  const hasMapTarget = !!placeId || hasCoords;
 
   /* ── Row wrapper classes ── */
   const rowBase = cn(
@@ -196,9 +208,9 @@ export function ActivityRow({
       )}
 
       {/* Meta row */}
-      {(location || cost) && (
+      {(hasMapTarget || cost) && (
         <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {location && (
+          {hasMapTarget && (
             <button
               type="button"
               onClick={(e) => {
@@ -207,7 +219,7 @@ export function ActivityRow({
                 if (onMapClick?.()) return; // handled in-app (e.g. zoomed the map)
                 const url = placeId
                   ? `https://www.google.com/maps/place/?q=place_id:${placeId}`
-                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+                  : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                 window.open(url, "_blank", "noopener,noreferrer");
               }}
               title={location}

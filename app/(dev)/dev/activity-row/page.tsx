@@ -147,6 +147,8 @@ export default function ActivityRowStories() {
             pin={showLocation && showPin ? 3 : undefined}
             icon={icon === "none" ? null : icon}
             location={showLocation ? "Tsukiji, Tokyo" : undefined}
+            lat={showLocation ? 35.6654 : undefined}
+            lng={showLocation ? 139.7707 : undefined}
             cost={showCost ? "¥3,200" : undefined}
             costApprox={showCost ? "≈ €20" : undefined}
             status={status === "none" ? undefined : status}
