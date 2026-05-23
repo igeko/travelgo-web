@@ -8,7 +8,7 @@
 
 import type { Dal } from "@/lib/dal";
 import { badRequest, forbidden, notFound } from "@/lib/api/errors";
-import { isUuid, safeHttpUrl } from "@/lib/api/validation";
+import { isUuid, safeUrlOrPath } from "@/lib/api/validation";
 import { unwrap } from "./util";
 
 const NOTE_TYPES = new Set(["bug", "suggestion", "other"]);
@@ -25,7 +25,7 @@ export class FeedbackService {
 
     let pageUrl: string | null = null;
     if (body.page_url) {
-      const safe = safeHttpUrl(body.page_url, { maxLength: 1000 });
+      const safe = safeUrlOrPath(body.page_url, { maxLength: 1000 });
       if (!safe) throw badRequest("Invalid page_url");
       pageUrl = safe;
     }

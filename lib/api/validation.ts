@@ -30,6 +30,29 @@ export function safeHttpUrl(value: unknown, opts: { maxLength?: number } = {}): 
   }
 }
 
+/**
+ * Accept an absolute http(s) URL or a root-relative app path (`/trips/123`).
+ * Relative paths are validated by resolving against a dummy origin, then the
+ * path+search+hash is returned (origin dropped). Rejects protocol-relative
+ * (`//evil.com`) and non-http(s) absolute URLs. Returns null if invalid.
+ */
+export function safeUrlOrPath(value: unknown, opts: { maxLength?: number } = {}): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const maxLength = opts.maxLength ?? 2000;
+  if (trimmed.length > maxLength) return null;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    try {
+      const u = new URL(trimmed, "http://localhost");
+      return u.pathname + u.search + u.hash;
+    } catch {
+      return null;
+    }
+  }
+  return safeHttpUrl(trimmed, { maxLength });
+}
+
 export function clampInt(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === "string" ? Number.parseInt(value, 10) : typeof value === "number" ? value : NaN;
   if (!Number.isFinite(n)) return fallback;
