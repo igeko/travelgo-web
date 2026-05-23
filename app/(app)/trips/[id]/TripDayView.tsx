@@ -11,7 +11,7 @@ import { DayEditForm } from "@/features/day/DayEditForm";
 import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
-import { IconArrowRightCircle, IconChevronRight, IconX } from "@/components/ui/icons";
+import { IconArrowRightCircle, IconChevronLeft, IconChevronRight, IconX } from "@/components/ui/icons";
 import { DayIncipit } from "@/features/day/DayIncipit";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { DayItem } from "@/features/day/DayItem";
@@ -102,6 +102,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(localDate(iso)).toUpperCase();
   }
   const [localDays, setLocalDays] = useState(initialDays);
+  const [daysCollapsed, setDaysCollapsed] = useState(false);
   const [selectedDayId, setSelectedDayId] = useState(initialDayId);
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [loading, setLoading] = useState(false);
@@ -244,10 +245,13 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     () =>
       [...activities]
         .sort((a, b) => {
-          if (!a.time && !b.time) return a.position - b.position;
+          // Manual order (position) is authoritative; time only breaks ties
+          // (e.g. before any reorder, when positions are still equal).
+          if (a.position !== b.position) return a.position - b.position;
+          if (!a.time && !b.time) return 0;
           if (!a.time) return 1;
           if (!b.time) return -1;
-          return a.time.localeCompare(b.time) || a.position - b.position;
+          return a.time.localeCompare(b.time);
         })
         .map((a) => ({
           id: a.id,
@@ -265,6 +269,27 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     const prev = dayActivities;
     const prevById = new Map(prev.map((x) => [x.id, x]));
     const nextById = new Map(next.map((x) => [x.id, x]));
+
+    // ── reorder (same set, different order) → persist sequential positions ──
+    const sameSet = prev.length === next.length && prev.every((x) => nextById.has(x.id));
+    const orderChanged = sameSet && prev.some((x, i) => next[i]?.id !== x.id);
+    if (orderChanged) {
+      const newPos = new Map(next.map((x, i) => [x.id, i + 1]));
+      setActivities((list) =>
+        [...list]
+          .map((a) => ({ ...a, position: newPos.get(a.id) ?? a.position }))
+          .sort((a, b) => a.position - b.position),
+      );
+      await Promise.all(
+        next.map((x, i) => {
+          const cur = activities.find((a) => a.id === x.id);
+          return cur && cur.position !== i + 1
+            ? api.activities.updateInstance(x.id, { position: i + 1 }).catch(() => {})
+            : null;
+        }),
+      );
+      return;
+    }
 
     // ── delete ──
     const removed = prev.find((x) => !nextById.has(x.id));
@@ -419,8 +444,12 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         PAGE_PX,
         PAGE_PY,
         yumeji?.isPinned
-          ? "md:[grid-template-columns:260px_1fr_340px]"
-          : "md:[grid-template-columns:260px_1fr]",
+          ? (daysCollapsed
+              ? "md:[grid-template-columns:76px_1fr_340px]"
+              : "md:[grid-template-columns:260px_1fr_340px]")
+          : (daysCollapsed
+              ? "md:[grid-template-columns:76px_1fr]"
+              : "md:[grid-template-columns:260px_1fr]"),
       )}
     >
 
@@ -434,17 +463,42 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         }}
       >
         {/* .day-list-head */}
-        <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0">
-          <div className="text-micro uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
-          <div className="text-[16px] font-semibold text-ink mt-0.5">{t("sidebar.dayByDay")}</div>
-          <div className="text-mini text-ink-soft mt-0.5">
-            {t("sidebar.summary", {
-              count: localDays.length,
-              start: trip.start_date ? formatDate(trip.start_date) : "",
-              end: trip.end_date ? formatDate(trip.end_date) : "",
-            })}
+        {daysCollapsed ? (
+          <div className="px-2 py-3 border-b border-border shrink-0 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setDaysCollapsed(false)}
+              aria-label={t("sidebar.expand")}
+              title={t("sidebar.expand")}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
+            >
+              <IconChevronRight size={18} />
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-micro uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
+              <div className="text-[16px] font-semibold text-ink mt-0.5">{t("sidebar.dayByDay")}</div>
+              <div className="text-mini text-ink-soft mt-0.5">
+                {t("sidebar.summary", {
+                  count: localDays.length,
+                  start: trip.start_date ? formatDate(trip.start_date) : "",
+                  end: trip.end_date ? formatDate(trip.end_date) : "",
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDaysCollapsed(true)}
+              aria-label={t("sidebar.collapse")}
+              title={t("sidebar.collapse")}
+              className="shrink-0 flex items-center justify-center w-7 h-7 -mr-1 rounded-md text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
+            >
+              <IconChevronLeft size={18} />
+            </button>
+          </div>
+        )}
 
         {/* .day-items — lista scrollabile */}
         <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin">
@@ -458,6 +512,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 zone={d.city ?? undefined}
                 place={d.label ?? undefined}
                 selected={d.id === selectedDayId}
+                compact={daysCollapsed}
                 onClick={() => selectDay(d.id)}
               />
             );

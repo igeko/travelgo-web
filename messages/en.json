@@ -201,7 +201,9 @@
     "sidebar": {
       "itinerary": "Itinerary",
       "dayByDay": "Day by day",
-      "summary": "{count, plural, one {# day} other {# days}} · {start} → {end}"
+      "summary": "{count, plural, one {# day} other {# days}} · {start} → {end}",
+      "collapse": "Collapse day list",
+      "expand": "Expand day list"
     },
     "day": {
       "eyebrow": "Day {number}",

@@ -18,6 +18,8 @@ export type DayItemProps = DayItemData & {
   onClick?: () => void;
   /** Fallback for the place when missing (defaults to "No place yet") */
   placeFallback?: string;
+  /** Collapsed mode: render only the date (dow + number), hiding zone/place. */
+  compact?: boolean;
 };
 
 const ZONE_FALLBACK = "No zone yet";
@@ -34,9 +36,51 @@ export function DayItem({
   placeFallback = "No place yet",
   selected = false,
   onClick,
+  compact = false,
 }: DayItemProps) {
   const zoneText = zone ?? ZONE_FALLBACK;
   const placeText = place ?? placeFallback;
+
+  if (compact) {
+    return (
+      <li className="list-none border-b border-dashed border-border last:border-0 pr-1">
+        <button
+          type="button"
+          onClick={onClick}
+          aria-current={selected ? "true" : undefined}
+          className={cn(
+            "relative flex w-full flex-col items-center justify-center text-center",
+            "px-1 py-2 cursor-pointer transition-colors",
+            !selected && "hover:bg-surface-soft",
+            selected && "bg-ink text-white rounded-md my-0.5",
+          )}
+        >
+          {selected && (
+            <span
+              aria-hidden
+              className="absolute -left-[3px] top-1/2 -translate-y-1/2 w-1.5 h-[30px] bg-orange rounded-[3px]"
+            />
+          )}
+          <span
+            className={cn(
+              "text-micro tracking-[0.05em] uppercase",
+              selected ? "text-white/70" : "text-ink-soft",
+            )}
+          >
+            {dow}
+          </span>
+          <span
+            className={cn(
+              "text-lg font-semibold leading-tight",
+              selected ? "text-white" : "text-ink",
+            )}
+          >
+            {dayNumber}
+          </span>
+        </button>
+      </li>
+    );
+  }
 
   return (
     <li className="list-none border-b border-dashed border-border last:border-0 pr-1">

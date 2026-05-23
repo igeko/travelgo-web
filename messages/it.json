@@ -201,7 +201,9 @@
     "sidebar": {
       "itinerary": "Itinerario",
       "dayByDay": "Giorno per giorno",
-      "summary": "{count, plural, one {# giorno} other {# giorni}} · {start} → {end}"
+      "summary": "{count, plural, one {# giorno} other {# giorni}} · {start} → {end}",
+      "collapse": "Comprimi lista giorni",
+      "expand": "Espandi lista giorni"
     },
     "day": {
       "eyebrow": "Giorno {number}",
