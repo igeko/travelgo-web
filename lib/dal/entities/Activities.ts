@@ -211,6 +211,68 @@ export class Activities {
     return { createdBy: row.created_by, tripIds: [...tripIds] };
   }
 
+  // ── Yume / sharing ─────────────────────────────────────────────────
+  // A "yume" is just an activity owned by a user (created_by). These methods
+  // back the user-facing collection and the activity_shares link table.
+
+  /** Activities owned by a user (their yume collection), newest first. */
+  async listOwnedBy(
+    userId: string,
+    opts?: { visibility?: ActivityVisibility },
+  ): Promise<DalResult<DbActivity[]>> {
+    let q = this.db
+      .from(ActivityTable.Activities)
+      .select("*")
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false });
+    if (opts?.visibility) q = q.eq("visibility", opts.visibility);
+
+    const { data, error } = await q;
+    if (error) return { data: null, error: new DalError(error.message, error.code) };
+    return { data: data as DbActivity[], error: null };
+  }
+
+  /** Trip ids an activity is explicitly shared with. */
+  async listShareTripIds(activityId: string): Promise<string[]> {
+    const { data } = await this.db
+      .from(ActivityTable.Shares)
+      .select("trip_id")
+      .eq("activity_id", activityId);
+    return ((data ?? []) as { trip_id: string }[]).map((r) => r.trip_id);
+  }
+
+  /** Shares for a set of activities, for batch enrichment of a list. */
+  async listSharesByActivityIds(
+    activityIds: string[],
+  ): Promise<{ activity_id: string; trip_id: string }[]> {
+    if (activityIds.length === 0) return [];
+    const { data } = await this.db
+      .from(ActivityTable.Shares)
+      .select("activity_id, trip_id")
+      .in("activity_id", activityIds);
+    return (data ?? []) as { activity_id: string; trip_id: string }[];
+  }
+
+  /** Share an activity with a trip (idempotent on the (activity, trip) pk). */
+  async addShare(activityId: string, tripId: string): Promise<DalResult<true>> {
+    const { error } = await this.db
+      .from(ActivityTable.Shares)
+      .upsert({ activity_id: activityId, trip_id: tripId });
+    if (error) return { data: null, error: new DalError(error.message, error.code) };
+    return { data: true, error: null };
+  }
+
+  /** Remove a share. */
+  async removeShare(activityId: string, tripId: string): Promise<DalResult<true>> {
+    const { error } = await this.db
+      .from(ActivityTable.Shares)
+      .delete()
+      .eq("activity_id", activityId)
+      .eq("trip_id", tripId);
+    if (error) return { data: null, error: new DalError(error.message, error.code) };
+    return { data: true, error: null };
+  }
+
   // ── Sections ─────────────────────────────────────────────────────
 
   async upsertSection(

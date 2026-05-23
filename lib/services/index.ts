@@ -18,16 +18,19 @@ import { TripService } from "./TripService";
 import { ActivityService } from "./ActivityService";
 import { FeedbackService } from "./FeedbackService";
 import { UserService } from "./UserService";
+import { YumeService } from "./YumeService";
 
-export { TripService, ActivityService, FeedbackService, UserService };
+export { TripService, ActivityService, FeedbackService, UserService, YumeService };
 export type { CreateTripRequest } from "./TripService";
 export type { Me } from "./UserService";
+export type { Yume } from "./YumeService";
 
 export type Services = {
   trips: TripService;
   activities: ActivityService;
   feedback: FeedbackService;
   users: UserService;
+  yumes: YumeService;
 };
 
 function build(dal: Dal): Services {
@@ -36,6 +39,7 @@ function build(dal: Dal): Services {
     activities: new ActivityService(dal),
     feedback: new FeedbackService(dal),
     users: new UserService(dal),
+    yumes: new YumeService(dal),
   };
 }
 

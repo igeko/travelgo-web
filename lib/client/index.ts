@@ -17,6 +17,7 @@
 import { trips } from "./trips";
 import { days } from "./days";
 import { activities } from "./activities";
+import { yumes } from "./yumes";
 import { user } from "./user";
 import { feedback } from "./feedback";
 import { media } from "./media";
@@ -33,6 +34,7 @@ export const api = {
   trips,
   days,
   activities,
+  yumes,
   user,
   feedback,
   media,
@@ -48,6 +50,7 @@ export const api = {
 };
 
 export { ApiClientError } from "./errors";
+export type { Yume } from "./yumes";
 export type { CreateTripPayload } from "./trips";
 export type { SubmitNotePayload } from "./feedback";
 export type { Me } from "./user";

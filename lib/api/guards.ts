@@ -96,6 +96,20 @@ export const requireActivityEditor = (activityId: string) =>
 export const requireActivityMember = (activityId: string) =>
   requireActivityRole(activityId, MEMBER_ROLES);
 
+/**
+ * Require the caller to be the activity's creator (owner). Used for yume
+ * ownership operations (visibility, sharing, removal) where trip-editor
+ * access is not enough.
+ */
+export async function requireActivityOwner(activityId: string): Promise<AuthContext> {
+  const dal = await serverDal();
+  const userId = await currentUserId(dal);
+  const ctx = await serviceDal().activities.authzContext(activityId);
+  if (!ctx) throw notFound();
+  if (ctx.createdBy !== userId) throw forbidden();
+  return { userId };
+}
+
 // ── Scheduled-activity-scoped (instance) ──────────────────────────
 
 async function dayIdForScheduledOr404(scheduledId: string): Promise<string> {
