@@ -37,8 +37,6 @@ export const designCategories: Record<string, DesignMeta> = {
 
   // ── Explore ──────────────────────────────────────────────────────
   discovery: { group: "Explore", title: "Discovery" },
-  "discover-places": { group: "Explore", title: "Discover places" },
-  wishlist: { group: "Explore", title: "Wishlist" },
   yumeji: { group: "Explore", title: "Yumeji" },
   "place-hover": { group: "Explore", title: "Place hover" },
   "explore-toolbar": { group: "Explore", title: "Toolbar" },
