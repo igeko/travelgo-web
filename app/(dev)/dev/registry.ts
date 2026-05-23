@@ -135,10 +135,17 @@ export const sandboxRegistry: SandboxEntry[] = [
   },
   {
     slug: "yumeji-drawer",
-    title: "YumejiDrawer",
+    title: "YumejiDrawer (v1)",
     group: "Features",
     subgroup: "App",
-    description: "Pannello «I tuoi Yume» · toggle in Row 2 + pannello che slitta da destra · stati closed/floating/pinned, dati mock",
+    description: "Pannello «I tuoi Yume» v1 · toggle in Row 2 + pannello che slitta da destra · stati closed/floating/pinned, dati mock",
+  },
+  {
+    slug: "yumeji-panel",
+    title: "YumejiPanel (v2)",
+    group: "Features",
+    subgroup: "App",
+    description: "Pannello «I tuoi Yume» v2 · contenitore stile lista-giorni · standalone / floating / pinned (colonna day-by-day, affianco mappa Explore)",
   },
   // Activity subgroup
   {

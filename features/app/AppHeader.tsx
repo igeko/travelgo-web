@@ -7,8 +7,8 @@ import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
 import { IconMessageReport, IconNotes } from "@/components/ui/icons";
-import { YumejiToggle } from "@/features/yumeji/YumejiDrawer";
 import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
+import { YumejiGlyph } from "@/features/yumeji/YumejiGlyph";
 
 /* ─────────────────────────────────────────────────────────────────
    AppHeader · two-row sticky header
@@ -88,20 +88,11 @@ export function AppHeader({
   ];
 
   return (
-    <div
-      className={cn(
-        "sticky top-0 z-50 transition-[margin] duration-300",
-        // Compensa il padding-right del wrapper in pinned: l'header resta full-width
-        // (Row 1 non si sposta) mentre il contenuto sotto scorre.
-        yumeji?.isPinned && "md:-mr-[340px]",
-        className,
-      )}
-      style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
-    >
+    <div className={cn("sticky top-0 z-50", className)}>
       <header className="bg-surface border-b border-border">
 
         {/* ══ ROW 1 · brand + nav + account ════════════════════════ */}
-        <div className="flex items-center gap-6 px-5 h-[52px]">
+        <div className="flex items-center gap-6 px-5 h-[52px] max-w-[1280px] mx-auto">
 
           {/* Brand */}
           <Link
@@ -276,13 +267,7 @@ export function AppHeader({
         {/* ══ ROW 2 · trip sub-bar ══════════════════════════════════ */}
         {hasTripContext && (
           <div className="bg-bg border-t border-b border-border">
-            <div
-              className={cn(
-                "flex items-center px-5 h-[42px] gap-3.5 transition-[padding] duration-300",
-                yumeji?.isOpen && "md:pr-[340px]",
-              )}
-              style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
-            >
+            <div className="flex items-center px-5 h-[42px] max-w-[1280px] mx-auto gap-3.5">
 
               {/* Trip name + progress */}
               <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
@@ -419,19 +404,26 @@ export function AppHeader({
                   </div>
                 )}
 
-                {/* Toggle Yumeji — apre il drawer (solo in trip-context). Quando il
-                    pannello è aperto sparisce del tutto dal layout, così i chip a
-                    sinistra restano a filo del contenitore Yume. */}
-                {yumeji && !yumeji.isOpen && (
-                  <YumejiToggle
-                    active={false}
-                    onClick={yumeji.toggle}
-                    className="hidden md:inline-flex"
-                  />
-                )}
-
               </div>
               {/* ── end action chips ── */}
+
+              {/* Yume — tab al pari degli altri, con glifo, primo a destra */}
+              {yumeji && (
+                <button
+                  type="button"
+                  onClick={yumeji.toggle}
+                  aria-pressed={yumeji.isOpen}
+                  className={cn(
+                    "hidden md:inline-flex items-center gap-1.5 px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0 shrink-0",
+                    yumeji.isOpen
+                      ? "bg-ink text-white font-medium"
+                      : "bg-transparent text-ink-soft hover:text-ink",
+                  )}
+                >
+                  <YumejiGlyph size={13} />
+                  Yume
+                </button>
+              )}
 
             </div>
           </div>

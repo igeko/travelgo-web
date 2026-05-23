@@ -6,6 +6,8 @@ import { Map, type LatLng, type MapMarker } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
+import { YumejiPinnedColumn, useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
+import { cn } from "@/lib/cn";
 import { PlaceHoverCard } from "@/features/explore/PlaceHoverCard";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
@@ -77,6 +79,7 @@ export function ExploreMap({
   const [zoom, setZoom] = useState<number>(tripZoom);
   const [isMobile, setIsMobile] = useState(false);
   const [cardPixel, setCardPixel] = useState<{ x: number; y: number } | null>(null);
+  const yumejiPinned = !!useYumejiDrawer()?.isPinned;
 
   const restoredRef = useRef(false);
   const interactedRef = useRef(false);
@@ -264,7 +267,22 @@ export function ExploreMap({
           )
         }
         orientation={isMobile ? "horizontal" : "vertical"}
-        className={isMobile ? "absolute inset-x-2 top-2 z-20" : "absolute right-4 top-4 z-20"}
+        className={
+          isMobile
+            ? "absolute inset-x-2 top-2 z-20"
+            : cn(
+                "absolute top-4 z-20 transition-[right] duration-300",
+                // Quando Yume è pinned in overlay, la toolbar si sposta a sinistra
+                // per restare a filo del pannello.
+                yumejiPinned ? "right-[360px]" : "right-4",
+              )
+        }
+      />
+
+      {/* Yume — pinned: overlay sopra la mappa (Explore è full-bleed, tutto flotta) */}
+      <YumejiPinnedColumn
+        floating
+        className="hidden md:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
       />
     </div>
   );

@@ -50,3 +50,9 @@ export type YumeChip = {
   count?: number;
   active?: boolean;
 };
+
+/** Chip di default in trip-context (filtraggio reale = parte dati). */
+export const MOCK_TRIP_CHIPS: YumeChip[] = [
+  { id: "geo", label: "Per Tokyo", count: 5, active: true },
+  { id: "unscheduled", label: "Da schedulare", count: 5, active: true },
+];

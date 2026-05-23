@@ -12,6 +12,7 @@ import { Itinerary } from "@/features/activity/Itinerary";
 import { DayItem } from "@/features/day/DayItem";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
+import { useYumejiDrawer, YumejiPinnedColumn } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
 import { api } from "@/lib/client";
@@ -203,10 +204,17 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   /* ─── Next day ─── */
   const nextDayDow = nextDay?.date ? getDow(nextDay.date) : "";
 
+  const yumeji = useYumejiDrawer();
+
   return (
-    /* ── Replica esatta di .daybyday dal design ── */
+    /* ── Replica esatta di .daybyday dal design · 3ª colonna quando Yume è pinned ── */
     <div
-      className="grid gap-[18px] max-w-[1280px] mx-auto px-2 py-3 sm:px-5 sm:py-5 [grid-template-columns:1fr] md:[grid-template-columns:260px_1fr]"
+      className={cn(
+        "grid gap-[18px] max-w-[1280px] mx-auto px-2 py-3 sm:px-5 sm:py-5 [grid-template-columns:1fr]",
+        yumeji?.isPinned
+          ? "md:[grid-template-columns:260px_1fr_340px]"
+          : "md:[grid-template-columns:260px_1fr]",
+      )}
     >
 
       {/* ══ SIDEBAR — .day-list ══════════════════════════════════ */}
@@ -572,6 +580,9 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         )}
 
       </section>
+
+      {/* ══ YUME — terza colonna (solo quando pinned) ════════════ */}
+      <YumejiPinnedColumn className="hidden md:flex self-start sticky top-[94px] max-h-[calc(100vh-118px)]" />
     </div>
   );
 }

@@ -1,49 +1,45 @@
 "use client";
 
 /**
- * YumejiFrame · infrastruttura "di cornice" del drawer Yumeji.
+ * YumejiFrame · infrastruttura "di cornice" del pannello Yumeji (v2).
  *
- * Montato una volta in app/(app)/layout.tsx, sopra tutte le pagine dell'app.
- * Tiene lo stato del drawer (closed/floating/pinned), lo rende come overlay
- * fixed a destra sotto Row 1, e restringe il contenuto quando pinned.
+ * Montato una volta in app/(app)/layout.tsx. Tiene lo stato del pannello
+ * (closed/floating/pinned) e lo espone via `useYumejiDrawer()` (null-safe).
  *
- * Il drawer è raggiungibile solo in trip-context (toggle in Row 2 + gating sul
- * pathname): fuori da un trip l'accesso alla collezione è la pagina /yumeji.
+ *  - floating · YumejiFrame rende il pannello come overlay flottante sopra tutto.
+ *  - pinned   · il pannello NON è reso qui: lo montano le pagine nel proprio
+ *               layout (terza colonna day-by-day, colonna affianco alla mappa
+ *               Explore) tramite <YumejiPinnedColumn>.
  *
- * Lo stato è esposto via `useYumejiDrawer()` — null-safe: l'hook ritorna null
- * se non c'è provider (AppHeader è usato anche fuori dall'area app).
- *
- * Dati ancora mock (mockData.ts) — il data layer reale è la fase successiva.
+ * Raggiungibile solo in trip-context (toggle = tab nel sub-header + gating sul
+ * pathname). Dati ancora mock — il data layer reale è la fase successiva.
  */
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/cn";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
-import { YumejiDrawer, type YumejiDrawerState } from "./YumejiDrawer";
-import { MOCK_YUME_TOKYO, type YumeChip } from "./mockData";
+import { YumejiPanel } from "./YumejiPanel";
+import { MOCK_YUME_TOKYO, MOCK_TRIP_CHIPS } from "./mockData";
 
-const EASE = "cubic-bezier(.2,.7,.2,1)";
-const ROW1_H = 52; // altezza di Row 1 dell'AppHeader (px)
-const ROW2_H = 42; // altezza di Row 2 (sub-header) dell'AppHeader (px)
-// z espliciti alti: la card della mappa Explore è inline a z-index:1000 (sopra
-// ogni token z-* semantico, max 60), quindi il drawer deve stare ancora sopra.
-const Z_SCRIM = 1090;
-const Z_DRAWER = 1100;
 const LS_PINNED = "travelgo-yumeji-pinned";
 const LS_AUTOPINNED = "travelgo-yumeji-autopinned";
 
+export type YumejiState = "closed" | "floating" | "pinned";
+
 type YumejiContextValue = {
-  state: YumejiDrawerState;
+  state: YumejiState;
   isOpen: boolean;
   isPinned: boolean;
   toggle: () => void;
+  togglePin: () => void;
+  close: () => void;
   /** Auto-pin alla prima volta in edit mode dentro un trip (Dec 3). */
   autoPinFirstEdit: () => void;
 };
@@ -55,12 +51,6 @@ export function useYumejiDrawer(): YumejiContextValue | null {
   return useContext(YumejiContext);
 }
 
-// Chip mock per la vista trip-context (il filtraggio reale è parte dati).
-const TRIP_CHIPS: YumeChip[] = [
-  { id: "geo", label: "Per Tokyo", count: 5, active: true },
-  { id: "unscheduled", label: "Da schedulare", count: 5, active: true },
-];
-
 export function YumejiFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inTrip = /^\/trips\/[^/]+/.test(pathname ?? "");
@@ -68,12 +58,13 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [pinnedPref, setPinnedPref] = useLocalStorageState<boolean>(LS_PINNED, false);
 
-  // Stato effettivo: chiuso fuori dai trip; altrimenti deriva da open + pinnedPref.
-  const state: YumejiDrawerState = !inTrip || !open ? "closed" : pinnedPref ? "pinned" : "floating";
+  const state: YumejiState = !inTrip || !open ? "closed" : pinnedPref ? "pinned" : "floating";
   const isOpen = state !== "closed";
   const isPinned = state === "pinned";
 
   const toggle = useCallback(() => setOpen((o) => !o), []);
+  const togglePin = useCallback(() => setPinnedPref((p) => !p), [setPinnedPref]);
+  const close = useCallback(() => setOpen(false), []);
 
   const autoPinFirstEdit = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -83,61 +74,75 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
     setOpen(true);
   }, [setPinnedPref]);
 
-  // Richieste di transizione dal drawer (toggle pin / chiusura header / Esc).
-  const handleStateChange = useCallback(
-    (next: YumejiDrawerState) => {
-      if (next === "closed") setOpen(false);
-      else if (next === "pinned") {
-        setPinnedPref(true);
-        setOpen(true);
-      } else {
-        setPinnedPref(false);
-        setOpen(true);
-      }
-    },
-    [setPinnedPref],
-  );
+  // Esc chiude quando aperto.
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
 
-  const ctx: YumejiContextValue = { state, isOpen, isPinned, toggle, autoPinFirstEdit };
+  const ctx: YumejiContextValue = {
+    state,
+    isOpen,
+    isPinned,
+    toggle,
+    togglePin,
+    close,
+    autoPinFirstEdit,
+  };
 
   return (
     <YumejiContext.Provider value={ctx}>
-      {/* Wrapper del contenuto · quando pinned si restringe a destra (il contenuto
-          sotto l'header scorre). Row 1 resta full-width grazie al margine negativo
-          compensativo applicato all'AppHeader (vedi `yumeji.isPinned` lì). */}
-      <div
-        className={cn(
-          "min-h-screen flex flex-col bg-bg transition-[padding] duration-300",
-          isPinned && "md:pr-[340px]",
-        )}
-        style={{ transitionTimingFunction: EASE }}
-      >
-        {children}
-      </div>
+      {children}
 
-      {/* Scrim · solo floating, sotto il sub-header (Row 2 resta cliccabile), click-fuori chiude */}
+      {/* Floating · overlay flottante sopra tutto, sotto l'header (Row 1+2 = 94px).
+          z alto: la card della mappa Explore è inline a z-index:1000. */}
       {state === "floating" && (
-        <button
-          type="button"
-          aria-label="Chiudi pannello Yumeji"
-          onClick={toggle}
-          className="hidden md:block fixed left-0 right-0 bottom-0 border-0 cursor-default"
-          style={{ top: ROW1_H + ROW2_H, zIndex: Z_SCRIM, background: "rgba(13,44,61,0.04)" }}
-        />
+        <div className="hidden md:block fixed top-[102px] right-4 bottom-4 w-[340px] z-[1100]">
+          <YumejiPanel
+            items={MOCK_YUME_TOKYO}
+            chips={MOCK_TRIP_CHIPS}
+            floating
+            onTogglePin={togglePin}
+            onClose={close}
+            autoFocusSearch
+            className="h-full"
+          />
+        </div>
       )}
-
-      {/* Clip container del drawer · sotto Row 1, a destra; overflow nasconde lo slide */}
-      <div
-        className="hidden md:block fixed right-0 bottom-0 w-[340px] overflow-hidden pointer-events-none"
-        style={{ top: ROW1_H, zIndex: Z_DRAWER }}
-      >
-        <YumejiDrawer
-          state={state}
-          onStateChange={handleStateChange}
-          items={MOCK_YUME_TOKYO}
-          chips={TRIP_CHIPS}
-        />
-      </div>
     </YumejiContext.Provider>
+  );
+}
+
+/**
+ * Pannello pinned · da montare nel layout di pagina. Si rende solo quando lo
+ * stato è `pinned`; altrimenti null.
+ *
+ *  - day-by-day → colonna nel grid (floating omesso, niente ombra).
+ *  - Explore    → overlay sopra la mappa (floating → ombra), posizionato via
+ *    className (absolute) dall'host.
+ */
+export function YumejiPinnedColumn({
+  className,
+  floating = false,
+}: {
+  className?: string;
+  floating?: boolean;
+}) {
+  const yumeji = useYumejiDrawer();
+  if (!yumeji?.isPinned) return null;
+  // Niente X nella colonna pinned: si chiude dal tab Yume o sganciando (pin).
+  return (
+    <YumejiPanel
+      items={MOCK_YUME_TOKYO}
+      chips={MOCK_TRIP_CHIPS}
+      pinned
+      floating={floating}
+      onTogglePin={yumeji.togglePin}
+      className={className}
+    />
   );
 }
