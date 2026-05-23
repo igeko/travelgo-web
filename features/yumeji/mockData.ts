@@ -53,6 +53,42 @@ export type YumeChip = {
 
 /** Chip di default in trip-context (filtraggio reale = parte dati). */
 export const MOCK_TRIP_CHIPS: YumeChip[] = [
-  { id: "geo", label: "Per Tokyo", count: 5, active: true },
-  { id: "unscheduled", label: "Da schedulare", count: 5, active: true },
+  { id: "geo", label: "Per Tokyo", count: 6, active: true },
+  { id: "unscheduled", label: "Da schedulare", count: 6, active: true },
+];
+
+/* ─────────────────────────────────────────────────────────────────
+   YumeList · view-model allineato al modello reale
+   (Yume = DbActivity + shared_trip_ids). Mostriamo solo i campi che
+   abbiamo davvero oggi: titolo, location testuale, prezzo (da budget),
+   immagine (hero_image) e owner. Niente durata/orari/«must»/scheduling.
+───────────────────────────────────────────────────────────────── */
+
+export type YumeOwner = {
+  name: string;
+  /** Avatar URL; se assente si mostrano le iniziali. */
+  avatarUrl?: string | null;
+};
+
+export type YumeListItem = {
+  id: string;
+  title: string;
+  /** Location testuale (DbActivity.location). */
+  location?: string | null;
+  /** Prezzo già formattato dal budget (es. "€32", "Gratis"). */
+  price?: string | null;
+  /** hero_image; null → placeholder come in ActivityList. */
+  imageUrl?: string | null;
+  /** Owner dello yume — valorizzato per gli yume condivisi al viaggio da altri. */
+  owner?: YumeOwner | null;
+};
+
+/** Collezione di prova · owner=null = miei, owner valorizzato = condiviso da altri. */
+export const MOCK_YUMES: YumeListItem[] = [
+  { id: "sensoji",   title: "Sensō-ji",        location: "Asakusa, Tokyo",  price: "Gratis", imageUrl: null, owner: null },
+  { id: "teamlab",   title: "teamLab Planets", location: "Toyosu, Tokyo",   price: "€32",    imageUrl: null, owner: { name: "Marco Rossi" } },
+  { id: "tsukiji",   title: "Mercato Tsukiji", location: "Chuo, Tokyo",     price: "€20",    imageUrl: null, owner: null },
+  { id: "goldengai", title: "Golden Gai bars", location: "Shinjuku, Tokyo", price: "€40",    imageUrl: null, owner: { name: "Yuki Tanaka" } },
+  { id: "yoyogi",    title: "Yoyogi park",     location: "Shibuya, Tokyo",  price: "€10",    imageUrl: null, owner: null },
+  { id: "skytree",   title: "Tokyo Skytree",   location: "Sumida, Tokyo",   price: "€25",    imageUrl: null, owner: { name: "Sara Bianchi" } },
 ];

@@ -16,7 +16,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { YumejiPanel } from "@/features/yumeji/YumejiPanel";
-import { MOCK_YUME_TOKYO, type YumeChip } from "@/features/yumeji/mockData";
+import { MOCK_YUMES, type YumeChip } from "@/features/yumeji/mockData";
 import { SandboxRightPanel } from "../_components/SandboxShell";
 
 const CHIPS: YumeChip[] = [
@@ -83,7 +83,7 @@ export default function YumejiPanelSandbox() {
           <Label n="A" title="Standalone" desc="contenitore base, altezza vincolata" />
           <div className="h-[460px] max-w-[340px]">
             <YumejiPanel
-              items={MOCK_YUME_TOKYO}
+              items={MOCK_YUMES}
               chips={CHIPS}
               pinned={pinned}
               onTogglePin={() => setPinned((v) => !v)}
@@ -108,7 +108,7 @@ export default function YumejiPanelSandbox() {
               </p>
               <div className="absolute top-3 right-3 bottom-3 w-[340px]">
                 <YumejiPanel
-                  items={MOCK_YUME_TOKYO}
+                  items={MOCK_YUMES}
                   chips={CHIPS}
                   floating
                   onClose={() => {}}
@@ -135,7 +135,7 @@ export default function YumejiPanelSandbox() {
                 Contenuto del giorno (timeline / attività)…
               </div>
               <YumejiPanel
-                items={MOCK_YUME_TOKYO}
+                items={MOCK_YUMES}
                 chips={CHIPS}
                 pinned
                 onTogglePin={() => {}}
@@ -165,7 +165,7 @@ export default function YumejiPanelSandbox() {
               </div>
               {/* pannello in overlay, stesso container card + ombra (floating) */}
               <YumejiPanel
-                items={MOCK_YUME_TOKYO}
+                items={MOCK_YUMES}
                 chips={CHIPS}
                 pinned
                 floating

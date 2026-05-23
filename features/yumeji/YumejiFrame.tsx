@@ -26,7 +26,7 @@ import {
 import { usePathname } from "next/navigation";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { YumejiPanel } from "./YumejiPanel";
-import { MOCK_YUME_TOKYO, MOCK_TRIP_CHIPS } from "./mockData";
+import { MOCK_YUMES, MOCK_TRIP_CHIPS } from "./mockData";
 
 const LS_PINNED = "travelgo-yumeji-pinned";
 const LS_AUTOPINNED = "travelgo-yumeji-autopinned";
@@ -103,9 +103,10 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
       {state === "floating" && (
         <div className="hidden md:block fixed top-[102px] right-4 bottom-4 w-[340px] z-[1100]">
           <YumejiPanel
-            items={MOCK_YUME_TOKYO}
+            items={MOCK_YUMES}
             chips={MOCK_TRIP_CHIPS}
             floating
+            showOwner
             onTogglePin={togglePin}
             onClose={close}
             autoFocusSearch
@@ -137,10 +138,11 @@ export function YumejiPinnedColumn({
   // Niente X nella colonna pinned: si chiude dal tab Yume o sganciando (pin).
   return (
     <YumejiPanel
-      items={MOCK_YUME_TOKYO}
+      items={MOCK_YUMES}
       chips={MOCK_TRIP_CHIPS}
       pinned
       floating={floating}
+      showOwner
       onTogglePin={yumeji.togglePin}
       className={className}
     />

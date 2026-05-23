@@ -147,6 +147,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "App",
     description: "Pannello «I tuoi Yume» v2 · contenitore stile lista-giorni · standalone / floating / pinned (colonna day-by-day, affianco mappa Explore)",
   },
+  {
+    slug: "yume-list",
+    title: "YumeList",
+    group: "Features",
+    subgroup: "App",
+    description: "Corpo del pannello Yume · ricerca + filtri abilitabili, lista propri/condivisi con owner avatar, placeholder immagini come ActivityList",
+  },
   // Activity subgroup
   {
     slug: "activity-row",
