@@ -120,6 +120,27 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Scrollbar sottile verticale che compare solo all'hover — .scrollbar-thin-hover
+   Lo spazio della barra è sempre riservato (niente layout shift); il pollice
+   diventa visibile solo quando si passa sopra al contenitore.
+───────────────────────────────────────────────────────────────── */
+.scrollbar-thin-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.15s ease;
+}
+.scrollbar-thin-hover:hover { scrollbar-color: rgba(13,44,61,0.15) transparent; }
+.scrollbar-thin-hover::-webkit-scrollbar       { width: 4px; }
+.scrollbar-thin-hover::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin-hover::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+  transition: background 0.15s ease;
+}
+.scrollbar-thin-hover:hover::-webkit-scrollbar-thumb       { background: rgba(13,44,61,0.15); }
+.scrollbar-thin-hover:hover::-webkit-scrollbar-thumb:hover { background: rgba(13,44,61,0.28); }
+
+/* ─────────────────────────────────────────────────────────────────
    Scrollbar nascosta ma scrollabile — classe .scrollbar-none
    Per chip-row / caroselli swipeable (mobile) senza barra visibile.
 ───────────────────────────────────────────────────────────────── */

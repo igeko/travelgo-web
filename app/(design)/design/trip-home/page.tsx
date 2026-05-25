@@ -19,12 +19,16 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import {
+  IconAmbulance,
   IconArrowRight,
+  IconBuildingBank,
   IconBulb,
   IconCalendar,
+  IconCash,
   IconCloud,
   IconCoin,
   IconEye,
+  IconHandStop,
   IconLanguage,
   IconLock,
   IconMapPin,
@@ -307,213 +311,144 @@ function renderPane(tab: TabId): React.ReactNode {
   }
 }
 
-function PaneShell({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
+function PaneEyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6 items-start">
-      <div>{left}</div>
-      <div className="lg:border-l lg:border-dashed lg:border-border lg:pl-[18px]">{right}</div>
-    </div>
+    <span className="block mb-3.5 text-mini tracking-[0.10em] uppercase text-orange-deep font-medium">
+      {children}
+    </span>
   );
 }
 
-function PaneEyebrow({ children }: { children: React.ReactNode }) {
-  return <p className="text-tiny tracking-eyebrow uppercase text-orange-deep font-medium m-0">{children}</p>;
-}
-
-function PaneHero({ big, sub }: { big: React.ReactNode; sub: string }) {
+function PaneHero({ big, sub }: { big: React.ReactNode; sub: React.ReactNode }) {
   return (
-    <div className="flex items-baseline gap-3 mt-1.5 mb-3">
-      <span className="font-serif italic text-[46px] leading-[0.9] text-ink font-medium">{big}</span>
+    <div className="flex items-baseline gap-3.5 mb-4 flex-wrap">
+      <span className="font-serif italic text-[42px] leading-none text-ink font-medium">{big}</span>
       <span className="font-serif italic text-meta text-ink-soft">{sub}</span>
     </div>
   );
 }
 
-function SideList({ title, items }: { title: string; items: string[] }) {
+function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
-    <>
-      <p className="text-tiny tracking-eyebrow uppercase text-ink-muted font-medium m-0 mb-2.5">{title}</p>
-      <ul className="m-0 p-0 list-none flex flex-col gap-2.5">
-        {items.map((it, i) => (
-          <li key={i} className="flex items-start gap-2 text-mini text-ink-soft leading-snug">
-            <span className="text-orange-deep font-bold shrink-0">·</span>
-            <span>{it}</span>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-function GoTip({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-3.5 px-3.5 py-3 bg-orange/[0.08] rounded-md flex items-start gap-3">
-      <IconSparkles size={16} className="text-orange-deep mt-0.5 shrink-0" />
-      <p className="m-0 font-serif italic text-meta text-[#6d4923] leading-snug">{children}</p>
+    <div className="flex items-baseline justify-between py-3 border-b border-border/60 last:border-0 gap-4">
+      <span className="text-meta text-ink-soft">{k}</span>
+      <span className="text-meta text-ink font-medium text-right">{v}</span>
     </div>
   );
 }
 
-function StatsMini({ items }: { items: { k: string; v: string; tone?: "ok" | "warn" }[] }) {
+function Take({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-2 mt-2.5">
-      {items.map((s, i) => (
-        <div key={i} className="bg-bg rounded-md px-3 py-2.5">
-          <p className="text-[9px] tracking-meta uppercase text-ink-muted m-0 font-medium">{s.k}</p>
-          <p className={cn(
-            "text-mini font-medium mt-0.5",
-            !s.tone && "text-ink",
-            s.tone === "ok" && "text-emerald-700",
-            s.tone === "warn" && "text-orange-deep",
-          )}>{s.v}</p>
-        </div>
-      ))}
+    <div className="flex items-start gap-2.5 py-2 text-meta text-ink-soft leading-snug">
+      <span className="text-orange-deep mt-0.5 shrink-0">{icon}</span>
+      <span>{children}</span>
     </div>
   );
 }
 
-/* ── 6 panes ── */
+function GreenDot() {
+  return <span aria-hidden className="inline-block w-2 h-2 rounded-full bg-emerald-600 align-middle mr-2" />;
+}
+
+function EmergencyRow({
+  icon,
+  label,
+  desc,
+  num,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  desc: string;
+  num: string;
+}) {
+  return (
+    <div className="grid grid-cols-[32px_1fr_auto] gap-3.5 items-center py-3 border-b border-border/60 last:border-0">
+      <span className="w-8 h-8 rounded-full bg-orange-soft text-orange-deep inline-flex items-center justify-center">
+        {icon}
+      </span>
+      <div>
+        <p className="m-0 text-meta text-ink font-medium">{label}</p>
+        <p className="m-0 text-mini text-ink-soft mt-0.5">{desc}</p>
+      </div>
+      <span className="font-mono text-[16px] text-ink font-medium">{num}</span>
+    </div>
+  );
+}
+
+/* ── 6 panes (simplified, readable) ─────────────────────────── */
 
 function CurrencyPane() {
   const [eur, setEur] = useState("50");
-  const jpy = Math.round((parseFloat(eur) || 0) * 168).toLocaleString("it-IT").replace(/\./g, " ");
+  const jpy = Math.round((parseFloat(eur) || 0) * 168)
+    .toLocaleString("it-IT")
+    .replace(/\./g, " ");
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Yen giapponese · ¥</PaneEyebrow>
-          <PaneHero big="168 ¥" sub="per 1 € · cambio di oggi" />
-          <div className="bg-bg rounded-md px-3.5 py-3 flex items-center gap-2.5">
-            <input
-              type="text"
-              value={eur}
-              onChange={(e) => setEur(e.target.value)}
-              className="w-[60px] bg-surface border border-border-strong rounded-md px-2.5 py-1 text-meta text-right text-ink tabular-nums font-mono focus:outline focus:outline-2 focus:outline-orange-light"
-            />
-            <span className="text-mini text-ink-faint">€</span>
-            <span className="text-orange-deep">→</span>
-            <span className="font-serif italic text-[17px] text-ink font-medium tabular-nums">{jpy} ¥</span>
-          </div>
-          <GoTip>
-            <b className="not-italic font-medium text-orange-deep">Go tip · </b>
-            cash king nei konbini e nei templi. Gli ATM al 7-Eleven accettano carte estere h24 — comoda fermata strategica.
-          </GoTip>
-        </>
-      }
-      right={
-        <SideList
-          title="Buono a sapersi"
-          items={[
-            "Tip non si lascia, anzi può offendere.",
-            "Banche aperte 9-15, ATM h24 nei minimarket.",
-            "SUICA card per metro & konbini, ricaricabile.",
-            "Tax-free: 5000 ¥ minimi nei grandi store.",
-          ]}
+    <>
+      <PaneEyebrow>Valuta · ¥ JPY</PaneEyebrow>
+      <PaneHero big="168 ¥" sub="per 1 € · oggi" />
+      <div className="flex items-center gap-3 px-3.5 py-3 bg-bg rounded-md mb-4">
+        <input
+          type="text"
+          value={eur}
+          onChange={(e) => setEur(e.target.value)}
+          className="w-[70px] bg-surface border border-border-strong rounded-md px-2.5 py-1.5 text-meta text-right text-ink tabular-nums font-mono focus:outline focus:outline-2 focus:outline-orange-light"
         />
-      }
-    />
+        <span className="text-meta text-ink-soft">€</span>
+        <span className="text-orange-deep">→</span>
+        <span className="font-serif italic text-[22px] text-ink font-medium tabular-nums">{jpy} ¥</span>
+      </div>
+      <Take icon={<IconCash size={16} />}>
+        <b className="font-medium text-ink">Cash king</b> — konbini, templi e izakaya piccoli accettano solo contanti.
+      </Take>
+      <Take icon={<IconHandStop size={16} />}>
+        <b className="font-medium text-ink">Niente mancia</b> — può perfino offendere.
+      </Take>
+    </>
   );
 }
 
 function VisaPane() {
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Frontiera · passaporto italiano</PaneEyebrow>
-          <PaneHero big="Non serve" sub="soggiorno turistico fino a 90 giorni" />
-          <p className="inline-flex items-center gap-1.5 text-mini text-ink font-medium mt-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            Visa waiver attivo, ingressi multipli in sei mesi
-          </p>
-          <GoTip>
-            <b className="not-italic font-medium text-orange-deep">Go tip · </b>
-            il passaporto deve essere valido per tutta la durata del soggiorno. Se vuoi studiare o lavorare ti serve un visto diverso.
-          </GoTip>
-        </>
-      }
-      right={
-        <SideList
-          title="Documenti da portare"
-          items={[
-            "Passaporto valido.",
-            "Biglietto di ritorno o di proseguimento.",
-            "Indirizzo della prima notte (richiesto allo sbarco).",
-            "Optional: copia digitale di tutto su drive.",
-          ]}
-        />
-      }
-    />
+    <>
+      <PaneEyebrow>Visto · passaporto italiano</PaneEyebrow>
+      <PaneHero
+        big="Non serve"
+        sub={
+          <>
+            <GreenDot />
+            fino a 90 giorni · turismo
+          </>
+        }
+      />
+      <Row k="Validità passaporto" v="Tutta la durata del soggiorno" />
+      <Row k="Biglietto di ritorno" v="Richiesto allo sbarco" />
+      <Row k="Indirizzo prima notte" v="Richiesto allo sbarco" />
+    </>
   );
 }
 
 function WeatherPane() {
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Tokyo · fine luglio / inizio agosto</PaneEyebrow>
-          <PaneHero big="26° / 22°" sub="media massima / minima · estate piena" />
-          <StatsMini
-            items={[
-              { k: "Pioggia", v: "11 / 30 giorni", tone: "warn" },
-              { k: "Umidità", v: "78%", tone: "warn" },
-              { k: "UV index", v: "9 (alto)", tone: "warn" },
-              { k: "Tifoni", v: "possibili" },
-            ]}
-          />
-          <GoTip>
-            <b className="not-italic font-medium text-orange-deep">Go tip · </b>
-            lino, scarpe traspiranti, un ombrellino pieghevole. Niente jeans pesanti, te lo prometto.
-          </GoTip>
-        </>
-      }
-      right={
-        <SideList
-          title="Quando uscire"
-          items={[
-            "Mattina presto (7-10) per i templi.",
-            "Pausa 13-16 in musei climatizzati.",
-            "Tramonto a Shibuya o sui ponti.",
-            "Notte estiva = matsuri e festival.",
-          ]}
-        />
-      }
-    />
+    <>
+      <PaneEyebrow>Clima · fine luglio</PaneEyebrow>
+      <PaneHero big="26° / 22°" sub="media max / min · estate piena" />
+      <Row k="Pioggia" v="11 giorni su 30" />
+      <Row k="Umidità" v="78% · soffocante" />
+      <Row k="UV index" v="9 · molto alto" />
+      <Row k="Tifoni" v="Possibili da metà agosto" />
+    </>
   );
 }
 
 function PowerPane() {
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Prese elettriche</PaneEyebrow>
-          <PaneHero big="Tipo A · B" sub="100 V · 50 Hz est / 60 Hz ovest" />
-          <StatsMini
-            items={[
-              { k: "Adattatore", v: "Sì — Type A", tone: "warn" },
-              { k: "Voltaggio", v: "Quasi tutti i caricatori OK", tone: "ok" },
-            ]}
-          />
-          <GoTip>
-            <b className="not-italic font-medium text-orange-deep">Go tip · </b>
-            portati un multipresa con due ingressi USB-C: spesso negli ryokan trovi una sola presa libera.
-          </GoTip>
-        </>
-      }
-      right={
-        <SideList
-          title="Cosa controllare"
-          items={[
-            "Caricatore laptop: 100-240 V → OK.",
-            "Asciugacapelli da casa: spesso 220 V → no.",
-            "Macchinetta da barba: dipende, leggi etichetta.",
-            "Powerbank a bordo, mai in stiva.",
-          ]}
-        />
-      }
-    />
+    <>
+      <PaneEyebrow>Corrente</PaneEyebrow>
+      <PaneHero big="Tipo A" sub="100 V · adattatore necessario" />
+      <Row k="Voltaggio" v="100 V · USB-C OK senza trasformatore" />
+      <Row k="Frequenza" v="50 Hz est · 60 Hz ovest" />
+      <Row k="Powerbank" v="In cabina, mai in stiva" />
+    </>
   );
 }
 
@@ -526,76 +461,59 @@ function LanguagePane() {
     { it: "Dov'è il bagno?", jp: "トイレはどこですか", ro: "toire wa doko desu ka" },
   ];
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Giapponese · 日本語</PaneEyebrow>
-          <PaneHero big="«arigatō»" sub="cinque frasi pronte da imparare" />
-          <div className="flex flex-col">
-            {phrases.map((p, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "grid grid-cols-[1fr_auto_1fr] gap-3.5 py-2 items-baseline",
-                  i < phrases.length - 1 && "border-b border-border",
-                )}
-              >
-                <span className="text-mini text-ink-faint">{p.it}</span>
-                <span className="font-serif italic text-[16px] text-ink">{p.jp}</span>
-                <span className="font-serif italic text-tiny text-ink-muted text-right">{p.ro}</span>
-              </div>
-            ))}
+    <>
+      <PaneEyebrow>Lingua · 日本語</PaneEyebrow>
+      <div className="flex flex-col">
+        {phrases.map((p, i) => (
+          <div
+            key={i}
+            className={cn(
+              "grid grid-cols-[1fr_auto_1fr] gap-4 py-3 items-baseline",
+              i < phrases.length - 1 && "border-b border-border/60",
+            )}
+          >
+            <span className="text-meta text-ink-soft">{p.it}</span>
+            <span className="font-serif italic text-[19px] text-ink text-center">{p.jp}</span>
+            <span className="font-serif italic text-mini text-ink-muted text-right">{p.ro}</span>
           </div>
-        </>
-      }
-      right={
-        <SideList
-          title="Per cavarsela"
-          items={[
-            "I cartelli a Tokyo sono quasi tutti in inglese.",
-            "Google Translate fotocamera funziona benissimo.",
-            "Un inchino leggero vale più di mille parole.",
-            "Non alzare la voce: lo trovano scortese.",
-          ]}
-        />
-      }
-    />
+        ))}
+      </div>
+    </>
   );
 }
 
 function SafetyPane() {
   return (
-    <PaneShell
-      left={
-        <>
-          <PaneEyebrow>Sicurezza generale · Farnesina</PaneEyebrow>
-          <PaneHero big="Molto sicura" sub="precauzione ordinaria · rischi naturali" />
-          <StatsMini
-            items={[
-              { k: "Polizia", v: "110" },
-              { k: "Ambulanza", v: "119" },
-              { k: "Ambasciata IT", v: "03-3453-5291" },
-              { k: "Acqua di rubinetto", v: "Sicura", tone: "ok" },
-            ]}
-          />
-          <GoTip>
-            <b className="not-italic font-medium text-orange-deep">Go tip · </b>
-            scarica l'app NHK World per allerte sismiche in inglese. In hotel ti spiegheranno la via di fuga.
-          </GoTip>
-        </>
-      }
-      right={
-        <SideList
-          title="Buono a sapersi"
-          items={[
-            "Terremoti frequenti ma leggeri.",
-            "Tifoni tra agosto e ottobre.",
-            "Furti rarissimi, oggetti smarriti tornano.",
-            "Police box (kōban) ad ogni grande incrocio.",
-          ]}
-        />
-      }
-    />
+    <>
+      <PaneEyebrow>Sicurezza · Farnesina</PaneEyebrow>
+      <PaneHero
+        big="Molto sicura"
+        sub={
+          <>
+            <GreenDot />
+            precauzione ordinaria
+          </>
+        }
+      />
+      <EmergencyRow
+        icon={<IconShieldCheck size={16} />}
+        label="Polizia"
+        desc="Emergenza generale"
+        num="110"
+      />
+      <EmergencyRow
+        icon={<IconAmbulance size={16} />}
+        label="Ambulanza · Vigili del fuoco"
+        desc="Soccorso medico"
+        num="119"
+      />
+      <EmergencyRow
+        icon={<IconBuildingBank size={16} />}
+        label="Ambasciata d'Italia"
+        desc="Tokyo · 24h"
+        num="03-3453-5291"
+      />
+    </>
   );
 }
 

@@ -490,7 +490,7 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
         )}
 
         {/* .day-items — lista scrollabile */}
-        <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+        <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin-hover">
           {localDays.map((d) => {
             return (
               <DayItem
