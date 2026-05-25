@@ -58,6 +58,9 @@ function Entry({ e }: { e: LlmDebugEntry }) {
         {e.grounded?.length ? (
           <span className="text-micro text-primary-deep font-mono">{e.grounded.length}📍</span>
         ) : null}
+        {e.usage ? (
+          <span className="text-micro text-ink-soft font-mono">{e.usage.totalTokens}tok</span>
+        ) : null}
         <span className="ml-auto text-micro text-ink-faint font-mono">
           {e.durationMs != null ? `${e.durationMs}ms` : ""}
         </span>
@@ -66,6 +69,13 @@ function Entry({ e }: { e: LlmDebugEntry }) {
       {open && (
         <div className="px-2.5 pb-2 space-y-2">
           {e.model ? <div className="text-micro text-ink-faint font-mono">{e.model}</div> : null}
+
+          {e.usage ? (
+            <div className="text-micro text-ink-soft font-mono">
+              {e.usage.totalTokens} tok · {e.usage.promptTokens} in / {e.usage.completionTokens} out
+              {e.iterations != null ? ` · ${e.iterations} iter` : ""}
+            </div>
+          ) : null}
 
           {e.systemPrompt ? (
             <Section label="System prompt">

@@ -18,10 +18,48 @@ export type LlmProvider = "openai" | "gemini";
 export type LlmTier = "fast" | "smart";
 
 /** Neutral chat role. Adapters map `assistant` → Gemini's `model`. */
-export type LlmRole = "system" | "user" | "assistant";
+export type LlmRole = "system" | "user" | "assistant" | "tool";
 
-/** A single neutral chat message. */
-export type LlmMessage = { role: LlmRole; content: string };
+/**
+ * A single neutral chat message. The base case is `{ role, content }`;
+ * tool-calling adds two optional shapes:
+ *  - assistant turn that requested tools → `toolCalls` set (content may be "");
+ *  - tool-result turn (`role: "tool"`)   → `toolCallId` + `name` set.
+ */
+export type LlmMessage = {
+  role: LlmRole;
+  content: string;
+  /** Set on an assistant turn that requested one or more tool calls. */
+  toolCalls?: LlmToolCall[];
+  /** Set on a `tool` turn: which call this result answers (OpenAI round-trip). */
+  toolCallId?: string;
+  /** Set on a `tool` turn: the tool name (Gemini round-trip). */
+  name?: string;
+};
+
+/**
+ * A tool the model may call. `parameters` is a JSON Schema object describing
+ * the arguments. Provider-neutral — adapters map it to OpenAI `function` /
+ * Gemini `functionDeclaration`.
+ */
+export type LlmTool = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+};
+
+/** A tool call emitted by the model. `id` is synthesised for Gemini. */
+export type LlmToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  /**
+   * Opaque provider round-trip token. Gemini thinking models attach a
+   * `thoughtSignature` to each functionCall that MUST be replayed when the
+   * call is sent back, or the next request is rejected. Unused by OpenAI.
+   */
+  signature?: string;
+};
 
 /** Request for a one-shot completion that returns raw text (JSON mode). */
 export type ChatJsonOptions = {
@@ -35,6 +73,36 @@ export type ChatJsonOptions = {
 export type ChatStreamOptions = {
   tier: LlmTier;
   messages: LlmMessage[];
+};
+
+/** Request for a completion where the model may call tools (function calling). */
+export type ChatToolsOptions = {
+  tier: LlmTier;
+  messages: LlmMessage[];
+  tools: LlmTool[];
+  /** auto = model decides (default); required = must call a tool; none = text only. */
+  toolChoice?: "auto" | "required" | "none";
+  maxTokens?: number;
+};
+
+/** Token usage for one model call. Maps OpenAI `usage` / Gemini `usageMetadata`. */
+export type LlmUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+/**
+ * Result of a tool-enabled completion. `toolCalls` is empty when the model
+ * answered with plain text. When non-empty, the caller executes them and
+ * feeds the results back as `tool` messages for the next turn.
+ */
+export type ChatToolsResult = {
+  text: string;
+  toolCalls: LlmToolCall[];
+  provider: LlmProvider;
+  model: string;
+  usage?: LlmUsage;
 };
 
 /** Geographic bias for Maps grounding (Gemini only). */
@@ -80,4 +148,10 @@ export interface LlmAdapter {
    * Gemini), then `JSON.parse` the returned `text`.
    */
   chatGrounded(opts: ChatGroundedOptions): Promise<GroundedResult>;
+  /**
+   * Completion with function calling. Returns the model's text and/or the
+   * tool calls it requested. The agent loop executes the calls and re-invokes
+   * with the results appended as `tool` messages.
+   */
+  chatTools(opts: ChatToolsOptions): Promise<ChatToolsResult>;
 }

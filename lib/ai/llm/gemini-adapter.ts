@@ -15,13 +15,15 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { GoogleGenAI } from "@google/genai";
-import type { Content, GenerateContentConfig } from "@google/genai";
+import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai";
+import type { Content, GenerateContentConfig, Part } from "@google/genai";
 import { LLM_MODELS } from "./models";
 import type {
   ChatGroundedOptions,
   ChatJsonOptions,
   ChatStreamOptions,
+  ChatToolsOptions,
+  ChatToolsResult,
   GroundedResult,
   LlmAdapter,
   LlmMessage,
@@ -57,6 +59,55 @@ function split(messages: LlmMessage[]): { system?: string; contents: Content[] }
     }));
 
   return { system: system || undefined, contents };
+}
+
+/**
+ * Like `split`, but preserves tool-calling parts: assistant `functionCall`s
+ * and `tool` results (`functionResponse`). Used only by `chatTools`.
+ */
+function splitWithTools(messages: LlmMessage[]): { system?: string; contents: Content[] } {
+  const system = messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content)
+    .join("\n\n");
+
+  const contents: Content[] = [];
+  for (const m of messages) {
+    if (m.role === "system") continue;
+
+    if (m.role === "tool") {
+      let response: Record<string, unknown>;
+      try { response = { result: JSON.parse(m.content) }; } catch { response = { result: m.content }; }
+      contents.push({ role: "user", parts: [{ functionResponse: { name: m.name ?? "", response } }] });
+      continue;
+    }
+
+    if (m.role === "assistant" && m.toolCalls?.length) {
+      const parts: Part[] = [];
+      if (m.content) parts.push({ text: m.content });
+      for (const tc of m.toolCalls) {
+        // Replay the thoughtSignature: thinking models require it on the
+        // functionCall part sent back, or the request is rejected (400).
+        parts.push({
+          functionCall: { name: tc.name, args: tc.arguments },
+          ...(tc.signature ? { thoughtSignature: tc.signature } : {}),
+        });
+      }
+      contents.push({ role: "model", parts });
+      continue;
+    }
+
+    contents.push({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] });
+  }
+
+  return { system: system || undefined, contents };
+}
+
+/** auto → AUTO, required → ANY, none → NONE. */
+function fnCallingMode(toolChoice?: "auto" | "required" | "none"): FunctionCallingConfigMode {
+  if (toolChoice === "required") return FunctionCallingConfigMode.ANY;
+  if (toolChoice === "none") return FunctionCallingConfigMode.NONE;
+  return FunctionCallingConfigMode.AUTO;
 }
 
 /** `fast` runs without thinking; `smart` keeps the model default. */
@@ -126,5 +177,53 @@ export const geminiAdapter: LlmAdapter = {
       .filter((p) => p.placeId);
 
     return { text: res.text ?? "", places, provider: "gemini", model };
+  },
+
+  async chatTools({ tier, messages, tools, toolChoice, maxTokens }: ChatToolsOptions): Promise<ChatToolsResult> {
+    const model = LLM_MODELS.gemini[tier];
+    const { system, contents } = splitWithTools(messages);
+
+    const res = await getGemini().models.generateContent({
+      model,
+      contents,
+      config: {
+        ...baseConfig(tier, system),
+        ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
+        tools: [{
+          functionDeclarations: tools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            // Gemini accepts a JSON-Schema-shaped parameters object here.
+            parameters: t.parameters as Record<string, unknown>,
+          })),
+        }],
+        toolConfig: { functionCallingConfig: { mode: fnCallingMode(toolChoice) } },
+      },
+    });
+
+    // Read functionCall parts directly (not res.functionCalls) so we capture
+    // each part's thoughtSignature, required to replay the call to Gemini.
+    const parts = res.candidates?.[0]?.content?.parts ?? [];
+    const toolCalls = parts
+      .map((p, i) => ({ p, i }))
+      .filter((x): x is { p: Part & { functionCall: NonNullable<Part["functionCall"]> }; i: number } => Boolean(x.p.functionCall))
+      .map(({ p, i }) => ({
+        id: p.functionCall.id ?? `${p.functionCall.name ?? "fn"}-${i}`,
+        name: p.functionCall.name ?? "",
+        arguments: (p.functionCall.args ?? {}) as Record<string, unknown>,
+        ...(p.thoughtSignature ? { signature: p.thoughtSignature } : {}),
+      }));
+
+    // Gemini counts thinking tokens separately; fold them into completion.
+    const u = res.usageMetadata;
+    const usage = u
+      ? {
+          promptTokens: u.promptTokenCount ?? 0,
+          completionTokens: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
+          totalTokens: u.totalTokenCount ?? 0,
+        }
+      : undefined;
+
+    return { text: res.text ?? "", toolCalls, provider: "gemini", model, ...(usage ? { usage } : {}) };
   },
 };

@@ -52,11 +52,15 @@ export type GoChatDebugCall = {
   id: string;
   ts: number;
   systemPrompt: string | null;
-  messages: { role: "user" | "assistant"; content: string }[];
+  messages: { role: "user" | "assistant" | "tool" | "system"; content: string }[];
   response: string | null;
   error: string | null;
   durationMs: number | null;
   streaming: boolean;
+  /** Token usage (agent loop / tool calls), when the server reports it. */
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+  /** Number of model calls in the loop, when applicable. */
+  iterations?: number | null;
 };
 
 export type GoChatDebugFn = (call: GoChatDebugCall) => void;

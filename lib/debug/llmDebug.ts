@@ -22,6 +22,10 @@ export type LlmDebugEntry = {
   systemPrompt?: string | null;
   /** Exact message array sent to the model, system excluded (debug mode only). */
   sentMessages?: { role: string; content: string }[];
+  /** Token usage, summed over the call(s), when the server reports it. */
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+  /** Number of model calls (agent loop), when applicable. */
+  iterations?: number | null;
   /** Raw assistant output — JSON string (JSON modes) or accumulated text. */
   raw: string;
   /** Places grounded via Google Maps (Gemini), when the server reports them. */

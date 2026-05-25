@@ -15,6 +15,8 @@ import type {
   ChatGroundedOptions,
   ChatJsonOptions,
   ChatStreamOptions,
+  ChatToolsOptions,
+  ChatToolsResult,
   GroundedResult,
   LlmAdapter,
   LlmProvider,
@@ -44,10 +46,17 @@ export function chatGrounded(opts: ChatGroundedOptions): Promise<GroundedResult>
   return adapter().chatGrounded(opts);
 }
 
+/** Completion with function calling. Returns text and/or requested tool calls. */
+export function chatTools(opts: ChatToolsOptions): Promise<ChatToolsResult> {
+  return adapter().chatTools(opts);
+}
+
 export type {
   ChatGroundedOptions,
   ChatJsonOptions,
   ChatStreamOptions,
+  ChatToolsOptions,
+  ChatToolsResult,
   GroundedPlace,
   GroundedResult,
   LlmLatLng,
@@ -55,4 +64,7 @@ export type {
   LlmProvider,
   LlmRole,
   LlmTier,
+  LlmTool,
+  LlmToolCall,
+  LlmUsage,
 } from "./types";
