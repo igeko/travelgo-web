@@ -18,6 +18,10 @@ export type LlmDebugEntry = {
   /** "suggestions" | "chat" | "deepdive". */
   mode: string;
   durationMs?: number | null;
+  /** System prompt actually sent to the model (debug mode only). */
+  systemPrompt?: string | null;
+  /** Exact message array sent to the model, system excluded (debug mode only). */
+  sentMessages?: { role: string; content: string }[];
   /** Raw assistant output — JSON string (JSON modes) or accumulated text. */
   raw: string;
   /** Places grounded via Google Maps (Gemini), when the server reports them. */

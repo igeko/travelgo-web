@@ -1123,6 +1123,14 @@ function ClosedCard({ lastMessage, onClick }: { lastMessage: string; onClick: ()
 
 type SizeMode = "normal" | "wide";
 
+/**
+ * Presentation variant:
+ * - `float`  — fixed-position floating panel (default, today's behavior).
+ * - `inline` — rendered in normal document flow, filling its parent container
+ *   (no portal, no minimize-to-pill, no resize). Same logic, different shell.
+ */
+export type GoChatVariant = "float" | "inline";
+
 /** Horizontal anchor for the float — always pinned to the bottom. */
 export type GoChatPosition = "left" | "center" | "right";
 
@@ -1167,13 +1175,14 @@ type FloatPanelProps = {
   tripContext?: string;
   position: GoChatPosition;
   wideWidth: number;
+  variant: GoChatVariant;
   activeEditMatch?: boolean;
   focus?: GoPlace | null;
   onClearFocus?: () => void;
   onGenerateYume: GenerateYume;
 };
 
-function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, position, wideWidth, activeEditMatch, focus, onClearFocus, onGenerateYume }: FloatPanelProps) {
+function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSelectionChange, inputRef, bottomRef, tripContext, position, wideWidth, variant, activeEditMatch, focus, onClearFocus, onGenerateYume }: FloatPanelProps) {
   const t = useTranslations("GoChat");
   const [sizeMode, setSizeMode] = useState<SizeMode>("normal");
   const [isMobile, setIsMobile] = useState(() => !window.matchMedia("(min-width: 640px)").matches);
@@ -1185,8 +1194,14 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Calcola stile panel in base a sizeMode + isMobile
+  const isInline = variant === "inline";
+
+  // Calcola stile panel in base a variant / sizeMode / isMobile
   const panelStyle = (): React.CSSProperties => {
+    if (isInline) {
+      // In-flow: the host container governs placement and size.
+      return { position: "relative", width: "100%", height: "100%", maxHeight: "100%" };
+    }
     if (isMobile) {
       return { position: "fixed", bottom: 12, left: 12, right: 12, maxHeight: `calc(100dvh - 12px - ${HEADER_CLEARANCE}px)` };
     }
@@ -1211,10 +1226,10 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
         background: "var(--color-bg)",
         border: "0.5px solid var(--color-border-strong)",
         borderRadius: "var(--radius-lg)",
-        boxShadow: "0 10px 40px rgba(13,44,61,0.18), 0 2px 8px rgba(13,44,61,0.08)",
+        boxShadow: isInline ? "none" : "0 10px 40px rgba(13,44,61,0.18), 0 2px 8px rgba(13,44,61,0.08)",
         isolation: "isolate",
         overflow: "hidden",
-        zIndex: 9999,
+        zIndex: isInline ? "auto" : 9999,
         transition: "width 280ms cubic-bezier(0.4,0,0.2,1), height 280ms cubic-bezier(0.4,0,0.2,1), top 280ms cubic-bezier(0.4,0,0.2,1), left 280ms cubic-bezier(0.4,0,0.2,1), right 280ms cubic-bezier(0.4,0,0.2,1), bottom 280ms cubic-bezier(0.4,0,0.2,1), max-height 280ms cubic-bezier(0.4,0,0.2,1)",
       }}
     >
@@ -1241,8 +1256,8 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
         <Av size={30} className="go-halo" />
         <span className="flex-1" style={{ fontSize: 15, fontWeight: 600, color: "var(--color-orange)", letterSpacing: "0.10em", textTransform: "uppercase" }}>Go</span>
 
-        {/* Resize button — solo desktop */}
-        {!isMobile && (
+        {/* Resize + minimize — solo nel float desktop. Inline è governato dal container. */}
+        {!isInline && !isMobile && (
           <Button
             variant="ghost"
             size="sm"
@@ -1257,17 +1272,19 @@ function FloatPanel({ messages, input, loading, onInput, onSubmit, onClose, onSe
           </Button>
         )}
 
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          tone="neutral"
-          onClick={onClose}
-          aria-label="Minimize"
-          title="Minimize"
-        >
-          <IconChevronDown size={13} />
-        </Button>
+        {!isInline && (
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            tone="neutral"
+            onClick={onClose}
+            aria-label="Minimize"
+            title="Minimize"
+          >
+            <IconChevronDown size={13} />
+          </Button>
+        )}
       </div>
 
       {/* Body */}
@@ -1485,6 +1502,11 @@ export type GoChatFloatProps = {
   tripContext?: string;
   onDebugCall?: GoChatDebugFn;
   open?: boolean;
+  /**
+   * Presentation variant. Default "float" (fixed floating panel). "inline"
+   * docks Go into the page flow, filling its parent container. See GoChatVariant.
+   */
+  variant?: GoChatVariant;
   /** Horizontal anchor (always bottom). Default "right". */
   position?: GoChatPosition;
   /** Width of the panel in "wide" size mode. Default 650. */
@@ -1506,14 +1528,16 @@ export type GoChatFloatProps = {
   listeningTypes?: Set<GoEventType>;
 };
 
-export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position = "right", wideWidth = 650, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, focus, onClearFocus, onEvent, listeningTypes }: GoChatFloatProps) {
-  const [open, setOpen] = useState(openProp ?? false);
+export function GoChatFloat({ tripContext, onDebugCall, open: openProp, variant = "float", position = "right", wideWidth = 650, onClose, pendingMessage, onPendingMessageConsumed, activeEditMatch, focus, onClearFocus, onEvent, listeningTypes }: GoChatFloatProps) {
+  const isInline = variant === "inline";
+  // Inline è sempre "aperto": vive in pagina, niente minimize-to-pill.
+  const [open, setOpen] = useState((openProp ?? false) || variant === "inline");
   // Sync the controlled `open` prop into local state during render (no effect),
   // so internal toggles and parent control stay coherent without cascading renders.
   const [prevOpenProp, setPrevOpenProp] = useState(openProp);
   if (openProp !== undefined && openProp !== prevOpenProp) {
     setPrevOpenProp(openProp);
-    setOpen(openProp);
+    setOpen(openProp || isInline);
   }
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -1618,7 +1642,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
             nearbyIdeas?: string[];
           };
 
-          const dbg = (parsed as { _debug?: { model?: string; durationMs?: number; grounded?: { title: string; placeId: string }[] } })._debug;
+          const dbg = (parsed as { _debug?: { model?: string; durationMs?: number; grounded?: { title: string; placeId: string }[]; systemPrompt?: string; sentMessages?: { role: string; content: string }[] } })._debug;
           publishLlmDebug({
             id: debugId,
             ts: t0,
@@ -1626,6 +1650,8 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
             model: res.headers.get("X-LLM-Model") ?? dbg?.model ?? null,
             mode: parsed.mode ?? "suggestions",
             durationMs: dbg?.durationMs ?? Date.now() - t0,
+            systemPrompt: dbg?.systemPrompt ?? null,
+            sentMessages: dbg?.sentMessages,
             raw,
             grounded: dbg?.grounded,
           });
@@ -1667,6 +1693,14 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
       }
 
       /* ── Chat mode: streaming text/plain ── */
+      // Debug headers (present only when debugMode): exact system prompt + sent messages.
+      const dbgSystemPrompt = res.headers.get("X-Go-System-Prompt");
+      const dbgSentRaw = res.headers.get("X-Go-Debug");
+      let dbgSentMessages: { role: string; content: string }[] | undefined;
+      if (dbgSentRaw) {
+        try { dbgSentMessages = (JSON.parse(decodeURIComponent(dbgSentRaw)) as { sentMessages?: { role: string; content: string }[] }).sentMessages; } catch { /* ignore */ }
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
@@ -1688,6 +1722,8 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
         provider: res.headers.get("X-LLM-Provider"),
         mode: "chat",
         durationMs: Date.now() - t0,
+        systemPrompt: dbgSystemPrompt ? decodeURIComponent(dbgSystemPrompt) : null,
+        sentMessages: dbgSentMessages,
         raw: accumulated,
       });
     } catch (err) {
@@ -1793,6 +1829,35 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
   useEffect(() => { if (open) hasEverOpened.current = true; }, [open]);
 
   if (!mounted) return null;
+
+  const panel = (
+    <FloatPanel
+      messages={messages}
+      input={input}
+      loading={loading}
+      onInput={setInput}
+      onSubmit={handleSubmit}
+      onClose={handleClose}
+      onSelectionChange={setSelectedSuggestion}
+      inputRef={inputRef}
+      bottomRef={bottomRef}
+      tripContext={tripContext}
+      position={position}
+      wideWidth={wideWidth}
+      variant={variant}
+      activeEditMatch={activeEditMatch}
+      focus={focus}
+      onClearFocus={onClearFocus}
+      onGenerateYume={handleGenerateYume}
+    />
+  );
+
+  // Inline: in flusso normale, niente portal né wrapper fixed. Il container del
+  // parent governa posizione e dimensioni; Go è sempre presente (open forzato).
+  if (isInline) {
+    return <GoEmitProvider value={emitter}>{panel}</GoEmitProvider>;
+  }
+
   if (!open && !hasHistory && !hasEverOpened.current) return null;
 
   return createPortal(
@@ -1801,26 +1866,7 @@ export function GoChatFloat({ tripContext, onDebugCall, open: openProp, position
         {!open && (hasHistory || hasEverOpened.current) && (
           <ClosedCard lastMessage={lastGoMessage || "Go · resume"} onClick={() => setOpen(true)} />
         )}
-        {open && (
-          <FloatPanel
-            messages={messages}
-            input={input}
-            loading={loading}
-            onInput={setInput}
-            onSubmit={handleSubmit}
-            onClose={handleClose}
-            onSelectionChange={setSelectedSuggestion}
-            inputRef={inputRef}
-            bottomRef={bottomRef}
-            tripContext={tripContext}
-            position={position}
-            wideWidth={wideWidth}
-            activeEditMatch={activeEditMatch}
-            focus={focus}
-            onClearFocus={onClearFocus}
-            onGenerateYume={handleGenerateYume}
-          />
-        )}
+        {open && panel}
       </div>
     </GoEmitProvider>,
     document.body,

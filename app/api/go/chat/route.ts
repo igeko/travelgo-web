@@ -235,13 +235,16 @@ export async function POST(req: Request): Promise<Response> {
   if (intent.mode === "suggestions") {
     try {
       const t0 = Date.now();
+      const sentMessages: LlmMessage[] = [
+        ...(tripContextMessage ? [tripContextMessage] : []),
+        ...messages,
+      ];
       const grounded = await chatGrounded({
         tier: "smart",
         near,
         messages: [
           { role: "system", content: SUGGESTIONS_SYSTEM_PROMPT },
-          ...(tripContextMessage ? [tripContextMessage] : []),
-          ...messages,
+          ...sentMessages,
         ],
       });
       const parsed = parseJsonLoose<{ text?: string; suggestions?: Array<Record<string, unknown>> }>(grounded.text);
@@ -257,6 +260,8 @@ export async function POST(req: Request): Promise<Response> {
           model: grounded.model,
           durationMs: Date.now() - t0,
           grounded: grounded.places.map((p) => ({ title: p.title, placeId: p.placeId })),
+          systemPrompt: SUGGESTIONS_SYSTEM_PROMPT,
+          sentMessages,
         };
       }
 
@@ -275,12 +280,15 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   /* ── Mode: chat (streaming) ── */
+  const chatSentMessages: LlmMessage[] = [
+    ...(tripContextMessage ? [tripContextMessage] : []),
+    ...messages,
+  ];
   const stream = chatStream({
     tier: "fast",
     messages: [
       { role: "system", content: BASE_SYSTEM_PROMPT },
-      ...(tripContextMessage ? [tripContextMessage] : []),
-      ...messages,
+      ...chatSentMessages,
     ],
   });
 
@@ -300,12 +308,21 @@ export async function POST(req: Request): Promise<Response> {
     },
   });
 
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache",
-      "X-Accel-Buffering": "no",
-      "X-LLM-Provider": activeProvider(),
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-cache",
+    "X-Accel-Buffering": "no",
+    "X-LLM-Provider": activeProvider(),
+  };
+
+  // Debug: surface the exact system prompt + sent messages via headers so the
+  // client can publish them to the LLM debug panel. URL-encoded (ASCII-safe,
+  // UTF-8 capable); capped to stay within header size limits.
+  if (debug) {
+    headers["X-Go-System-Prompt"] = encodeURIComponent(BASE_SYSTEM_PROMPT);
+    const encoded = encodeURIComponent(JSON.stringify({ sentMessages: chatSentMessages }));
+    if (encoded.length <= 12_000) headers["X-Go-Debug"] = encoded;
+  }
+
+  return new Response(readable, { headers });
 }

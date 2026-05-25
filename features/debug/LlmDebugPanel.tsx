@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * features/debug/LlmDebugPanel.tsx
+ * ─────────────────────────────────────────────────────────────────
+ * App-wide LLM observability panel. Visible only when debug mode is on
+ * (AppHeader kebab → useDebugMode). Subscribes to the `llmDebug` bus and
+ * shows, per Go call: the system prompt, the exact messages sent to the
+ * model, the raw response, and grounding info.
+ *
+ * Mounted once in the authenticated app layout so it follows Go on every
+ * page (Explore, trips/new, day…). Replaces the old Explore-only panel.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
 import { useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import { IconX, IconChevronDown } from "@/components/ui/icons";
@@ -18,6 +31,15 @@ function providerChip(provider: string | null): string {
   if (provider === "gemini") return "bg-primary-soft text-primary-deep border-primary-border";
   if (provider === "openai") return "bg-lime text-lime-text border-border";
   return "bg-surface-soft text-ink-soft border-border";
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-micro font-medium uppercase tracking-eyebrow text-primary-deep">{label}</div>
+      {children}
+    </div>
+  );
 }
 
 function Entry({ e }: { e: LlmDebugEntry }) {
@@ -42,18 +64,45 @@ function Entry({ e }: { e: LlmDebugEntry }) {
         <IconChevronDown className={cn("size-3 text-ink-faint transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="px-2.5 pb-2 space-y-1.5">
+        <div className="px-2.5 pb-2 space-y-2">
           {e.model ? <div className="text-micro text-ink-faint font-mono">{e.model}</div> : null}
-          {e.grounded?.length ? (
-            <div className="text-micro text-ink-soft font-mono leading-relaxed">
-              {e.grounded.map((g) => (
-                <div key={g.placeId} className="truncate">📍 {g.title} <span className="text-ink-faint">· {g.placeId}</span></div>
-              ))}
-            </div>
+
+          {e.systemPrompt ? (
+            <Section label="System prompt">
+              <pre className="max-h-40 overflow-auto rounded-sm bg-surface-soft p-2 text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">
+                {e.systemPrompt}
+              </pre>
+            </Section>
           ) : null}
-          <pre className="max-h-40 overflow-auto rounded-sm bg-surface-soft p-2 text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">
-            {e.raw || "(empty)"}
-          </pre>
+
+          {e.sentMessages?.length ? (
+            <Section label={`Messages sent (${e.sentMessages.length})`}>
+              <div className="space-y-1">
+                {e.sentMessages.map((m, i) => (
+                  <div key={i} className="rounded-sm bg-surface-soft p-2">
+                    <div className="text-micro font-mono uppercase tracking-meta text-ink-faint mb-0.5">{m.role}</div>
+                    <pre className="max-h-32 overflow-auto text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">{m.content}</pre>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          ) : null}
+
+          {e.grounded?.length ? (
+            <Section label="Grounded places">
+              <div className="text-micro text-ink-soft font-mono leading-relaxed">
+                {e.grounded.map((g) => (
+                  <div key={g.placeId} className="truncate">📍 {g.title} <span className="text-ink-faint">· {g.placeId}</span></div>
+                ))}
+              </div>
+            </Section>
+          ) : null}
+
+          <Section label="Response">
+            <pre className="max-h-40 overflow-auto rounded-sm bg-surface-soft p-2 text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">
+              {e.raw || "(empty)"}
+            </pre>
+          </Section>
         </div>
       )}
     </div>
@@ -61,11 +110,11 @@ function Entry({ e }: { e: LlmDebugEntry }) {
 }
 
 /**
- * Bottom-right LLM observability panel for the Explore page. Visible only when
- * debug mode is enabled from the AppHeader kebab. Shows the active provider and
- * the raw output of each Go call (suggestions / chat / deepdive).
+ * Bottom-right LLM observability panel. Visible only when debug mode is enabled
+ * from the AppHeader kebab. Shows the active provider and, per Go call, the
+ * system prompt, sent messages and raw output (suggestions / chat / deepdive).
  */
-export function ExploreDebugPanel() {
+export function LlmDebugPanel() {
   const [debug] = useDebugMode();
   const entries = useSyncExternalStore(subscribeLlmDebug, getLlmDebug, () => EMPTY);
   const [collapsed, setCollapsed] = useState(false);
@@ -75,7 +124,7 @@ export function ExploreDebugPanel() {
   const provider = entries[0]?.provider ?? null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-30 w-[360px] max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg text-ink">
+    <div className="fixed bottom-4 right-4 z-toast w-[360px] max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-lg text-ink">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
         <span className="text-mini font-semibold">LLM debug</span>
         <span className={cn("rounded-pill border px-1.5 py-0.5 text-micro font-mono uppercase tracking-meta", providerChip(provider))}>

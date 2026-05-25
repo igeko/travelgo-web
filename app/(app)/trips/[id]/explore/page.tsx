@@ -5,7 +5,6 @@ import type { LatLng } from "@/components/ui/Map";
 import { selectNightRoute } from "@/lib/explore/nightRoute";
 import { ExploreMap } from "./ExploreMap";
 import { ExploreGoLauncher } from "./ExploreGoLauncher";
-import { ExploreDebugPanel } from "./ExploreDebugPanel";
 
 /** Tokyo — fallback center when the trip has no geocoded days yet. */
 const FALLBACK_CENTER: LatLng = { lat: 35.6762, lng: 139.6503 };
@@ -55,7 +54,6 @@ export default async function TripExplorePage({
         />
       </main>
       <ExploreGoLauncher tripId={id} position="left" />
-      <ExploreDebugPanel />
     </div>
   );
 }
