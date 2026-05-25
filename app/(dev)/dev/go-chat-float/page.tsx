@@ -89,6 +89,8 @@ export default function GoChatFloatPage() {
   const [debugState, debugDispatch] = useReducer(debugReducer, { entries: [], active: null });
   const [open, setOpen] = useState(false);
   const [variant, setVariant] = useState<GoChatVariant>("float");
+  const [agentInput, setAgentInput] = useState("Voglio andare in Giappone");
+  const [agentBusy, setAgentBusy] = useState(false);
   const [position, setPosition] = useState<GoChatPosition>("right");
   const [source, setSource] = useState<"mock" | "real">("mock");
   const DEFAULT_TRIP_ID = "47c851d1-ee78-4a85-99d0-431fb7c0bf8a";
@@ -104,6 +106,62 @@ export default function GoChatFloatPage() {
   const handleDebugCall = useCallback((call: GoChatDebugCall) => {
     debugDispatch({ type: "UPSERT", entry: call });
   }, []);
+
+  // Step A: drive the agent loop (/api/go/agent) and surface the exchange
+  // (system prompt + messages sent + tool steps) in the debug panel.
+  const runAgent = useCallback(async () => {
+    if (source !== "real" || !tripIdActive) return;
+    setAgentBusy(true);
+    const id = crypto.randomUUID();
+    try {
+      const res = await fetch("/api/go/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tripId: tripIdActive,
+          tripContext,
+          debug: true,
+          message: agentInput,
+        }),
+      });
+      const json = await res.json() as {
+        data?: {
+          text?: string;
+          steps?: unknown[];
+          provider?: string;
+          model?: string;
+          iterations?: number;
+          usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+          _debug?: { systemPrompt?: string; sentMessages?: { role: "user" | "assistant" | "tool" | "system"; content: string }[] };
+        };
+        error?: unknown;
+      };
+      const data = json.data;
+      debugDispatch({ type: "UPSERT", entry: {
+        id, ts: Date.now(),
+        systemPrompt: data?._debug?.systemPrompt ?? null,
+        messages: data?._debug?.sentMessages ?? [{ role: "user", content: agentInput }],
+        response: JSON.stringify({
+          text: data?.text,
+          provider: data?.provider,
+          model: data?.model,
+          steps: data?.steps,
+        }, null, 2),
+        error: json.error ? JSON.stringify(json.error) : null,
+        durationMs: null, streaming: false,
+        usage: data?.usage ?? null,
+        iterations: data?.iterations ?? null,
+      } });
+    } catch (e) {
+      debugDispatch({ type: "UPSERT", entry: {
+        id, ts: Date.now(), systemPrompt: null, messages: [],
+        response: null, error: e instanceof Error ? e.message : String(e),
+        durationMs: null, streaming: false,
+      } });
+    } finally {
+      setAgentBusy(false);
+    }
+  }, [source, tripIdActive, tripContext, agentInput]);
 
   const activeEntry = debugState.entries.find((e) => e.id === debugState.active) ?? null;
 
@@ -284,6 +342,38 @@ export default function GoChatFloatPage() {
             </p>
           </section>
 
+          {/* Agent loop (Step A) — read-only getTripState tool */}
+          <section>
+            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint mb-2">Agent loop (Step A)</div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={agentInput}
+                onChange={(e) => setAgentInput(e.target.value)}
+                placeholder="messaggio per l'agente…"
+                className="flex-1 text-[12px] bg-surface border border-border rounded-lg px-3 py-2 text-ink placeholder:text-ink-faint outline-none focus:border-ink-soft"
+              />
+              <button
+                type="button"
+                onClick={runAgent}
+                disabled={source !== "real" || !tripIdActive || agentBusy}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-[11px] font-medium transition-colors",
+                  source === "real" && tripIdActive && !agentBusy
+                    ? "bg-ink text-white hover:bg-ink-hover cursor-pointer"
+                    : "bg-surface text-ink-faint cursor-default",
+                )}
+              >
+                {agentBusy ? "Running…" : "Run agent"}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-ink-faint font-serif italic">
+              {source === "real"
+                ? "Chiama /api/go/agent (tool getTripState). System prompt, messaggi e step compaiono nel pannello Debug a destra."
+                : "Richiede source = Supabase con un Trip ID valido di cui sei membro."}
+            </p>
+          </section>
+
         </div>
       </div>
 
@@ -318,6 +408,14 @@ function DebugDetail({ entry }: { entry: GoChatDebugCall }) {
 
   return (
     <div className="flex flex-col">
+      {entry.usage && (
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-surface-soft text-[10px] font-mono text-ink-soft">
+          <span className="text-orange font-medium uppercase tracking-[0.08em]">Tokens</span>
+          <span>{entry.usage.totalTokens} tot</span>
+          <span className="text-ink-faint">· {entry.usage.promptTokens} in / {entry.usage.completionTokens} out</span>
+          {entry.iterations != null && <span className="ml-auto text-ink-faint">{entry.iterations} iter</span>}
+        </div>
+      )}
       <div className="flex border-b border-border shrink-0">
         {tabs.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}

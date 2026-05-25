@@ -37,6 +37,7 @@ export { Membership }  from "./entities/Membership";
 export { Users }       from "./entities/Users";
 export { Feedback }    from "./entities/Feedback";
 export { Airports }    from "./entities/Airports";
+export { Go }          from "./entities/Go";
 
 export type {
   CreateTripInput, UpdateTripInput,
@@ -52,6 +53,7 @@ export type {
 export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";
 export type { UserProfile, UpdateProfileInput } from "./entities/Users";
 export type { CreateTesterNoteInput } from "./entities/Feedback";
+export type { GoSessionRow, GoMessageRow, GoMessageRole, InsertGoMessage, UpdateGoSession } from "./entities/Go";
 
 // ── DAL factory ───────────────────────────────────────────────────
 
@@ -62,6 +64,7 @@ import { Membership }  from "./entities/Membership";
 import { Users }       from "./entities/Users";
 import { Feedback }    from "./entities/Feedback";
 import { Airports }    from "./entities/Airports";
+import { Go }          from "./entities/Go";
 
 export type Dal = {
   trips:      Trips;
@@ -70,6 +73,7 @@ export type Dal = {
   users:      Users;
   feedback:   Feedback;
   airports:   Airports;
+  go:         Go;
 };
 
 function buildDal(client: SupabaseClient): Dal {
@@ -80,6 +84,7 @@ function buildDal(client: SupabaseClient): Dal {
     users:      new Users(client),
     feedback:   new Feedback(client),
     airports:   new Airports(client),
+    go:         new Go(client),
   };
 }
 

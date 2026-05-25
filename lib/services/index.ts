@@ -20,8 +20,9 @@ import { Scheduler } from "./Scheduler";
 import { FeedbackService } from "./FeedbackService";
 import { UserService } from "./UserService";
 import { YumeService } from "./YumeService";
+import { GoService } from "./GoService";
 
-export { TripService, MembershipService, Scheduler, FeedbackService, UserService, YumeService };
+export { TripService, MembershipService, Scheduler, FeedbackService, UserService, YumeService, GoService };
 export type { CreateTripRequest, UpdateTripPatch } from "./TripService";
 export type { Me } from "./UserService";
 export type { Yume } from "./YumeService";
@@ -36,6 +37,8 @@ export type Services = {
   users: UserService;
   /** Owner of the activity entity: create/edit/delete/search/visibility/share. */
   yumes: YumeService;
+  /** Go agent persistence: session + conversation thread. */
+  go: GoService;
 };
 
 function build(dal: Dal): Services {
@@ -47,6 +50,7 @@ function build(dal: Dal): Services {
     feedback: new FeedbackService(dal),
     users: new UserService(dal),
     yumes,
+    go: new GoService(dal),
   };
 }
 

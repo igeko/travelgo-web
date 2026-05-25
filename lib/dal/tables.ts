@@ -46,3 +46,9 @@ export enum FeedbackTable {
 export enum AirportTable {
   Airports = "airports",
 }
+
+/** Go agent: per-(trip,user) planning session and its conversation thread. */
+export enum GoTable {
+  Sessions = "go_sessions",
+  Messages = "go_messages",
+}
