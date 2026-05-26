@@ -54,6 +54,14 @@ export class GoService {
     return rows.map(rowToLlm);
   }
 
+  /** Conversation for display: user + assistant turns with visible text only. */
+  async displayTurns(sessionId: string, limit = 60): Promise<{ role: "user" | "assistant"; content: string }[]> {
+    const rows = unwrap(await this.dal.go.listMessages(sessionId, limit));
+    return rows
+      .filter((r) => (r.role === "user" || r.role === "assistant") && r.content.trim().length > 0)
+      .map((r) => ({ role: r.role as "user" | "assistant", content: r.content }));
+  }
+
   /**
    * Persist a completed turn: the messages the loop appended (user message +
    * assistant/tool turns), then touch the session (updated_at, optional phase

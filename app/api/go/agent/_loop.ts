@@ -19,9 +19,14 @@ const MAX_ITERS = 4;
 
 export type AgentStep = { tool: string; args: unknown; result: unknown };
 
+/** A write the model proposed but the user must confirm before it runs. */
+export type PendingAction = { name: string; arguments: Record<string, unknown>; summary: string };
+
 export type AgentResult = {
   text: string;
   steps: AgentStep[];
+  /** Writes awaiting user confirmation (not executed). */
+  pendingActions: PendingAction[];
   /** Messages appended this turn (user + assistant/tool), for persistence. */
   appended: LlmMessage[];
   /** Debug: exact system prompt and the message array as last sent. */
@@ -54,6 +59,7 @@ export async function runAgent(opts: {
   // Messages produced this turn (context excluded — it is not persisted).
   const appended: LlmMessage[] = [opts.userMessage];
   const steps: AgentStep[] = [];
+  let pendingActions: PendingAction[] = [];
   let text = "";
   let provider = "";
   let model = "";
@@ -85,6 +91,21 @@ export async function runAgent(opts: {
       break;
     }
 
+    // Confirm-gated writes: don't execute — surface them as pending actions.
+    // Persist only the proposal text (no dangling tool_call in history).
+    const gated = res.toolCalls.filter((c) => GO_TOOLS[c.name]?.requiresConfirm);
+    if (gated.length > 0) {
+      pendingActions = gated.map((c) => ({
+        name: c.name,
+        arguments: c.arguments,
+        summary: GO_TOOLS[c.name]?.summary?.(c.arguments) ?? c.name,
+      }));
+      const proposalMsg: LlmMessage = { role: "assistant", content: res.text };
+      convo.push(proposalMsg);
+      appended.push(proposalMsg);
+      break;
+    }
+
     // Record the assistant turn that requested the tools…
     const assistantMsg: LlmMessage = { role: "assistant", content: res.text, toolCalls: res.toolCalls };
     convo.push(assistantMsg);
@@ -110,9 +131,27 @@ export async function runAgent(opts: {
     }
   }
 
+  // Safety net: the loop ended still wanting tools (iteration cap) → no text.
+  // Force one final text-only turn so the user always gets a reply. Skipped
+  // when there are pending actions (the confirm card carries the proposal).
+  if (!text.trim() && pendingActions.length === 0) {
+    const finalRes = await chatTools({ tier: "smart", messages: convo, tools: toolDefs(), toolChoice: "none" });
+    iterations++;
+    if (finalRes.usage) {
+      usage.promptTokens += finalRes.usage.promptTokens;
+      usage.completionTokens += finalRes.usage.completionTokens;
+      usage.totalTokens += finalRes.usage.totalTokens;
+    }
+    text = finalRes.text;
+    const finalMsg: LlmMessage = { role: "assistant", content: text };
+    convo.push(finalMsg);
+    appended.push(finalMsg);
+  }
+
   return {
     text,
     steps,
+    pendingActions,
     appended,
     systemPrompt: opts.system,
     sentMessages: convo
