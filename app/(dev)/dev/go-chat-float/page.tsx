@@ -17,6 +17,7 @@ const MOCK_TRIP_INFO: TripInfo = {
     id: "trip-001",
     title: "Japan",
     subtitle: null,
+    destination: null,
     start_date: "2026-07-31",
     end_date: "2026-08-20",
     cover_image: null,

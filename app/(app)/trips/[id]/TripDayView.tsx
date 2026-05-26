@@ -11,12 +11,12 @@ import { DayEditForm, type DayEditSection } from "@/features/day/DayEditForm";
 import type { DayActivity } from "@/features/day/DayActivitiesEditForm";
 import { ActivityEditForm, type ActivityData } from "@/features/activity/ActivityEditForm";
 import type { ActivityStatus } from "@/components/ui/StatusBadge";
-import { IconArrowRightCircle, IconChevronLeft, IconChevronRight, IconX } from "@/components/ui/icons";
+import { IconArrowRightCircle, IconChevronRight, IconX } from "@/components/ui/icons";
 import { GoPanel } from "@/features/go/GoPanel";
 import type { GoContext } from "@/features/go/types";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { Timeline } from "@/features/activity/Timeline";
-import { DayItem } from "@/features/day/DayItem";
+import { DayRail } from "@/features/day/DayRail";
 import { useTripContext } from "@/features/go/useTripContext";
 import { useTripGo } from "@/features/go/TripGoContext";
 import { useYumejiDrawer, YumejiPinnedColumn } from "@/features/yumeji/YumejiFrame";
@@ -442,72 +442,18 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
       )}
     >
 
-      {/* ══ SIDEBAR — .day-list ══════════════════════════════════ */}
-      <aside
-        className="hidden md:flex flex-col bg-surface rounded-lg border border-border overflow-hidden self-start"
-        style={{
-          position: "sticky",
-          top: 94, /* header 52px + sub-bar 42px */
-          maxHeight: "calc(100vh - 94px - 24px)",
-        }}
-      >
-        {/* .day-list-head */}
-        {daysCollapsed ? (
-          <div className="px-2 py-3 border-b border-border shrink-0 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setDaysCollapsed(false)}
-              aria-label={t("sidebar.expand")}
-              title={t("sidebar.expand")}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
-            >
-              <IconChevronRight size={18} />
-            </button>
-          </div>
-        ) : (
-          <div className="px-[18px] pt-4 pb-3 border-b border-border shrink-0 flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-micro uppercase tracking-[0.10em] text-ink-soft">{t("sidebar.itinerary")}</div>
-              <div className="text-[16px] font-semibold text-ink mt-0.5">{t("sidebar.dayByDay")}</div>
-              <div className="text-mini text-ink-soft mt-0.5">
-                {t("sidebar.summary", {
-                  count: localDays.length,
-                  start: trip.start_date ? formatDate(trip.start_date) : "",
-                  end: trip.end_date ? formatDate(trip.end_date) : "",
-                })}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDaysCollapsed(true)}
-              aria-label={t("sidebar.collapse")}
-              title={t("sidebar.collapse")}
-              className="shrink-0 flex items-center justify-center w-7 h-7 -mr-1 rounded-md text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors cursor-pointer"
-            >
-              <IconChevronLeft size={18} />
-            </button>
-          </div>
-        )}
-
-        {/* .day-items — lista scrollabile */}
-        <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin-hover">
-          {localDays.map((d) => {
-            return (
-              <DayItem
-                key={d.id}
-                id={`day-${d.day_number - 1}`}
-                dow={d.date ? getDow(d.date) : ""}
-                dayNumber={d.date ? localDate(d.date).getDate() : d.day_number}
-                zone={d.city ?? undefined}
-                place={d.label ?? undefined}
-                selected={d.id === selectedDayId}
-                compact={daysCollapsed}
-                onClick={() => selectDay(d.id)}
-              />
-            );
-          })}
-        </ol>
-      </aside>
+      {/* ══ SIDEBAR — .day-list (shared DayRail) ════════════════════ */}
+      <DayRail
+        className="hidden md:flex self-start"
+        style={{ position: "sticky", top: 94 /* header 52px + sub-bar 42px */, maxHeight: "calc(100vh - 94px - 24px)" }}
+        days={localDays}
+        selectedDayId={selectedDayId}
+        onSelect={selectDay}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+        collapsed={daysCollapsed}
+        onToggleCollapse={() => setDaysCollapsed((v) => !v)}
+      />
 
       {/* ══ MAIN — .day-main ════════════════════════════════════ */}
       <section className="min-w-0">

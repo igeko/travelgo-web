@@ -242,6 +242,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Trip days aside · clickable selection",
   },
   {
+    slug: "day-rail",
+    title: "DayRail",
+    group: "Features",
+    subgroup: "Trips",
+    description: "Shared day sidebar (trip day page + /trips/new) · header full/label · collapsible",
+  },
+  {
     slug: "hero-banner",
     title: "HeroBanner",
     group: "Features",
@@ -254,6 +261,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Features",
     subgroup: "Trips",
     description: "Trip hero shaped like a boarding pass · trip-schema facts + AI-provided airports/times/countdown",
+  },
+  {
+    slug: "trip-info",
+    title: "TripInfo",
+    group: "Features",
+    subgroup: "Trips",
+    description: "«Il biglietto» del viaggio · 4 campi inline-editabili (SoftField inline), stamp di Go, stati empty/edit/collapsed",
   },
   {
     slug: "place-info",

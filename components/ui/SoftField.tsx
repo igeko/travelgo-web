@@ -24,10 +24,34 @@ import { cn } from "@/lib/cn";
 type CommonProps = {
   value: string;
   onChange: (value: string) => void;
-  /** Floating label that becomes visible on focus */
+  /**
+   * Visual style.
+   * - "pill" (default): soft pill with bg/border/radius and focus ring.
+   * - "inline": "passport row" — no chrome, inline value, caret + orange label
+   *   as the only activity signals. Variants A–D are driven by `icon`/`label`
+   *   presence (A icon+label · B icon only · C label only · D bare).
+   */
+  variant?: "pill" | "inline";
+  /**
+   * Leading icon (rendered at 14px). Inline variant only — its presence,
+   * together with `label`, selects the A/B/C/D layout variant.
+   */
+  icon?: ReactNode;
+  /** Floating label (pill) / eyebrow label (inline) that marks the field */
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** Error state — tints the value primary-deep (inline variant). */
+  error?: boolean;
+  /**
+   * Micro message rendered below the row (inline variant). Italic primary-deep,
+   * may contain inline links (ReactNode).
+   */
+  errorMessage?: ReactNode;
+  /** Commit the value: fired on Enter (single-line) and on blur. */
+  onCommit?: (value: string) => void;
+  /** Cancel/restore: fired on Escape. */
+  onCancel?: () => void;
   /** Maximum length. When set, the character counter is shown below. */
   maxLength?: number;
   /** Hide the counter even when maxLength is set */
@@ -168,9 +192,15 @@ const SoftFieldBase = forwardRef<
   const {
     value,
     onChange,
+    variant = "pill",
+    icon,
     label,
     placeholder,
     disabled,
+    error,
+    errorMessage,
+    onCommit,
+    onCancel,
     maxLength,
     hideCounter,
     labelAlwaysVisible,
@@ -185,15 +215,37 @@ const SoftFieldBase = forwardRef<
   } = props;
 
   const multiline = "multiline" in props && props.multiline === true;
+  const inline = variant === "inline";
   const small = size === "sm";
   const { prefix, suffix } = extractSlots(children);
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement & HTMLTextAreaElement>,
+  ) => {
+    inputProps?.onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+    if (e.key === "Enter" && !multiline) onCommit?.(value);
+    else if (e.key === "Escape") onCancel?.();
+  };
+
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement & HTMLTextAreaElement>,
+  ) => {
+    inputProps?.onBlur?.(e);
+    if (!e.defaultPrevented) onCommit?.(value);
+  };
 
   const sharedInputClasses = cn(
     "block w-full min-w-0 bg-transparent border-0 outline-0 shadow-none p-0 m-0 appearance-none",
     "font-sans leading-[1.45] font-normal text-ink",
-    small ? "text-[13px]" : "text-[15px]",
-    "placeholder:text-ink-faint",
     "disabled:cursor-not-allowed",
+    inline
+      ? cn(
+          "flex-1 font-medium text-[12.5px] caret-primary",
+          "placeholder:text-ink-faint placeholder:italic placeholder:font-normal",
+          error && "text-primary-deep",
+        )
+      : cn(small ? "text-[13px]" : "text-[15px]", "placeholder:text-ink-faint"),
   );
 
   return (
@@ -201,32 +253,42 @@ const SoftFieldBase = forwardRef<
       <div
         data-multiline={multiline ? "true" : "false"}
         data-size={size}
+        data-variant={variant}
         className={cn(
-          // Named `group/sf` so Prefix/Suffix can react to focus-within and
-          // to the multiline state on this wrapper.
+          // Named `group/sf` so Prefix/Suffix and inline icon/label can react to
+          // focus-within and to the multiline state on this wrapper.
           "group/sf relative flex",
-          bare ? "gap-1.5 p-0" : small ? "gap-1 px-3.5 py-1.5" : "gap-1.5 px-[18px] py-[10px]",
-          // In sm the auto-sized (h-6) slot buttons are taller than the text
-          // line and would stretch the pill — shrink them to match the line.
-          small && "[&_button]:h-5 [&_button]:px-2",
-          // Slot alignment: top in multiline (next to the first textarea line),
-          // centered in single-line.
-          multiline ? "items-start" : "items-center",
-          // Pill chrome — skipped when bare (the field is embedded in another container).
-          !bare && [
-            "bg-surface-input border border-border",
-            // Shape: pill for input, generous radius for textarea
-            multiline ? (small ? "rounded-[16px]" : "rounded-[20px]") : "rounded-pill",
-            // Interaction states
-            "transition-[background,border-color,box-shadow] duration-150",
-            "hover:border-border-strong",
-            "focus-within:border-orange focus-within:bg-surface focus-within:shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
-          ],
-          disabled && "opacity-50 pointer-events-none",
+          inline
+            ? // Inline "passport row": no chrome, value is inline.
+              cn(
+                "w-full gap-2.5 py-2",
+                multiline ? "items-start" : "items-center",
+                disabled ? "opacity-55 cursor-not-allowed" : "cursor-text",
+              )
+            : cn(
+                bare ? "gap-1.5 p-0" : small ? "gap-1 px-3.5 py-1.5" : "gap-1.5 px-[18px] py-[10px]",
+                // In sm the auto-sized (h-6) slot buttons are taller than the text
+                // line and would stretch the pill — shrink them to match the line.
+                small && "[&_button]:h-5 [&_button]:px-2",
+                // Slot alignment: top in multiline (next to the first textarea line),
+                // centered in single-line.
+                multiline ? "items-start" : "items-center",
+                // Pill chrome — skipped when bare (the field is embedded in another container).
+                !bare && [
+                  "bg-surface-input border border-border",
+                  // Shape: pill for input, generous radius for textarea
+                  multiline ? (small ? "rounded-[16px]" : "rounded-[20px]") : "rounded-pill",
+                  // Interaction states
+                  "transition-[background,border-color,box-shadow] duration-150",
+                  "hover:border-border-strong",
+                  "focus-within:border-orange focus-within:bg-surface focus-within:shadow-[0_0_0_3px_rgba(244,123,58,0.12)]",
+                ],
+                disabled && "opacity-50 pointer-events-none",
+              ),
         )}
       >
-        {/* Floating ghost label (visible on hover/focus, or always when labelAlwaysVisible) */}
-        {label && (
+        {/* Pill: floating ghost label (visible on hover/focus, or always when labelAlwaysVisible) */}
+        {!inline && label && (
           <span
             className={cn(
               "absolute -top-2 left-4 px-1.5 bg-surface",
@@ -241,8 +303,37 @@ const SoftFieldBase = forwardRef<
           </span>
         )}
 
-        {/* Prefix slot */}
-        {prefix}
+        {/* Inline: leading icon — faint when empty, primary when filled or focused */}
+        {inline && icon && (
+          <span
+            className={cn(
+              "shrink-0 inline-flex items-center transition-colors",
+              "[&>svg]:size-3.5 [&>svg]:[stroke-width:1.75]",
+              value ? "text-primary" : "text-ink-faint",
+              "group-focus-within/sf:text-primary",
+              multiline && "self-start mt-0.5",
+            )}
+          >
+            {icon}
+          </span>
+        )}
+
+        {/* Inline: eyebrow label — turns primary on focus */}
+        {inline && label && (
+          <span
+            className={cn(
+              "shrink-0 w-[50px] leading-tight transition-colors",
+              "text-micro uppercase tracking-eyebrow font-medium",
+              "text-ink-faint group-focus-within/sf:text-primary",
+              multiline && "self-start mt-0.5",
+            )}
+          >
+            {label}
+          </span>
+        )}
+
+        {/* Pill: prefix slot */}
+        {!inline && prefix}
 
         {/* Input or textarea */}
         {multiline ? (
@@ -257,8 +348,10 @@ const SoftFieldBase = forwardRef<
             autoComplete={autoComplete}
             name={name}
             id={id}
-            className={cn(sharedInputClasses, "resize-y", small ? "min-h-[40px]" : "min-h-[54px]")}
             {...(inputProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            className={cn(sharedInputClasses, "resize-y", small ? "min-h-[40px]" : "min-h-[54px]")}
           />
         ) : (
           <input
@@ -273,6 +366,8 @@ const SoftFieldBase = forwardRef<
             name={name}
             id={id}
             {...(inputProps as React.InputHTMLAttributes<HTMLInputElement>)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
             className={cn(sharedInputClasses, (inputProps as React.InputHTMLAttributes<HTMLInputElement>)?.className)}
           />
         )}
@@ -280,6 +375,11 @@ const SoftFieldBase = forwardRef<
         {/* Suffix slot */}
         {suffix}
       </div>
+
+      {/* Inline: micro error message below the row */}
+      {inline && errorMessage && (
+        <p className="mt-1 pl-6 text-tiny italic text-primary-deep">{errorMessage}</p>
+      )}
 
       {/* Counter (auto, only when maxLength is set) */}
       {maxLength && !hideCounter && (
