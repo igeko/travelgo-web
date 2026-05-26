@@ -50,8 +50,9 @@ export function GoAgentChat({
 }: {
   ensureTripId: () => Promise<string>;
   onTurnComplete?: () => void;
-  /** Saved conversation to hydrate on reload (loaded by the host). */
-  initialTurns?: { role: "user" | "assistant"; content: string }[];
+  /** Saved conversation to hydrate on reload (loaded by the host), including
+   *  any confirm-gated proposals so the widgets/cards come back. */
+  initialTurns?: { role: "user" | "assistant"; content: string; pending?: GoPendingAction[] }[];
   /** Currently selected day number (from the DayRail), or null. */
   selectedDay?: number | null;
   className?: string;
@@ -65,6 +66,7 @@ export function GoAgentChat({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [yumeKeys, setYumeKeys] = useState<Set<string>>(new Set());
   const [yumeBusyKey, setYumeBusyKey] = useState<string | null>(null);
+  const [infoCards, setInfoCards] = useState<{ id: string; title: string }[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const tripIdRef = useRef<string | null>(null);
 
@@ -85,7 +87,7 @@ export function GoAgentChat({
     try {
       const tripId = await ensureTripId();
       tripIdRef.current = tripId;
-      const res = await api.go.agent({ tripId, message: text, debug });
+      const res = await api.go.agent({ tripId, message: text, selectedDay, debug });
       setTurns((prev) => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -103,9 +105,10 @@ export function GoAgentChat({
           mode: "agent",
           durationMs: Date.now() - t0,
           systemPrompt: res._debug?.systemPrompt ?? null,
-          sentMessages: res._debug?.sentMessages,
+          agent: res._debug ?? null,
           usage: res.usage ?? null,
           iterations: res.iterations ?? null,
+          responseText: res.text ?? null,
           raw: JSON.stringify({ text: res.text, steps: res.steps }, null, 2),
         });
       }
@@ -157,6 +160,13 @@ export function GoAgentChat({
     } finally {
       setBusyKey(null);
     }
+  };
+
+  // A [[place:…]] chip's "Mostra info" → append a detail card at the bottom of
+  // the chat (deduped by name, so re-clicking the same place won't stack).
+  const showPlaceInfo = (name: string) => {
+    setInfoCards((prev) => (prev.some((c) => c.title === name) ? prev : [...prev, { id: crypto.randomUUID(), title: name }]));
+    requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }));
   };
 
   // Save one proposed activity to the user's Yumeji collection (unscheduled).
@@ -243,10 +253,13 @@ export function GoAgentChat({
             <div key={t.id} className="flex gap-2.5 items-start">
               <GoAvatar size="xs" pulse={false} className="mt-0.5" />
               <div className="flex flex-col gap-1.5 min-w-0">
-                <RichText text={t.content} className="font-serif italic text-ink text-[15px] leading-relaxed" />
+                <RichText text={t.content} onPlaceInfo={showPlaceInfo} className="font-serif italic text-ink text-[15px] leading-relaxed" />
 
-                {/* Proposed writes awaiting confirmation */}
-                {t.pending && !t.resolved && (() => {
+                {/* Proposed writes. The cards stay visible even after the user
+                    acts (per-card add / yumeji) or dismisses — only the
+                    block action row below is gated on resolution, so nothing
+                    the user is looking at vanishes on a click. */}
+                {t.pending && (() => {
                   // Non-activity proposals (e.g. tappe) keep the block confirm;
                   // activity proposals expose per-card actions instead.
                   const hasBlock = t.pending.some((a) => a.name !== "addActivities");
@@ -286,37 +299,38 @@ export function GoAgentChat({
                         )
                       ))}
 
-                      <div className="flex gap-2 mt-0.5">
-                        {hasBlock && (
+                      {!t.resolved && (
+                        <div className="flex gap-2 mt-0.5">
+                          {hasBlock && (
+                            <button
+                              type="button"
+                              onClick={() => void confirmTurn(t)}
+                              disabled={applying}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini font-medium border-0 transition-colors",
+                                applying ? "bg-surface-soft text-ink-faint cursor-default" : "bg-ink text-white hover:bg-ink-hover cursor-pointer",
+                              )}
+                            >
+                              <IconCheck size={14} /> {applying ? "Applico…" : "Conferma"}
+                            </button>
+                          )}
+                          {/* Block proposals can be cancelled; activity card sets
+                              are just dismissed (the cards remain in the thread). */}
                           <button
                             type="button"
-                            onClick={() => void confirmTurn(t)}
+                            onClick={() => cancelTurn(t)}
                             disabled={applying}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini font-medium border-0 transition-colors",
-                              applying ? "bg-surface-soft text-ink-faint cursor-default" : "bg-ink text-white hover:bg-ink-hover cursor-pointer",
-                            )}
+                            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini text-ink-soft border border-border-strong bg-transparent hover:bg-surface-soft cursor-pointer transition-colors"
                           >
-                            <IconCheck size={14} /> {applying ? "Applico…" : "Conferma"}
+                            <IconX size={14} /> {hasBlock ? "Annulla" : "Chiudi"}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => cancelTurn(t)}
-                          disabled={applying}
-                          className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini text-ink-soft border border-border-strong bg-transparent hover:bg-surface-soft cursor-pointer transition-colors"
-                        >
-                          <IconX size={14} /> {hasBlock ? "Annulla" : "Chiudi"}
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
                 {t.resolved === "applied" && (
                   <div className="inline-flex items-center gap-1 text-mini text-success-fg"><IconCheck size={14} /> Fatto</div>
-                )}
-                {t.resolved === "cancelled" && (
-                  <div className="text-mini text-ink-faint">Annullato</div>
                 )}
 
                 {debug && t.meta && (
@@ -330,6 +344,33 @@ export function GoAgentChat({
             </div>
           )
         ))}
+
+        {/* Place-mention detail cards: appended when the user picks "Mostra info"
+            on a [[place:…]] chip. Auto-expand the deep-dive; add to the selected
+            day (or save to Yumeji when no day is open). */}
+        {infoCards.map((c) => {
+          const key = `info:${c.id}`;
+          const item: ActItem = { title: c.title, day: selectedDay ?? undefined };
+          return (
+            <div key={c.id} className="flex gap-2.5 items-start">
+              <GoAvatar size="xs" pulse={false} className="mt-0.5" />
+              <ActivityCard
+                className="flex-1 min-w-0"
+                data={{ title: c.title, day: selectedDay ?? undefined }}
+                autoOpenInfo
+                addLabel={selectedDay != null ? `Aggiungi a g${selectedDay}` : undefined}
+                onAdd={selectedDay != null ? () => void addOne(key, item, selectedDay) : undefined}
+                added={addedKeys.has(key)}
+                adding={busyKey === key}
+                addHint={selectedDay == null ? "Seleziona un giorno per aggiungerlo all'itinerario" : undefined}
+                onYumeji={() => void saveYume(key, item)}
+                yumeSaved={yumeKeys.has(key)}
+                yumeSaving={yumeBusyKey === key}
+              />
+            </div>
+          );
+        })}
+
         {loading && <div className="font-serif italic text-ink-faint text-meta">Go sta pensando…</div>}
         <div ref={bottomRef} />
       </div>

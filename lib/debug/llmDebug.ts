@@ -9,6 +9,31 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+/** Token usage; `cachedTokens` = prompt prefix served from the provider cache. */
+type DebugUsage = { promptTokens: number; completionTokens: number; totalTokens: number; cachedTokens?: number };
+
+/** One model call inside an agent turn. Mirrors the server `AgentIteration`. */
+export type AgentDebugIteration = {
+  index: number;
+  kind: "tools" | "answer" | "gated" | "intro" | "forced-final";
+  usage: DebugUsage | null;
+  text: string;
+  toolCalls: { name: string; arguments: Record<string, unknown> }[];
+  toolResults: { name: string; result: unknown }[];
+};
+
+/** Structured trace for one agent turn (system prompt, payload split, per-call breakdown). */
+export type AgentDebugTrace = {
+  systemPrompt: string;
+  tools: { name: string; description: string }[];
+  history: { role: string; content: string; tokens?: number }[];
+  context: string | null;
+  userMessage: string;
+  iterations: AgentDebugIteration[];
+  /** Exact per-message content-token weights. */
+  tokens?: { system: number; tools: number; context: number; userMessage: number };
+};
+
 export type LlmDebugEntry = {
   id: string;
   ts: number;
@@ -23,11 +48,18 @@ export type LlmDebugEntry = {
   /** Exact message array sent to the model, system excluded (debug mode only). */
   sentMessages?: { role: string; content: string }[];
   /** Token usage, summed over the call(s), when the server reports it. */
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; cachedTokens?: number } | null;
   /** Number of model calls (agent loop), when applicable. */
   iterations?: number | null;
+  /**
+   * Structured agent trace (Go agent loop). When present, the panel renders the
+   * rich per-iteration view instead of the flat systemPrompt/sentMessages view.
+   */
+  agent?: AgentDebugTrace | null;
   /** Raw assistant output — JSON string (JSON modes) or accumulated text. */
   raw: string;
+  /** Final assistant text shown to the user (the natural-language answer). */
+  responseText?: string | null;
   /** Places grounded via Google Maps (Gemini), when the server reports them. */
   grounded?: { title: string; placeId: string }[];
 };

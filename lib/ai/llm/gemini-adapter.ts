@@ -221,6 +221,7 @@ export const geminiAdapter: LlmAdapter = {
           promptTokens: u.promptTokenCount ?? 0,
           completionTokens: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
           totalTokens: u.totalTokenCount ?? 0,
+          cachedTokens: u.cachedContentTokenCount ?? 0,
         }
       : undefined;
 

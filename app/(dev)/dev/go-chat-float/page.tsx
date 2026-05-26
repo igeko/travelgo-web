@@ -133,15 +133,28 @@ export default function GoChatFloatPage() {
           model?: string;
           iterations?: number;
           usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
-          _debug?: { systemPrompt?: string; sentMessages?: { role: "user" | "assistant" | "tool" | "system"; content: string }[] };
+          _debug?: {
+            systemPrompt?: string;
+            history?: { role: "user" | "assistant" | "tool" | "system"; content: string }[];
+            context?: string | null;
+            userMessage?: string;
+          };
         };
         error?: unknown;
       };
       const data = json.data;
+      const dbg = data?._debug;
+      const messages = dbg
+        ? [
+            ...(dbg.history ?? []),
+            ...(dbg.context ? [{ role: "user" as const, content: dbg.context }] : []),
+            { role: "user" as const, content: dbg.userMessage ?? agentInput },
+          ]
+        : [{ role: "user" as const, content: agentInput }];
       debugDispatch({ type: "UPSERT", entry: {
         id, ts: Date.now(),
-        systemPrompt: data?._debug?.systemPrompt ?? null,
-        messages: data?._debug?.sentMessages ?? [{ role: "user", content: agentInput }],
+        systemPrompt: dbg?.systemPrompt ?? null,
+        messages,
         response: JSON.stringify({
           text: data?.text,
           provider: data?.provider,

@@ -90,6 +90,13 @@ export type LlmUsage = {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /**
+   * Portion of `promptTokens` served from the provider's automatic prompt
+   * cache, when reported. Maps OpenAI `prompt_tokens_details.cached_tokens`
+   * and Gemini `cachedContentTokenCount`. The cache covers the stable prefix
+   * (system prompt + tool catalog + history); it is not explicitly configured.
+   */
+  cachedTokens?: number;
 };
 
 /**

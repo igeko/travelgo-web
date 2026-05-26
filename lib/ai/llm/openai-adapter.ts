@@ -113,7 +113,16 @@ export const openaiAdapter: LlmAdapter = {
       toolCalls,
       provider: "openai",
       model,
-      ...(u ? { usage: { promptTokens: u.prompt_tokens, completionTokens: u.completion_tokens, totalTokens: u.total_tokens } } : {}),
+      ...(u
+        ? {
+            usage: {
+              promptTokens: u.prompt_tokens,
+              completionTokens: u.completion_tokens,
+              totalTokens: u.total_tokens,
+              cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0,
+            },
+          }
+        : {}),
     };
   },
 };

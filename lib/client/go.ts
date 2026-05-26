@@ -25,13 +25,39 @@ export type GoAgentResult = {
   provider: string;
   model: string;
   iterations: number;
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
-  /** Present when called with debug:true — system prompt + messages sent. */
-  _debug?: {
-    systemPrompt?: string;
-    sentMessages?: { role: string; content: string }[];
-    steps?: { tool: string; args: unknown; result: unknown }[];
-  };
+  usage?: GoUsage;
+  /** Present when called with debug:true — structured per-turn trace. */
+  _debug?: GoAgentDebug;
+};
+
+/** Token usage; `cachedTokens` = prompt prefix served from the provider cache. */
+export type GoUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens?: number;
+};
+
+/** One model call inside a turn (agent loop). */
+export type GoAgentIteration = {
+  index: number;
+  kind: "tools" | "answer" | "gated" | "intro" | "forced-final";
+  usage: GoUsage | null;
+  text: string;
+  toolCalls: { name: string; arguments: Record<string, unknown> }[];
+  toolResults: { name: string; result: unknown }[];
+};
+
+/** Structured debug trace for one agent turn (debug mode only). */
+export type GoAgentDebug = {
+  systemPrompt: string;
+  tools: { name: string; description: string }[];
+  history: { role: string; content: string; tokens?: number }[];
+  context: string | null;
+  userMessage: string;
+  iterations: GoAgentIteration[];
+  /** Exact per-message content-token weights. */
+  tokens?: { system: number; tools: number; context: number; userMessage: number };
 };
 
 export const go = {
@@ -39,7 +65,7 @@ export const go = {
   chat: (body: Record<string, unknown>) => stream("POST", "/api/go/chat", body),
 
   /** POST /api/go/agent → one agent turn (enveloped JSON, unwrapped to data). */
-  agent: (body: { tripId: string; message: string; tripContext?: string; debug?: boolean }) =>
+  agent: (body: { tripId: string; message: string; tripContext?: string; selectedDay?: number | null; debug?: boolean }) =>
     request<GoAgentResult>("POST", "/api/go/agent", body),
 
   /** POST /api/go/deep-dive → structured extra info for a place (raw JSON). */
@@ -54,12 +80,13 @@ export const go = {
   agentApply: (tripId: string, action: { name: string; arguments: Record<string, unknown> }) =>
     request<{ applied: boolean; result: unknown }>("POST", "/api/go/agent", { tripId, confirm: action }),
 
-  /** GET /api/go/agent?tripId=… → saved conversation (reload recovery). */
+  /** GET /api/go/agent?tripId=… → saved conversation (reload recovery), incl.
+   *  any confirm-gated proposals so the in-chat widgets can be rehydrated. */
   agentHistory: (tripId: string) =>
-    request<{ sessionId: string; turns: { role: "user" | "assistant"; content: string }[] }>(
-      "GET",
-      `/api/go/agent?tripId=${encodeURIComponent(tripId)}`,
-    ),
+    request<{
+      sessionId: string;
+      turns: { role: "user" | "assistant"; content: string; pending?: GoPendingAction[] }[];
+    }>("GET", `/api/go/agent?tripId=${encodeURIComponent(tripId)}`),
 
   /** POST /api/go/enrich → streaming Response. */
   enrich: (body: Record<string, unknown>) => stream("POST", "/api/go/enrich", body),
