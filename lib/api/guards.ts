@@ -15,6 +15,7 @@ export const ADMIN_ROLES = ["admin", "dev"] as const;
 /** Roles allowed to submit/read tester notes (includes ADMIN_ROLES). */
 export const TESTER_ROLES = ["admin", "dev", "tester"] as const;
 
+const OWNER_ROLES = ["owner"] as const;
 const EDITOR_ROLES = ["owner", "editor"] as const;
 const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
 
@@ -45,6 +46,7 @@ async function requireTripRole(
   return { userId };
 }
 
+export const requireTripOwner = (tripId: string) => requireTripRole(tripId, OWNER_ROLES);
 export const requireTripEditor = (tripId: string) => requireTripRole(tripId, EDITOR_ROLES);
 export const requireTripMember = (tripId: string) => requireTripRole(tripId, MEMBER_ROLES);
 

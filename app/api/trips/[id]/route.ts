@@ -1,5 +1,5 @@
 import { route, ok, readJson } from "@/lib/api";
-import { requireTripMember, requireTripEditor } from "@/lib/api/guards";
+import { requireTripMember, requireTripEditor, requireTripOwner } from "@/lib/api/guards";
 import { serverServices } from "@/lib/services";
 import type { UpdateTripPatch } from "@/lib/services";
 
@@ -16,4 +16,12 @@ export const PATCH = route<{ id: string }>(async ({ req, params }) => {
   const patch = await readJson<UpdateTripPatch>(req);
   const services = await serverServices();
   return ok(await services.trips.update(params.id, patch));
+});
+
+/** DELETE /api/trips/[id] — delete the trip (owner only; cascades). */
+export const DELETE = route<{ id: string }>(async ({ params }) => {
+  await requireTripOwner(params.id);
+  const services = await serverServices();
+  await services.trips.delete(params.id);
+  return ok({ deleted: true });
 });

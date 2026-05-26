@@ -14,9 +14,15 @@ export type Trip = {
   id: string;
   title: string;
   subtitle: string | null;
+  /** Destination/place ("Norvegia"), distinct from the trip name (title). */
+  destination: string | null;
   start_date: string | null;
   end_date: string | null;
   currency: string;
+  adults_count: number | null;
+  children_count: number | null;
+  theme_tags: string[] | null;
+  theme_description: string | null;
 };
 
 export type Day = {

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AppHeader } from "@/features/app/AppHeader";
 import { CreateTripForm, type CreateTripData } from "@/features/trips/CreateTripForm";
-import { IconPlus, IconX } from "@/components/ui/icons";
+import { IconPlus, IconX, IconTrash } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/cn";
@@ -37,6 +37,21 @@ export default function TripsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(trip: TripSummary) {
+    const name = trip.title ?? "";
+    if (!window.confirm(t("deleteConfirm", { name }))) return;
+    setDeletingId(trip.id);
+    try {
+      await api.trips.remove(trip.id);
+      setTrips((prev) => prev.filter((x) => x.id !== trip.id));
+    } catch {
+      // deletion failed — keep the trip in the list
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     api.trips.list()
@@ -68,7 +83,7 @@ export default function TripsPage() {
       <main className={cn("mx-auto w-full py-10", PAGE_MAX, PAGE_PX)}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-[24px] font-semibold text-ink">{t("title")}</h1>
-          <Button variant="solid" tone="neutral" iconOnly={false} onClick={() => setShowCreate(true)}>
+          <Button variant="solid" tone="neutral" iconOnly={false} onClick={() => router.push("/trips/new")}>
             <IconPlus />
             {t("newTrip")}
           </Button>
@@ -89,22 +104,37 @@ export default function TripsPage() {
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {trips.map((trip) => (
-            <Link
-              key={trip.id}
-              href={`/trips/${trip.id}`}
-              className="flex flex-col gap-1 px-5 py-4 rounded-xl border border-border bg-surface hover:border-border-strong hover:shadow-sm transition-all no-underline"
-            >
-              <span className="text-[16px] font-semibold text-ink">{trip.title}</span>
-              {trip.subtitle && (
-                <span className="text-mini text-ink-faint">{trip.subtitle}</span>
-              )}
-              <span className="text-meta text-ink-soft mt-0.5">
-                {trip.day_count > 0 ? tShell("daysCount", { count: trip.day_count }) : tShell("empty.body")}
-                {trip.start_date && trip.end_date
-                  ? ` · ${formatDate(trip.start_date, locale)} – ${formatDate(trip.end_date, locale)}`
-                  : ""}
-              </span>
-            </Link>
+            <div key={trip.id} className="relative group">
+              <Link
+                href={`/trips/${trip.id}`}
+                className="flex flex-col gap-1 px-5 py-4 rounded-xl border border-border bg-surface hover:border-border-strong hover:shadow-sm transition-all no-underline"
+              >
+                <span className="text-[16px] font-semibold text-ink pr-7">{trip.title}</span>
+                {trip.subtitle && (
+                  <span className="text-mini text-ink-faint">{trip.subtitle}</span>
+                )}
+                <span className="text-meta text-ink-soft mt-0.5">
+                  {trip.day_count > 0 ? tShell("daysCount", { count: trip.day_count }) : tShell("empty.body")}
+                  {trip.start_date && trip.end_date
+                    ? ` · ${formatDate(trip.start_date, locale)} – ${formatDate(trip.end_date, locale)}`
+                    : ""}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => handleDelete(trip)}
+                disabled={deletingId === trip.id}
+                aria-label={t("deleteTrip")}
+                title={t("deleteTrip")}
+                className={cn(
+                  "absolute top-3 right-3 flex items-center justify-center size-7 rounded-md border-0 bg-transparent cursor-pointer transition-colors",
+                  "text-ink-faint opacity-60 hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg focus-visible:opacity-100",
+                  deletingId === trip.id && "opacity-40 pointer-events-none",
+                )}
+              >
+                <IconTrash size={16} />
+              </button>
+            </div>
           ))}
         </div>
       </main>

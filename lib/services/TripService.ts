@@ -36,6 +36,7 @@ export type CreateTripRequest = {
 export type UpdateTripPatch = {
   title?: string;
   subtitle?: string | null;
+  destination?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   adults_count?: number | null;
@@ -92,6 +93,11 @@ export class TripService {
     return snapshot;
   }
 
+  /** Delete a trip (owner-only; cascades to days/activities via FK). */
+  async delete(tripId: string): Promise<void> {
+    unwrap(await this.dal.trips.delete(tripId));
+  }
+
   /**
    * Patch editable trip fields (Trip Edit page). Validates dates, persists
    * the change, then reconciles days when the date range moved.
@@ -107,6 +113,9 @@ export class TripService {
     }
     if (patch.subtitle !== undefined) {
       update.subtitle = patch.subtitle ? patch.subtitle.trim().slice(0, 500) : null;
+    }
+    if (patch.destination !== undefined) {
+      update.destination = patch.destination ? patch.destination.trim().slice(0, 200) : null;
     }
 
     // Resolve the effective range (incoming value, else current row) so we can
@@ -197,13 +206,17 @@ export class TripService {
     }
 
     // Create days for desired dates not already covered by a surviving day.
+    // Assign provisional UNIQUE day_numbers (continuing past the current max)
+    // so inserting several at once never collides on the (trip_id, day_number)
+    // unique constraint — the renumber pass below puts them in final order.
     const coveredDates = new Set(
       survivors.map((d) => d.date).filter((d): d is string => d !== null),
     );
+    let provisional = survivors.reduce((max, d) => Math.max(max, d.day_number), 0) + 1;
     for (const date of desired) {
       if (!coveredDates.has(date)) {
         const created = unwrap(
-          await this.dal.trips.createDay({ trip_id: tripId, day_number: 0, date }),
+          await this.dal.trips.createDay({ trip_id: tripId, day_number: provisional++, date }),
         );
         survivors.push(created);
       }
@@ -216,10 +229,17 @@ export class TripService {
     const undated = survivors.filter((d) => d.date === null);
     const ordered = [...dated, ...undated];
 
-    for (let i = 0; i < ordered.length; i++) {
-      const desiredNumber = i + 1;
-      if (ordered[i].day_number !== desiredNumber) {
-        unwrap(await this.dal.trips.patchDay(ordered[i].id, { day_number: desiredNumber }));
+    // Skip when already in final order (common: fresh range, no reorder).
+    const needsRenumber = ordered.some((d, i) => d.day_number !== i + 1);
+    if (needsRenumber) {
+      // Two-phase to avoid transient (trip_id, day_number) unique collisions:
+      // park everyone in a high, collision-free range, then assign 1..N.
+      const PARK = 100_000;
+      for (let i = 0; i < ordered.length; i++) {
+        unwrap(await this.dal.trips.patchDay(ordered[i].id, { day_number: PARK + i }));
+      }
+      for (let i = 0; i < ordered.length; i++) {
+        unwrap(await this.dal.trips.patchDay(ordered[i].id, { day_number: i + 1 }));
       }
     }
   }

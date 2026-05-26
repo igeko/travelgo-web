@@ -463,7 +463,9 @@
     "empty": "No trips yet",
     "emptyHint": "Create one to get started.",
     "createOne": "Create one",
-    "createTrip": "Create trip"
+    "createTrip": "Create trip",
+    "deleteTrip": "Delete trip",
+    "deleteConfirm": "Delete \"{name}\"? This permanently removes the trip and all its days and activities."
   },
   "InstancePopover": {
     "title": "Edit instance",
@@ -605,5 +607,29 @@
     "minutes": "{count, plural, one {# min} other {# min}}",
     "stops": "{count, plural, one {# stop} other {# stops}}",
     "walkFor": "{count, plural, one {Walk # min} other {Walk # min}}"
+  },
+  "TripInfo": {
+    "eyebrow": "Your trip",
+    "emptyName": "Not decided yet",
+    "emptySub": "talk to Go to begin",
+    "editorial": "a trip is a fine story to write",
+    "goSuggests": "Go suggests",
+    "openTicket": "Open ticket",
+    "hint": {
+      "save": "save",
+      "cancel": "cancel"
+    },
+    "labels": {
+      "where": "Where",
+      "when": "When",
+      "who": "Who",
+      "vibe": "Vibe"
+    },
+    "placeholders": {
+      "where": "a city, a country, an idea",
+      "when": "the dates, or even just a season",
+      "who": "how many of you are going",
+      "vibe": "what you're after, what you avoid"
+    }
   }
 }

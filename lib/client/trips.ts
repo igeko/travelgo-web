@@ -42,6 +42,9 @@ export const trips = {
   update: (id: string, payload: UpdateTripPayload) =>
     patch<DbTrip>(`/api/trips/${id}`, payload),
 
+  /** DELETE /api/trips/[id] — delete the trip (owner only). */
+  remove: (id: string) => del<{ deleted: boolean }>(`/api/trips/${id}`),
+
   /** GET /api/trips/[id]/home-meta — AI-resolved Trip Home content for a locale. */
   homeMeta: (id: string, locale: string) =>
     get<HomeMeta>(`/api/trips/${id}/home-meta?locale=${encodeURIComponent(locale)}`),

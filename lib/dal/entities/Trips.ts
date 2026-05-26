@@ -35,6 +35,7 @@ import type { TripAirport } from "@/lib/trip-home/airports";
 export type CreateTripInput = {
   title: string;
   subtitle?: string | null;
+  destination?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   cover_image?: string;
@@ -120,7 +121,7 @@ export type TripSummary = {
 
 // ── Column lists for the composed UI reads ────────────────────────
 
-const TRIP_UI_SELECT = "id, title, subtitle, start_date, end_date, currency";
+const TRIP_UI_SELECT = "id, title, subtitle, destination, start_date, end_date, currency, adults_count, children_count, theme_tags, theme_description";
 const DAY_UI_SELECT =
   "id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, show_map, notes, summary, image_url, narrative";
 const SCHEDULED_SELECT =

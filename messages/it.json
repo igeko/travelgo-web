@@ -463,7 +463,9 @@
     "empty": "Nessun viaggio ancora",
     "emptyHint": "Creane uno per iniziare.",
     "createOne": "Creane uno",
-    "createTrip": "Crea viaggio"
+    "createTrip": "Crea viaggio",
+    "deleteTrip": "Elimina viaggio",
+    "deleteConfirm": "Eliminare \"{name}\"? Rimuove definitivamente il viaggio con tutti i giorni e le attività."
   },
   "InstancePopover": {
     "title": "Modifica istanza",
@@ -605,5 +607,29 @@
     "minutes": "{count, plural, one {# min} other {# min}}",
     "stops": "{count, plural, one {# fermata} other {# fermate}}",
     "walkFor": "{count, plural, one {A piedi # min} other {A piedi # min}}"
+  },
+  "TripInfo": {
+    "eyebrow": "Your trip",
+    "emptyName": "Non ancora deciso",
+    "emptySub": "parla con Go per cominciare",
+    "editorial": "un viaggio è una bella storia da scrivere",
+    "goSuggests": "Go suggerisce",
+    "openTicket": "Apri biglietto",
+    "hint": {
+      "save": "salva",
+      "cancel": "annulla"
+    },
+    "labels": {
+      "where": "Where",
+      "when": "When",
+      "who": "Who",
+      "vibe": "Vibe"
+    },
+    "placeholders": {
+      "where": "una città, un paese, un'idea",
+      "when": "le date o anche solo una stagione",
+      "who": "in quanti partite",
+      "vibe": "cosa cercate, cosa evitate"
+    }
   }
 }

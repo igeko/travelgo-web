@@ -53,6 +53,7 @@ export type DbTrip = {
   id: string;
   title: string;
   subtitle: string | null;
+  destination: string | null;
   start_date: string | null;   // ISO date "YYYY-MM-DD"
   end_date: string | null;
   cover_image: string | null;
