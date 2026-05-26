@@ -68,6 +68,15 @@ type YumejiContextValue = {
   close: () => void;
   /** Auto-pin alla prima volta in edit mode dentro un trip (Dec 3). */
   autoPinFirstEdit: () => void;
+  /**
+   * Le sezioni che possono ospitare la colonna pinned si registrano qui (una
+   * <YumejiPinnedColumn> nel loro layout). Se nessuna è montata, il pannello
+   * aperto ripiega sul floating, così compare comunque in qualsiasi sezione —
+   * anche nuove — senza cablaggio. Ritorna la funzione di de-registrazione.
+   */
+  registerPinnedSlot: () => () => void;
+  /** Vero se la sezione corrente ospita la colonna pinned. */
+  hasPinnedSlot: boolean;
   /** Collezione yume (caricata all'apertura). */
   data: YumeCollection;
 };
@@ -194,9 +203,21 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [pinnedPref, setPinnedPref] = useLocalStorageState<boolean>(LS_PINNED, false);
 
+  // Quante colonne pinned sono montate dalla sezione corrente (0 → nessuna).
+  const [pinnedSlots, setPinnedSlots] = useState(0);
+  const registerPinnedSlot = useCallback(() => {
+    setPinnedSlots((n) => n + 1);
+    return () => setPinnedSlots((n) => Math.max(0, n - 1));
+  }, []);
+  const hasPinnedSlot = pinnedSlots > 0;
+
   const state: YumejiState = !inTrip || !open ? "closed" : pinnedPref ? "pinned" : "floating";
   const isOpen = state !== "closed";
-  const isPinned = state === "pinned";
+  // È "pinned" solo se la sezione corrente ha davvero una colonna che lo ospita.
+  const isPinned = state === "pinned" && hasPinnedSlot;
+  // Floating quando esplicito, oppure come fallback se il pin non ha una colonna
+  // dove ancorarsi (sezione senza slot → il pannello compare comunque).
+  const showFloating = isOpen && (state === "floating" || !hasPinnedSlot);
 
   const data = useYumeCollection(isOpen, tripId);
 
@@ -230,6 +251,8 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
     togglePin,
     close,
     autoPinFirstEdit,
+    registerPinnedSlot,
+    hasPinnedSlot,
     data,
   };
 
@@ -238,8 +261,9 @@ export function YumejiFrame({ children }: { children: ReactNode }) {
       {children}
 
       {/* Floating · overlay flottante sopra tutto, sotto l'header (Row 1+2 = 94px).
-          z alto: la card della mappa Explore è inline a z-index:1000. */}
-      {state === "floating" && (
+          z alto: la card della mappa Explore è inline a z-index:1000.
+          Mostrato anche come fallback quando il pin non ha una colonna. */}
+      {showFloating && (
         <div className="hidden md:block fixed top-[102px] right-4 bottom-4 w-[340px] z-[1100]">
           <YumejiPanel
             items={data.items}
@@ -280,6 +304,14 @@ export function YumejiPinnedColumn({
   floating?: boolean;
 }) {
   const yumeji = useYumejiDrawer();
+
+  // Registra questa sezione come "ospita la colonna pinned" finché è montata,
+  // a prescindere dallo stato pinned/floating: così YumejiFrame sa che qui il
+  // pin ha dove ancorarsi (e altrove ripiega sul floating). L'effect gira anche
+  // quando il componente rende null, perché resta montato nell'albero.
+  const register = yumeji?.registerPinnedSlot;
+  useEffect(() => register?.(), [register]);
+
   if (!yumeji?.isPinned) return null;
   const { data } = yumeji;
   // Niente X nella colonna pinned: si chiude dal tab Yume o sganciando (pin).
