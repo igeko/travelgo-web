@@ -132,6 +132,48 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Explore",
     description: "Rail verticale macro-categorie + chip row sotto-categorie · selezione singola toggle-off, pin nel rail, settings placeholder · eventi via callback",
   },
+  {
+    slug: "explore-switch",
+    title: "SegmentToggle",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Switch (SwitcherV2) · toggle segmentato icona+label, segmento attivo bianco su track bg · usato in Activity Sleep/Stop",
+  },
+  {
+    slug: "explore-timeline-day",
+    title: "TimelineDay",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Timeline-Day · spina verticale del giorno: badge weekday+data + rail orari · stati default/hover/selected/first",
+  },
+  {
+    slug: "explore-activity",
+    title: "ActivityStop",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Activity · sosta alloggio, 4 stati + card editor (Sleep/Stop, nights, address, arrivo/partenza)",
+  },
+  {
+    slug: "explore-fuzzy",
+    title: "FuzzyStop",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Fuzzy · sosta a orario fuzzy, 4 stati + card editor (Stopping for N minutes, address)",
+  },
+  {
+    slug: "explore-transfer",
+    title: "Transfer",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Transfer · connettore tra soste, modi transit/car, stati default/hover/open",
+  },
+  {
+    slug: "explore-timeline",
+    title: "Timeline",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Figma Timeline · organismo Explore da dati reali del viaggio · orari allineati alle attività · control trip id (default Japan 2026)",
+  },
   // App subgroup
   {
     slug: "app-header",

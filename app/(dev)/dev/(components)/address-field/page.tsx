@@ -9,10 +9,12 @@ import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
 export default function AddressFieldStories() {
   // ── Debugger state ──
   const [place, setPlace] = useState<PlaceResult | null>(null);
+  const [variant, setVariant] = useState<"pill" | "inline">("pill");
   const [label, setLabel] = useState("");
   const [placeholder, setPlaceholder] = useState("Search address…");
   const [showMapButton, setShowMapButton] = useState(false);
   const [disabled, setDisabled] = useState(false);
+  const [error, setError] = useState(false);
   const [labelAlwaysVisible, setLabelAlwaysVisible] = useState(false);
 
   // ── Static story state ──
@@ -20,12 +22,28 @@ export default function AddressFieldStories() {
 
   const groups: ControlGroup[] = [
     {
+      title: "Layout",
+      controls: [
+        {
+          kind: "radio",
+          id: "variant",
+          label: "Variant",
+          value: variant,
+          onChange: (v) => setVariant(v as "pill" | "inline"),
+          options: [
+            { value: "pill", label: "pill (default)" },
+            { value: "inline", label: "inline · passport row" },
+          ],
+        },
+      ],
+    },
+    {
       title: "Content",
       controls: [
         {
           kind: "text",
           id: "label",
-          label: "Floating label",
+          label: variant === "inline" ? "Eyebrow label" : "Floating label",
           value: label,
           placeholder: "(empty = no label)",
           onChange: setLabel,
@@ -58,8 +76,15 @@ export default function AddressFieldStories() {
         },
         {
           kind: "toggle",
+          id: "error",
+          label: "Error (inline)",
+          value: error,
+          onChange: setError,
+        },
+        {
+          kind: "toggle",
           id: "labelAlwaysVisible",
-          label: "Label always visible",
+          label: "Label always visible (pill)",
           value: labelAlwaysVisible,
           onChange: setLabelAlwaysVisible,
         },
@@ -86,11 +111,23 @@ export default function AddressFieldStories() {
             <AddressField
               value={place}
               onChange={setPlace}
+              variant={variant}
               label={label || undefined}
               labelAlwaysVisible={labelAlwaysVisible}
               placeholder={placeholder}
               showMapButton={showMapButton}
               disabled={disabled}
+              error={error}
+              errorMessage={
+                error ? (
+                  <>
+                    non trovo questo indirizzo ·{" "}
+                    <b className="not-italic font-medium underline cursor-pointer">
+                      chiedi a Go
+                    </b>
+                  </>
+                ) : undefined
+              }
             />
 
             {/* PlaceResult inspector */}
@@ -155,6 +192,14 @@ export default function AddressFieldStories() {
           </div>
         </StoryFrame>
 
+        {/* ── Inline variant ── */}
+        <StoryFrame
+          name="Inline variant · passport row"
+          description="`variant='inline'` drops the pill chrome: map pin + eyebrow label + inline value, like a passport line. The autocomplete dropdown still anchors to the row. `error` tints the value and shows a micro-message below."
+        >
+          <InlineDemo />
+        </StoryFrame>
+
         {/* ── Disabled ── */}
         <StoryFrame
           name="Disabled"
@@ -185,8 +230,11 @@ export default function AddressFieldStories() {
               { prop: "value",         type: "PlaceResult | null",  required: true,  description: "Currently selected place. Pass null when nothing is selected." },
               { prop: "onChange",      type: "(place: PlaceResult | null) => void", required: true, description: "Called with the full PlaceResult after the user selects a suggestion, or null when the field is cleared." },
               { prop: "placeholder",   type: "string",              defaultValue: '"Search address…"', description: "Input placeholder text." },
-              { prop: "label",         type: "string",              description: "Floating label shown on hover/focus (passed through to SoftField)." },
+              { prop: "variant",       type: '"pill" | "inline"',   defaultValue: '"pill"', description: 'Forwarded to SoftField. "inline" drops the pill chrome (passport-row look) with the pin as the leading icon and label as the eyebrow.' },
+              { prop: "label",         type: "string",              description: "Floating label (pill) / eyebrow label (inline), passed through to SoftField." },
               { prop: "disabled",      type: "boolean",             description: "Disables the input and suppresses autocomplete." },
+              { prop: "error",         type: "boolean",             description: "Inline variant — tints the value to signal an unresolved address." },
+              { prop: "errorMessage",  type: "ReactNode",           description: "Inline variant — micro-message rendered below the row (may contain links)." },
               { prop: "showMapButton", type: "boolean",             defaultValue: "false", description: "Shows a 'map' button in the suffix slot. Visual only — wire onClick via SoftField.Suffix if needed." },
               { prop: "className",     type: "string",              description: "Extra classes on the outer wrapper div." },
             ]} />
@@ -237,5 +285,48 @@ if (place) {
         </DocsFrame>
       </StoryPage>
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Inline demo · the inline variant in its own (own-state) frame
+───────────────────────────────────────────────────────────────── */
+function InlineDemo() {
+  const [a, setA] = useState<PlaceResult | null>(null);
+  const [b, setB] = useState<PlaceResult | null>(null);
+
+  return (
+    <div className="flex flex-col gap-1 w-full max-w-[380px]">
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-1">
+        icon + label
+      </div>
+      <AddressField
+        variant="inline"
+        value={a}
+        onChange={setA}
+        label="Where"
+        placeholder="una città, un indirizzo…"
+      />
+
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-3">
+        error
+      </div>
+      <AddressField
+        variant="inline"
+        value={b}
+        onChange={setB}
+        label="Where"
+        placeholder="una città, un indirizzo…"
+        error
+        errorMessage={
+          <>
+            non trovo questo indirizzo ·{" "}
+            <b className="not-italic font-medium underline cursor-pointer">
+              chiedi a Go
+            </b>
+          </>
+        }
+      />
+    </div>
   );
 }

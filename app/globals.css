@@ -31,6 +31,7 @@
   --color-primary-soft: #fdecdf;
   --color-primary-border: #f9d4b6;
   --color-primary-deep: #a84818;
+  --color-primary-tint: #f9a87a;       /* light orange — brand text on dark surfaces (Explore day badge) */
 
   /* Accent — orange (alias di primary, per retrocompatibilità) */
   --color-orange: #f47b3a;
@@ -45,6 +46,9 @@
   /* Night — indigo, used by the Explore night-route layer (pins + route) */
   --color-night: #4338ca;
   --color-night-soft: #eef0fb;
+
+  /* Explore timeline — the warm-grey vertical day rail fill */
+  --color-timeline-rail: #eeece5;
 
   /* Status colors */
   --color-status-todo-bg: #fde6e1;
@@ -74,6 +78,7 @@
   --font-serif: Georgia, "Times New Roman", serif;
 
   /* Radius */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 14px;
@@ -85,6 +90,7 @@
   --shadow-yumeji-drawer: -18px 0 36px rgba(13, 44, 61, 0.1);
 
   /* Font-size scale semantica (oltre alle utility Tailwind default) */
+  --text-nano: 8px;                    /* compact timeline labels — ticks, transfer chips, captions */
   --text-micro: 10px;
   --text-tiny: 11px;
   --text-mini: 12px;

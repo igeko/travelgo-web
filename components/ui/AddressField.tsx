@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "./Button";
 import { SoftField } from "./SoftField";
@@ -38,9 +39,20 @@ export type AddressFieldProps = {
   value: PlaceResult | null;
   onChange: (place: PlaceResult | null) => void;
   placeholder?: string;
-  /** Floating label shown on focus (passed through to SoftField) */
+  /**
+   * Visual style — forwarded to the underlying SoftField.
+   * - "pill" (default): soft pill with the map pin in the prefix slot.
+   * - "inline": "passport row" — no chrome, pin + eyebrow label inline.
+   *   `label` becomes the eyebrow; `error`/`errorMessage` show below the row.
+   */
+  variant?: "pill" | "inline";
+  /** Floating label (pill) / eyebrow label (inline), passed through to SoftField */
   label?: string;
   disabled?: boolean;
+  /** Error state — tints the value (inline variant). */
+  error?: boolean;
+  /** Micro message below the row (inline variant). */
+  errorMessage?: ReactNode;
   /** Extra classes on the outer wrapper div */
   className?: string;
   /** Show the "map" button in the suffix. Visual only for now. */
@@ -53,12 +65,16 @@ export function AddressField({
   value,
   onChange,
   placeholder = "Search address…",
+  variant = "pill",
   label,
   disabled,
+  error,
+  errorMessage,
   className,
   showMapButton = false,
   labelAlwaysVisible,
 }: AddressFieldProps) {
+  const inline = variant === "inline";
   const {
     inputText,
     setInputText,
@@ -76,6 +92,19 @@ export function AddressField({
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+
+  // Map pin — faint when empty, red when a valid place is selected, dimmed while
+  // a suggestion request is in flight. Shared between the inline `icon` prop and
+  // the pill `SoftField.Prefix` slot.
+  const pin = (
+    <IconMapPin
+      className={cn(
+        "transition-colors transition-opacity duration-150",
+        isLoading && "opacity-40",
+        value && !isLoading ? "text-[#e24b4a]" : "text-ink-faint",
+      )}
+    />
+  );
 
   // Keep inputText in sync if the parent resets value externally
   useEffect(() => {
@@ -96,12 +125,16 @@ export function AddressField({
   return (
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
       <SoftField
+        variant={variant}
+        icon={inline ? pin : undefined}
         value={inputText}
         onChange={(text) => handleInputChange(text, () => onChange(null))}
         placeholder={placeholder}
         label={label}
         labelAlwaysVisible={labelAlwaysVisible}
         disabled={disabled || isLoadingDetails}
+        error={error}
+        errorMessage={errorMessage}
         autoComplete="off"
         inputProps={{
           onKeyDown: (e) => handleKeyDown(e, (place) => onChange(place)),
@@ -111,15 +144,8 @@ export function AddressField({
           "aria-expanded": isOpen,
         }}
       >
-        <SoftField.Prefix>
-          <IconMapPin
-            className={cn(
-              "transition-colors transition-opacity duration-150",
-              isLoading && "opacity-40",
-              value && !isLoading ? "text-[#e24b4a]" : "text-ink-faint",
-            )}
-          />
-        </SoftField.Prefix>
+        {/* Pill: pin lives in the prefix slot. Inline: it goes via the `icon` prop above. */}
+        {!inline && <SoftField.Prefix>{pin}</SoftField.Prefix>}
         {showMapButton && (
           <SoftField.Suffix>
             <Button variant="outline" iconOnly={false}>
