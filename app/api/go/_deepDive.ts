@@ -5,6 +5,7 @@
 
 import { chatJson } from "@/lib/ai/llm";
 import { UNTRUSTED_DATA_INSTRUCTION, sanitizeUntrustedText, wrapUntrusted } from "@/lib/api/go-untrusted";
+import { searchEnrichedPlace, type PlaceInfo } from "@/lib/maps/places";
 
 export const DEEP_DIVE_SYSTEM = `You are Go, TravelGo's expert travel assistant.
 The user wants a detailed breakdown of a specific place or activity.
@@ -27,6 +28,8 @@ export type DeepDiveResult = {
   bestFor: string;
   avoid?: string | null;
   nearbyIdeas?: string[];
+  /** Live Google Places data for the place, when found (rating, hours, …). */
+  place?: PlaceInfo | null;
 };
 
 export type DeepDiveInput = {
@@ -54,14 +57,21 @@ export async function runDeepDive(input: DeepDiveInput): Promise<DeepDiveResult>
     ? `${headerLines}\n\n${wrapUntrusted("trip-context", input.tripContext)}`
     : headerLines;
 
-  const raw = await chatJson({
-    tier: "smart",
-    messages: [
-      { role: "system", content: DEEP_DIVE_SYSTEM },
-      { role: "user", content: userMsg },
-    ],
-  });
+  // The AI breakdown and the Google Places lookup run in parallel — the place
+  // query reuses the same title (+ location hint) the user is asking about.
+  const placeQuery = [safeTitle, safeLocation].filter(Boolean).join(", ");
+  const [raw, place] = await Promise.all([
+    chatJson({
+      tier: "smart",
+      messages: [
+        { role: "system", content: DEEP_DIVE_SYSTEM },
+        { role: "user", content: userMsg },
+      ],
+    }),
+    searchEnrichedPlace(placeQuery),
+  ]);
 
-  return JSON.parse(raw || "{}") as DeepDiveResult;
+  const result = JSON.parse(raw || "{}") as DeepDiveResult;
+  return { ...result, place };
 }
 

@@ -15,7 +15,7 @@
 import { getAI, AI_MODELS } from "@/lib/ai/provider";
 import type { Dal, Activity } from "@/lib/dal";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
-import { pickFields, normalizeClock } from "@/lib/api/validation";
+import { pickFields, normalizeClock, normalizeSlot } from "@/lib/api/validation";
 import { unwrap } from "./util";
 import type { YumeService } from "./YumeService";
 
@@ -82,6 +82,7 @@ export class Scheduler {
 
     const instance = pickFields(body, INSTANCE_FIELDS);
     if ("time" in instance) instance.time = normalizeClock(instance.time);
+    if ("slot" in instance) instance.slot = normalizeSlot(instance.slot);
 
     try {
       const scheduled = unwrap(
@@ -105,7 +106,20 @@ export class Scheduler {
     const patch = pickFields(body, INSTANCE_FIELDS);
     if (Object.keys(patch).length === 0) throw badRequest("No valid fields to update");
     if ("time" in patch) patch.time = normalizeClock(patch.time);
+    if ("slot" in patch) patch.slot = normalizeSlot(patch.slot);
     unwrap(await this.dal.trips.updateSchedule(scheduledId, patch as Record<string, unknown>));
+  }
+
+  /**
+   * Move an occurrence to another day. The instance keeps its entity; only its
+   * day_id (and optionally slot/time/position) changes. Use when the user moves
+   * an activity from one day to another.
+   */
+  async moveToDay(scheduledId: string, dayId: string, instance: Record<string, unknown> = {}): Promise<void> {
+    const patch: Record<string, unknown> = { day_id: dayId, ...pickFields(instance, INSTANCE_FIELDS) };
+    if ("time" in patch) patch.time = normalizeClock(patch.time);
+    if ("slot" in patch) patch.slot = normalizeSlot(patch.slot);
+    unwrap(await this.dal.trips.updateSchedule(scheduledId, patch));
   }
 
   /** Set a transport bridge (in/out) on a scheduled occurrence. */

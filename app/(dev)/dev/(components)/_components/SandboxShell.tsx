@@ -204,6 +204,38 @@ export function SandboxShell({ children }: { children: ReactNode }) {
               </svg>
             </Link>
 
+            {/* Link to the dedicated GoAgent sandbox (own shell) */}
+            <Link
+              href="/dev/agent"
+              className="mx-3 mt-2 flex items-center gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2 text-sm text-primary-deep hover:bg-primary-soft/70 transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <path d="M12 8V4H8" />
+                <rect width="16" height="12" x="4" y="8" rx="2" />
+                <path d="M2 14h2M20 14h2M15 13v2M9 13v2" />
+              </svg>
+              <span className="flex-1">Go Agent sandbox</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <path d="M9 6l6 6l-6 6" />
+              </svg>
+            </Link>
+
             <nav className="px-3 py-4 flex flex-col gap-5 overflow-y-auto">
               {Object.entries(groups).map(([group, entries], i) => {
                 const isHighlighted = group === "Features" || group === "Admin";

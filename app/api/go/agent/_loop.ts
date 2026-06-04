@@ -12,7 +12,7 @@
  */
 
 import { chatTools, type LlmMessage, type LlmUsage } from "@/lib/ai/llm";
-import { GO_TOOLS, toolDefs, type ToolContext } from "./_tools";
+import { GO_TOOLS, toolDefs, toolNeedsConfirm, type ToolContext } from "./_tools";
 
 /** Max model↔tool round-trips per request (cost / runaway guard). */
 const MAX_ITERS = 4;
@@ -130,7 +130,7 @@ export async function runAgent(opts: {
 
   for (let i = 0; i < MAX_ITERS; i++) {
     const res = await chatTools({
-      tier: "fast",
+      tier: "smart",
       messages: convo,
       tools: toolDefs(),
       toolChoice: "auto",
@@ -152,7 +152,13 @@ export async function runAgent(opts: {
 
     // Confirm-gated writes: don't execute — surface them as pending actions.
     // Persist only the proposal text (no dangling tool_call in history).
-    const gated = res.toolCalls.filter((c) => GO_TOOLS[c.name]?.requiresConfirm);
+    // Whether a call is gated can depend on current state (setTripMeta gates
+    // only when overwriting), so resolve each predicate against ctx.
+    const gated: typeof res.toolCalls = [];
+    for (const c of res.toolCalls) {
+      const tool = GO_TOOLS[c.name];
+      if (tool && (await toolNeedsConfirm(tool, c.arguments, opts.ctx))) gated.push(c);
+    }
     if (gated.length > 0) {
       pendingActions = gated.map((c) => ({
         name: c.name,
@@ -171,7 +177,7 @@ export async function runAgent(opts: {
       // confirm card is always introduced by a sentence: when there's no text,
       // ask for a short intro (no tools this turn so it can't re-propose).
       if (!res.text.trim()) {
-        const introRes = await chatTools({ tier: "fast", messages: convo, tools: toolDefs(), toolChoice: "none" });
+        const introRes = await chatTools({ tier: "smart", messages: convo, tools: toolDefs(), toolChoice: "none" });
         iterations++;
         addUsage(usage, introRes.usage);
         text = introRes.text;

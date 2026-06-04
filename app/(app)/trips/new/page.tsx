@@ -13,20 +13,29 @@
  * all states so the conversation is never lost.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AppHeader } from "@/features/app/AppHeader";
+import { useUser } from "@/features/app/UserContext";
 import { GoAgentChat } from "@/features/go/GoAgentChat";
 import { TripInfo } from "@/features/trip/TripInfo";
+import { TripPanel } from "@/features/trip/TripPanel";
 import { DayRail } from "@/features/day/DayRail";
-import { HeroBanner, type HeroBannerType } from "@/features/day/HeroBanner";
 import { Itinerary } from "@/features/activity/Itinerary";
+import { IconList, IconMap } from "@/components/ui/icons";
 import type { ActivityData } from "@/features/activity/ActivityEditForm";
+import { ExploreMap } from "../[id]/explore/ExploreMap";
+import { selectNightRoute } from "@/lib/explore/nightRoute";
+import type { LatLng, MapMarker } from "@/components/ui/Map";
 import { api } from "@/lib/client";
+import type { GoPendingAction } from "@/lib/client/go";
 import { cn } from "@/lib/cn";
 import type { TripSnapshot } from "@/lib/dal";
 
 const PLACEHOLDER_TITLE = "Nuovo viaggio";
+
+/** Rome — fallback map center when the trip has no geocoded stops yet. */
+const FALLBACK_CENTER: LatLng = { lat: 41.9028, lng: 12.4964 };
 
 function localDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
@@ -74,6 +83,7 @@ function activityPayload(data: ActivityData) {
 export default function NewTripPage() {
   const t = useTranslations("TripDayView");
   const locale = useLocale();
+  const { user, isLoggedIn, isDev, isTester } = useUser();
   const getDow = (iso: string) => new Intl.DateTimeFormat(locale, { weekday: "short" }).format(localDate(iso)).toUpperCase();
   const fmtDate = (iso: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(localDate(iso));
 
@@ -81,8 +91,10 @@ export default function NewTripPage() {
   const creatingRef = useRef<Promise<string> | null>(null);
   const [tripId, setTripId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<TripSnapshot | null>(null);
-  const [initialTurns, setInitialTurns] = useState<{ role: "user" | "assistant"; content: string }[]>();
+  const [initialTurns, setInitialTurns] = useState<{ role: "user" | "assistant"; content: string; pending?: GoPendingAction[] }[]>();
   const [selectedDayId, setSelectedDayId] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mapMode, setMapMode] = useState(false);
 
   const refetch = useCallback(async () => {
     const id = tripIdRef.current;
@@ -107,12 +119,24 @@ export default function NewTripPage() {
     return creatingRef.current;
   }, []);
 
+  // Persist the selected day in the URL so a reload restores day-active mode.
+  const selectDay = useCallback((dayId: string) => {
+    setSelectedDayId(dayId);
+    const params = new URLSearchParams(window.location.search);
+    if (dayId) params.set("day", dayId);
+    else params.delete("day");
+    window.history.replaceState(null, "", `/trips/new?${params.toString()}`);
+  }, []);
+
   // Reload recovery: rebind to ?draft=<id> and hydrate snapshot + conversation.
   useEffect(() => {
-    const draft = new URLSearchParams(window.location.search).get("draft");
+    const search = new URLSearchParams(window.location.search);
+    const draft = search.get("draft");
     if (!draft || tripIdRef.current) return;
     tripIdRef.current = draft;
     setTripId(draft);
+    const day = search.get("day");
+    if (day) setSelectedDayId(day);
     void refetch();
     api.go.agentHistory(draft).then((h) => setInitialTurns(h.turns)).catch(() => {});
   }, [refetch]);
@@ -124,6 +148,12 @@ export default function NewTripPage() {
   const days = snapshot?.days ?? [];
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
+  // Signatures of activities already on the trip, so Go's proposal cards show
+  // "Aggiunta" (and survive a reload) instead of re-offering the add button.
+  const existingActivityKeys = new Set(
+    days.flatMap((d) => d.activities.map((a) => `${d.day_number}:${a.title.trim().toLowerCase()}`)),
+  );
+
   const who = trip
     ? [trip.adults_count ? `${trip.adults_count} adult${trip.adults_count !== 1 ? "i" : "o"}` : null,
        trip.children_count ? `${trip.children_count} bambin${trip.children_count !== 1 ? "i" : "o"}` : null]
@@ -132,9 +162,64 @@ export default function NewTripPage() {
   const vibe = trip?.theme_tags?.length ? trip.theme_tags.join(" · ") : (trip?.theme_description ?? null);
 
   // Selected day → day-active mode (full-width 3-column).
-  const selectedDayNumber = selectedDayId.startsWith("day-") ? Number(selectedDayId.slice(4)) + 1 : null;
-  const selectedDayData = selectedDayNumber != null ? sortedDays.find((d) => d.day_number === selectedDayNumber) ?? null : null;
-  const dayActive = started && selectedDayData != null;
+  // DayRail emits the day UUID (same contract as the trip day page).
+  const selectedDayData = selectedDayId ? sortedDays.find((d) => d.id === selectedDayId) ?? null : null;
+  const selectedDayNumber = selectedDayData?.day_number ?? null;
+  // Map mode wins over the day detail: when on, the centre column is the map.
+  const dayActive = started && selectedDayData != null && !mapMode;
+
+  // Map center: averaged trip stops → geocoded destination → fallback. The
+  // geocode runs eagerly below so the value is usually ready before map mode is
+  // opened — ExploreMap seeds its center once at mount and never re-centers.
+  const stopPoints = useMemo<LatLng[]>(
+    () =>
+      (snapshot?.days ?? [])
+        .map((d) => (d.accommodation_lat != null && d.accommodation_lng != null
+          ? { lat: d.accommodation_lat, lng: d.accommodation_lng } : null))
+        .filter((p): p is LatLng => p != null),
+    [snapshot],
+  );
+  const nightRoute = useMemo(() => selectNightRoute(snapshot?.days ?? []), [snapshot]);
+
+  // Every located activity of the trip → a pin on the map.
+  const activityMarkers = useMemo<MapMarker[]>(
+    () =>
+      (snapshot?.days ?? []).flatMap((d) =>
+        d.activities
+          .filter((a) => a.location_lat != null && a.location_lng != null)
+          .map((a) => ({ id: a.id, lat: a.location_lat as number, lng: a.location_lng as number, title: a.title })),
+      ),
+    [snapshot],
+  );
+
+  const [destGeo, setDestGeo] = useState<LatLng | null>(null);
+  const destination = trip?.destination ?? null;
+  useEffect(() => {
+    if (!destination || stopPoints.length > 0) return;
+    let cancelled = false;
+    api.places
+      .photoSearch<{ lat?: number; lng?: number }>(destination)
+      .then((p) => { if (!cancelled && p && (p.lat || p.lng)) setDestGeo({ lat: p.lat as number, lng: p.lng as number }); })
+      .catch(() => { /* keep the fallback center */ });
+    return () => { cancelled = true; };
+  }, [destination, stopPoints.length]);
+
+  const mapCenter = useMemo<LatLng>(() => {
+    // Prefer the activity pins, then the accommodation stops, then the geocoded
+    // destination. ExploreMap also fit-bounds the markers, so this seeds the
+    // view right on the pins from the first paint.
+    const pts: LatLng[] = activityMarkers.length > 0
+      ? activityMarkers.map((m) => ({ lat: m.lat, lng: m.lng }))
+      : stopPoints;
+    if (pts.length > 0) {
+      return {
+        lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length,
+        lng: pts.reduce((s, p) => s + p.lng, 0) / pts.length,
+      };
+    }
+    return destGeo ?? FALLBACK_CENTER;
+  }, [activityMarkers, stopPoints, destGeo]);
+  const mapZoom = activityMarkers.length > 0 || stopPoints.length > 0 ? 12 : destGeo ? 9 : 6;
 
   // ── Activity CRUD for the day detail (same api as the trip day page) ──
   const saveActivity = async (id: string, data: ActivityData) => {
@@ -168,36 +253,107 @@ export default function NewTripPage() {
         activeNav="trips"
         tripName={title ?? undefined}
         tripProgress={started ? (days.length ? `${days.length} giorni` : "in costruzione") : undefined}
+        isLoggedIn={isLoggedIn}
+        initials={user?.initials ?? ""}
+        avatarUrl={user?.avatarUrl ?? ""}
+        fullName={user?.fullName ?? ""}
+        isDev={isDev}
+        isTester={isTester}
       />
 
       <main
         className={cn(
           "flex-1 min-h-0 mx-auto w-full px-6 py-6 grid gap-6 grid-rows-[minmax(0,1fr)]",
-          dayActive
-            ? "max-w-none grid-cols-[300px_minmax(0,1fr)_minmax(360px,400px)]"
-            : started
-              ? "max-w-[1240px] grid-cols-[320px_minmax(0,1fr)]"
-              : "max-w-[1240px] grid-cols-1",
+          mapMode
+            ? sidebarCollapsed
+              ? "max-w-none grid-cols-[76px_minmax(0,1fr)_minmax(340px,420px)]"
+              : "max-w-none grid-cols-[320px_minmax(0,1fr)_minmax(340px,420px)]"
+            : dayActive
+              ? sidebarCollapsed
+                ? "max-w-none grid-cols-[76px_minmax(0,1fr)_minmax(0,1fr)]"
+                : "max-w-none grid-cols-[2fr_5fr_5fr]"
+              : started
+                ? sidebarCollapsed
+                  ? "max-w-[1240px] grid-cols-[76px_minmax(0,1fr)]"
+                  : "max-w-[1240px] grid-cols-[320px_minmax(0,1fr)]"
+                : "max-w-[1240px] grid-cols-1",
         )}
       >
-        {/* LEFT — sidebar (hidden in Blank). */}
-        <aside className={cn("flex-col gap-3.5 min-h-0", started ? "flex" : "hidden")}>
-          <TripInfo
-            className="shrink-0"
-            tripName={title}
-            dateRange={dateRange}
-            fields={{ where: trip?.destination ?? null, when: dateRange, who, vibe }}
-          />
-          {sortedDays.length > 0 && (
-            <DayRail
-              className="flex-1 min-h-0"
-              days={sortedDays}
-              selectedDayId={selectedDayId}
-              onSelect={setSelectedDayId}
-              startDate={trip?.start_date ?? null}
-              endDate={trip?.end_date ?? null}
-              header="label"
-            />
+        {/* LEFT — sidebar (hidden in Blank, collapsible to a thin rail). */}
+        <aside className={cn("flex-col gap-3.5 min-h-0", started ? "flex" : "hidden", mapMode && "order-1")}>
+          {sidebarCollapsed ? (
+            <>
+              <TripInfo
+                className="shrink-0"
+                collapsed
+                collapsedOrientation="vertical"
+                tripName={title}
+                dateRange={dateRange}
+                fields={{ where: trip?.destination ?? null, when: dateRange, who, vibe }}
+                onToggleCollapse={() => setSidebarCollapsed(false)}
+              />
+              <button
+                type="button"
+                onClick={() => setMapMode((v) => !v)}
+                aria-pressed={mapMode}
+                title={mapMode ? "Itinerario" : "Mappa"}
+                className={cn(
+                  "shrink-0 flex items-center justify-center rounded-lg border py-2.5 transition-colors",
+                  mapMode ? "border-ink bg-ink text-white" : "border-border bg-surface text-ink-soft hover:text-ink",
+                )}
+              >
+                {mapMode ? <IconList size={18} /> : <IconMap size={18} />}
+              </button>
+              {sortedDays.length > 0 && (
+                <DayRail
+                  className="flex-1 min-h-0"
+                  days={sortedDays}
+                  selectedDayId={selectedDayId}
+                  onSelect={selectDay}
+                  startDate={trip?.start_date ?? null}
+                  endDate={trip?.end_date ?? null}
+                  collapsed
+                  onToggleCollapse={() => setSidebarCollapsed(false)}
+                  header="label"
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <div className="shrink-0 flex rounded-md border border-border bg-surface p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMapMode(false)}
+                  aria-pressed={!mapMode}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-mini font-medium transition-colors",
+                    !mapMode ? "bg-ink text-white" : "text-ink-soft hover:text-ink",
+                  )}
+                >
+                  <IconList size={15} /> Itinerario
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode(true)}
+                  aria-pressed={mapMode}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-mini font-medium transition-colors",
+                    mapMode ? "bg-ink text-white" : "text-ink-soft hover:text-ink",
+                  )}
+                >
+                  <IconMap size={15} /> Mappa
+                </button>
+              </div>
+              <TripPanel
+                className="flex-1"
+                tripName={title}
+                dateRange={dateRange}
+                fields={{ where: trip?.destination ?? null, when: dateRange, who, vibe }}
+                days={sortedDays}
+                onSelect={selectDay}
+                onToggleSidebar={() => setSidebarCollapsed(true)}
+              />
+            </>
           )}
         </aside>
 
@@ -205,32 +361,20 @@ export default function NewTripPage() {
         <div className={cn("min-w-0 min-h-0 overflow-y-auto scrollbar-thin", dayActive ? "block" : "hidden")}>
           {selectedDayData && (
             <>
-              <HeroBanner
-                resetKey={selectedDayId}
-                eyebrow={heroEyebrow}
-                title={heroTitle}
-                subtitle={selectedDayData.city ?? undefined}
-                summary={selectedDayData.summary ?? undefined}
-                practicalNote={selectedDayData.notes ?? undefined}
-                type={selectedDayData.day_type ? (selectedDayData.day_type.charAt(0).toUpperCase() + selectedDayData.day_type.slice(1)) as HeroBannerType : undefined}
-                imageUrl={selectedDayData.image_url ?? undefined}
-                imageUpload={{ bucket: "trip-media", path: () => `trips/${selectedDayData.trip_id}/days/${selectedDayData.id}/banner/hero.webp` }}
-                meta={heroMeta}
-                editMode
-                onSave={async (data) => {
-                  const day_type = data.type ? data.type.toLowerCase() : null;
-                  const image_url = data.imageUrl ? data.imageUrl.split("?")[0] || null : null;
-                  await api.days.update(selectedDayData.id, {
-                    city: data.subtitle || null,
-                    label: data.title || null,
-                    day_type,
-                    image_url,
-                    summary: data.summary || null,
-                    notes: data.practicalNote || null,
-                  }).catch(() => {});
-                  await refetch();
-                }}
-              />
+              <header className="flex flex-col gap-1.5">
+                <div className="text-micro font-semibold uppercase tracking-eyebrow-wide text-primary">{heroEyebrow}</div>
+                <h2 className="font-serif text-2xl leading-tight text-ink">{heroTitle || "—"}</h2>
+                {selectedDayData.label && selectedDayData.city && (
+                  <div className="text-meta text-ink-soft">{selectedDayData.city}</div>
+                )}
+                {heroMeta && <div className="text-tiny text-ink-faint">{heroMeta}</div>}
+                {selectedDayData.summary && (
+                  <p className="mt-2 text-meta leading-relaxed text-ink-soft">{selectedDayData.summary}</p>
+                )}
+                {selectedDayData.notes && (
+                  <p className="mt-1 text-mini italic leading-relaxed text-ink-faint">{selectedDayData.notes}</p>
+                )}
+              </header>
               <div className="mt-4">
                 <Itinerary
                   key={selectedDayData.id}
@@ -251,11 +395,14 @@ export default function NewTripPage() {
           )}
         </div>
 
-        {/* RIGHT/CENTER — Go (always the last grid child = stable mount). */}
+        {/* GO — kept the 3rd grid child in every mode so it never remounts and
+            the conversation survives. In map mode it slides into the middle
+            column (next to the days); otherwise it's right/centre. */}
         <section
           className={cn(
             "min-w-0 min-h-0",
-            dayActive ? "" : started ? "w-full mx-auto max-w-[720px]" : "w-full mx-auto max-w-[640px]",
+            mapMode && "order-3",
+            dayActive || mapMode ? "" : started ? "w-full mx-auto max-w-[720px]" : "w-full mx-auto max-w-[640px]",
           )}
         >
           <GoAgentChat
@@ -263,9 +410,24 @@ export default function NewTripPage() {
             onTurnComplete={refetch}
             initialTurns={initialTurns}
             selectedDay={selectedDayNumber}
+            existingKeys={existingActivityKeys}
             className="h-full"
           />
         </section>
+
+        {/* MAP — last grid child, shown only in map mode (auto-places in the
+            last column). Always rendered so Go keeps its stable DOM slot. */}
+        <div className={cn("min-w-0 min-h-0 overflow-hidden rounded-lg border border-border", mapMode ? "block order-2" : "hidden")}>
+          {mapMode && started && tripId && (
+            <ExploreMap
+              tripId={tripId}
+              center={mapCenter}
+              zoom={mapZoom}
+              nightRoute={nightRoute}
+              extraMarkers={activityMarkers}
+            />
+          )}
+        </div>
       </main>
     </div>
   );

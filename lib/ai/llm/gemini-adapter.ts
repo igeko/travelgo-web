@@ -100,7 +100,22 @@ function splitWithTools(messages: LlmMessage[]): { system?: string; contents: Co
     contents.push({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] });
   }
 
-  return { system: system || undefined, contents };
+  // Gemini expects roles to alternate user/model. Replayed history can carry
+  // consecutive same-role turns — e.g. a proposal text turn (model) followed by
+  // the confirmed functionCall turn (model), or a functionResponse (user)
+  // followed by the new user message. Merge adjacent same-role contents by
+  // concatenating their parts, so the request stays valid.
+  const merged: Content[] = [];
+  for (const c of contents) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === c.role) {
+      last.parts = [...(last.parts ?? []), ...(c.parts ?? [])];
+    } else {
+      merged.push({ role: c.role, parts: [...(c.parts ?? [])] });
+    }
+  }
+
+  return { system: system || undefined, contents: merged };
 }
 
 /** auto → AUTO, required → ANY, none → NONE. */

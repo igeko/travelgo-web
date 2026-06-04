@@ -6,5 +6,5 @@ import { serverServices } from "@/lib/services";
 export const POST = route<{ dayId: string }>(async ({ params }) => {
   await requireDayEditor(params.dayId);
   const services = await serverServices();
-  return ok(await services.scheduler.organize(params.dayId));
+  return ok(await services.trips.organize(params.dayId));
 });

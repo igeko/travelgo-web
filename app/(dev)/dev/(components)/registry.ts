@@ -242,6 +242,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Trip days aside · clickable selection",
   },
   {
+    slug: "day-agenda",
+    title: "DayAgenda",
+    group: "Features",
+    subgroup: "Trips",
+    description: "Sulla falsa riga di DayList · a sinistra il giorno (data), a destra la pila ordinata delle attività della giornata (solo titolo) · selezione per singola attività",
+  },
+  {
     slug: "day-rail",
     title: "DayRail",
     group: "Features",

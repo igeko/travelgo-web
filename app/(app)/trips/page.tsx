@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AppHeader } from "@/features/app/AppHeader";
 import { CreateTripForm, type CreateTripData } from "@/features/trips/CreateTripForm";
-import { IconPlus, IconX, IconTrash } from "@/components/ui/icons";
+import { IconPlus, IconX, IconTrash, IconSparkles } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/cn";
@@ -109,7 +109,7 @@ export default function TripsPage() {
                 href={`/trips/${trip.id}`}
                 className="flex flex-col gap-1 px-5 py-4 rounded-xl border border-border bg-surface hover:border-border-strong hover:shadow-sm transition-all no-underline"
               >
-                <span className="text-[16px] font-semibold text-ink pr-7">{trip.title}</span>
+                <span className="text-[16px] font-semibold text-ink pr-16">{trip.title}</span>
                 {trip.subtitle && (
                   <span className="text-mini text-ink-faint">{trip.subtitle}</span>
                 )}
@@ -120,20 +120,30 @@ export default function TripsPage() {
                     : ""}
                 </span>
               </Link>
-              <button
-                type="button"
-                onClick={() => handleDelete(trip)}
-                disabled={deletingId === trip.id}
-                aria-label={t("deleteTrip")}
-                title={t("deleteTrip")}
-                className={cn(
-                  "absolute top-3 right-3 flex items-center justify-center size-7 rounded-md border-0 bg-transparent cursor-pointer transition-colors",
-                  "text-ink-faint opacity-60 hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg focus-visible:opacity-100",
-                  deletingId === trip.id && "opacity-40 pointer-events-none",
-                )}
-              >
-                <IconTrash size={16} />
-              </button>
+              <div className="absolute top-3 right-3 flex items-center gap-0.5">
+                <Link
+                  href={`/trips/new?draft=${trip.id}`}
+                  aria-label={t("editWithGo")}
+                  title={t("editWithGo")}
+                  className="flex items-center justify-center size-7 rounded-md text-ink-faint opacity-60 hover:opacity-100 hover:bg-surface-soft hover:text-orange focus-visible:opacity-100 transition-colors no-underline"
+                >
+                  <IconSparkles size={16} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(trip)}
+                  disabled={deletingId === trip.id}
+                  aria-label={t("deleteTrip")}
+                  title={t("deleteTrip")}
+                  className={cn(
+                    "flex items-center justify-center size-7 rounded-md border-0 bg-transparent cursor-pointer transition-colors",
+                    "text-ink-faint opacity-60 hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg focus-visible:opacity-100",
+                    deletingId === trip.id && "opacity-40 pointer-events-none",
+                  )}
+                >
+                  <IconTrash size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

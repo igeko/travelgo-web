@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { SandboxShell } from "./_components/SandboxShell";
 
 /**
- * Component sandbox — only accessible in dev (or with an explicit flag in prod).
+ * /dev — dev-only area. The prod gate lives here so it protects every
+ * sub-segment (the component sandbox in (components)/ and the GoAgent area
+ * in agent/), each of which brings its own shell via a nested layout.
  */
 export default function DevLayout({
   children,
@@ -16,5 +17,5 @@ export default function DevLayout({
     notFound();
   }
 
-  return <SandboxShell>{children}</SandboxShell>;
+  return <>{children}</>;
 }

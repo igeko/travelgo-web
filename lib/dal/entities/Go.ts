@@ -34,6 +34,8 @@ export type GoMessageRow = {
   tool_calls: unknown | null;
   tool_call_id: string | null;
   name: string | null;
+  /** UI-only: confirm-gated writes proposed on this turn (for reload). */
+  pending_actions: unknown | null;
   created_at: string;
 };
 
@@ -46,6 +48,7 @@ export type InsertGoMessage = {
   tool_calls?: unknown;
   tool_call_id?: string | null;
   name?: string | null;
+  pending_actions?: unknown;
 };
 
 export type UpdateGoSession = {
@@ -54,7 +57,7 @@ export type UpdateGoSession = {
 };
 
 const SESSION_SELECT = "id, trip_id, user_id, phase, planning_state, created_at, updated_at";
-const MESSAGE_SELECT = "id, session_id, trip_id, role, content, tool_calls, tool_call_id, name, created_at";
+const MESSAGE_SELECT = "id, session_id, trip_id, role, content, tool_calls, tool_call_id, name, pending_actions, created_at";
 
 export class Go {
   constructor(private readonly db: SupabaseClient) {}
@@ -90,21 +93,29 @@ export class Go {
     return { data: true, error: null };
   }
 
-  /** Oldest→newest, capped. */
+  /** The most recent `limit` messages, returned oldest→newest. */
   async listMessages(sessionId: string, limit = 40): Promise<DalResult<GoMessageRow[]>> {
+    // Take the newest `limit` rows (DESC + limit), then flip to chronological.
+    // ASC + limit would freeze on the OLDEST messages once a session grows.
     const { data, error } = await this.db
       .from(GoTable.Messages)
       .select(MESSAGE_SELECT)
       .eq("session_id", sessionId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(limit);
     if (error) return { data: null, error: new DalError(error.message, error.code) };
-    return { data: (data ?? []) as GoMessageRow[], error: null };
+    return { data: ((data ?? []) as GoMessageRow[]).reverse(), error: null };
   }
 
   async insertMessages(rows: InsertGoMessage[]): Promise<DalResult<true>> {
     if (rows.length === 0) return { data: true, error: null };
-    const { error } = await this.db.from(GoTable.Messages).insert(rows);
+    // Stamp a strictly increasing created_at per row so a turn's messages keep
+    // their insertion order on read. A single INSERT shares one statement
+    // timestamp, which sorts ambiguously and can place a `tool` row before its
+    // `assistant(tool_calls)` — an orphan the LLM providers reject.
+    const base = Date.now();
+    const stamped = rows.map((r, i) => ({ ...r, created_at: new Date(base + i).toISOString() }));
+    const { error } = await this.db.from(GoTable.Messages).insert(stamped);
     if (error) return { data: null, error: new DalError(error.message, error.code) };
     return { data: true, error: null };
   }

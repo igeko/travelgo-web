@@ -38,6 +38,30 @@ function providerChip(provider: string | null): string {
   return "bg-surface-soft text-ink-soft border-border";
 }
 
+/** Color a message by role so user / assistant / tool are scannable at a glance. */
+function roleStyle(role: string): { badge: string; accent: string } {
+  switch (role) {
+    case "user":      return { badge: "bg-ink text-white border-ink", accent: "border-l-2 border-ink" };
+    case "assistant": return { badge: "bg-primary-soft text-primary-deep border-primary-border", accent: "border-l-2 border-primary-border" };
+    case "tool":      return { badge: "bg-lime text-lime-text border-border", accent: "border-l-2 border-lime" };
+    default:          return { badge: "bg-surface-soft text-ink-soft border-border", accent: "border-l-2 border-border" };
+  }
+}
+
+/** A role-colored message row (replayed history / sent messages). */
+function MessageRow({ role, content, tokens }: { role: string; content: string; tokens?: number | null }) {
+  const rs = roleStyle(role);
+  return (
+    <div className={cn("rounded-sm bg-surface-soft p-2 pl-2.5", rs.accent)}>
+      <div className="flex items-center gap-2 mb-0.5">
+        <span className={cn("rounded-pill border px-1.5 py-0.5 text-micro font-mono uppercase tracking-meta", rs.badge)}>{role}</span>
+        <Tok n={tokens} />
+      </div>
+      <pre className="max-h-24 overflow-auto text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">{content}</pre>
+    </div>
+  );
+}
+
 /** Color the per-call kind badge by what the call did. */
 function kindChip(kind: AgentDebugIteration["kind"]): string {
   switch (kind) {
@@ -225,13 +249,7 @@ function AgentBody({ agent, usage, response }: { agent: AgentDebugTrace; usage: 
             {agent.history.length > 0 ? (
               <div className="space-y-1">
                 {agent.history.map((m, i) => (
-                  <div key={i} className="rounded-sm bg-surface-soft p-2">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-micro font-mono uppercase tracking-meta text-ink-faint">{m.role}</span>
-                      <Tok n={m.tokens} />
-                    </div>
-                    <pre className="max-h-24 overflow-auto text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">{m.content}</pre>
-                  </div>
+                  <MessageRow key={i} role={m.role} content={m.content} tokens={m.tokens} />
                 ))}
               </div>
             ) : (
@@ -275,10 +293,7 @@ function LegacyBody({ e }: { e: LlmDebugEntry }) {
         <Section label={`Messages sent (${e.sentMessages.length})`}>
           <div className="space-y-1">
             {e.sentMessages.map((m, i) => (
-              <div key={i} className="rounded-sm bg-surface-soft p-2">
-                <div className="text-micro font-mono uppercase tracking-meta text-ink-faint mb-0.5">{m.role}</div>
-                <pre className="max-h-32 overflow-auto text-micro font-mono whitespace-pre-wrap break-words text-ink-soft">{m.content}</pre>
-              </div>
+              <MessageRow key={i} role={m.role} content={m.content} />
             ))}
           </div>
         </Section>

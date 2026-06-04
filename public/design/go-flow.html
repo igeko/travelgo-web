@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>TravelGo · Go agent — il giro completo</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --surface: #ffffff;
+    --soft: #faf8f3;
+    --ink: #1c1a17;
+    --ink-soft: #6b6357;
+    --ink-faint: #a99f8e;
+    --border: #e6e1d8;
+    --border-strong: #d8d2c6;
+    --orange: #c98b3a;
+    --orange-deep: #b5510f;
+    /* node tones */
+    --tool-bg:#eaf4d8; --tool-bd:#cfe6a6; --tool-fg:#3d6e0e;
+    --gated-bg:#fdf2dc; --gated-bd:#f3d9a3; --gated-fg:#9a6a15;
+    --intro-bg:#f1ede6; --intro-bd:#e2ddd5; --intro-fg:#6b6357;
+    --forced-bg:#fcebe7; --forced-bd:#f3b7a8; --forced-fg:#a3401f;
+    --render-bg:#ffefe2; --render-bd:#f4c79f; --render-fg:#b5510f;
+    --call-bg:#e9eff6; --call-bd:#c3d4ea; --call-fg:#2c557f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; padding: 40px 24px 80px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--orange); margin-bottom: 8px; }
+  h1 { font-size: 28px; letter-spacing: -.01em; margin: 0 0 8px; }
+  .lead { font-size: 14px; color: var(--ink-soft); max-width: 680px; line-height: 1.55; margin: 0 0 28px; }
+  h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin: 34px 0 14px; }
+
+  /* nodes */
+  .node {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 11px 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .node .t { font-size: 13.5px; font-weight: 650; line-height: 1.2; }
+  .node .s { font-size: 11px; color: var(--ink-soft); margin-top: 3px; line-height: 1.35; }
+  .node.ink { background: var(--ink); border-color: var(--ink); }
+  .node.ink .t { color: #fff; } .node.ink .s { color: rgba(255,255,255,.7); }
+  .node.tool   { background: var(--tool-bg);   border-color: var(--tool-bd); }   .node.tool .t,.node.tool .s{color:var(--tool-fg);}
+  .node.gated  { background: var(--gated-bg);  border-color: var(--gated-bd); }  .node.gated .t,.node.gated .s{color:var(--gated-fg);}
+  .node.intro  { background: var(--intro-bg);  border-color: var(--intro-bd); }  .node.intro .t,.node.intro .s{color:var(--intro-fg);}
+  .node.forced { background: var(--forced-bg); border-color: var(--forced-bd); } .node.forced .t,.node.forced .s{color:var(--forced-fg);}
+  .node.render { background: var(--render-bg); border-color: var(--render-bd); } .node.render .t,.node.render .s{color:var(--render-fg);}
+  .node.call   { background: var(--call-bg);   border-color: var(--call-bd); }   .node.call .t,.node.call .s{color:var(--call-fg);}
+
+  /* flow column */
+  .flow { display: flex; flex-direction: column; align-items: stretch; max-width: 460px; margin: 0 auto; }
+  .arrow { display: flex; flex-direction: column; align-items: center; padding: 4px 0; }
+  .arrow .lab { font-size: 10.5px; color: var(--ink-faint); margin-bottom: 1px; }
+  .arrow .v { color: var(--orange); font-size: 15px; line-height: 1; }
+
+  /* branch */
+  .branch { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; align-items: start; }
+  .col { display: flex; flex-direction: column; align-items: stretch; }
+  .tag { display: inline-block; align-self: center; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+         border-radius: 999px; padding: 3px 10px; margin-bottom: 10px; border: 1px solid; }
+  .tag.yes { background: var(--ink); color:#fff; border-color: var(--ink); }
+  .tag.no  { background: #fff; color: var(--ink-soft); border-color: var(--border-strong); }
+  .micro { font-size: 10.5px; color: var(--orange-deep); text-align:center; margin-top: 8px; line-height: 1.35; }
+
+  /* loop */
+  .loop { border: 2px dashed var(--border-strong); border-radius: 18px; background: #fffdf9; padding: 14px; }
+  .loop .head { display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px; }
+  .loop .head .l { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gated-fg); }
+  .loop .head .r { font-size: 10.5px; color: var(--ink-faint); }
+  .out { display:flex; gap: 8px; align-items: center; border:1px solid; border-radius: 10px; padding: 7px 10px; margin-top: 7px; }
+  .out .k { font-size: 9.5px; font-weight: 700; letter-spacing:.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 7px; background: rgba(255,255,255,.6); flex: none; }
+  .out .d { font-size: 11.5px; line-height: 1.3; }
+  .out.tool{background:var(--tool-bg);border-color:var(--tool-bd);} .out.tool .k,.out.tool .d{color:var(--tool-fg);}
+  .out.answer{background:var(--tool-bg);border-color:var(--tool-bd);} .out.answer .k,.out.answer .d{color:var(--tool-fg);}
+  .out.gated{background:var(--gated-bg);border-color:var(--gated-bd);} .out.gated .k,.out.gated .d{color:var(--gated-fg);}
+  .out.intro{background:var(--intro-bg);border-color:var(--intro-bd);} .out.intro .k,.out.intro .d{color:var(--intro-fg);}
+  .out.forced{background:var(--forced-bg);border-color:var(--forced-bd);} .out.forced .k,.out.forced .d{color:var(--forced-fg);}
+  .loop .note { font-size:10.5px; color: var(--ink-faint); text-align:center; margin-top:10px; }
+
+  /* reference cards */
+  .grid3 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .card h3 { font-size: 11px; letter-spacing:.08em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td, th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 10px; text-transform: uppercase; letter-spacing:.06em; color: var(--ink-faint); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; background: var(--soft); padding: 1px 5px; border-radius: 5px; }
+  .kv { display:flex; gap:8px; font-size:12px; margin-bottom:8px; }
+  .kv .b { flex:none; width: 92px; font-weight:650; color: var(--ink); }
+  .kv .v { color: var(--ink-soft); line-height: 1.4; }
+  .legend { display:flex; flex-wrap:wrap; gap: 10px; margin-bottom: 6px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; font-size:11px; color: var(--ink-soft); }
+  .legend i { width:13px; height:13px; border-radius:4px; border:1px solid; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">TravelGo · Go agent</div>
+  <h1>Il giro completo di un turno</h1>
+  <p class="lead">
+    Come viaggia un messaggio dalla chat fino al modello e ritorno: route → loop → persistenza → render,
+    più il sotto-giro della conferma. Schema della logica reale (<code>app/api/go/agent</code>).
+  </p>
+
+  <div class="legend">
+    <span><i style="background:var(--ink);border-color:var(--ink)"></i> client / route</span>
+    <span><i style="background:#fff;border-color:var(--border-strong)"></i> processo</span>
+    <span><i style="background:var(--call-bg);border-color:var(--call-bd)"></i> chiamata modello</span>
+    <span><i style="background:var(--tool-bg);border-color:var(--tool-bd)"></i> tool / answer</span>
+    <span><i style="background:var(--gated-bg);border-color:var(--gated-bd)"></i> gated</span>
+    <span><i style="background:var(--forced-bg);border-color:var(--forced-bd)"></i> forced-final</span>
+    <span><i style="background:var(--render-bg);border-color:var(--render-bd)"></i> render</span>
+  </div>
+
+  <h2>Giro principale · un messaggio dell'utente</h2>
+  <div class="flow">
+    <div class="node ink"><div class="t">Client · GoAgentChat.send()</div><div class="s">ensureTripId() crea il trip draft al 1° messaggio</div></div>
+    <div class="arrow"><span class="lab">POST { tripId, message, selectedDay?, debug? }</span><span class="v">▼</span></div>
+    <div class="node ink"><div class="t">Route · /api/go/agent</div><div class="s">decide: <code style="background:rgba(255,255,255,.15);color:#fff">body.confirm ?</code></div></div>
+
+    <div class="branch">
+      <!-- confirm SÌ -->
+      <div class="col">
+        <span class="tag yes">confirm · SÌ</span>
+        <div class="node tool"><div class="t">Esegui tool</div><div class="s">applica il write proposto</div></div>
+        <div class="arrow"><span class="v">▼</span></div>
+        <div class="node intro"><div class="t">Persisti round-trip</div><div class="s">assistant(tool_call) + tool(result)</div></div>
+        <div class="micro">↳ al turno dopo il modello sa che è già fatto</div>
+      </div>
+
+      <!-- confirm NO -->
+      <div class="col">
+        <span class="tag no">confirm · NO</span>
+        <div class="node"><div class="t">Auth + sessione</div><div class="s">requireTripMember · loadOrCreateSession</div></div>
+        <div class="arrow"><span class="v">▼</span></div>
+        <div class="node"><div class="t">historyAsLlm (40)</div><div class="s">replay turni · taglia gli orfani</div></div>
+        <div class="arrow"><span class="v">▼</span></div>
+        <div class="node"><div class="t">Assembla payload</div><div class="s">[ system · tools · history ] <b>cache</b> + context <b>effimero</b> + messaggio</div></div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="lab">runAgent(...)</span><span class="v">▼</span></div>
+
+    <!-- loop -->
+    <div class="loop">
+      <div class="head"><span class="l">Loop agent</span><span class="r">max 4 iterazioni</span></div>
+      <div class="node call"><div class="t">chatTools(fast, auto)</div><div class="s">system + tools + messaggi → risposta</div></div>
+      <div class="out tool"><span class="k">tools</span><span class="d">esegue il tool (es. getTripState) → <b>ricicla</b></span></div>
+      <div class="out answer"><span class="k">answer</span><span class="d">nessun tool → testo finale → <b>esce</b></span></div>
+      <div class="out gated"><span class="k">gated</span><span class="d">write da confermare → pendingActions (NON eseguito) → esce</span></div>
+      <div class="out intro"><span class="k">intro</span><span class="d">proposta senza testo → 2ª chiamata solo-testo</span></div>
+      <div class="out forced"><span class="k">forced-final</span><span class="d">cap raggiunto senza testo né pending → risposta forzata</span></div>
+      <div class="note">tools → ricicla · answer/gated → esci</div>
+    </div>
+
+    <div class="arrow"><span class="v">▼</span></div>
+    <div class="node intro"><div class="t">persistTurn</div><div class="s">salva user + assistant/tool · pendingActions solo per la UI</div></div>
+    <div class="arrow"><span class="v">▼</span></div>
+    <div class="node render"><div class="t">Render in chat</div><div class="s">testo (RichText, [[place:…]]) + card di conferma se gated</div></div>
+
+    <div class="micro" style="color:var(--ink-faint)">⤴ se gated · l'utente conferma → rientra dal ramo «confirm · SÌ»</div>
+  </div>
+
+  <h2>Riferimenti</h2>
+  <div class="grid3">
+    <div class="card">
+      <h3>I tool (GO_TOOLS)</h3>
+      <table>
+        <tr><th>tool</th><th>quando esegue</th><th>effetto</th></tr>
+        <tr><td><code>getTripState</code></td><td>nel loop (read-only)</td><td>TripService.getSnapshot</td></tr>
+        <tr><td><code>setTripMeta</code></td><td>subito o su conferma*</td><td>TripService.update → rigenera giorni</td></tr>
+        <tr><td><code>setItinerary</code></td><td>alla conferma</td><td>updateDay (città per leg)</td></tr>
+        <tr><td><code>addActivities</code></td><td>alla conferma</td><td>Scheduler.addToDay</td></tr>
+        <tr><td><code>updateActivities</code></td><td>alla conferma</td><td>YumeService.update + Scheduler.updateInstance</td></tr>
+      </table>
+      <div style="font-size:10.5px;color:var(--ink-faint);margin-top:8px">* applica subito se riempie un vuoto; chiede conferma se sovrascrive.</div>
+    </div>
+
+    <div class="card">
+      <h3>Persistito vs effimero</h3>
+      <div class="kv"><span class="b">Cache</span><span class="v"><code>system</code> + catalogo <code>tools</code> + <code>history</code> — prefisso stabile, cresce solo in coda.</span></div>
+      <div class="kv"><span class="b">Effimero</span><span class="v">il <code>context</code> per-turno (giorno selezionato, trip-context) — dopo la history, mai persistito.</span></div>
+      <div class="kv"><span class="b">DB</span><span class="v"><code>go_messages</code>: user / assistant / tool. <code>historyAsLlm</code> li rilegge; <code>displayTurns</code> re-idrata le card.</span></div>
+      <div class="kv"><span class="b">Round-trip</span><span class="v">la conferma scrive assistant(tool_call)+tool(result): il modello vede l'esecuzione → non ripropone.</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -7,7 +7,7 @@ export const PATCH = route<{ id: string }>(async ({ req, params }) => {
   await requireScheduledEditor(params.id);
   const body = await readJson<Record<string, unknown>>(req);
   const services = await serverServices();
-  await services.scheduler.updateInstance(params.id, body);
+  await services.trips.updateInstance(params.id, body);
   return ok(null);
 });
 
@@ -15,6 +15,6 @@ export const PATCH = route<{ id: string }>(async ({ req, params }) => {
 export const DELETE = route<{ id: string }>(async ({ params }) => {
   await requireScheduledEditor(params.id);
   const services = await serverServices();
-  await services.scheduler.removeFromDay(params.id);
+  await services.trips.unschedule(params.id);
   return ok(null);
 });

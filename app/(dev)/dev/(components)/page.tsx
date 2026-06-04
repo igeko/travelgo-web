@@ -5,6 +5,12 @@ import { sandboxRegistry } from "./registry";
 /* ─── Sezioni principali ─────────────────────────────────────── */
 const SECTIONS = [
   {
+    href: "/dev/agent",
+    title: "Go Agent",
+    description: "Banco di prova del loop dell'assistente · flussi ripetibili, chat, tools, prompt, debug.",
+    icon: "🤖",
+  },
+  {
     href: "/dev/briefs",
     title: "Brief tecnici",
     description: "Documentazione architetturale — decisioni di design, setup, integrazioni.",
@@ -50,6 +56,12 @@ const DASHBOARDS = [
     title: "Google Cloud",
     description: "Maps Platform, API keys, billing, quote.",
     icon: "☁️",
+  },
+  {
+    href: "https://aistudio.google.com/",
+    title: "AI Studio",
+    description: "Gemini API keys, usage e quote token.",
+    icon: "✨",
   },
 ];
 

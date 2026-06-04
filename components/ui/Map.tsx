@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
@@ -97,13 +97,22 @@ export type MapProps = {
   onMarkerClick?: (id: string) => void;
   /** Fired (on idle) with the visible area's centre + radius in metres. */
   onViewportChange?: (viewport: { center: LatLng; radiusMeters: number }) => void;
-  /** The place a preview card is anchored to (its pin). null hides the card. */
-  markerCardAnchor?: LatLng | null;
-  /** Reports the anchor's container pixel on every map move (null when hidden). */
-  onCardPixelChange?: (pixel: { x: number; y: number } | null) => void;
+  /**
+   * Detail card for a pin. Map shows it on hover (with a small dwell) and for
+   * the `selectedMarkerId`, anchored above the pin and kept open while hovered.
+   * Content is the consumer's job (Map stays presentation-only); `close` hides it.
+   * Return null to render no card for a given pin (e.g. a coordinate-only pin).
+   */
+  renderPinCard?: (id: string, close: () => void) => ReactNode;
+  /** Fired when a pin's card is closed via its close affordance. */
+  onMarkerClose?: (id: string) => void;
   /** Optional night-route overlay (dedicated pins + connecting polyline). */
   routeLayer?: MapRouteLayer | null;
 };
+
+/** Hover dwell before a pin's card appears, and grace before it closes. */
+const PIN_CARD_DWELL = 200;
+const PIN_CARD_GRACE = 180;
 
 /** Great-circle distance in metres between two points. */
 function metersBetween(a: LatLng, b: LatLng): number {
@@ -209,8 +218,8 @@ export function Map({
   onPoiClick,
   onMarkerClick,
   onViewportChange,
-  markerCardAnchor,
-  onCardPixelChange,
+  renderPinCard,
+  onMarkerClose,
   routeLayer,
 }: MapProps) {
   const status = useGoogleMaps();
@@ -220,10 +229,11 @@ export function Map({
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
-  const cardAnchorRef = useRef(markerCardAnchor);
-  const onCardPixelChangeRef = useRef(onCardPixelChange);
-  cardAnchorRef.current = markerCardAnchor;
-  onCardPixelChangeRef.current = onCardPixelChange;
+  // Pin under the cursor (after a dwell). The card shows for `hoverId ?? selectedMarkerId`.
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [cardPixel, setCardPixel] = useState<{ x: number; y: number } | null>(null);
+  const dwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const graceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest handlers — kept in refs so listeners need not be re-bound.
   const onMapClickRef = useRef(onMapClick);
   const onPoiClickRef = useRef(onPoiClick);
@@ -233,6 +243,31 @@ export function Map({
   onPoiClickRef.current = onPoiClick;
   onMarkerClickRef.current = onMarkerClick;
   onViewportChangeRef.current = onViewportChange;
+
+  // The pin whose card is currently shown (hover preview wins over selection).
+  const activeCardId = hoverId ?? selectedMarkerId ?? null;
+  const activeAnchor = activeCardId
+    ? (markers ?? []).find((m) => (m.id ?? `${m.lat},${m.lng}`) === activeCardId) ?? null
+    : null;
+  const activeAnchorRef = useRef(activeAnchor);
+  activeAnchorRef.current = activeAnchor;
+
+  // Hover lifecycle for a pin: dwell before showing, grace before hiding so the
+  // cursor can travel from the pin onto the card without it closing.
+  const hoverPin = useCallback((id: string) => {
+    if (graceTimer.current) { clearTimeout(graceTimer.current); graceTimer.current = null; }
+    if (dwellTimer.current) clearTimeout(dwellTimer.current);
+    dwellTimer.current = setTimeout(() => setHoverId(id), PIN_CARD_DWELL);
+  }, []);
+  const unhoverPin = useCallback(() => {
+    if (dwellTimer.current) { clearTimeout(dwellTimer.current); dwellTimer.current = null; }
+    if (graceTimer.current) clearTimeout(graceTimer.current);
+    graceTimer.current = setTimeout(() => setHoverId(null), PIN_CARD_GRACE);
+  }, []);
+  useEffect(() => () => {
+    if (dwellTimer.current) clearTimeout(dwellTimer.current);
+    if (graceTimer.current) clearTimeout(graceTimer.current);
+  }, []);
 
   // Initialize the map once the SDK is ready and the container is mounted.
   useEffect(() => {
@@ -325,6 +360,8 @@ export function Map({
         title: m.title,
       });
       marker.addListener("click", () => onMarkerClickRef.current?.(key));
+      marker.addListener("mouseover", () => hoverPin(key));
+      marker.addListener("mouseout", () => unhoverPin());
       markersByKey.current[key] = marker;
       added = true;
     }
@@ -357,7 +394,7 @@ export function Map({
         map.fitBounds(bounds, 64);
       }
     }
-  }, [markers, status, selectedMarkerId]);
+  }, [markers, status, selectedMarkerId, hoverPin, unhoverPin]);
 
   // Night-route polyline: connects the night pins (regular markers with variant
   // "night") in order. Clears + redraws when the layer changes, and tears itself
@@ -413,15 +450,15 @@ export function Map({
     }
     if (!selectedOverlayRef.current) selectedOverlayRef.current = createSelectedPinOverlay();
     const ov = selectedOverlayRef.current;
-    // Hide the name pill when a richer card is anchored to the same pin.
-    ov.setData(sel.lat, sel.lng, markerCardAnchor ? "" : (sel.title ?? ""));
+    // Hide the name pill when the richer card is shown for this same pin.
+    const cardShown = !!renderPinCard && activeCardId === selectedMarkerId;
+    ov.setData(sel.lat, sel.lng, cardShown ? "" : (sel.title ?? ""));
     if (ov.getMap() !== map) ov.setMap(map);
-  }, [markers, status, selectedMarkerId, markerCardAnchor]);
+  }, [markers, status, selectedMarkerId, activeCardId, renderPinCard]);
 
-  // Project the card anchor (latlng) to a container pixel on every map move, so
-  // the host can render the card as a plain React element OUTSIDE the map DOM
-  // (clicks on it then never reach the map). OverlayView is used for projection
-  // only — no DOM card lives on the map panes.
+  // Project the active pin's coords to a container pixel on every map move, so
+  // the card renders as a plain React element in this wrapper (OUTSIDE the map
+  // DOM — clicks on it never reach the map). OverlayView is for projection only.
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     const ov = new google.maps.OverlayView();
@@ -429,11 +466,10 @@ export function Map({
     div.style.display = "none";
     ov.onAdd = function () { this.getPanes()?.overlayLayer.appendChild(div); };
     ov.draw = function () {
-      const a = cardAnchorRef.current;
-      const cb = onCardPixelChangeRef.current;
-      if (!a) { cb?.(null); return; }
+      const a = activeAnchorRef.current;
+      if (!a) { setCardPixel(null); return; }
       const p = this.getProjection()?.fromLatLngToContainerPixel(new google.maps.LatLng(a.lat, a.lng));
-      cb?.(p ? { x: p.x, y: p.y } : null);
+      setCardPixel(p ? { x: p.x, y: p.y } : null);
     };
     ov.onRemove = function () { div.remove(); };
     ov.setMap(mapRef.current);
@@ -441,14 +477,34 @@ export function Map({
     return () => { ov.setMap(null); cardOverlayRef.current = null; };
   }, [status]);
 
-  // Recompute the pixel when the anchor changes.
-  useEffect(() => { cardOverlayRef.current?.draw(); }, [markerCardAnchor?.lat, markerCardAnchor?.lng]);
+  // Recompute the pixel when the active pin (its coords) changes.
+  useEffect(() => { cardOverlayRef.current?.draw(); }, [activeAnchor?.lat, activeAnchor?.lng]);
 
   // Tear down the overlay on unmount.
   useEffect(() => () => { selectedOverlayRef.current?.setMap(null); }, []);
 
+  const pinCard = activeCardId && renderPinCard
+    ? renderPinCard(activeCardId, () => {
+        setHoverId(null);
+        onMarkerClose?.(activeCardId);
+      })
+    : null;
+
   return (
     <div className={cn("relative overflow-hidden rounded-lg bg-surface-soft", className)} style={style}>
+      {/* Pin detail card — plain React node above the active pin (hover/select),
+          kept open while hovered. Outside the map DOM so its clicks never hit the map. */}
+      {pinCard && cardPixel && (
+        <div
+          className="absolute"
+          style={{ left: cardPixel.x, top: cardPixel.y, transform: "translate(-50%, calc(-100% - 48px))", zIndex: 1000 }}
+          onMouseEnter={() => activeCardId && hoverPin(activeCardId)}
+          onMouseLeave={unhoverPin}
+        >
+          {pinCard}
+        </div>
+      )}
+
       {/* Map container — always in DOM so Google can attach to it */}
       <div
         ref={containerRef}

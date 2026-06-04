@@ -465,6 +465,7 @@
     "createOne": "Create one",
     "createTrip": "Create trip",
     "deleteTrip": "Delete trip",
+    "editWithGo": "Edit with Go",
     "deleteConfirm": "Delete \"{name}\"? This permanently removes the trip and all its days and activities."
   },
   "InstancePopover": {

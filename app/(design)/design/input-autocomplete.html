@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1200">
+<title>TravelGo · Input + Autocomplete · spec di handoff</title>
+<style>
+  :root {
+    --c-bg: #f1efe8;
+    --c-surface: #ffffff;
+    --c-surface-soft: #f5f3ee;
+    --c-surface-warm: #fdf5ee;
+    --c-border: rgba(13, 44, 61, 0.08);
+    --c-border-strong: rgba(13, 44, 61, 0.18);
+    --c-border-dashed: rgba(13, 44, 61, 0.12);
+    --c-ink: #0d2c3d;
+    --c-ink-soft: #5b6b78;
+    --c-ink-faint: #8a98a3;
+    --c-primary: #f47b3a;
+    --c-primary-soft: #fdecdf;
+    --c-primary-border: #f9d4b6;
+    --c-primary-deep: #a84818;
+    --shadow-popover: 0 8px 24px rgba(13,44,61,0.12), 0 1px 0 rgba(13,44,61,0.06);
+    --tg-serif: Georgia, "Times New Roman", serif;
+    --tg-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e8e6df; color: var(--c-ink); font-family: var(--tg-sans); font-size: 14px; line-height: 1.55; }
+
+  .page { max-width: 1120px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  /* doc header */
+  .doc-h { margin-bottom: 40px; }
+  .doc-h .eye { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin-bottom: 8px; }
+  .doc-h h1 { font-family: var(--tg-serif); font-size: 30px; font-weight: 400; margin: 0 0 10px; line-height: 1.2; }
+  .doc-h p { color: var(--c-ink-soft); margin: 0; max-width: 720px; line-height: 1.65; }
+
+  /* section */
+  section { margin-bottom: 56px; }
+  section .label-row { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  section .label-row .num { font-family: var(--tg-serif); font-size: 22px; color: var(--c-primary); }
+  section .label-row h2 { font-family: var(--tg-serif); font-size: 22px; font-weight: 400; margin: 0; }
+  section .label-row .badge {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--c-primary); font-weight: 600;
+    background: var(--c-primary-soft); border: 1px solid var(--c-primary-border);
+    padding: 3px 9px; border-radius: 999px;
+  }
+  section > .sub { color: var(--c-ink-soft); margin: 0 0 22px; line-height: 1.6; max-width: 760px; }
+
+  /* ════════════════════════════════════════════════════════════════════
+     INPUT ROW (passport language) — base atom
+  ════════════════════════════════════════════════════════════════════ */
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    font-size: 12.5px;
+    color: var(--c-ink);
+    cursor: text;
+    position: relative;
+  }
+  .input-row .ico {
+    width: 14px; height: 14px;
+    color: var(--c-primary);
+    stroke-width: 1.75;
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+  }
+  .input-row.empty .ico { color: var(--c-ink-faint); }
+  .input-row .lbl {
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-ink-faint);
+    font-weight: 500;
+    flex-shrink: 0;
+    width: 50px;
+  }
+  .input-row.active .lbl { color: var(--c-primary); }
+  .input-row .v {
+    color: var(--c-ink);
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .input-row.empty .v {
+    color: var(--c-ink-faint);
+    font-style: italic;
+    font-weight: 400;
+  }
+  /* Active state · caret only */
+  .input-row.active .v {
+    overflow: visible;
+    flex: 0 1 auto;
+    position: relative;
+  }
+  .input-row.active .v::after {
+    content: "";
+    display: inline-block;
+    width: 1.5px;
+    height: 14px;
+    background: var(--c-primary);
+    margin-left: 2px;
+    vertical-align: -2px;
+    animation: caret-blink 1s steps(2) infinite;
+  }
+  @keyframes caret-blink { 50% { opacity: 0; } }
+  /* Disabled */
+  .input-row.disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .input-row.disabled .v {
+    color: var(--c-ink-soft);
+    font-style: italic;
+  }
+  /* Error: only the value colored deep, micro-message below */
+  .input-row.error .v { color: var(--c-primary-deep); }
+  .input-row-error-msg {
+    font-size: 11px;
+    color: var(--c-primary-deep);
+    font-style: italic;
+    margin: 0 0 4px;
+    padding-left: 24px;
+  }
+  .input-row-error-msg b {
+    color: var(--c-primary-deep);
+    font-style: normal;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  /* Inline loading spinner */
+  .input-row .spin {
+    margin-left: 8px;
+    width: 11px; height: 11px;
+    border: 1.5px solid var(--c-primary);
+    border-top-color: transparent;
+    border-radius: 999px;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ════════════════════════════════════════════════════════════════════
+     AUTOCOMPLETE POPOVER — floating, doesn't take vertical space
+  ════════════════════════════════════════════════════════════════════ */
+  /* The parent row needs position:relative when the popover is open.
+     The popover is position:absolute so it doesn't displace the layout. */
+  .input-row.has-popover {
+    position: relative;
+  }
+  .ac-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 24px;      /* aligned with value start (after icon 14px + gap 10px) */
+    right: 0;
+    background: var(--c-surface);
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: var(--shadow-popover);
+    z-index: 50;
+    animation: ac-pop-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: top left;
+  }
+  @keyframes ac-pop-in {
+    0%   { opacity: 0; transform: translateY(-4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .ac-h {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    padding: 4px 8px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ac-h::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 999px;
+    background: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(244,123,58,0.18);
+  }
+  .ac-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .ac-opt:hover,
+  .ac-opt.kbd-focus {
+    background: rgba(244,123,58,0.08);
+  }
+  .ac-opt .ico {
+    width: 13px; height: 13px;
+    color: var(--c-ink-faint);
+    stroke-width: 1.75;
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+  }
+  .ac-opt:hover .ico,
+  .ac-opt.kbd-focus .ico { color: var(--c-primary); }
+  .ac-opt-nm {
+    flex: 1;
+    font-size: 12.5px;
+    color: var(--c-ink);
+    font-weight: 500;
+    line-height: 1.3;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ac-opt-nm em {
+    font-style: normal;
+    background: rgba(244,123,58,0.18);
+    color: var(--c-primary-deep);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .ac-opt-tag {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-ink-faint);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .ac-opt:hover .ac-opt-tag,
+  .ac-opt.kbd-focus .ac-opt-tag { color: var(--c-primary); }
+  .ac-foot {
+    margin-top: 4px;
+    padding: 6px 8px 2px;
+    border-top: 1px solid var(--c-border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 10px;
+    color: var(--c-ink-faint);
+    font-style: italic;
+  }
+  .ac-foot kbd {
+    background: var(--c-surface-soft);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 9px;
+    border: 1px solid var(--c-border);
+    margin: 0 1px;
+    font-family: ui-monospace, monospace;
+    color: var(--c-ink-soft);
+    font-style: normal;
+  }
+  .ac-empty {
+    padding: 12px 8px;
+    font-size: 12px;
+    color: var(--c-ink-faint);
+    font-style: italic;
+    line-height: 1.45;
+  }
+  .ac-empty b {
+    color: var(--c-primary);
+    font-style: normal;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     DEMO LAYOUT
+  ════════════════════════════════════════════════════════════════════ */
+  .demo {
+    background: var(--c-bg);
+    border-radius: 16px;
+    border: 1px solid var(--c-border-strong);
+    padding: 28px 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  .demo-card {
+    background: var(--c-surface);
+    border-radius: 12px;
+    padding: 14px 18px;
+    /* Important: the card needs to allow the popover to escape it
+       OR we can let the popover overflow into the gap. Both work. */
+  }
+  .demo-card.with-popover {
+    position: relative;
+    /* don't clip the popover */
+    overflow: visible;
+  }
+  .demo .annot {
+    padding: 16px 18px;
+    background: var(--c-surface-soft);
+    border-left: 3px solid var(--c-primary-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--c-ink-soft);
+    line-height: 1.6;
+  }
+  .demo .annot strong { color: var(--c-ink); font-weight: 500; }
+  .demo .annot code {
+    background: var(--c-surface);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .demo .annot ul { padding-left: 18px; margin: 8px 0 0; }
+  .demo .annot ul li { margin-bottom: 4px; }
+
+  .state-h {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+
+  /* Grid for the 6 input states */
+  .state-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .state-grid .demo-card { padding: 14px 18px; }
+
+  /* Variants label/icon */
+  .variants-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .variants-grid .cell {
+    background: var(--c-surface);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .variants-grid .cell-h {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .variants-grid .cell-sub {
+    font-size: 11px;
+    color: var(--c-ink-faint);
+    margin: 0 0 12px;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  /* Toolbar example (variant B applied) */
+  .toolbar-demo {
+    background: var(--c-surface);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .toolbar-demo .input-row {
+    padding: 0;
+    gap: 7px;
+  }
+  .toolbar-row {
+    display: flex; align-items: center; gap: 18px;
+    padding: 8px 0;
+  }
+  .toolbar-row .bullet {
+    color: var(--c-ink-faint); font-size: 11px;
+  }
+
+  /* spec table */
+  .specs {
+    margin-top: 56px;
+    background: var(--c-surface);
+    border-radius: 14px;
+    padding: 28px 32px;
+    border: 1px solid var(--c-border);
+  }
+  .specs h3 { font-family: var(--tg-serif); font-size: 20px; font-weight: 400; margin: 0 0 10px; }
+  .specs h4 { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin: 28px 0 10px; }
+  .specs > p { color: var(--c-ink-soft); margin: 0 0 18px; line-height: 1.6; }
+  .specs table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .specs table th, .specs table td {
+    text-align: left; padding: 9px 0; border-bottom: 1px solid var(--c-border);
+    vertical-align: top; line-height: 1.55;
+  }
+  .specs table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-ink-faint); font-weight: 600; }
+  .specs table td:first-child, .specs table th:first-child { padding-right: 16px; width: 30%; }
+  .specs table td:first-child { font-weight: 500; color: var(--c-ink); }
+  .specs code {
+    background: var(--c-surface-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, "SF Mono", monospace;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- doc header -->
+  <div class="doc-h">
+    <div class="eye">TravelGo · components · Input + Autocomplete</div>
+    <h1>Input · text e autocomplete</h1>
+    <p>Atomi base del form system. <strong>Niente bordi, niente wrapper, niente bg dei campi</strong>: il valore è inline, la riga è la grammatica del passaporto. Caret + label arancio sono gli unici segnali di attività. Il popover dell'autocomplete è <strong>flottante, in posizione assoluta</strong> sotto il campo: non prende spazio verticale, non spinge giù il layout.</p>
+  </div>
+
+  <!-- ═══ INPUT STATES ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">1</span>
+      <h2>Text input · 6 stati</h2>
+      <span class="badge">Atom</span>
+    </div>
+    <p class="sub">Empty, filled, active empty, active filled, disabled, error. Tutti gli altri input ereditano da qui.</p>
+
+    <div class="state-grid">
+      <!-- 1. Empty -->
+      <div class="demo-card">
+        <p class="state-h">1 · empty</p>
+        <div class="input-row empty">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">una città, un paese, un'idea</span>
+        </div>
+      </div>
+
+      <!-- 2. Filled -->
+      <div class="demo-card">
+        <p class="state-h">2 · filled</p>
+        <div class="input-row">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">Giappone · Tokyo + natura</span>
+        </div>
+      </div>
+
+      <!-- 3. Active empty -->
+      <div class="demo-card">
+        <p class="state-h">3 · active · empty</p>
+        <div class="input-row active empty">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">una città, un paese, un'idea</span>
+        </div>
+      </div>
+
+      <!-- 4. Active filled -->
+      <div class="demo-card">
+        <p class="state-h">4 · active · filled</p>
+        <div class="input-row active">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+
+      <!-- 5. Disabled -->
+      <div class="demo-card">
+        <p class="state-h">5 · disabled</p>
+        <div class="input-row disabled">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+
+      <!-- 6. Error -->
+      <div class="demo-card">
+        <p class="state-h">6 · error</p>
+        <div class="input-row active error">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">Marte</span>
+        </div>
+        <p class="input-row-error-msg">non trovo questo posto · <b>chiedi a Go</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ LABEL/ICON VARIANTS ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">2</span>
+      <h2>Varianti label / icona</h2>
+      <span class="badge">4 combinazioni</span>
+    </div>
+    <p class="sub">Lo stesso atom in 4 configurazioni. Si sceglie in base al contesto: card principali (A), toolbar (B), griglie senza ambiguità (C), inline dentro un testo (D).</p>
+
+    <div class="variants-grid">
+      <div class="cell">
+        <p class="cell-h">A · icona + label</p>
+        <p class="cell-sub">contesto: Your Trip card, form principali</p>
+        <div class="input-row active">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="lbl">Where</span>
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+
+      <div class="cell">
+        <p class="cell-h">B · solo icona</p>
+        <p class="cell-sub">contesto: toolbar / filtri, spazio compresso</p>
+        <div class="input-row active" style="gap: 7px;">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+
+      <div class="cell">
+        <p class="cell-h">C · solo label</p>
+        <p class="cell-sub">contesto: card con più campi senza ambiguità</p>
+        <div class="input-row active">
+          <span class="lbl">Where</span>
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+
+      <div class="cell">
+        <p class="cell-h">D · bare (niente)</p>
+        <p class="cell-sub">contesto: inline dentro testo, riga sintetica</p>
+        <div class="input-row active" style="padding: 6px 0;">
+          <span class="v">Giappone</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Applied example: variant B toolbar -->
+    <div class="toolbar-demo" style="margin-top: 14px;">
+      <p class="state-h">Esempio applicato · toolbar con solo-icona</p>
+      <div class="toolbar-row">
+        <div class="input-row">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+          <span class="v">Giappone</span>
+        </div>
+        <span class="bullet">·</span>
+        <div class="input-row">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+          <span class="v">10 → 19 luglio</span>
+        </div>
+        <span class="bullet">·</span>
+        <div class="input-row">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+          <span class="v">2 traveler</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ AUTOCOMPLETE ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">3</span>
+      <h2>Autocomplete · popover flottante</h2>
+      <span class="badge">Position absolute</span>
+    </div>
+    <p class="sub">Il popover dei risultati è <strong>flottante in <code>position: absolute</code></strong>: appare sotto il campo input ma <strong>non occupa spazio verticale</strong>. Le righe sottostanti (se ci sono, es. in una card multi-campo) restano dove sono. La superficie del popover ha shadow morbida e radius 10px. Indent 24px da sinistra per allineare col valore (dopo icona + gap).</p>
+
+    <!-- 1. Typing + suggestions -->
+    <div class="demo-card with-popover" style="margin-bottom: 100px;">
+      <p class="state-h">1 · typing · risultati</p>
+      <div class="input-row active has-popover">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+        <span class="lbl">Where</span>
+        <span class="v">Kyo</span>
+
+        <!-- POPOVER -->
+        <div class="ac-popover">
+          <div class="ac-h">3 luoghi</div>
+          <div class="ac-opt kbd-focus">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to, Giappone</span>
+            <span class="ac-opt-tag">città</span>
+          </div>
+          <div class="ac-opt">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to · Gion</span>
+            <span class="ac-opt-tag">quartiere</span>
+          </div>
+          <div class="ac-opt">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to Station</span>
+            <span class="ac-opt-tag">stazione</span>
+          </div>
+          <div class="ac-foot">
+            <span><kbd>↑↓</kbd> scorri</span>
+            <span><kbd>↵</kbd> scegli</span>
+            <span><kbd>Esc</kbd> chiudi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Loading state (no popover yet) -->
+    <div class="demo-card" style="margin-bottom: 20px;">
+      <p class="state-h">2 · loading · spinner inline</p>
+      <div class="input-row active">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+        <span class="lbl">Where</span>
+        <span class="v">Tokyo</span>
+        <span class="spin"></span>
+      </div>
+    </div>
+
+    <!-- 3. No results -->
+    <div class="demo-card with-popover" style="margin-bottom: 80px;">
+      <p class="state-h">3 · nessun risultato · fallback a Go</p>
+      <div class="input-row active has-popover">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+        <span class="lbl">Where</span>
+        <span class="v">xkcd</span>
+
+        <div class="ac-popover">
+          <p class="ac-empty">
+            nessun luogo per "xkcd" · <b>chiedi a Go di interpretare</b>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Multi-row card example showing popover overlaying without pushing -->
+    <div class="demo-card with-popover" style="margin-bottom: 130px;">
+      <p class="state-h">4 · in una card multi-campo · le righe sotto restano ferme</p>
+      <div class="input-row active has-popover" style="border-bottom: 1px solid var(--c-border);">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+        <span class="lbl">Where</span>
+        <span class="v">Kyo</span>
+
+        <div class="ac-popover">
+          <div class="ac-h">3 luoghi</div>
+          <div class="ac-opt kbd-focus">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to, Giappone</span>
+            <span class="ac-opt-tag">città</span>
+          </div>
+          <div class="ac-opt">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to · Gion</span>
+            <span class="ac-opt-tag">quartiere</span>
+          </div>
+          <div class="ac-opt">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+            <span class="ac-opt-nm"><em>Kyo</em>to Station</span>
+            <span class="ac-opt-tag">stazione</span>
+          </div>
+        </div>
+      </div>
+      <div class="input-row" style="border-bottom: 1px solid var(--c-border);">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+        <span class="lbl">When</span>
+        <span class="v">10 → 19 luglio</span>
+      </div>
+      <div class="input-row">
+        <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+        <span class="lbl">Who</span>
+        <span class="v">2 · couple</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SPECS ═══ -->
+  <div class="specs">
+    <h3>Spec di implementazione — React + Tailwind</h3>
+    <p>Due componenti separati. Path proposti: <code>components/ui/Input.tsx</code> e <code>components/ui/Autocomplete.tsx</code>. Entrambi controlled.</p>
+
+    <h4>Input · props</h4>
+    <table>
+      <thead><tr><th>Prop</th><th>Tipo</th><th>Descrizione</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>value</td>
+          <td><code>string</code></td>
+          <td>Valore corrente.</td>
+        </tr>
+        <tr>
+          <td>placeholder</td>
+          <td><code>string?</code></td>
+          <td>Mostrato quando value è vuoto. Italic faint.</td>
+        </tr>
+        <tr>
+          <td>label</td>
+          <td><code>string?</code></td>
+          <td>Eyebrow uppercase mini. Omettibile (variante B/D).</td>
+        </tr>
+        <tr>
+          <td>icon</td>
+          <td><code>ReactNode?</code></td>
+          <td>Tabler icon 14px. Omettibile (variante C/D).</td>
+        </tr>
+        <tr>
+          <td>active</td>
+          <td><code>boolean</code></td>
+          <td>Campo in focus. Mostra caret e tinge label arancio.</td>
+        </tr>
+        <tr>
+          <td>disabled</td>
+          <td><code>boolean</code></td>
+          <td>Opacity ridotta, cursor not-allowed.</td>
+        </tr>
+        <tr>
+          <td>error</td>
+          <td><code>boolean</code></td>
+          <td>Valore arancio-deep.</td>
+        </tr>
+        <tr>
+          <td>errorMessage</td>
+          <td><code>string?</code></td>
+          <td>Micro-frase sotto la riga, italic. Può contenere link inline.</td>
+        </tr>
+        <tr>
+          <td>onChange</td>
+          <td><code>(value: string) =&gt; void</code></td>
+          <td>Cambio valore. Per behavior controlled.</td>
+        </tr>
+        <tr>
+          <td>onCommit</td>
+          <td><code>(value: string) =&gt; void</code></td>
+          <td>Enter, blur. Salva il valore.</td>
+        </tr>
+        <tr>
+          <td>onCancel</td>
+          <td><code>() =&gt; void</code></td>
+          <td>Esc. Ripristina valore precedente.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Autocomplete · props (estende Input)</h4>
+    <table>
+      <thead><tr><th>Prop</th><th>Tipo</th><th>Descrizione</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>options</td>
+          <td><code>Option[]</code></td>
+          <td>Lista risultati. Ogni opzione: <code>{ id, name, tag?, icon? }</code>.</td>
+        </tr>
+        <tr>
+          <td>loading</td>
+          <td><code>boolean</code></td>
+          <td>Mostra spinner inline a destra del caret, nasconde il popover.</td>
+        </tr>
+        <tr>
+          <td>highlightMatch</td>
+          <td><code>boolean</code></td>
+          <td>Default true. Wrappa porzione matched in <code>&lt;em&gt;</code>.</td>
+        </tr>
+        <tr>
+          <td>onSelect</td>
+          <td><code>(option) =&gt; void</code></td>
+          <td>Click su opzione o Enter su quella in keyboard focus.</td>
+        </tr>
+        <tr>
+          <td>emptyState</td>
+          <td><code>ReactNode?</code></td>
+          <td>Mostrato quando options vuoto. Default: micro-frase con fallback a Go.</td>
+        </tr>
+        <tr>
+          <td>onAskGo</td>
+          <td><code>() =&gt; void</code></td>
+          <td>Click su "chiedi a Go" nell'empty state.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Comportamenti runtime</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td>Posizionamento popover</td>
+          <td><code>position: absolute; top: calc(100% + 4px); left: 24px</code>. Indent 24px = icona (14px) + gap (10px), così è allineato col valore.</td>
+        </tr>
+        <tr>
+          <td>Z-index</td>
+          <td>50. Sopra le righe sottostanti, sotto modali (suggested: <code>--z-index-overlay</code> = 40 per la card, 50 per il popover).</td>
+        </tr>
+        <tr>
+          <td>Overflow del parent</td>
+          <td>Il container del popover deve avere <code>overflow: visible</code>. Se il parent ha <code>overflow: hidden</code> (es. card con bordi rounded), il popover viene clippato. Soluzione: rendi visibile, oppure usa portal.</td>
+        </tr>
+        <tr>
+          <td>Animazione entrata</td>
+          <td>0.18s cubic-bezier(0.34, 1.56, 0.64, 1), transform-origin top-left. Opacity 0 → 1, translateY -4 → 0.</td>
+        </tr>
+        <tr>
+          <td>Keyboard nav</td>
+          <td>↑↓ scorri opzioni, ↵ scegli (in keyboard focus), Esc chiudi.</td>
+        </tr>
+        <tr>
+          <td>Hover/focus</td>
+          <td><code>background: rgba(244,123,58,0.08)</code>. <strong>Niente border-left arancio</strong>: stato espresso solo dal bg + colore icona + colore tag.</td>
+        </tr>
+        <tr>
+          <td>Debounce</td>
+          <td>250ms tra typing e fetch dei risultati. Il loading spinner appare dopo 150ms se la fetch non ha ancora risposto (evita flicker).</td>
+        </tr>
+        <tr>
+          <td>Match highlight</td>
+          <td>La porzione della query che matcha è wrappata in <code>&lt;em&gt;</code> con bg arancio-soft 18% + color primary-deep + radius 2px.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Tokens usati</h4>
+    <table>
+      <tbody>
+        <tr><td>Caret</td><td><code>--color-primary</code> · 1.5×14px · blink 1s steps(2)</td></tr>
+        <tr><td>Label active</td><td><code>--color-primary</code></td></tr>
+        <tr><td>Label inactive</td><td><code>--color-ink-faint</code></td></tr>
+        <tr><td>Value</td><td><code>--color-ink</code> · weight 500 · 12.5px</td></tr>
+        <tr><td>Value empty</td><td><code>--color-ink-faint</code> · italic</td></tr>
+        <tr><td>Value error</td><td><code>--color-primary-deep</code></td></tr>
+        <tr><td>Icon filled</td><td><code>--color-primary</code> · 14px stroke 1.75</td></tr>
+        <tr><td>Icon empty</td><td><code>--color-ink-faint</code> · 14px stroke 1.75</td></tr>
+        <tr><td>Popover bg</td><td><code>--color-surface</code></td></tr>
+        <tr><td>Popover shadow</td><td><code>--shadow-popover</code> (da aggiungere a globals: <code>0 8px 24px rgba(13,44,61,0.12), 0 1px 0 rgba(13,44,61,0.06)</code>)</td></tr>
+        <tr><td>Option hover bg</td><td><code>rgba(244,123,58,0.08)</code></td></tr>
+        <tr><td>Match highlight bg</td><td><code>rgba(244,123,58,0.18)</code></td></tr>
+        <tr><td>Match highlight color</td><td><code>--color-primary-deep</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>Accessibility</h4>
+    <table>
+      <tbody>
+        <tr><td>Struttura</td><td><code>&lt;label&gt;</code> + <code>&lt;input role="combobox"&gt;</code> per autocomplete. <code>aria-expanded</code>, <code>aria-controls</code>, <code>aria-activedescendant</code>.</td></tr>
+        <tr><td>Popover</td><td><code>role="listbox"</code>, opzioni <code>role="option"</code> con <code>aria-selected</code> per la kbd-focus.</td></tr>
+        <tr><td>Reduced motion</td><td>Caret fisso (no blink), popover entra senza animazione.</td></tr>
+        <tr><td>Focus visibile</td><td>Caret è già visivo. Outline 2px ink su elementi interattivi non-input.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

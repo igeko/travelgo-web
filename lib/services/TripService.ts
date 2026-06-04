@@ -7,8 +7,9 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { Dal, TripSummary, TripSnapshot, DbTrip, DbDay, UpdateTripInput } from "@/lib/dal";
+import type { Dal, TripSummary, TripSnapshot, DbTrip, DbDay, UpdateTripInput, Activity } from "@/lib/dal";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
+import type { Scheduler } from "./Scheduler";
 import { isCurrencyCode } from "@/lib/api/validation";
 import { chatJson } from "@/lib/ai/llm";
 import {
@@ -79,7 +80,12 @@ function enumerateDates(start: string, end: string): string[] {
 }
 
 export class TripService {
-  constructor(private readonly dal: Dal) {}
+  constructor(
+    private readonly dal: Dal,
+    /** Scheduling engine — private; reach it only through this service's
+     *  scheduling methods so the day↔activity write-path stays single. */
+    private readonly scheduler: Scheduler,
+  ) {}
 
   /** All trips for the current user (with day counts). */
   listSummaries(): Promise<TripSummary[]> {
@@ -185,62 +191,41 @@ export class TripService {
   }
 
   /**
-   * Align the trip's dated days with the [start, end] range:
-   * delete dated days that fell outside the range, create days for newly
-   * covered dates, then renumber every day (dated ascending, null dates last).
-   * Days with a null date and the activities of surviving days are untouched.
+   * Project the [start, end] date range onto the existing day list as an
+   * overlay (model B: the ordered day list is the source of truth, dates are
+   * an overlay). Dates map onto days in list order; if the range has more dates
+   * than days the surplus is appended as new dated days; if it has fewer, the
+   * trailing days keep their position but lose their date. NO day is ever
+   * deleted here, so scheduled activities are never lost — to drop a day the
+   * caller uses `removeDay`.
    */
   private async reconcileDays(tripId: string, start: string, end: string): Promise<void> {
     const desired = enumerateDates(start, end);
-    const desiredSet = new Set(desired);
     const existing = (unwrap(await this.dal.trips.listDays(tripId)) ?? []) as DbDay[];
 
-    // Delete dated days that no longer belong to the range.
-    const survivors: DbDay[] = [];
-    for (const day of existing) {
-      if (day.date !== null && !desiredSet.has(day.date)) {
-        unwrap(await this.dal.trips.deleteDay(day.id));
-      } else {
-        survivors.push(day);
+    // Target date for each existing day, in list order; surplus days → null.
+    const targets = existing.map((_, i) => (i < desired.length ? desired[i] : null));
+
+    // Two-phase to avoid transient (trip_id, date) unique collisions when dates
+    // shift across days: first clear every changing date, then assign the new
+    // ones (days whose target is null simply stay cleared).
+    const changing = existing.filter((d, i) => d.date !== targets[i]);
+    for (const d of changing) unwrap(await this.dal.trips.patchDay(d.id, { date: null }));
+    for (let i = 0; i < existing.length; i++) {
+      if (existing[i].date !== targets[i] && targets[i] !== null) {
+        unwrap(await this.dal.trips.patchDay(existing[i].id, { date: targets[i] }));
       }
     }
 
-    // Create days for desired dates not already covered by a surviving day.
-    // Assign provisional UNIQUE day_numbers (continuing past the current max)
-    // so inserting several at once never collides on the (trip_id, day_number)
-    // unique constraint — the renumber pass below puts them in final order.
-    const coveredDates = new Set(
-      survivors.map((d) => d.date).filter((d): d is string => d !== null),
-    );
-    let provisional = survivors.reduce((max, d) => Math.max(max, d.day_number), 0) + 1;
-    for (const date of desired) {
-      if (!coveredDates.has(date)) {
-        const created = unwrap(
-          await this.dal.trips.createDay({ trip_id: tripId, day_number: provisional++, date }),
-        );
-        survivors.push(created);
-      }
-    }
-
-    // Renumber: dated days ascending, null-date days last (keeping their order).
-    const dated = survivors
-      .filter((d) => d.date !== null)
-      .sort((a, b) => (a.date! < b.date! ? -1 : a.date! > b.date! ? 1 : 0));
-    const undated = survivors.filter((d) => d.date === null);
-    const ordered = [...dated, ...undated];
-
-    // Skip when already in final order (common: fresh range, no reorder).
-    const needsRenumber = ordered.some((d, i) => d.day_number !== i + 1);
-    if (needsRenumber) {
-      // Two-phase to avoid transient (trip_id, day_number) unique collisions:
-      // park everyone in a high, collision-free range, then assign 1..N.
-      const PARK = 100_000;
-      for (let i = 0; i < ordered.length; i++) {
-        unwrap(await this.dal.trips.patchDay(ordered[i].id, { day_number: PARK + i }));
-      }
-      for (let i = 0; i < ordered.length; i++) {
-        unwrap(await this.dal.trips.patchDay(ordered[i].id, { day_number: i + 1 }));
-      }
+    // More dates than days → append the surplus as new dated days at the end.
+    if (desired.length > existing.length) {
+      let dayNumber = existing.reduce((max, d) => Math.max(max, d.day_number), 0) + 1;
+      const rows = desired.slice(existing.length).map((date) => ({
+        trip_id: tripId,
+        day_number: dayNumber++,
+        date,
+      }));
+      unwrap(await this.dal.trips.createDays(rows));
     }
   }
 
@@ -301,6 +286,211 @@ export class TripService {
   /** Patch day metadata (route validates/whitelists the patch). */
   async updateDay(dayId: string, patch: Record<string, unknown>): Promise<void> {
     unwrap(await this.dal.trips.patchDay(dayId, patch));
+  }
+
+  // ── Day-list engine (model B: the ordered day list is the source of ──
+  //    truth; dates are an overlay). Positions are 1-based `day_number`.
+  //    Every reorder operates on stable `day_id` rows and only renumbers
+  //    them in place — never delete-and-recreate — so each day's
+  //    scheduled activities (linked by day_id) ride along untouched.
+
+  /**
+   * Assign 1..N day_numbers to the given day ids in order, two-phase to avoid
+   * transient (trip_id, day_number) unique collisions: park everyone in a high,
+   * collision-free range, then assign final numbers.
+   */
+  private async renumberDays(orderedDayIds: string[]): Promise<void> {
+    const PARK = 100_000;
+    for (let i = 0; i < orderedDayIds.length; i++)
+      unwrap(await this.dal.trips.patchDay(orderedDayIds[i], { day_number: PARK + i }));
+    for (let i = 0; i < orderedDayIds.length; i++)
+      unwrap(await this.dal.trips.patchDay(orderedDayIds[i], { day_number: i + 1 }));
+  }
+
+  /** Days ordered by day_number. */
+  private async orderedDays(tripId: string): Promise<DbDay[]> {
+    return (unwrap(await this.dal.trips.listDays(tripId)) ?? []) as DbDay[];
+  }
+
+  /**
+   * Insert `count` new (dateless) days starting at position `atPosition`,
+   * shifting the existing days at/after that position later. Returns the
+   * created days with their final numbers.
+   */
+  async insertDays(tripId: string, atPosition: number, count = 1): Promise<DbDay[]> {
+    if (!Number.isInteger(count) || count < 1) throw badRequest("count must be a positive integer");
+    const days = await this.orderedDays(tripId);
+    const at = Math.min(Math.max(Math.trunc(atPosition), 1), days.length + 1);
+
+    // Provisional unique numbers past the current max; renumber fixes order.
+    let provisional = days.reduce((max, d) => Math.max(max, d.day_number), 0) + 1;
+    const createdIds: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const created = unwrap(
+        await this.dal.trips.createDay({ trip_id: tripId, day_number: provisional++ }),
+      );
+      createdIds.push(created.id);
+    }
+
+    const order = [
+      ...days.slice(0, at - 1).map((d) => d.id),
+      ...createdIds,
+      ...days.slice(at - 1).map((d) => d.id),
+    ];
+    await this.renumberDays(order);
+
+    const after = await this.orderedDays(tripId);
+    const createdSet = new Set(createdIds);
+    return after.filter((d) => createdSet.has(d.id));
+  }
+
+  /**
+   * Delete a day (its scheduled activities cascade) and close the gap by
+   * renumbering the remaining days. The only sanctioned day deletion.
+   */
+  async removeDay(tripId: string, dayId: string): Promise<void> {
+    unwrap(await this.dal.trips.deleteDay(dayId));
+    const remaining = await this.orderedDays(tripId);
+    await this.renumberDays(remaining.map((d) => d.id));
+  }
+
+  /** Move a day to `toPosition`, shifting the others; its activities follow. */
+  async moveDay(tripId: string, dayId: string, toPosition: number): Promise<void> {
+    const days = await this.orderedDays(tripId);
+    const from = days.findIndex((d) => d.id === dayId);
+    if (from === -1) throw notFound("Day not found");
+    const to = Math.min(Math.max(Math.trunc(toPosition), 1), days.length) - 1;
+    if (to === from) return;
+    const order = days.map((d) => d.id);
+    const [moved] = order.splice(from, 1);
+    order.splice(to, 0, moved);
+    await this.renumberDays(order);
+  }
+
+  /** Swap the positions of two days (each keeps its own activities). */
+  async swapDays(tripId: string, dayIdA: string, dayIdB: string): Promise<void> {
+    if (dayIdA === dayIdB) return;
+    const days = await this.orderedDays(tripId);
+    const a = days.findIndex((d) => d.id === dayIdA);
+    const b = days.findIndex((d) => d.id === dayIdB);
+    if (a === -1 || b === -1) throw notFound("Day not found");
+    const order = days.map((d) => d.id);
+    [order[a], order[b]] = [order[b], order[a]];
+    await this.renumberDays(order);
+  }
+
+  /**
+   * Duplicate a day right after it: copies the day's metadata (dateless) and
+   * re-schedules a fresh occurrence of each of its activities (entities are
+   * shared, not duplicated). Returns the new day.
+   */
+  async duplicateDay(tripId: string, dayId: string): Promise<DbDay> {
+    const source = unwrap(await this.dal.trips.findDay(dayId)) as DbDay;
+    const [created] = await this.insertDays(tripId, source.day_number + 1, 1);
+
+    // Copy metadata the create input doesn't carry (dates intentionally omitted).
+    const COPY_FIELDS = [
+      "city", "label", "notes", "day_type", "is_ghost", "use_previous_accommodation",
+      "accommodation_type", "accommodation_name", "accommodation_address", "accommodation_url",
+      "accommodation_notes", "accommodation_place_id", "accommodation_lat", "accommodation_lng",
+      "accommodation_cost_amount", "accommodation_cost_currency", "accommodation_cost_paid",
+      "show_map", "summary", "image_url", "narrative",
+    ] as const;
+    const src = source as unknown as Record<string, unknown>;
+    const meta: Record<string, unknown> = {};
+    for (const f of COPY_FIELDS) if (src[f] !== undefined && src[f] !== null) meta[f] = src[f];
+    if (Object.keys(meta).length > 0) unwrap(await this.dal.trips.patchDay(created.id, meta));
+
+    // Re-schedule a fresh occurrence of each activity onto the new day.
+    const acts = await this.scheduler.listForDay(dayId);
+    for (const a of acts) {
+      unwrap(
+        await this.dal.trips.scheduleActivity({
+          activity_id: a.activity_id,
+          day_id: created.id,
+          slot: a.slot ?? null,
+          time: a.time ?? null,
+          position: a.position ?? null,
+          type: a.type ?? null,
+          fuzzy: a.fuzzy ?? null,
+          instance_note: a.instance_note ?? null,
+          booking_status: a.booking_status ?? null,
+          bridge_in_json: a.bridge_in_json ?? null,
+          bridge_out_json: a.bridge_out_json ?? null,
+        } as Record<string, unknown>),
+      );
+    }
+
+    return unwrap(await this.dal.trips.findDay(created.id)) as DbDay;
+  }
+
+  /** Remove every scheduled activity from a day (entities left intact). */
+  async clearDay(dayId: string): Promise<void> {
+    unwrap(await this.dal.trips.deleteSchedulesForDay(dayId));
+  }
+
+  // ── Scheduling (day ↔ activity). Thin delegations to the private ─────
+  //    Scheduler engine; this is the only public surface for scheduling.
+
+  /** Activities scheduled on a day (entity + instance merged). */
+  listDayActivities(dayId: string): Promise<Activity[]> {
+    return this.scheduler.listForDay(dayId);
+  }
+
+  /** Schedule an existing or brand-new activity onto a day. */
+  schedule(dayId: string, body: Record<string, unknown>): Promise<Activity> {
+    return this.scheduler.addToDay(dayId, body);
+  }
+
+  /** Schedule several activities; returns the created/merged blocks. */
+  async scheduleMany(entries: { dayId: string; body: Record<string, unknown> }[]): Promise<Activity[]> {
+    const out: Activity[] = [];
+    for (const e of entries) out.push(await this.scheduler.addToDay(e.dayId, e.body));
+    return out;
+  }
+
+  /** Update instance/timeline fields of one scheduled occurrence. */
+  updateInstance(scheduledId: string, body: Record<string, unknown>): Promise<void> {
+    return this.scheduler.updateInstance(scheduledId, body);
+  }
+
+  /** Move a scheduled occurrence to another day. */
+  moveActivity(scheduledId: string, dayId: string, instance: Record<string, unknown> = {}): Promise<void> {
+    return this.scheduler.moveToDay(scheduledId, dayId, instance);
+  }
+
+  /** Reorder occurrences on a day (position/slot). */
+  reorderDay(dayId: string, items: { id: string; position: number; slot?: string | null }[]): Promise<Activity[]> {
+    return this.scheduler.reorder(dayId, items);
+  }
+
+  /** Copy a scheduled occurrence onto another day (original kept). */
+  async copyActivity(scheduledId: string, toDayId: string): Promise<Activity> {
+    const fromDayId = await this.dal.trips.dayIdForScheduled(scheduledId);
+    if (!fromDayId) throw notFound("Scheduled activity not found");
+    const block = (await this.scheduler.listForDay(fromDayId)).find((b) => b.id === scheduledId);
+    if (!block) throw notFound("Scheduled activity not found");
+    return this.scheduler.addToDay(toDayId, {
+      activity_id: block.activity_id,
+      slot: block.slot ?? undefined,
+      time: block.time ?? undefined,
+      type: block.type ?? undefined,
+    });
+  }
+
+  /** Set/clear a transport bridge (in/out) on a scheduled occurrence. */
+  setBridge(scheduledId: string, direction: "in" | "out", bridge: Record<string, unknown> | null): Promise<void> {
+    return this.scheduler.setBridge(scheduledId, direction, bridge);
+  }
+
+  /** Unschedule an occurrence (entity untouched). */
+  unschedule(scheduledId: string): Promise<void> {
+    return this.scheduler.removeFromDay(scheduledId);
+  }
+
+  /** AI reorder of a day: decides the order, then applies it via reorderDay. */
+  organize(dayId: string): Promise<Activity[]> {
+    return this.scheduler.organize(dayId);
   }
 
   /**

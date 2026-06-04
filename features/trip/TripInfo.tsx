@@ -10,6 +10,7 @@ import {
   IconChevronDown,
   IconMapPin,
   IconSparkles,
+  IconTicket,
   IconUsers,
 } from "@/components/ui/icons";
 
@@ -50,6 +51,12 @@ export type TripInfoProps = {
   suggestions?: TripStamp[] | null;
   /** Torn-ticket mode. */
   collapsed?: boolean;
+  /**
+   * How the collapsed state renders. "horizontal" (default) = the torn-ticket
+   * strip. "vertical" = a narrow ticket stub for a slim rail (e.g. a collapsed
+   * sidebar) — just the icon, click to re-open.
+   */
+  collapsedOrientation?: "horizontal" | "vertical";
   /** Condensed items for the collapsed strip (typically 3). */
   summary?: TripSummaryItem[];
   /** Click on a non-editing row or the trip name → promote it to editing. */
@@ -82,6 +89,7 @@ export function TripInfo({
   editingField = null,
   suggestions,
   collapsed = false,
+  collapsedOrientation = "horizontal",
   summary = [],
   onFieldClick,
   onCommit,
@@ -101,6 +109,26 @@ export function TripInfo({
       emptySub={t("emptySub")}
     />
   );
+
+  /* ── Collapsed · vertical ticket stub (slim rail) ── */
+  if (collapsed && collapsedOrientation === "vertical") {
+    return (
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        aria-label={tripName ?? t("eyebrow")}
+        title={tripName ?? t("eyebrow")}
+        className={cn(
+          "group/stub flex items-center justify-center rounded-lg border border-border bg-gradient-to-b from-primary/[0.06] to-transparent py-3.5 transition-colors hover:from-primary/[0.10]",
+          className,
+        )}
+      >
+        <span className="text-primary [&>svg]:size-[18px] [&>svg]:[stroke-width:1.75]">
+          <IconTicket />
+        </span>
+      </button>
+    );
+  }
 
   /* ── Collapsed · torn ticket ── */
   if (collapsed) {

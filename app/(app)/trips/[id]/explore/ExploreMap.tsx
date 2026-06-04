@@ -62,11 +62,15 @@ export function ExploreMap({
   center: tripCenter,
   zoom: tripZoom,
   nightRoute,
+  extraMarkers = [],
 }: {
   tripId: string;
   center: LatLng;
   zoom: number;
   nightRoute: NightWaypoint[];
+  /** Static pins injected by the host (e.g. all trip activities). Rendered as a
+   *  base layer — Go/category/night pins win on a key collision. */
+  extraMarkers?: MapMarker[];
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -93,7 +97,6 @@ export function ExploreMap({
   const [center, setCenter] = useState<LatLng>(tripCenter);
   const [zoom, setZoom] = useState<number>(tripZoom);
   const [isMobile, setIsMobile] = useState(false);
-  const [cardPixel, setCardPixel] = useState<{ x: number; y: number } | null>(null);
   const yumejiPinned = !!useYumejiDrawer()?.isPinned;
 
   const restoredRef = useRef(false);
@@ -137,24 +140,20 @@ export function ExploreMap({
     if (showNightRoute) for (const w of nightRoute) byKey[`${w.lat},${w.lng}`] = w;
     return byKey;
   }, [showNightRoute, nightRoute]);
-  // Empty lookup when the layer is off, so a stale id resolves to no card.
-  const nightSel = nightSelId ? nightById[nightSelId] ?? null : null;
-  // Saved trip data for the selected night pin, fed to the shared place card.
-  const nightSaved: SavedPlaceInfo | null = nightSel
-    ? {
-        name: nightSel.title,
-        image: nightSel.image ?? DEFAULT_ACTIVITY_IMAGE,
-        description: nightSel.description,
-        address: nightSel.address,
-        time: nightSel.time,
-        dayLabel:
-          nightSel.dayNumbers.length > 1
-            ? t("days", { from: nightSel.dayNumbers[0], to: nightSel.dayNumbers[nightSel.dayNumbers.length - 1] })
-            : t("day", { n: nightSel.dayNumbers[0] }),
-        typeLabel: nightSel.accommodationType,
-        url: nightSel.url,
-      }
-    : null;
+  // Build the shared place card's "saved" payload from a night waypoint.
+  const nightSavedFor = (nw: NightWaypoint): SavedPlaceInfo => ({
+    name: nw.title,
+    image: nw.image ?? DEFAULT_ACTIVITY_IMAGE,
+    description: nw.description,
+    address: nw.address,
+    time: nw.time,
+    dayLabel:
+      nw.dayNumbers.length > 1
+        ? t("days", { from: nw.dayNumbers[0], to: nw.dayNumbers[nw.dayNumbers.length - 1] })
+        : t("day", { n: nw.dayNumbers[0] }),
+    typeLabel: nw.accommodationType,
+    url: nw.url,
+  });
 
   const routeLayer = useMemo<MapRouteLayer | null>(
     () =>
@@ -170,6 +169,7 @@ export function ExploreMap({
   // place shows its real marker (icon/glyph) instead of the bare focus pin.
   const allMarkers = useMemo(() => {
     const byKey: Record<string, MapMarker> = {};
+    for (const m of extraMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     if (goFocus) {
       const k = keyOfPlace(goFocus);
       byKey[k] = { id: k, lat: goFocus.lat, lng: goFocus.lng, title: goFocus.title };
@@ -178,7 +178,7 @@ export function ExploreMap({
     for (const m of categoryMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     for (const m of nightMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     return Object.values(byKey);
-  }, [goFocus, goMarkers, categoryMarkers, nightMarkers]);
+  }, [extraMarkers, goFocus, goMarkers, categoryMarkers, nightMarkers]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
@@ -325,47 +325,25 @@ export function ExploreMap({
         onPoiClick={handlePoiClick}
         onMarkerClick={handleMarkerClick}
         onViewportChange={(vp) => { viewportRef.current = vp; }}
-        markerCardAnchor={
-          nightSel
-            ? { lat: nightSel.lat, lng: nightSel.lng }
-            : goFocus?.placeId
-              ? { lat: goFocus.lat, lng: goFocus.lng }
-              : null
-        }
-        onCardPixelChange={setCardPixel}
+        renderPinCard={(id, close) => {
+          // Night pin → saved trip data; Google place → enriched card; manual
+          // coordinate-only pin → no card.
+          const nw = nightById[id];
+          if (nw) {
+            return <PlaceHoverCard saved={nightSavedFor(nw)} fallbackName={nw.title} onClose={close} />;
+          }
+          const m = allMarkers.find((mk) => mk.id === id);
+          if (!m || id === `${m.lat},${m.lng}`) return null;
+          return <PlaceHoverCard key={id} placeId={id} fallbackName={m.title ?? t("placeFallback")} onClose={close} />;
+        }}
+        onMarkerClose={(id) => {
+          if (nightById[id]) setNightSelId(null);
+          setGoFocus(null);
+        }}
         routeLayer={routeLayer}
         className="h-full w-full rounded-none"
       />
 
-      {/* Cards — plain React elements above the map (outside the map DOM, so
-          clicking them never triggers a map click), positioned at the pin pixel.
-          Night-stop card shows the trip's SAVED data; the Google PlaceHoverCard
-          is suppressed while a night pin is selected. */}
-      {nightSaved && cardPixel ? (
-        <div
-          className="absolute"
-          style={{ left: cardPixel.x, top: cardPixel.y, transform: "translate(-50%, calc(-100% - 48px))", zIndex: 1000 }}
-        >
-          <PlaceHoverCard
-            saved={nightSaved}
-            fallbackName={nightSaved.name}
-            onClose={() => { setNightSelId(null); setGoFocus(null); }}
-          />
-        </div>
-      ) : goFocus?.placeId && cardPixel ? (
-        <div
-          className="absolute"
-          // zIndex above Google's internal map panes (~100+) so the card is clickable.
-          style={{ left: cardPixel.x, top: cardPixel.y, transform: "translate(-50%, calc(-100% - 48px))", zIndex: 1000 }}
-        >
-          <PlaceHoverCard
-            key={goFocus.placeId}
-            placeId={goFocus.placeId}
-            fallbackName={goFocus.title}
-            onClose={() => setGoFocus(null)}
-          />
-        </div>
-      ) : null}
       <ExploreToolbar
         categories={categories}
         selectedSubIds={selectedSubIds}

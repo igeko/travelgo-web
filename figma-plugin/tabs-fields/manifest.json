@@ -1,0 +1,10 @@
+{
+  "name": "TravelGo — Tabs & Fields",
+  "id": "travelgo-tabs-fields",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

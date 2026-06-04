@@ -135,3 +135,33 @@ export function normalizeClock(value: unknown): string | null {
   if (h > 23 || min > 59) return null;
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
+
+/** The only day-part slots the UI groups by. */
+const SLOTS = new Set(["morning", "afternoon", "evening", "night"]);
+/** Common out-of-set values the AI/imports produce, mapped to a real slot. */
+const SLOT_SYNONYMS: Record<string, string> = {
+  breakfast: "morning",
+  brunch: "morning",
+  noon: "afternoon",
+  midday: "afternoon",
+  lunch: "afternoon",
+  aperitif: "evening",
+  aperitivo: "evening",
+  dinner: "evening",
+  supper: "evening",
+  late: "night",
+  nighttime: "night",
+};
+/**
+ * Normalize a free-form slot to one the itinerary can render (morning /
+ * afternoon / evening / night), mapping common synonyms, or null. The column
+ * is free text, so an out-of-set value like "lunch" persists silently but the
+ * itinerary — which groups by the four slots — can't show it. Funnel every
+ * write through here so an activity is never invisible after being added.
+ */
+export function normalizeSlot(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  if (SLOTS.has(v)) return v;
+  return SLOT_SYNONYMS[v] ?? null;
+}

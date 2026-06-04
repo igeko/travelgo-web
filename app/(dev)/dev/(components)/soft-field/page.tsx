@@ -248,6 +248,29 @@ export default function SoftFieldStories() {
         </StoryFrame>
 
         <StoryFrame
+          name="Inline variant · passport row"
+          description="`variant='inline'` drops all chrome (no bg/border/radius). Icon + eyebrow label + inline value, like a passport line. Caret and orange label are the only activity signals; error tints the value and shows a micro-message below."
+        >
+          <InlineVariantDemo />
+        </StoryFrame>
+
+        <StoryFrame
+          name="Inline · 4 label/icon combos"
+          description="The A–D variants from the spec, driven purely by `icon` / `label` presence: A icon+label, B icon only, C label only, D bare."
+        >
+          <div className="flex flex-col gap-1 max-w-[360px]">
+            <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-1">A · icon + label</div>
+            <SoftField variant="inline" icon={<IconMapPin />} label="Where" value="Giappone" onChange={() => {}} />
+            <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">B · icon only</div>
+            <SoftField variant="inline" icon={<IconMapPin />} value="Giappone" onChange={() => {}} />
+            <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">C · label only</div>
+            <SoftField variant="inline" label="Where" value="Giappone" onChange={() => {}} />
+            <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">D · bare</div>
+            <SoftField variant="inline" value="Giappone" onChange={() => {}} />
+          </div>
+        </StoryFrame>
+
+        <StoryFrame
           name="Size · sm vs md"
           description="`size='sm'` shrinks padding, font and icons for compact / inline contexts. Default is `md`. Slots adapt automatically."
         >
@@ -393,6 +416,51 @@ export default function SoftFieldStories() {
         </StoryFrame>
       </StoryPage>
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Inline variant demo · the 6 states from the spec (punto 1)
+───────────────────────────────────────────────────────────────── */
+function InlineVariantDemo() {
+  const [filled, setFilled] = useState("Giappone · Tokyo + natura");
+  const [empty, setEmpty] = useState("");
+  const [err, setErr] = useState("Marte");
+
+  return (
+    <div className="flex flex-col gap-1 max-w-[360px]">
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-1">empty</div>
+      <SoftField
+        variant="inline"
+        icon={<IconMapPin />}
+        label="Where"
+        value={empty}
+        onChange={setEmpty}
+        placeholder="una città, un paese, un'idea"
+      />
+
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">filled</div>
+      <SoftField variant="inline" icon={<IconMapPin />} label="Where" value={filled} onChange={setFilled} />
+
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">disabled</div>
+      <SoftField variant="inline" icon={<IconMapPin />} label="Where" value="Giappone" onChange={() => {}} disabled />
+
+      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-faint mt-2">error</div>
+      <SoftField
+        variant="inline"
+        icon={<IconMapPin />}
+        label="Where"
+        value={err}
+        onChange={setErr}
+        error
+        errorMessage={
+          <>
+            non trovo questo posto ·{" "}
+            <b className="not-italic font-medium underline cursor-pointer">chiedi a Go</b>
+          </>
+        }
+      />
+    </div>
   );
 }
 

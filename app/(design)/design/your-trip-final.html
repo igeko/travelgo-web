@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1200">
+<title>TravelGo · YourTrip component — spec di handoff</title>
+<style>
+  :root {
+    --c-bg: #f1efe8;
+    --c-surface: #ffffff;
+    --c-surface-soft: #f5f3ee;
+    --c-surface-warm: #fdf5ee;
+    --c-border: rgba(13, 44, 61, 0.08);
+    --c-border-strong: rgba(13, 44, 61, 0.18);
+    --c-ink: #0d2c3d;
+    --c-ink-soft: #5b6b78;
+    --c-ink-faint: #8a98a3;
+    --c-primary: #f47b3a;
+    --c-primary-soft: #fdecdf;
+    --c-primary-border: #f9d4b6;
+    --c-primary-deep: #a84818;
+    --c-success-fg: #3d6e0e;
+    --tg-serif: Georgia, "Times New Roman", serif;
+    --tg-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e8e6df; color: var(--c-ink); font-family: var(--tg-sans); font-size: 14px; line-height: 1.55; }
+
+  .page { max-width: 1120px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  /* doc header */
+  .doc-h { margin-bottom: 40px; }
+  .doc-h .eye { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin-bottom: 8px; }
+  .doc-h h1 { font-family: var(--tg-serif); font-size: 30px; font-weight: 400; margin: 0 0 10px; line-height: 1.2; }
+  .doc-h p { color: var(--c-ink-soft); margin: 0; max-width: 720px; line-height: 1.65; }
+
+  /* section */
+  section { margin-bottom: 64px; }
+  section .label-row { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  section .label-row .num { font-family: var(--tg-serif); font-size: 22px; color: var(--c-primary); }
+  section .label-row h2 { font-family: var(--tg-serif); font-size: 22px; font-weight: 400; margin: 0; }
+  section .label-row .badge {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--c-primary); font-weight: 600;
+    background: var(--c-primary-soft); border: 1px solid var(--c-primary-border);
+    padding: 3px 9px; border-radius: 999px;
+  }
+  section .sub { color: var(--c-ink-soft); margin: 0 0 22px; line-height: 1.6; max-width: 760px; }
+
+  /* demo */
+  .demo {
+    background: var(--c-bg);
+    border-radius: 16px;
+    border: 1px solid var(--c-border-strong);
+    padding: 28px 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  .demo .yt-wrap { max-width: 300px; }
+  .demo .annot {
+    padding: 16px 18px;
+    background: var(--c-surface-soft);
+    border-left: 3px solid var(--c-primary-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--c-ink-soft);
+    line-height: 1.6;
+  }
+  .demo .annot strong { color: var(--c-ink); font-weight: 500; }
+  .demo .annot code { background: white; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: ui-monospace, monospace; }
+  .demo .annot ul { padding-left: 18px; margin: 8px 0 0; }
+  .demo .annot ul li { margin-bottom: 4px; }
+
+  /* ════════════════════════════════════════════════════════════════════
+     YOUR TRIP COMPONENT
+  ════════════════════════════════════════════════════════════════════ */
+  .yt-pp {
+    background: var(--c-surface);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .yt-pp.collapsed { cursor: pointer; transition: box-shadow 0.15s; }
+  .yt-pp.collapsed:hover { box-shadow: 0 2px 8px rgba(13,44,61,0.06); }
+
+  /* head — testata del biglietto */
+  .yt-pp-head {
+    padding: 14px 18px;
+    border-bottom: 1px dashed var(--c-border-strong);
+    background: linear-gradient(to bottom, rgba(244,123,58,0.03), transparent);
+    position: relative;
+  }
+  .yt-pp-head::before,
+  .yt-pp-head::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--c-bg);
+  }
+  .yt-pp-head::before { left: -7px; }
+  .yt-pp-head::after { right: -7px; }
+  .yt-pp-eye {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin: 0 0 5px;
+  }
+  .yt-pp-name {
+    font-family: var(--tg-serif);
+    font-size: 20px;
+    font-weight: 400;
+    margin: 0;
+    line-height: 1.2;
+    color: var(--c-ink);
+  }
+  .yt-pp-name.empty {
+    color: var(--c-ink-faint);
+    font-style: italic;
+    font-size: 18px;
+  }
+  .yt-pp-sub {
+    font-size: 11px;
+    color: var(--c-ink-soft);
+    margin: 4px 0 0;
+  }
+  .yt-pp-sub.empty {
+    color: var(--c-ink-faint);
+    font-style: italic;
+  }
+
+  /* body — righe dei campi */
+  .yt-pp-body { padding: 8px 18px; }
+  .yt-pp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    font-size: 12.5px;
+    color: var(--c-ink);
+    border-bottom: 1px solid rgba(13, 44, 61, 0.05);
+    cursor: text;
+  }
+  .yt-pp-row:last-child { border-bottom: 0; }
+  .yt-pp-row .ico {
+    width: 14px; height: 14px;
+    color: var(--c-primary);
+    stroke-width: 1.75;
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+  }
+  .yt-pp-row.empty .ico { color: var(--c-ink-faint); }
+  .yt-pp-row .lbl {
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-ink-faint);
+    font-weight: 500;
+    flex-shrink: 0;
+    width: 50px;
+  }
+  .yt-pp-row .v {
+    color: var(--c-ink);
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .yt-pp-row.empty .v {
+    color: var(--c-ink-faint);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* active row — solo caret + label arancio */
+  .yt-pp-row.active .lbl { color: var(--c-primary); }
+  .yt-pp-row.active .v {
+    overflow: visible;
+    flex: 0 1 auto;
+    position: relative;
+  }
+  .yt-pp-row.active .v::after {
+    content: "";
+    display: inline-block;
+    width: 1.5px;
+    height: 14px;
+    background: var(--c-primary);
+    margin-left: 2px;
+    vertical-align: -2px;
+    animation: yt-blink 1s steps(2) infinite;
+  }
+  @keyframes yt-blink { 50% { opacity: 0; } }
+
+  /* stamps — suggerimenti di Go */
+  .yt-sug {
+    padding: 10px 18px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .yt-sug-h {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin: 2px 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .yt-sug-h::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(244, 123, 58, 0.18);
+  }
+  .yt-stamp {
+    padding: 8px 12px;
+    border: 1px dashed var(--c-border-strong);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+    background: var(--c-surface);
+  }
+  .yt-stamp:hover {
+    border-color: var(--c-primary);
+    border-style: solid;
+    background: rgba(244, 123, 58, 0.04);
+  }
+  .yt-stamp-name {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--c-ink);
+    line-height: 1.3;
+  }
+  .yt-stamp-meta {
+    font-size: 10.5px;
+    color: var(--c-ink-soft);
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+  .yt-stamp:hover .yt-stamp-meta { color: var(--c-primary-deep); }
+
+  /* foot — varianti */
+  .yt-pp-foot {
+    padding: 11px 18px;
+    font-size: 11px;
+    color: var(--c-ink-faint);
+    text-align: center;
+    background: rgba(13, 44, 61, 0.02);
+    border-top: 1px solid rgba(13, 44, 61, 0.05);
+  }
+  .yt-pp-foot.editorial { font-style: italic; }
+  .yt-pp-foot.hint kbd {
+    background: var(--c-surface);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    border: 1px solid rgba(13, 44, 61, 0.12);
+    margin: 0 1px;
+    font-family: ui-monospace, monospace;
+    color: var(--c-ink-soft);
+  }
+  .yt-pp-foot.action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--c-ink-soft);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .yt-pp-foot.action:hover {
+    color: var(--c-primary);
+    background: rgba(244, 123, 58, 0.04);
+  }
+  .yt-pp-foot.action .ico {
+    width: 12px;
+    height: 12px;
+    stroke-width: 1.75;
+    stroke: currentColor;
+    fill: none;
+  }
+
+  /* collapsed meta inline */
+  .yt-pp-meta-inline {
+    padding: 9px 18px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--c-ink-soft);
+    flex-wrap: wrap;
+  }
+  .yt-pp-meta-inline .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--c-ink);
+    font-weight: 500;
+  }
+  .yt-pp-meta-inline .item .ico {
+    width: 12px;
+    height: 12px;
+    color: var(--c-primary);
+    stroke-width: 1.75;
+    stroke: currentColor;
+    fill: none;
+  }
+  .yt-pp-meta-inline .bullet {
+    color: var(--c-ink-faint);
+    font-size: 10px;
+  }
+
+  /* spec table */
+  .specs {
+    margin-top: 56px;
+    background: var(--c-surface);
+    border-radius: 14px;
+    padding: 28px 32px;
+    border: 1px solid var(--c-border);
+  }
+  .specs h3 { font-family: var(--tg-serif); font-size: 20px; font-weight: 400; margin: 0 0 10px; }
+  .specs h4 { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin: 28px 0 10px; }
+  .specs > p { color: var(--c-ink-soft); margin: 0 0 18px; line-height: 1.6; }
+  .specs table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .specs table th, .specs table td {
+    text-align: left; padding: 9px 0; border-bottom: 1px solid var(--c-border);
+    vertical-align: top; line-height: 1.55;
+  }
+  .specs table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-ink-faint); font-weight: 600; }
+  .specs table td:first-child, .specs table th:first-child { padding-right: 16px; width: 30%; }
+  .specs table td:first-child { font-weight: 500; color: var(--c-ink); }
+  .specs code {
+    background: var(--c-surface-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, "SF Mono", monospace;
+  }
+
+  /* icon reference */
+  .ico-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .ico-cell {
+    background: var(--c-surface-soft);
+    padding: 14px;
+    border-radius: 10px;
+    text-align: center;
+  }
+  .ico-cell svg {
+    width: 20px; height: 20px;
+    color: var(--c-primary);
+    stroke-width: 1.75; stroke: currentColor; fill: none;
+    margin-bottom: 6px;
+  }
+  .ico-cell .nm { font-size: 11px; color: var(--c-ink); font-weight: 500; }
+  .ico-cell .tn { font-size: 10px; color: var(--c-ink-faint); font-family: ui-monospace, monospace; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- doc header -->
+  <div class="doc-h">
+    <div class="eye">TravelGo · component · YourTrip</div>
+    <h1>YourTrip · "il biglietto" del viaggio</h1>
+    <p>Componente identità del viaggio. Vive sopra la <code>DayList</code> nel canvas <code>/trips/new</code>. Si compila durante la conversazione con Go, è inline-editabile senza form-feeling, e si chiude come "biglietto strappato" quando l'utente vuole massimizzare spazio per i giorni.</p>
+  </div>
+
+  <!-- ═══ STATE 1: EMPTY ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">1</span>
+      <h2>Empty</h2>
+      <span class="badge">Default · pre-conversazione</span>
+    </div>
+    <p class="sub">Stato iniziale prima che Go abbia estratto qualsiasi entità. Nome italic faint, sottotitolo "parla con Go per cominciare", i 4 chip con placeholder gentili (italic faint) invece di trattini muti. Footer editoriale che dà identità anche al vuoto.</p>
+
+    <div class="demo">
+      <div class="yt-wrap">
+        <div class="yt-pp">
+          <div class="yt-pp-head">
+            <p class="yt-pp-eye">YOUR TRIP</p>
+            <h3 class="yt-pp-name empty">Non ancora deciso</h3>
+            <p class="yt-pp-sub empty">parla con Go per cominciare</p>
+          </div>
+          <div class="yt-pp-body">
+            <div class="yt-pp-row empty">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+              <span class="lbl">Where</span>
+              <span class="v">una città, un paese, un'idea</span>
+            </div>
+            <div class="yt-pp-row empty">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+              <span class="lbl">When</span>
+              <span class="v">le date o anche solo una stagione</span>
+            </div>
+            <div class="yt-pp-row empty">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+              <span class="lbl">Who</span>
+              <span class="v">in quanti partite</span>
+            </div>
+            <div class="yt-pp-row empty">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.103 5.866a4.5 4.5 0 0 0 4.031 4.031m-.001 4.198a4.5 4.5 0 0 0 -4.029 4.029m-4.196 .004a4.5 4.5 0 0 0 -4.034 -4.034m0 -4.196a4.5 4.5 0 0 0 4.029 -4.029"/></svg>
+              <span class="lbl">Vibe</span>
+              <span class="v">cosa cercate, cosa evitate</span>
+            </div>
+          </div>
+          <div class="yt-pp-foot editorial">
+            un viaggio è una bella storia da scrivere
+          </div>
+        </div>
+      </div>
+      <div class="annot">
+        <p><strong>Anatomia dell'empty:</strong></p>
+        <ul>
+          <li>Nome del trip: <code>italic</code> serif 18px, color <code>--color-ink-faint</code>. Più piccolo rispetto a filled (20px) per comunicare "incompleto".</li>
+          <li>Placeholder gentili: italic faint. <strong>Niente comandi imperativi</strong> ("inserisci…" / "scegli…") — sono inviti aperti, in tono parlato.</li>
+          <li>Icone Tabler 14px in <code>--color-ink-faint</code> (non arancio): un campo vuoto non guadagna la primary color.</li>
+          <li>Foot editoriale: italic, copy "un viaggio è una bella storia da scrivere". Sostituisce la classica CTA. È la firma del componente.</li>
+          <li>Il componente è cliccabile ovunque: click su una riga = apre quel campo in editing. Click sulla testata = naviga al canvas Go.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STATE 2: EDIT ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">2</span>
+      <h2>Edit</h2>
+      <span class="badge">Campo attivo · senza form-feeling</span>
+    </div>
+    <p class="sub">L'utente ha cliccato su Where. Solo la label "Where" passa ad arancio + caret blinking dopo il valore. Nessun bg che cambia, nessun border, nessun padding shift. Sotto la lista compaiono i suggerimenti di Go come <strong>stamp</strong> (francobolli dashed): nome del luogo + meta-descrizione.</p>
+
+    <div class="demo">
+      <div class="yt-wrap">
+        <div class="yt-pp">
+          <div class="yt-pp-head">
+            <p class="yt-pp-eye">YOUR TRIP</p>
+            <h3 class="yt-pp-name">Giappone 2026</h3>
+            <p class="yt-pp-sub">10 → 19 luglio</p>
+          </div>
+          <div class="yt-pp-body">
+            <div class="yt-pp-row active">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+              <span class="lbl">Where</span>
+              <span class="v">Giappone</span>
+            </div>
+            <div class="yt-pp-row">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+              <span class="lbl">When</span>
+              <span class="v">10 → 19 luglio</span>
+            </div>
+            <div class="yt-pp-row">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+              <span class="lbl">Who</span>
+              <span class="v">2 · couple</span>
+            </div>
+            <div class="yt-pp-row">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.103 5.866a4.5 4.5 0 0 0 4.031 4.031m-.001 4.198a4.5 4.5 0 0 0 -4.029 4.029m-4.196 .004a4.5 4.5 0 0 0 -4.034 -4.034m0 -4.196a4.5 4.5 0 0 0 4.029 -4.029"/></svg>
+              <span class="lbl">Vibe</span>
+              <span class="v">foodie · low-walk · natura</span>
+            </div>
+          </div>
+          <div class="yt-sug">
+            <div class="yt-sug-h">Go suggerisce</div>
+            <div class="yt-stamp">
+              <div class="yt-stamp-name">Giappone · solo Tokyo</div>
+              <div class="yt-stamp-meta">megalopoli · quartieri</div>
+            </div>
+            <div class="yt-stamp">
+              <div class="yt-stamp-name">Giappone · Tokyo + natura</div>
+              <div class="yt-stamp-meta">città + Alpi + onsen</div>
+            </div>
+            <div class="yt-stamp">
+              <div class="yt-stamp-name">Giappone · Kansai</div>
+              <div class="yt-stamp-meta">Kyoto · Osaka · Nara</div>
+            </div>
+          </div>
+          <div class="yt-pp-foot hint">
+            <kbd>Enter</kbd> salva · <kbd>Esc</kbd> annulla
+          </div>
+        </div>
+      </div>
+      <div class="annot">
+        <p><strong>Anatomia dell'editing:</strong></p>
+        <ul>
+          <li><strong>Niente cambio di stato visibile</strong> sulla riga: niente bg warm, niente border. La riga sembra esattamente uguale alle altre.</li>
+          <li>Solo 2 micro-segnali: la label "Where" passa a <code>--color-primary</code>, e dopo il valore appare un caret 1.5×14px arancio blinking (1s steps).</li>
+          <li>Il valore è inline-editabile via <code>contenteditable</code>: niente <code>&lt;input&gt;</code> stilizzato.</li>
+          <li>Stamp dashed: si solidificano in hover (border passa da dashed → solid arancio + bg warm soft). Click su uno stamp = commit + close edit.</li>
+          <li>Foot cambia: da editorial → hint con scorciatoie tastiera. Enter/click esterno = commit. Esc = cancel + ripristina valore precedente.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STATE 3: COLLAPSED ═══ -->
+  <section>
+    <div class="label-row">
+      <span class="num">3</span>
+      <h2>Collapsed</h2>
+      <span class="badge">Biglietto strappato</span>
+    </div>
+    <p class="sub">Quando l'utente vuole massimizzare lo spazio per la DayList sotto. La testata resta intatta (eyebrow + nome + date). Sotto la dashed line, una <strong>riga inline</strong> con i 3 valori condensati. Foot diventa azione "Apri biglietto" con chevron down. La metafora del passaporto regge: vedi la copertina, l'azione lo riapre.</p>
+
+    <div class="demo">
+      <div class="yt-wrap">
+        <div class="yt-pp collapsed">
+          <div class="yt-pp-head">
+            <p class="yt-pp-eye">YOUR TRIP</p>
+            <h3 class="yt-pp-name">Giappone 2026</h3>
+            <p class="yt-pp-sub">10 → 19 luglio</p>
+          </div>
+          <div class="yt-pp-meta-inline">
+            <span class="item">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+              4 zone
+            </span>
+            <span class="bullet">·</span>
+            <span class="item">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+              2 traveler
+            </span>
+            <span class="bullet">·</span>
+            <span class="item">
+              <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.103 5.866a4.5 4.5 0 0 0 4.031 4.031m-.001 4.198a4.5 4.5 0 0 0 -4.029 4.029m-4.196 .004a4.5 4.5 0 0 0 -4.034 -4.034m0 -4.196a4.5 4.5 0 0 0 4.029 -4.029"/></svg>
+              foodie · natura
+            </span>
+          </div>
+          <div class="yt-pp-foot action">
+            <svg class="ico" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6l6 -6"/></svg>
+            Apri biglietto
+          </div>
+        </div>
+      </div>
+      <div class="annot">
+        <p><strong>Anatomia del collapsed:</strong></p>
+        <ul>
+          <li>La testata è <strong>identica</strong> a quella dell'edit/empty: eyebrow + nome serif + date. Stessa dashed line + cerchietti laterali — è la <em>stessa sutura del biglietto</em>.</li>
+          <li>Sotto, riga inline con 3 valori sintetizzati: "<strong>4 zone</strong>" (cardinalità invece dell'elenco), "<strong>2 traveler</strong>", "<strong>foodie · natura</strong>" (max 2 vibe).</li>
+          <li>Le icone Tabler 12px in primary, valori in ink, bullet · separatori in ink-faint.</li>
+          <li>Foot "Apri biglietto" cliccabile: chevron down → on hover diventa primary. <strong>Tutto il card è cliccabile</strong>, non solo il foot — riapre il biglietto da qualsiasi tap.</li>
+          <li>Dimensione totale: ~115px. Pensato per stare in cima alla colonna sinistra sopra la DayList.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SPECS ═══ -->
+  <div class="specs">
+    <h3>Spec di implementazione — React + Tailwind</h3>
+    <p>Path proposto: <code>features/trip/YourTrip.tsx</code>. Componente controlled (il parent gestisce stato dei 4 campi, il campo in editing, callback). Stato locale solo per il valore in input durante l'editing (poi committed via callback).</p>
+
+    <h4>Props</h4>
+    <table>
+      <thead><tr><th>Prop</th><th>Tipo</th><th>Descrizione</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>tripName</td>
+          <td><code>string | null</code></td>
+          <td>Nome del viaggio ("Giappone 2026"). <code>null</code> = mostra "Non ancora deciso" in italic faint.</td>
+        </tr>
+        <tr>
+          <td>dateRange</td>
+          <td><code>string | null</code></td>
+          <td>Range date come testo già formattato ("10 → 19 luglio"). Il parent ne gestisce il formato.</td>
+        </tr>
+        <tr>
+          <td>fields</td>
+          <td><code>{ where, when, who, vibe }</code></td>
+          <td>Oggetto con i 4 valori (<code>string | null</code>). null = empty, il placeholder gentile prende il posto del valore.</td>
+        </tr>
+        <tr>
+          <td>placeholders</td>
+          <td><code>{ where, when, who, vibe }</code></td>
+          <td>Testi italic per i campi vuoti. Default <code>i18n.YourTrip.placeholders</code>.</td>
+        </tr>
+        <tr>
+          <td>editingField</td>
+          <td><code>'where' | 'when' | 'who' | 'vibe' | null</code></td>
+          <td>Campo attivo (controlled). null = nessun editing.</td>
+        </tr>
+        <tr>
+          <td>suggestions</td>
+          <td><code>Stamp[] | null</code></td>
+          <td>Lista di suggerimenti stamp da Go per il campo attivo. Ogni stamp: <code>{ name, meta }</code>.</td>
+        </tr>
+        <tr>
+          <td>collapsed</td>
+          <td><code>boolean</code></td>
+          <td>Default <code>false</code>. <code>true</code> = mostra biglietto strappato.</td>
+        </tr>
+        <tr>
+          <td>summary</td>
+          <td><code>{ icon, value }[]</code></td>
+          <td>Items mostrati nella riga inline del collapsed. Tipicamente 3 voci (cardinalità).</td>
+        </tr>
+        <tr>
+          <td>onFieldClick</td>
+          <td><code>(field) =&gt; void</code></td>
+          <td>Click su una riga in stato non-editing. Promuove editingField.</td>
+        </tr>
+        <tr>
+          <td>onCommit</td>
+          <td><code>(field, value) =&gt; void</code></td>
+          <td>Enter, blur su click esterno, o click su stamp.</td>
+        </tr>
+        <tr>
+          <td>onCancel</td>
+          <td><code>() =&gt; void</code></td>
+          <td>Esc.</td>
+        </tr>
+        <tr>
+          <td>onToggleCollapse</td>
+          <td><code>() =&gt; void</code></td>
+          <td>Click sul foot "Apri biglietto" o sulla testata in stato collapsed.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Icone Tabler usate</h4>
+    <div class="ico-grid">
+      <div class="ico-cell">
+        <svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></svg>
+        <div class="nm">Where</div>
+        <div class="tn">IconMapPin</div>
+      </div>
+      <div class="ico-cell">
+        <svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+        <div class="nm">When</div>
+        <div class="tn">IconCalendar</div>
+      </div>
+      <div class="ico-cell">
+        <svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+        <div class="nm">Who</div>
+        <div class="tn">IconUsers</div>
+      </div>
+      <div class="ico-cell">
+        <svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.103 5.866a4.5 4.5 0 0 0 4.031 4.031m-.001 4.198a4.5 4.5 0 0 0 -4.029 4.029m-4.196 .004a4.5 4.5 0 0 0 -4.034 -4.034m0 -4.196a4.5 4.5 0 0 0 4.029 -4.029"/></svg>
+        <div class="nm">Vibe</div>
+        <div class="tn">IconSparkles</div>
+      </div>
+      <div class="ico-cell">
+        <svg viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6l6 -6"/></svg>
+        <div class="nm">Open ticket</div>
+        <div class="tn">IconChevronDown</div>
+      </div>
+    </div>
+
+    <h4>Token usati (già in globals.css)</h4>
+    <table>
+      <thead><tr><th>Elemento</th><th>Token</th></tr></thead>
+      <tbody>
+        <tr><td>Card bg</td><td><code>--color-surface</code></td></tr>
+        <tr><td>Card border-radius</td><td><code>--radius-lg</code> (14px)</td></tr>
+        <tr><td>Sutura biglietto (dashed)</td><td><code>--color-border-strong</code> 1px dashed</td></tr>
+        <tr><td>Cerchietti laterali (bg)</td><td><code>--color-bg</code></td></tr>
+        <tr><td>Head gradient soft</td><td><code>linear-gradient(to bottom, rgba(244,123,58,0.03), transparent)</code></td></tr>
+        <tr><td>Eyebrow color</td><td><code>--color-primary</code> · tracking 0.14em</td></tr>
+        <tr><td>Name font (filled)</td><td><code>--font-serif</code> 20px / weight 400</td></tr>
+        <tr><td>Name font (empty)</td><td><code>--font-serif</code> 18px / italic / <code>--color-ink-faint</code></td></tr>
+        <tr><td>Row label</td><td>9.5px <code>--color-ink-faint</code> uppercase / active → <code>--color-primary</code></td></tr>
+        <tr><td>Row icon (filled)</td><td>14px <code>--color-primary</code> stroke 1.75</td></tr>
+        <tr><td>Row icon (empty)</td><td>14px <code>--color-ink-faint</code> stroke 1.75</td></tr>
+        <tr><td>Caret</td><td>1.5×14px <code>--color-primary</code> · blink 1s steps(2)</td></tr>
+        <tr><td>Stamp border</td><td>1px dashed <code>--color-border-strong</code> · hover → solid <code>--color-primary</code></td></tr>
+        <tr><td>Stamp hover bg</td><td><code>rgba(244, 123, 58, 0.04)</code></td></tr>
+        <tr><td>Foot bg</td><td><code>rgba(13, 44, 61, 0.02)</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>Comportamenti che non si vedono nel mockup</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td>Apertura editing</td>
+          <td>Click su riga → focus su <code>contenteditable</code> nel valore, label → arancio, caret appare. <strong>Niente animazione</strong> (cambio istantaneo, è già abbastanza minimale).</td>
+        </tr>
+        <tr>
+          <td>Conferma</td>
+          <td>Enter, blur, click esterno, o click su stamp → <code>onCommit</code> + chiusura editing.</td>
+        </tr>
+        <tr>
+          <td>Annulla</td>
+          <td>Esc → ripristina valore precedente + chiusura editing. <code>onCancel</code>.</td>
+        </tr>
+        <tr>
+          <td>Stamp click</td>
+          <td>Sostituisce il valore con <code>stamp.name</code> + <code>onCommit</code> immediato.</td>
+        </tr>
+        <tr>
+          <td>Hover stamp</td>
+          <td>Border dashed → solid arancio + bg warm + meta passa a primary-deep. Transizione 120ms.</td>
+        </tr>
+        <tr>
+          <td>Collapsed → Edit</td>
+          <td>Click sulla testata o sul foot apre il biglietto. Click direttamente su una riga inline del collapsed (es. "4 zone") apre il biglietto <strong>e</strong> attiva quel campo in editing.</td>
+        </tr>
+        <tr>
+          <td>Shimmer "appena compilato"</td>
+          <td>Quando Go riempie un campo (es. dopo parsing NL), il valore ha un'animazione shimmer arancio-soft 1.4s una volta sola. Token: <code>--shimmer-fresh</code> (da creare se non c'è).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Accessibility</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td>Struttura semantica</td>
+          <td>Il card è <code>&lt;dl&gt;</code>, label sono <code>&lt;dt&gt;</code>, valori sono <code>&lt;dd&gt;</code>. Compatibile con screen reader.</td>
+        </tr>
+        <tr>
+          <td>Editing</td>
+          <td>Quando attivo, <code>&lt;dd contenteditable role="textbox" aria-label="Modifica Where"&gt;</code>.</td>
+        </tr>
+        <tr>
+          <td>Keyboard</td>
+          <td>Tab attraverso i campi; Enter = edit start; Esc = cancel; ⌘/Ctrl+Z = undo nel valore.</td>
+        </tr>
+        <tr>
+          <td>Annunci</td>
+          <td><code>aria-live="polite"</code> sul card per annunciare commit: "Where modificato in Giappone".</td>
+        </tr>
+        <tr>
+          <td>Focus visibile</td>
+          <td>Outline 2px <code>--color-ink</code> su tutti gli elementi interattivi (caret è già visivo). Target minimo 32px.</td>
+        </tr>
+        <tr>
+          <td>Reduced motion</td>
+          <td><code>prefers-reduced-motion</code> = caret <strong>fisso</strong> (no blink), shimmer disabilitato.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

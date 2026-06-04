@@ -22,17 +22,18 @@ import { UserService } from "./UserService";
 import { YumeService } from "./YumeService";
 import { GoService } from "./GoService";
 
-export { TripService, MembershipService, Scheduler, FeedbackService, UserService, YumeService, GoService };
+// Scheduler is intentionally NOT exported: it is a private engine reached only
+// through TripService, so the day↔activity write-path stays single.
+export { TripService, MembershipService, FeedbackService, UserService, YumeService, GoService };
 export type { CreateTripRequest, UpdateTripPatch } from "./TripService";
 export type { Me } from "./UserService";
 export type { Yume } from "./YumeService";
 
 export type Services = {
+  /** Trip + planning: metadata, day-list, and all day↔activity scheduling. */
   trips: TripService;
   /** Trip collaboration: members + pending invites. */
   members: MembershipService;
-  /** Scheduling onto days (scheduled_activities). */
-  scheduler: Scheduler;
   feedback: FeedbackService;
   users: UserService;
   /** Owner of the activity entity: create/edit/delete/search/visibility/share. */
@@ -44,9 +45,8 @@ export type Services = {
 function build(dal: Dal): Services {
   const yumes = new YumeService(dal);
   return {
-    trips: new TripService(dal),
+    trips: new TripService(dal, new Scheduler(dal, yumes)),
     members: new MembershipService(dal),
-    scheduler: new Scheduler(dal, yumes),
     feedback: new FeedbackService(dal),
     users: new UserService(dal),
     yumes,

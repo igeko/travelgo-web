@@ -400,6 +400,17 @@ export class Trips {
     return { data: true, error: null };
   }
 
+  /** Remove every scheduled occurrence from a day (entities untouched). */
+  async deleteSchedulesForDay(dayId: string): Promise<DalResult<true>> {
+    const { error } = await this.db
+      .from(TripTable.ScheduledActivities)
+      .delete()
+      .eq("day_id", dayId);
+
+    if (error) return { data: null, error: new DalError(error.message, error.code) };
+    return { data: true, error: null };
+  }
+
   /** Resolve the day a scheduled-activity belongs to (authorization helper). */
   async dayIdForScheduled(scheduledActivityId: string): Promise<string | null> {
     const { data } = await this.db

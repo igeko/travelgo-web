@@ -9,6 +9,6 @@ export const PATCH = route<{ id: string }>(async ({ req, params }) => {
   await requireScheduledEditor(params.id);
   const body = await readJson<BridgeBody>(req);
   const services = await serverServices();
-  await services.scheduler.setBridge(params.id, body.direction, body.bridge ?? null);
+  await services.trips.setBridge(params.id, body.direction, body.bridge ?? null);
   return ok(null);
 });

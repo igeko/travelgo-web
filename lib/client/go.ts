@@ -13,6 +13,36 @@ export type YumeCardData = {
   highlights: string[];
 };
 
+/** Live Google Places data attached to a deep-dive, when a place matched. */
+export type GoPlaceInfo = {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating?: number;
+  userRatingsTotal?: number;
+  priceLevel?: number;
+  openNow?: boolean;
+  weekdayText?: string[];
+  website?: string;
+  phone?: string;
+  googleMapsUri?: string;
+  types?: string[];
+  editorialSummary?: string;
+  photoRefs: string[];
+};
+
+/** AI deep-dive for a place + optional live Google Places data. */
+export type GoDeepDive = {
+  overview: string;
+  tips: string[];
+  bestFor: string;
+  avoid: string | null;
+  nearbyIdeas: string[];
+  place?: GoPlaceInfo | null;
+};
+
 /** A write Go proposed but the user must confirm before it runs. */
 export type GoPendingAction = { name: string; arguments: Record<string, unknown>; summary: string };
 
@@ -28,6 +58,15 @@ export type GoAgentResult = {
   usage?: GoUsage;
   /** Present when called with debug:true — structured per-turn trace. */
   _debug?: GoAgentDebug;
+};
+
+/** Result of one model-comparison call (/api/go/agent/compare). */
+export type GoAgentCompareResult = {
+  provider: "openai" | "gemini";
+  model: string;
+  text: string;
+  toolCalls: { name: string; arguments: Record<string, unknown> }[];
+  usage: GoUsage | null;
 };
 
 /** Token usage; `cachedTokens` = prompt prefix served from the provider cache. */
@@ -68,13 +107,13 @@ export const go = {
   agent: (body: { tripId: string; message: string; tripContext?: string; selectedDay?: number | null; debug?: boolean }) =>
     request<GoAgentResult>("POST", "/api/go/agent", body),
 
-  /** POST /api/go/deep-dive → structured extra info for a place (raw JSON). */
+  /** POST /api/go/agent/compare → one ephemeral model call (dev comparison). */
+  agentCompare: (body: { message: string; provider: "openai" | "gemini"; tier: "fast" | "smart" }) =>
+    request<GoAgentCompareResult>("POST", "/api/go/agent/compare", body),
+
+  /** POST /api/go/deep-dive → structured extra info + live Google Places data. */
   deepDive: (body: { title: string; category?: string; location?: string; why?: string; tripContext?: string }) =>
-    requestRaw<{ overview: string; tips: string[]; bestFor: string; avoid: string | null; nearbyIdeas: string[] }>(
-      "POST",
-      "/api/go/deep-dive",
-      body,
-    ),
+    requestRaw<GoDeepDive>("POST", "/api/go/deep-dive", body),
 
   /** POST /api/go/agent (confirm) → apply a proposed write the user confirmed. */
   agentApply: (tripId: string, action: { name: string; arguments: Record<string, unknown> }) =>

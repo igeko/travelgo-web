@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1480">
+<title>TravelGo · /trips/new — v5 · Flusso completo</title>
+<style>
+  :root {
+    --c-bg: #f1efe8;
+    --c-surface: #ffffff;
+    --c-surface-soft: #f5f3ee;
+    --c-surface-warm: #fdf5ee;
+    --c-surface-input: #fafaf6;
+    --c-border: rgba(13, 44, 61, 0.08);
+    --c-border-strong: rgba(13, 44, 61, 0.18);
+    --c-ink: #0d2c3d;
+    --c-ink-soft: #5b6b78;
+    --c-ink-faint: #8a98a3;
+    --c-primary: #f47b3a;
+    --c-primary-soft: #fdecdf;
+    --c-primary-border: #f9d4b6;
+    --c-primary-deep: #a84818;
+    --c-success-fg: #3d6e0e;
+    --c-night: #4338ca;
+    --shadow-float: 0 10px 40px rgba(13, 44, 61, 0.18), 0 2px 8px rgba(13, 44, 61, 0.08);
+    --tg-serif: Georgia, "Times New Roman", serif;
+    --tg-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e8e6df; color: var(--c-ink); font-family: var(--tg-sans); }
+
+  .page-wrap { max-width: 1540px; margin: 0 auto; padding: 40px 24px 80px; }
+  .doc-header { margin-bottom: 40px; }
+  .doc-header .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin-bottom: 8px; }
+  .doc-header h1 { font-family: var(--tg-serif); font-size: 30px; font-weight: 400; margin: 0 0 8px; }
+  .doc-header p { color: var(--c-ink-soft); margin: 0; max-width: 760px; font-size: 14px; line-height: 1.6; }
+
+  .state-block { margin-bottom: 56px; }
+  .state-label { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+  .state-label .num { font-family: var(--tg-serif); font-size: 22px; color: var(--c-primary); }
+  .state-label .name { font-family: var(--tg-serif); font-size: 22px; color: var(--c-ink); }
+  .state-label .desc { font-size: 13px; color: var(--c-ink-soft); flex: 1; }
+  .traj-mark { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; padding: 3px 9px; background: var(--c-primary-soft); border: 1px solid var(--c-primary-border); border-radius: 999px; }
+
+  .frame { background: var(--c-bg); border-radius: 16px; border: 1px solid var(--c-border-strong); overflow: hidden; box-shadow: 0 12px 32px rgba(13,44,61,0.08); position: relative; }
+
+  .chrome { background: var(--c-surface); border-bottom: 1px solid var(--c-border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 24px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .g { width: 28px; height: 28px; border-radius: 8px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-family: "Hiragino Sans", sans-serif; font-size: 16px; font-weight: 500; }
+  .brand .w { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-ink-faint); }
+  .brand .w b { color: var(--c-ink); font-weight: 500; }
+  .nav { display: flex; gap: 22px; font-size: 13px; color: var(--c-ink-soft); }
+  .nav .a { color: var(--c-ink); font-weight: 500; border-bottom: 2px solid var(--c-primary); padding: 16px 0; }
+  .right-meta { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--c-ink-soft); }
+  .avatar-user { width: 30px; height: 30px; border-radius: 999px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+
+  .tbar { padding: 10px 24px; background: var(--c-bg); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; gap: 12px; min-height: 42px; }
+  .tbar .tnm { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; }
+  .tbar .sep { color: var(--c-ink-faint); font-size: 12px; }
+  .tbar .pg { font-size: 12px; color: var(--c-ink-soft); }
+  .tbar .saved { margin-left: auto; font-size: 11px; color: var(--c-success-fg); display: flex; align-items: center; gap: 6px; }
+  .tbar .saved::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--c-success-fg); }
+  .tbar .stage { font-size: 11px; color: var(--c-ink-soft); display: flex; align-items: center; gap: 6px; }
+  .tbar .stage::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--c-primary); }
+
+  /* ── Your Trip card (sidebar superiore sinistra) ── */
+  .yt-card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .yt-card.warm { background: var(--c-surface-warm); border: 1px solid var(--c-primary-border); }
+  .yt-eye { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin: 0 0 5px; }
+  .yt-name { font-family: var(--tg-serif); font-size: 19px; margin: 0 0 4px; font-weight: 400; line-height: 1.2; }
+  .yt-name.empty { color: var(--c-ink-faint); font-style: italic; }
+  .yt-sub { font-size: 11.5px; color: var(--c-ink-soft); line-height: 1.45; margin: 0 0 12px; }
+  .yt-fields { display: flex; flex-direction: column; gap: 7px; padding-top: 10px; border-top: 1px solid var(--c-border); }
+  .yt-fld { display: flex; gap: 9px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
+  .yt-fld:hover .yt-val { color: var(--c-primary-deep); }
+  .yt-fld .ico {
+    width: 13px; height: 13px;
+    color: var(--c-ink-faint);
+    flex-shrink: 0; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .yt-fld.fl .ico { color: var(--c-primary); }
+  .yt-fld .lbl { font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-ink-faint); font-weight: 500; margin-bottom: 1px; line-height: 1.2; }
+  .yt-fld .yt-val { font-size: 12.5px; color: var(--c-ink); font-weight: 500; line-height: 1.3; }
+  .yt-fld .yt-val.empty { color: var(--c-ink-faint); font-style: italic; font-weight: 400; }
+  .yt-fld .fb { flex: 1; min-width: 0; }
+  /* shimmer on newly filled */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .yt-fld.just-filled .yt-val {
+    background: linear-gradient(90deg, transparent 0%, var(--c-primary-soft) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-out;
+  }
+
+  /* ── DayList card (senza più header All days header — diretto a items) ── */
+  .dl-bare {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .dl-bare-h {
+    padding: 14px 20px 10px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-ink-faint);
+    font-weight: 500;
+    border-bottom: 1px solid var(--c-border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dl-bare-h .count { color: var(--c-ink-soft); }
+  .dl-list { list-style: none; margin: 0; padding: 0; }
+  .di {
+    display: grid;
+    grid-template-columns: 38px 1fr 14px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid var(--c-border);
+    cursor: pointer;
+    position: relative;
+  }
+  .di:first-child { border-top: 0; }
+  .di:hover { background: var(--c-surface-soft); }
+  .di.act { background: var(--c-ink); color: white; }
+  .di.act::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c-primary); }
+  .di-date { text-align: center; }
+  .di-dow { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink-faint); line-height: 1; display: block; margin-bottom: 2px; }
+  .di.act .di-dow { color: rgba(255,255,255,0.6); }
+  .di-num { font-size: 18px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c-ink); }
+  .di.act .di-num { color: white; }
+  .di-body { min-width: 0; }
+  .di-zone { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; line-height: 1.2; margin-bottom: 1px; }
+  .di-place { font-size: 13px; color: var(--c-ink); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .di.act .di-place { color: white; }
+  .di-place.empty { color: var(--c-ink-faint); font-style: italic; }
+  .di.act .di-place.empty { color: rgba(255,255,255,0.5); }
+  .di-arrow { color: var(--c-ink-faint); font-size: 13px; }
+  .di.act .di-arrow { color: rgba(255,255,255,0.6); }
+  /* ghost days */
+  .di.ghost { opacity: 0.55; }
+  .di.ghost .di-zone, .di.ghost .di-place { font-style: italic; }
+  .dl-ghost-note {
+    padding: 10px 20px;
+    background: var(--c-surface-warm);
+    border-top: 1px dashed var(--c-primary-border);
+    font-size: 11px;
+    color: var(--c-primary-deep);
+    line-height: 1.4;
+    font-style: italic;
+  }
+
+  /* hint chips & send */
+  .hint { font-size: 12px; padding: 5px 12px; border-radius: 999px; background: var(--c-surface-soft); border: 1px solid var(--c-border); color: var(--c-ink-soft); cursor: pointer; font-family: inherit; }
+  .hint.tpl { background: var(--c-surface-warm); border-color: var(--c-primary-border); color: var(--c-primary-deep); font-weight: 500; }
+  .hints { display: flex; gap: 6px; flex-wrap: wrap; }
+  .snd { width: 32px; height: 32px; border-radius: 999px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .snd.pr { background: var(--c-primary); }
+
+  /* ─────────────────────────────────── STATE 1 BLANK ─────────────────────────────────── */
+  .canvas-blank { display: flex; align-items: center; justify-content: center; min-height: 600px; padding: 48px 24px; }
+  .blank-inner { max-width: 600px; width: 100%; text-align: center; }
+  .blank-av { width: 60px; height: 60px; border-radius: 999px; background: var(--c-ink); color: white; display: inline-flex; align-items: center; justify-content: center; font-family: "Hiragino Sans", sans-serif; font-size: 30px; box-shadow: 0 0 0 7px rgba(244,123,58,0.2); margin-bottom: 24px; }
+  .blank-who { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin-bottom: 10px; }
+  .blank-said { font-family: var(--tg-serif); font-size: 36px; font-weight: 400; font-style: italic; margin: 0 0 12px; line-height: 1.2; color: var(--c-ink); }
+  .blank-sub { font-size: 14px; color: var(--c-ink-soft); line-height: 1.5; margin: 0 auto 32px; max-width: 460px; }
+  .blank-input { background: white; border: 1px solid var(--c-border-strong); border-radius: 16px; padding: 16px 18px; text-align: left; box-shadow: 0 2px 12px rgba(13,44,61,0.04); }
+  .blank-ta { font-size: 15px; color: var(--c-ink-faint); font-style: italic; min-height: 30px; line-height: 1.5; }
+  .blank-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-top: 12px; }
+
+  /* ─────────────────────────────────── STATE 2 CHIP-FILL & 2B LACONICO ─────────────────────────────────── */
+  /* Left = Your Trip (+ DayList ghost in 2b), Right = Go nel canvas crema (max-width) */
+  .canvas-chipfill {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 24px;
+    min-height: 620px;
+  }
+
+  /* Go nel canvas crema (skeleton-style) */
+  .go-canvas {
+    padding: 8px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .go-canvas .past {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid var(--c-border);
+    font-size: 11.5px; color: var(--c-ink-faint); cursor: pointer;
+    align-self: flex-start;
+    margin-bottom: 18px;
+  }
+  .u-bubble { display: flex; justify-content: flex-end; margin-bottom: 18px; opacity: 0.6; }
+  .u-bubble .b { background: var(--c-ink); color: white; padding: 8px 13px; border-radius: 14px 14px 4px 14px; font-size: 13px; max-width: 75%; }
+  .u-bubble.active { opacity: 1; }
+  .go-past-mini { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; opacity: 0.55; }
+  .go-past-mini .av { width: 24px; height: 24px; border-radius: 999px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-family: "Hiragino Sans", sans-serif; font-size: 12px; flex-shrink: 0; }
+  .go-past-mini .txt { font-size: 13px; color: var(--c-ink-soft); line-height: 1.5; padding-top: 4px; }
+
+  .gc-block { display: flex; gap: 16px; align-items: flex-start; }
+  .gc-av { width: 44px; height: 44px; border-radius: 999px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-family: "Hiragino Sans", sans-serif; font-size: 22px; flex-shrink: 0; box-shadow: 0 0 0 5px rgba(244,123,58,0.18); }
+  .gc-body { flex: 1; min-width: 0; }
+  .gc-who { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; margin-bottom: 6px; }
+  .gc-said { font-family: var(--tg-serif); font-size: 21px; line-height: 1.4; font-style: italic; color: var(--c-ink); margin: 0; }
+  .gc-said.smaller { font-size: 19px; }
+  .gc-said b { font-style: normal; font-weight: 500; }
+  .gc-sub { font-size: 13.5px; color: var(--c-ink-soft); margin-top: 10px; line-height: 1.55; }
+  .gc-tpls { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+
+  .gc-inp { margin-top: 26px; background: white; border: 1px solid var(--c-border-strong); border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 12px rgba(13,44,61,0.04); }
+  .gc-inp-ta { font-size: 14px; color: var(--c-ink-faint); font-style: italic; min-height: 24px; }
+  .gc-inp-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-top: 10px; }
+  .gc-exits { display: flex; gap: 8px; margin-top: 18px; align-items: center; }
+  .exit-primary { background: var(--c-ink); color: white; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .exit-primary.dim { opacity: 0.4; pointer-events: none; }
+  .exit-secondary { background: transparent; color: var(--c-ink-soft); padding: 10px 16px; border-radius: 999px; border: 1px solid var(--c-border-strong); font-size: 13px; cursor: pointer; }
+  .exit-link { color: var(--c-ink-soft); font-size: 12px; padding: 6px; cursor: pointer; margin-left: auto; }
+
+  /* ─────────────────────────────────── STATE 4 NUDGE ─────────────────────────────────── */
+  /* Stesso layout dello skeleton ma con proposta + commento Go */
+  .nudge-prop {
+    background: white;
+    border: 1px solid var(--c-border-strong);
+    border-radius: 16px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .nudge-prop-img {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, #d4a574, #8b6f47);
+    border-radius: 8px;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Hiragino Sans", sans-serif;
+    font-size: 28px;
+    position: relative;
+  }
+  .nudge-prop-when { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; }
+  .nudge-prop-nm { font-family: var(--tg-serif); font-size: 16px; margin: 4px 0 5px; line-height: 1.3; }
+  .nudge-prop-ds { font-size: 12.5px; color: var(--c-ink-soft); line-height: 1.5; }
+  .nudge-prop-act { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+  .np-add { background: var(--c-ink); color: white; border: 0; padding: 6px 13px; border-radius: 999px; font-size: 11.5px; cursor: pointer; font-family: inherit; font-weight: 500; }
+  .np-alt { background: transparent; color: var(--c-ink-soft); border: 1px solid var(--c-border-strong); padding: 6px 13px; border-radius: 999px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
+  .np-skip { background: transparent; color: var(--c-ink-faint); border: 0; padding: 6px 10px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
+
+  /* ─────────────────────────────────── STATE 5 DAY ATTIVO + GO FLOAT ─────────────────────────────────── */
+  .canvas-day {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 24px;
+    min-height: 760px;
+    position: relative;
+  }
+
+  /* Day banner (foto + meta, NO hotel footer ancora) */
+  .day-banner {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .day-banner-img {
+    height: 180px;
+    background: linear-gradient(135deg, #c9956d 0%, #8b5e3c 50%, #4a3a2c 100%);
+    position: relative;
+  }
+  .day-banner-img::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 30%, rgba(13,44,61,0.7) 100%);
+  }
+  .day-banner-meta {
+    position: absolute;
+    bottom: 18px;
+    left: 22px;
+    right: 22px;
+    color: white;
+    z-index: 2;
+  }
+  .day-banner-eye { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; }
+  .day-banner-title { font-family: var(--tg-serif); font-size: 28px; font-weight: 400; margin: 4px 0 6px; line-height: 1.15; }
+  .day-banner-sub { font-size: 13px; opacity: 0.85; }
+
+  /* Empty hotel placeholder (footer) */
+  .day-no-hotel {
+    padding: 12px 22px;
+    border-top: 1px dashed var(--c-border-strong);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--c-ink-faint);
+  }
+  .day-no-hotel .cta-add { margin-left: auto; font-size: 11.5px; color: var(--c-primary); cursor: pointer; font-weight: 500; }
+
+  /* periodi */
+  .period { margin-bottom: 18px; }
+  .period-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 4px 0 10px;
+  }
+  .period-dot { width: 8px; height: 8px; border-radius: 999px; }
+  .period-dot.morning { background: var(--c-primary); }
+  .period-dot.afternoon { background: #2596be; }
+  .period-dot.night { background: var(--c-night); }
+  .period-name { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; }
+  .period-line { flex: 1; height: 1px; background: var(--c-border); }
+  .period-count { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink-faint); font-weight: 600; }
+  .act-cards { display: flex; flex-direction: column; gap: 10px; }
+  .act-card {
+    background: white;
+    border-radius: 14px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 80px 1fr 14px;
+    gap: 14px;
+    align-items: start;
+  }
+  .act-img {
+    width: 80px; height: 80px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #d4a574, #8b6f47);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Hiragino Sans", sans-serif;
+    font-size: 26px;
+    position: relative;
+    overflow: hidden;
+  }
+  .act-img-tm {
+    position: absolute;
+    bottom: 6px; left: 6px;
+    background: rgba(13,44,61,0.85);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .act-body { min-width: 0; }
+  .act-title { font-size: 14.5px; font-weight: 600; color: var(--c-ink); margin: 0 0 4px; line-height: 1.3; }
+  .act-desc { font-size: 12.5px; color: var(--c-ink-soft); line-height: 1.5; margin: 0; }
+  .act-foot { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+  .act-chip { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: var(--c-surface-soft); color: var(--c-ink-soft); border: 1px solid var(--c-border); }
+  .act-arrow { color: var(--c-ink-faint); font-size: 14px; align-self: center; }
+  .act-card.sug { background: var(--c-surface-warm); border: 1px dashed var(--c-primary-border); }
+  .act-card.sug .act-title { color: var(--c-ink-soft); font-style: italic; }
+  .act-card.sug .act-img { opacity: 0.85; }
+  .act-card.sug .act-img-tm::before { content: "+ "; color: var(--c-primary); }
+  .sug-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .sug-meta::before {
+    content: "";
+    width: 6px; height: 6px; border-radius: 999px;
+    background: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(244,123,58,0.2);
+  }
+  .add-act-row {
+    background: transparent;
+    border: 1px dashed var(--c-border-strong);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    color: var(--c-ink-soft);
+    font-size: 12.5px;
+  }
+  .add-act-row:hover { background: white; border-color: var(--c-ink); color: var(--c-ink); }
+
+  /* GO FLOAT panel — staccato dalla pagina */
+  .go-float {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    width: 360px;
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-float);
+    z-index: 10;
+  }
+  .gf-head {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 12px;
+  }
+  .gf-av { width: 30px; height: 30px; border-radius: 999px; background: var(--c-ink); color: white; display: flex; align-items: center; justify-content: center; font-family: "Hiragino Sans", sans-serif; font-size: 15px; box-shadow: 0 0 0 3px rgba(244,123,58,0.2); }
+  .gf-who { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary); font-weight: 600; }
+  .gf-status { font-size: 10px; color: var(--c-ink-faint); margin-left: auto; display: flex; align-items: center; gap: 5px; }
+  .gf-status::before { content: ""; width: 5px; height: 5px; border-radius: 999px; background: var(--c-success-fg); }
+  .gf-minimize { color: var(--c-ink-faint); font-size: 14px; cursor: pointer; padding: 4px; }
+  .gf-turn {
+    background: var(--c-surface-soft);
+    border-radius: 14px 14px 14px 4px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
+  }
+  .gf-said { font-family: var(--tg-serif); font-size: 15px; line-height: 1.5; font-style: italic; color: var(--c-ink); margin: 0; }
+  .gf-said b { font-style: normal; font-weight: 500; }
+  .gf-context {
+    background: var(--c-primary-soft);
+    border: 1px solid var(--c-primary-border);
+    border-radius: 10px;
+    padding: 8px 11px;
+    font-size: 11px;
+    color: var(--c-primary-deep);
+    line-height: 1.4;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gf-inp { background: var(--c-surface-input); border: 1px solid var(--c-border); border-radius: 12px; padding: 9px 12px; }
+  .gf-inp-ta { font-size: 12.5px; color: var(--c-ink-faint); font-style: italic; min-height: 20px; }
+  .gf-inp-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin-top: 8px; }
+  .gf-hint { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: white; border: 1px solid var(--c-border); color: var(--c-ink-soft); cursor: pointer; font-family: inherit; }
+
+  /* Annotations */
+  .note {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: var(--c-surface-warm);
+    border-left: 3px solid var(--c-primary-border);
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: var(--c-ink-soft);
+    line-height: 1.55;
+  }
+  .note strong { color: var(--c-primary-deep); }
+  .note + .note { margin-top: 6px; }
+
+  /* CTA exits in canvas senza container */
+  .canvas-exits {
+    display: flex; gap: 8px;
+    margin-top: 22px;
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="doc-header">
+    <div class="eyebrow">TravelGo · /trips/new — v5 (flusso completo)</div>
+    <h1>Da Blank a Day attivo · 6 stati</h1>
+    <p>Flusso integrale della creazione viaggio. La <strong>traiettoria visiva</strong> racconta la collaborazione: Go grande nel Blank, si fa narratore nel Skeleton, diventa pannello flottante nel Day attivo. La colonna sinistra accumula identità: vuota nel Blank, "Your trip" + scheletro ipotetico nel laconico, "Your trip" + DayList completo dallo Skeleton in poi. <strong>Your trip resta sempre in sinistra come scheda d'identità del viaggio</strong>, separato dalla DayList sottostante.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 1 BLANK -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">1</span>
+      <span class="name">Blank</span>
+      <span class="traj-mark">GO HERO · 60px</span>
+      <span class="desc">Foglio bianco. Go solo, grande, al centro. Niente sidebar.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="canvas-blank">
+        <div class="blank-inner">
+          <div class="blank-av">五</div>
+          <div class="blank-who">Go · the travel companion</div>
+          <h1 class="blank-said">Dove ti porto?</h1>
+          <p class="blank-sub">Scrivi quello che hai in mente, anche disordinato. Una città, una stagione, un'idea: ci penso io a rimettere in ordine.</p>
+          <div class="blank-input">
+            <div class="blank-ta">es. dieci giorni in Giappone a luglio con la mia ragazza, ci piace mangiare e camminare poco…</div>
+            <div class="blank-row">
+              <div class="hints">
+                <span class="hint">↗ una città</span>
+                <span class="hint">↗ un weekend</span>
+                <span class="hint">↗ un long-haul</span>
+              </div>
+              <div class="snd">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 2 CHIP-FILL -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">2</span>
+      <span class="name">Chip-fill</span>
+      <span class="traj-mark">GO NARRATORE · 44px</span>
+      <span class="desc">L'utente scrive in NL. Go estrae le entità. "Your trip" appare a sinistra e si compila in tempo reale. Date mancanti: Go le chiede.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="tbar">
+        <span class="tnm" style="opacity: 0.5;">NUOVO VIAGGIO</span>
+        <span class="sep">·</span>
+        <span class="pg">in costruzione</span>
+        <span class="saved">Auto-saved</span>
+      </div>
+
+      <div class="canvas-chipfill">
+        <!-- LEFT: Your trip card -->
+        <div>
+          <div class="yt-card">
+            <p class="yt-eye">YOUR TRIP</p>
+            <h3 class="yt-name">Giappone · Tokyo + natura</h3>
+            <p class="yt-sub">Si compila mentre parli con Go</p>
+            <div class="yt-fields">
+              <div class="yt-fld fl just-filled">
+                <div class="ico">📍</div>
+                <div class="fb"><div class="lbl">Place</div><div class="yt-val">Giappone · Tokyo + natura</div></div>
+              </div>
+              <div class="yt-fld">
+                <div class="ico">📅</div>
+                <div class="fb"><div class="lbl">Dates</div><div class="yt-val empty">~10 giorni · luglio</div></div>
+              </div>
+              <div class="yt-fld fl just-filled">
+                <div class="ico">👥</div>
+                <div class="fb"><div class="lbl">Travelers</div><div class="yt-val">2 · couple</div></div>
+              </div>
+              <div class="yt-fld fl just-filled">
+                <div class="ico">✨</div>
+                <div class="fb"><div class="lbl">Theme</div><div class="yt-val">foodie · low-walk · natura</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER: Go nel canvas crema -->
+        <div class="go-canvas">
+          <div class="past">▾ Conversazione · 2 messaggi</div>
+          <div class="u-bubble"><div class="b">Dieci giorni in Giappone a luglio con la mia ragazza, ci piace mangiare e camminare poco. Tokyo sicuro, poi qualcosa di natura.</div></div>
+          <div class="gc-block">
+            <div class="gc-av">五</div>
+            <div class="gc-body">
+              <div class="gc-who">Go</div>
+              <p class="gc-said">Giappone a luglio: caldo umido, perfetto per Tokyo + le Alpi giapponesi. Ho riempito quello che ho capito qui a sinistra. <b>Da che giorno a che giorno di luglio?</b></p>
+              <p class="gc-sub">Anche solo "metà luglio" mi basta. Lascio segnata "2 traveler", ok?</p>
+            </div>
+          </div>
+          <div class="gc-inp">
+            <div class="gc-inp-ta">rispondi a Go… (es. 10–20 luglio)</div>
+            <div class="gc-inp-row">
+              <div class="hints">
+                <span class="hint">Dal 10 al 20</span>
+                <span class="hint">Seconda metà</span>
+                <span class="hint">Non lo so ancora</span>
+              </div>
+              <div class="snd">→</div>
+            </div>
+          </div>
+          <div class="canvas-exits">
+            <div class="exit-primary dim">Open day-by-day →</div>
+            <div class="exit-link">Salva e continua dopo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Decisione confermata:</strong> "Your trip" è card a sinistra con i 4 chip cliccabili. Le icone diventano arancio quando il campo è "filled". <strong>Animazione shimmer</strong> arancio-soft per 1.4s quando un campo viene appena compilato — segnala visivamente l'evento. Il CTA "Open day-by-day" è <em>dim/disabled</em> finché non c'è almeno place + dates. Esiste come <em>promessa</em>, non come pressione.
+    </div>
+    <div class="note">
+      <strong>Note micro-UX:</strong> il turn precedente dell'utente è una bubble destra in opacity ridotta (è già storia). Il turn di Go è in evidenza piena, 21px serif italic. La "tbar" in alto mostra "NUOVO VIAGGIO" in faint perché non c'è ancora un nome — appena lo skeleton sarà generato diventerà "GIAPPONE 2026".
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 2B LACONICO -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">2b</span>
+      <span class="name">Laconico</span>
+      <span class="traj-mark">GO NARRATORE · 44px</span>
+      <span class="desc">L'utente è scarno di info ("Tokyo."). Go popola Your trip con quel poco, sotto compaiono giorni temporanei ghost (anteprima di "Tokyo standard 5 giorni") e propone 3 template chip.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="tbar">
+        <span class="tnm" style="opacity: 0.5;">NUOVO VIAGGIO</span>
+        <span class="sep">·</span>
+        <span class="pg">in costruzione</span>
+        <span class="saved">Auto-saved</span>
+      </div>
+
+      <div class="canvas-chipfill">
+        <!-- LEFT: Your trip + ghost daylist -->
+        <div>
+          <div class="yt-card">
+            <p class="yt-eye">YOUR TRIP</p>
+            <h3 class="yt-name">Tokyo, Giappone</h3>
+            <p class="yt-sub">In attesa della durata</p>
+            <div class="yt-fields">
+              <div class="yt-fld fl">
+                <div class="ico">📍</div>
+                <div class="fb"><div class="lbl">Place</div><div class="yt-val">Tokyo, Giappone</div></div>
+              </div>
+              <div class="yt-fld">
+                <div class="ico">📅</div>
+                <div class="fb"><div class="lbl">Dates</div><div class="yt-val empty">da definire</div></div>
+              </div>
+              <div class="yt-fld">
+                <div class="ico">👥</div>
+                <div class="fb"><div class="lbl">Travelers</div><div class="yt-val empty">1 · default</div></div>
+              </div>
+              <div class="yt-fld">
+                <div class="ico">✨</div>
+                <div class="fb"><div class="lbl">Theme</div><div class="yt-val empty">da definire</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DayList ghost - anteprima -->
+          <div class="dl-bare">
+            <div class="dl-bare-h">
+              ANTEPRIMA · IPOTESI <span class="count">5 giorni</span>
+            </div>
+            <ul class="dl-list">
+              <li class="di ghost"><div class="di-date"><span class="di-dow">DAY</span><span class="di-num">1</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Asakusa</div></div><span class="di-arrow">›</span></li>
+              <li class="di ghost"><div class="di-date"><span class="di-dow">DAY</span><span class="di-num">2</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Shibuya</div></div><span class="di-arrow">›</span></li>
+              <li class="di ghost"><div class="di-date"><span class="di-dow">DAY</span><span class="di-num">3</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Yanaka</div></div><span class="di-arrow">›</span></li>
+              <li class="di ghost"><div class="di-date"><span class="di-dow">DAY</span><span class="di-num">4</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Marunouchi</div></div><span class="di-arrow">›</span></li>
+              <li class="di ghost"><div class="di-date"><span class="di-dow">DAY</span><span class="di-num">5</span></div><div class="di-body"><div class="di-zone">Day trip</div><div class="di-place">Hakone</div></div><span class="di-arrow">›</span></li>
+            </ul>
+            <div class="dl-ghost-note">Scegli sopra una durata per confermare lo scheletro.</div>
+          </div>
+        </div>
+
+        <!-- CENTER: Go con template chips -->
+        <div class="go-canvas">
+          <div class="past">▾ Conversazione · 2 messaggi</div>
+          <div class="u-bubble"><div class="b">Tokyo.</div></div>
+          <div class="gc-block">
+            <div class="gc-av">五</div>
+            <div class="gc-body">
+              <div class="gc-who">Go</div>
+              <p class="gc-said">Tokyo, ottima scelta. <b>Quanto tempo abbiamo?</b> Posso partire da uno di questi formati:</p>
+              <div class="gc-tpls">
+                <span class="hint tpl">Weekend · 3 giorni</span>
+                <span class="hint tpl">Una settimana · 7 giorni</span>
+                <span class="hint tpl">Due settimane+</span>
+              </div>
+              <p class="gc-sub">…oppure dimmelo a voce ("metà ottobre per 5 notti", "8–14 dicembre")</p>
+            </div>
+          </div>
+          <div class="gc-inp">
+            <div class="gc-inp-ta">rispondi a Go…</div>
+            <div class="gc-inp-row">
+              <div class="hints"></div>
+              <div class="snd pr">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Il pattern "Mostra prima di chiedere":</strong> Go non interroga "quanti giorni?", fa già qualcosa. L'anteprima ghost di 5 giorni è <em>l'ipotesi più probabile</em> con cui Go avrebbe iniziato. Templates sopra come scelte rapide. L'utente non deve "rispondere a una domanda", deve <em>confermare o ritoccare</em> un'azione già in corso. È meno faticoso cognitivamente.
+    </div>
+    <div class="note">
+      <strong>Footer ghost-note:</strong> "Scegli sopra una durata per confermare lo scheletro" — è il <em>contratto</em> tra ipotesi e azione. La nota è arancio-deep, su bg warm con border dashed, per essere visivamente legata all'incertezza ma con un percorso chiaro.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 3 SKELETON -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">3</span>
+      <span class="name">Skeleton</span>
+      <span class="traj-mark">GO NARRATORE · 44px</span>
+      <span class="desc">Place + dates pronti. Go genera lo scheletro. Your trip si completa, DayList appare sotto con tutti i giorni, Go al centro conferma la bozza.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="tbar">
+        <span class="tnm">GIAPPONE 2026</span>
+        <span class="sep">·</span>
+        <span class="pg">10 giorni · scheletro</span>
+        <span class="stage">Bozza · in costruzione</span>
+        <span class="saved">Auto-saved</span>
+      </div>
+
+      <div class="canvas-chipfill">
+        <!-- LEFT: Your trip + DayList completa -->
+        <div>
+          <div class="yt-card">
+            <p class="yt-eye">YOUR TRIP</p>
+            <h3 class="yt-name">Giappone 2026</h3>
+            <p class="yt-sub">10 days · Jul 10 → Jul 19</p>
+            <div class="yt-fields">
+              <div class="yt-fld fl">
+                <div class="ico">📍</div>
+                <div class="fb"><div class="lbl">Place</div><div class="yt-val">Giappone · 4 zone</div></div>
+              </div>
+              <div class="yt-fld fl just-filled">
+                <div class="ico">📅</div>
+                <div class="fb"><div class="lbl">Dates</div><div class="yt-val">10 → 19 luglio</div></div>
+              </div>
+              <div class="yt-fld fl">
+                <div class="ico">👥</div>
+                <div class="fb"><div class="lbl">Travelers</div><div class="yt-val">2 · couple</div></div>
+              </div>
+              <div class="yt-fld fl">
+                <div class="ico">✨</div>
+                <div class="fb"><div class="lbl">Theme</div><div class="yt-val">foodie · low-walk · natura</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dl-bare">
+            <div class="dl-bare-h">
+              ALL DAYS <span class="count">· 10</span>
+            </div>
+            <ul class="dl-list">
+              <li class="di"><div class="di-date"><span class="di-dow">FRI</span><span class="di-num">10</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Arrivo · Asakusa</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SAT</span><span class="di-num">11</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Yanaka · Ueno</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SUN</span><span class="di-num">12</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Marunouchi</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">MON</span><span class="di-num">13</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Shibuya</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">TUE</span><span class="di-num">14</span></div><div class="di-body"><div class="di-zone">Hakone</div><div class="di-place">Onsen · Fuji</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">WED</span><span class="di-num">15</span></div><div class="di-body"><div class="di-zone">Kamikochi</div><div class="di-place">Trekking</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">THU</span><span class="di-num">16</span></div><div class="di-body"><div class="di-zone">Takayama</div><div class="di-place">Borgo</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">FRI</span><span class="di-num">17</span></div><div class="di-body"><div class="di-zone">Kyoto</div><div class="di-place">Gion</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SAT</span><span class="di-num">18</span></div><div class="di-body"><div class="di-zone">Kyoto</div><div class="di-place">Arashiyama</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SUN</span><span class="di-num">19</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Buffer</div></div><span class="di-arrow">›</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- CENTER: Go celebra lo scheletro -->
+        <div class="go-canvas">
+          <div class="past">▾ Conversazione · 4 messaggi</div>
+          <div class="gc-block">
+            <div class="gc-av">五</div>
+            <div class="gc-body">
+              <div class="gc-who">Go</div>
+              <p class="gc-said">Ecco una bozza: <b>10 giorni dal 10 al 19 luglio</b>, quattro su Tokyo, tre nelle Alpi giapponesi, due a Kyoto, uno buffer.</p>
+              <p class="gc-sub">Clicca un giorno a sinistra per cominciare a riempirlo insieme. Oppure dimmi cosa cambiare nello scheletro — "meno Tokyo", "aggiungi Nara", come ti viene.</p>
+            </div>
+          </div>
+          <div class="gc-inp">
+            <div class="gc-inp-ta">rispondi a Go… ('meno Tokyo, due giorni a Nara')</div>
+            <div class="gc-inp-row">
+              <div class="hints">
+                <span class="hint">Va bene così</span>
+                <span class="hint">Più Kyoto</span>
+                <span class="hint">Aggiungi Nara</span>
+              </div>
+              <div class="snd pr">→</div>
+            </div>
+          </div>
+          <div class="canvas-exits">
+            <div class="exit-primary">Open day-by-day →</div>
+            <div class="exit-secondary">Apri sulla mappa</div>
+            <div class="exit-link">Salva e continua dopo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>L'header "All days":</strong> sostituisce "ITINERARY / Day by day / 10 days · Jul 10 → Jul 19" del componente esistente, perché tutta quella info è già nel card "Your trip" sopra. Tenerlo qui sarebbe ridondanza. Sopravvivono solo il label "ALL DAYS" + count, hairline thin.
+    </div>
+    <div class="note">
+      <strong>CTA Open day-by-day ora attivo (solid ink):</strong> lo scheletro è pronto, l'utente ha un viaggio reale. Può uscire qui se vuole, ma può anche restare nel canvas a riempire giorni con Go.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 4 NUDGE -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">4</span>
+      <span class="name">Nudge</span>
+      <span class="traj-mark">GO NARRATORE · 44px</span>
+      <span class="desc">Stesso layout dello Skeleton ma con prima proposta inline. <strong>Card proposta SOPRA, commento Go SOTTO</strong>: prima vedi l'oggetto, poi il commento.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="tbar">
+        <span class="tnm">GIAPPONE 2026</span>
+        <span class="sep">·</span>
+        <span class="pg">10 giorni · 0 attività</span>
+        <span class="stage">Iniziamo da Day 1</span>
+        <span class="saved">Auto-saved</span>
+      </div>
+
+      <div class="canvas-chipfill">
+        <!-- LEFT: stesso di Skeleton -->
+        <div>
+          <div class="yt-card">
+            <p class="yt-eye">YOUR TRIP</p>
+            <h3 class="yt-name">Giappone 2026</h3>
+            <p class="yt-sub">10 days · Jul 10 → Jul 19</p>
+            <div class="yt-fields">
+              <div class="yt-fld fl"><div class="ico">📍</div><div class="fb"><div class="lbl">Place</div><div class="yt-val">Giappone · 4 zone</div></div></div>
+              <div class="yt-fld fl"><div class="ico">📅</div><div class="fb"><div class="lbl">Dates</div><div class="yt-val">10 → 19 luglio</div></div></div>
+              <div class="yt-fld fl"><div class="ico">👥</div><div class="fb"><div class="lbl">Travelers</div><div class="yt-val">2 · couple</div></div></div>
+              <div class="yt-fld fl"><div class="ico">✨</div><div class="fb"><div class="lbl">Theme</div><div class="yt-val">foodie · low-walk · natura</div></div></div>
+            </div>
+          </div>
+          <div class="dl-bare">
+            <div class="dl-bare-h">ALL DAYS <span class="count">· 10</span></div>
+            <ul class="dl-list">
+              <li class="di"><div class="di-date"><span class="di-dow">FRI</span><span class="di-num">10</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Arrivo · Asakusa</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SAT</span><span class="di-num">11</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Yanaka · Ueno</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SUN</span><span class="di-num">12</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Marunouchi</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">MON</span><span class="di-num">13</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Shibuya</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">TUE</span><span class="di-num">14</span></div><div class="di-body"><div class="di-zone">Hakone</div><div class="di-place">Onsen · Fuji</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">WED</span><span class="di-num">15</span></div><div class="di-body"><div class="di-zone">Kamikochi</div><div class="di-place">Trekking</div></div><span class="di-arrow">›</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- CENTER: PROPOSTA prima, commento Go dopo -->
+        <div class="go-canvas">
+          <div class="past">▾ Conversazione · 5 messaggi</div>
+
+          <!-- PROPOSTA SOPRA -->
+          <div class="nudge-prop">
+            <div class="nudge-prop-img">浅</div>
+            <div>
+              <div class="nudge-prop-when">FRI 10 · 17:00 · Asakusa</div>
+              <div class="nudge-prop-nm">Passeggiata a Senso-ji al tramonto</div>
+              <div class="nudge-prop-ds">Tempio illuminato sull'asse di Nakamise-dori. Atmosfera quasi rituale, meno affollata della giornata. Camminata ~1.5 km, niente scale.</div>
+              <div class="nudge-prop-act">
+                <button class="np-add">Aggiungi a Day 1</button>
+                <button class="np-alt">Un'alternativa</button>
+                <button class="np-skip">Salta</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- GO COMMENTO SOTTO -->
+          <div class="gc-block">
+            <div class="gc-av">五</div>
+            <div class="gc-body">
+              <div class="gc-who">Go</div>
+              <p class="gc-said smaller">Per il primo giorno: <b>arrivate stanchi, vi propongo qualcosa di soft</b>. Senso-ji al tramonto, poi cena vicino — niente scale.</p>
+            </div>
+          </div>
+
+          <div class="gc-inp">
+            <div class="gc-inp-ta">rispondi a Go… ('aggiungi e vai a Day 2', 'in che ordine?')</div>
+            <div class="gc-inp-row">
+              <div class="hints">
+                <span class="hint">Aggiungi e continua</span>
+                <span class="hint">Più tranquillo</span>
+              </div>
+              <div class="snd pr">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>L'inversione semantica:</strong> proposta prima, Go dopo. È il pattern del <em>sommelier</em>: prima ti versa, poi spiega. L'utente vede subito l'oggetto della scelta (Senso-ji + foto + dettagli + bottoni), il commento di Go è la <em>cornice editoriale</em> che lo motiva. La frase Go è leggermente più piccola (19px serif italic) perché non è più il momento principale — l'oggetto sì.
+    </div>
+    <div class="note">
+      <strong>Differenza dallo Skeleton:</strong> stessa colonna sinistra, stesso DayList, ma niente CTA exit nel canvas centrale — qui siamo "dentro" la conversazione di proposte, non al momento dell'uscita. Le exit globali tornano nei prossimi turni o nel Day attivo (vedi stato 5).
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STATE 5 DAY ATTIVO -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="num">5</span>
+      <span class="name">Day attivo</span>
+      <span class="traj-mark">GO FLOAT · staccato</span>
+      <span class="desc">L'utente clicca Day 1. Il centro mostra il banner giorno (foto + meta, NO hotel ancora) + attività con proposta Go in linea come ghost dashed. <strong>Go si stacca dalla pagina</strong> e diventa pannello flottante in basso a destra.</span>
+    </div>
+    <div class="frame">
+      <div class="chrome">
+        <div class="brand"><div class="g">五</div><div class="w">Travel<b>Go</b></div></div>
+        <div class="nav"><span class="a">My trips</span><span>Explore</span><span>Yumeji</span></div>
+        <div class="right-meta"><span>Hi, Enrico</span><span>EN</span><div class="avatar-user">EN</div></div>
+      </div>
+      <div class="tbar">
+        <span class="tnm">GIAPPONE 2026</span>
+        <span class="sep">·</span>
+        <span class="pg">10 giorni · 1 attività</span>
+        <span class="stage">Riempiendo Day 1</span>
+        <span class="saved">Auto-saved</span>
+      </div>
+
+      <div class="canvas-day">
+        <!-- LEFT: Your trip + DayList con Day 1 attivo -->
+        <div>
+          <div class="yt-card">
+            <p class="yt-eye">YOUR TRIP</p>
+            <h3 class="yt-name">Giappone 2026</h3>
+            <p class="yt-sub">10 days · Jul 10 → Jul 19</p>
+            <div class="yt-fields">
+              <div class="yt-fld fl"><div class="ico">📍</div><div class="fb"><div class="lbl">Place</div><div class="yt-val">Giappone · 4 zone</div></div></div>
+              <div class="yt-fld fl"><div class="ico">📅</div><div class="fb"><div class="lbl">Dates</div><div class="yt-val">10 → 19 luglio</div></div></div>
+              <div class="yt-fld fl"><div class="ico">👥</div><div class="fb"><div class="lbl">Travelers</div><div class="yt-val">2 · couple</div></div></div>
+              <div class="yt-fld fl"><div class="ico">✨</div><div class="fb"><div class="lbl">Theme</div><div class="yt-val">foodie · low-walk · natura</div></div></div>
+            </div>
+          </div>
+          <div class="dl-bare">
+            <div class="dl-bare-h">ALL DAYS <span class="count">· 10</span></div>
+            <ul class="dl-list">
+              <li class="di act"><div class="di-date"><span class="di-dow">FRI</span><span class="di-num">10</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Arrivo · Asakusa</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SAT</span><span class="di-num">11</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Yanaka · Ueno</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SUN</span><span class="di-num">12</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Marunouchi</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">MON</span><span class="di-num">13</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Shibuya</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">TUE</span><span class="di-num">14</span></div><div class="di-body"><div class="di-zone">Hakone</div><div class="di-place">Onsen · Fuji</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">WED</span><span class="di-num">15</span></div><div class="di-body"><div class="di-zone">Kamikochi</div><div class="di-place">Trekking</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">THU</span><span class="di-num">16</span></div><div class="di-body"><div class="di-zone">Takayama</div><div class="di-place">Borgo</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">FRI</span><span class="di-num">17</span></div><div class="di-body"><div class="di-zone">Kyoto</div><div class="di-place">Gion</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SAT</span><span class="di-num">18</span></div><div class="di-body"><div class="di-zone">Kyoto</div><div class="di-place">Arashiyama</div></div><span class="di-arrow">›</span></li>
+              <li class="di"><div class="di-date"><span class="di-dow">SUN</span><span class="di-num">19</span></div><div class="di-body"><div class="di-zone">Tokyo</div><div class="di-place">Buffer</div></div><span class="di-arrow">›</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- CENTER: day banner + attività -->
+        <div style="min-width: 0;">
+          <!-- Banner senza hotel -->
+          <div class="day-banner">
+            <div class="day-banner-img">
+              <div class="day-banner-meta">
+                <div class="day-banner-eye">DAY 1 · TOKYO</div>
+                <h2 class="day-banner-title">Arrivo in Giappone!</h2>
+                <div class="day-banner-sub">FRI JUL 10 · 1 ACTIVITY · 1 SUGGERITA</div>
+              </div>
+            </div>
+            <div class="day-no-hotel">
+              <span>🏨</span>
+              <span>Nessun alloggio ancora · <span class="cta-add">+ aggiungi hotel</span></span>
+            </div>
+          </div>
+
+          <!-- Periodo afternoon con attività + suggerita -->
+          <div class="period">
+            <div class="period-head">
+              <span class="period-dot afternoon"></span>
+              <span class="period-name">Afternoon</span>
+              <span class="period-line"></span>
+              <span class="period-count">1 act · 1 sug</span>
+            </div>
+            <div class="act-cards">
+              <div class="act-card">
+                <div class="act-img">
+                  浅
+                  <span class="act-img-tm">17:00</span>
+                </div>
+                <div class="act-body">
+                  <h3 class="act-title">Senso-ji al tramonto</h3>
+                  <p class="act-desc">Tempio illuminato dorato sull'asse di Nakamise-dori. La sera è meno affollata e l'atmosfera diventa quasi rituale. Camminata totale ~1.5 km, niente scale.</p>
+                  <div class="act-foot">
+                    <span class="act-chip">📍 Map</span>
+                    <span class="act-chip">🚶 1.5 km</span>
+                  </div>
+                </div>
+                <span class="act-arrow">›</span>
+              </div>
+
+              <!-- Suggerita ghost (legata a Go float) -->
+              <div class="act-card sug">
+                <div class="act-img">
+                  麺
+                  <span class="act-img-tm">19:30</span>
+                </div>
+                <div class="act-body">
+                  <div class="sug-meta">Suggerita da Go · in attesa di conferma</div>
+                  <h3 class="act-title">Ramen da Yoroiya</h3>
+                  <p class="act-desc">10 min a piedi da Senso-ji, brodo leggero e chashu denso. Conferma dal pannello Go per aggiungerla.</p>
+                </div>
+                <span class="act-arrow">›</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="period">
+            <div class="period-head">
+              <span class="period-dot night"></span>
+              <span class="period-name">Night</span>
+              <span class="period-line"></span>
+              <span class="period-count">0 acts</span>
+            </div>
+            <div class="add-act-row">
+              <span style="font-size: 16px;">+</span>
+              <span>Niente serale ancora · <b>chiedi a Go</b> o aggiungi a mano</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GO FLOAT — staccato dalla pagina -->
+        <div class="go-float">
+          <div class="gf-head">
+            <div class="gf-av">五</div>
+            <span class="gf-who">Go</span>
+            <span class="gf-status">listening</span>
+            <span class="gf-minimize">─</span>
+          </div>
+
+          <div class="gf-context">
+            <span>←</span>
+            <span>Proposta visibile come bozza a sinistra · Day 1, 19:30</span>
+          </div>
+
+          <div class="gf-turn">
+            <p class="gf-said">"Senso-ji" è dentro · <b>17:00</b>. Per cena vi propongo <b>Ramen da Yoroiya</b>, 10 min a piedi. La trovi a sinistra in bozza — conferma qui o salta.</p>
+          </div>
+
+          <div class="gf-inp">
+            <div class="gf-inp-ta">scrivi a Go…</div>
+            <div class="gf-inp-row">
+              <div class="hints">
+                <span class="gf-hint">Aggiungi</span>
+                <span class="gf-hint">Alternativa</span>
+              </div>
+              <div class="snd pr">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Go diventa pannello flottante:</strong> shadow-float (vostro token esistente), bottom-right 24px, larghezza 360px. È lo <em>stesso componente</em> che già avete in <code>/explore</code> e che vivrà in <code>/trips/[id]</code>. Da qui in avanti, Go ha sempre questa forma. La pagina (Your trip sinistra + Day detail centro) <strong>è già la trip page</strong>: quando l'utente esce in day-by-day non vede cambiare nulla, solo Go che si "ricolloca".
+    </div>
+    <div class="note">
+      <strong>Banner senza hotel:</strong> foto + meta giorno come da app esistente, ma il footer scuro hotel è sostituito da una strip dashed "Nessun alloggio ancora · + aggiungi hotel". Sarà Go a proporne uno, o l'utente a inserirlo da mano. Il pattern <em>placeholder con cta inline</em> è coerente con il vostro stile (vedi il "Niente serale ancora").
+    </div>
+    <div class="note">
+      <strong>Doppia visibilità della suggerita:</strong> "Ramen da Yoroiya" appare contemporaneamente come card ghost dashed nel periodo Afternoon a sinistra-centro (con foto, orario, "Suggerita da Go · in attesa di conferma"), e come testo nella conversazione del pannello float a destra. La strip arancione-soft "Proposta visibile come bozza a sinistra · Day 1, 19:30" dentro il float è il tracciamento esplicito tra le due. Cliccando Aggiungi nel float (o sulla ghost stessa), si solidifica.
+    </div>
+    <div class="note">
+      <strong>Pannello Go minimizzabile:</strong> il piccolo "─" in alto a destra del float lo collassa a una pill flottante che mostra solo l'avatar 五 con alone. L'utente lo riapre con un click. Questo per quando vuole concentrarsi sul viaggio a sinistra senza il pannello aperto. Stesso pattern del vostro Go esistente.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ STRATEGIC NOTES -->
+  <div class="state-block">
+    <div class="state-label">
+      <span class="name">Note strategiche e prossimi passi</span>
+    </div>
+
+    <div class="note">
+      <strong>La traiettoria del Go avatar completa:</strong> 60px (Blank, hero) → 44px (Chip-fill / Laconico / Skeleton / Nudge, narratore) → 30px (Day attivo, float consigliere) → 24px (minimizzato, presente ma silenzioso). Quattro tagli che traducono il ruolo. <strong>Il passaggio chiave è da Skeleton/Nudge a Day attivo</strong>: Go esce dal canvas e si <em>stacca</em>. È il momento più importante perché è qui che il viaggio diventa "vero" (banner foto, attività con orari) e Go cede il palcoscenico al viaggio stesso.
+    </div>
+
+    <div class="note">
+      <strong>Convergenza con /trips/[id]:</strong> il layout dello Stato 5 è già il layout della trip page esistente. Quando l'utente clicca "Open day-by-day", non c'è cambio di pagina percepibile — solo l'esistenza di Go nel float che resta dov'è. Questo elimina il salto brutale che oggi rompeva il flusso.
+    </div>
+
+    <div class="note">
+      <strong>Punti ancora aperti:</strong>
+      <br>• <strong>Modalità Mappa</strong> — Go float resta, il centro diventa mappa con pin per giorno/attività. Da disegnare nella prossima sessione.
+      <br>• <strong>Mobile</strong> — single column con DayList compatto orizzontale come strip + Day banner + attività verticali + Go bottom-sheet espandibile come Apple Maps drawer. Da disegnare.
+      <br>• <strong>Editing diretto dei chip "Your trip"</strong> — popover ancorato che si apre cliccando il singolo chip (Place / Dates / Travelers / Theme). Date = picker structured, gli altri = input NL con suggerimenti. Da specificare.
+      <br>• <strong>Transizione Skeleton → Nudge → Day attivo</strong> — quale gesto la attiva? Click su un day item probabilmente, ma possiamo discutere se Go la propone automaticamente ("Iniziamo da Day 1?") o se aspetta l'utente.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

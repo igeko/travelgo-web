@@ -51,6 +51,16 @@ export function chatTools(opts: ChatToolsOptions): Promise<ChatToolsResult> {
   return adapter().chatTools(opts);
 }
 
+/**
+ * Like `chatTools`, but on an explicitly chosen provider rather than the
+ * env-selected one. For side-by-side model comparison (dev surfaces) — keeps
+ * the adapter selection inside the LLM layer instead of leaking SDK choices
+ * to call sites.
+ */
+export function chatToolsWith(provider: LlmProvider, opts: ChatToolsOptions): Promise<ChatToolsResult> {
+  return (provider === "gemini" ? geminiAdapter : openaiAdapter).chatTools(opts);
+}
+
 export type {
   ChatGroundedOptions,
   ChatJsonOptions,

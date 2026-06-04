@@ -11,16 +11,35 @@
  */
 
 import type React from "react";
+import { PlaceMention } from "./PlaceMention";
 
-/** Inline: bold, italic. */
-function renderInline(s: string): React.ReactNode[] {
+/** A place/activity Go tagged with `[[place:Name]]` for the user to act on. */
+const PLACE_RE = /\[\[place:([^\]]+)\]\]/g;
+
+/** Inline: bold, italic (within a non-macro text fragment). */
+function renderEmphasis(s: string, keyBase: string): React.ReactNode[] {
   const parts = s.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**"))
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+      return <strong key={`${keyBase}-${i}`}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("*") && part.endsWith("*"))
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    return part;
+      return <em key={`${keyBase}-${i}`}>{part.slice(1, -1)}</em>;
+    return <span key={`${keyBase}-${i}`}>{part}</span>;
+  });
+}
+
+/** Inline: place mentions first, then emphasis inside the plain fragments. */
+function renderInline(s: string, onPlaceInfo?: (name: string) => void): React.ReactNode[] {
+  const segments = s.split(PLACE_RE);
+  // String.split with one capture group alternates: [text, name, text, name, …].
+  return segments.flatMap((seg, i) => {
+    if (i % 2 === 1) {
+      const name = seg.trim();
+      return [
+        <PlaceMention key={`pm-${i}`} name={name} onInfo={onPlaceInfo ? () => onPlaceInfo(name) : undefined} />,
+      ];
+    }
+    return seg ? renderEmphasis(seg, `e${i}`) : [];
   });
 }
 
@@ -94,9 +113,11 @@ const H_STYLE: Record<1 | 2 | 3, React.CSSProperties> = {
   3: { fontSize: 13, fontWeight: 600, marginBottom: 2, color: "var(--color-ink-soft)", textTransform: "uppercase", letterSpacing: "0.06em" },
 };
 
-export function RichText({ text, streaming = false, className, style }: {
+export function RichText({ text, streaming = false, onPlaceInfo, className, style }: {
   text: string;
   streaming?: boolean;
+  /** Called when the user picks "Mostra info" on a [[place:…]] mention. */
+  onPlaceInfo?: (name: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -118,7 +139,7 @@ export function RichText({ text, streaming = false, className, style }: {
         if (block.kind === "h") {
           return (
             <div key={i} style={{ ...H_STYLE[block.level], marginTop: mt }}>
-              {renderInline(block.text)}
+              {renderInline(block.text, onPlaceInfo)}
             </div>
           );
         }
@@ -126,7 +147,7 @@ export function RichText({ text, streaming = false, className, style }: {
           return (
             <ul key={i} style={{ margin: `${mt}px 0 0`, padding: "0 0 0 18px", display: "flex", flexDirection: "column", gap: 4, listStyleType: "disc" }}>
               {block.items.map((item, j) => (
-                <li key={j} style={{ lineHeight: 1.55, paddingLeft: 2 }}>{renderInline(item)}</li>
+                <li key={j} style={{ lineHeight: 1.55, paddingLeft: 2 }}>{renderInline(item, onPlaceInfo)}</li>
               ))}
             </ul>
           );
@@ -135,13 +156,13 @@ export function RichText({ text, streaming = false, className, style }: {
           return (
             <ol key={i} style={{ margin: `${mt}px 0 0`, padding: "0 0 0 20px", display: "flex", flexDirection: "column", gap: 4, listStyleType: "decimal" }}>
               {block.items.map((item, j) => (
-                <li key={j} style={{ lineHeight: 1.55, paddingLeft: 2 }}>{renderInline(item)}</li>
+                <li key={j} style={{ lineHeight: 1.55, paddingLeft: 2 }}>{renderInline(item, onPlaceInfo)}</li>
               ))}
             </ol>
           );
         }
         return (
-          <p key={i} style={{ margin: `${mt}px 0 0` }}>{renderInline(block.text)}</p>
+          <p key={i} style={{ margin: `${mt}px 0 0` }}>{renderInline(block.text, onPlaceInfo)}</p>
         );
       })}
     </div>

@@ -465,6 +465,7 @@
     "createOne": "Creane uno",
     "createTrip": "Crea viaggio",
     "deleteTrip": "Elimina viaggio",
+    "editWithGo": "Modifica con Go",
     "deleteConfirm": "Eliminare \"{name}\"? Rimuove definitivamente il viaggio con tutti i giorni e le attività."
   },
   "InstancePopover": {

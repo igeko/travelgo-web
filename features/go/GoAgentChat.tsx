@@ -22,8 +22,8 @@ import { publishLlmDebug } from "@/lib/debug/llmDebug";
 import { GoAvatar } from "@/features/ai-suggest/GoAvatar";
 import { RichText } from "./RichText";
 import { ActivityCard, type ActivityCardData } from "./ActivityCard";
-import { IconArrowUp, IconSparkles, IconCheck, IconX } from "@/components/ui/icons";
-import type { GoPendingAction } from "@/lib/client/go";
+import { IconArrowUp, IconSparkles, IconCheck } from "@/components/ui/icons";
+import type { GoPendingAction, GoAgentResult } from "@/lib/client/go";
 
 type ActItem = { day?: number; title?: string; slot?: string; time?: string; category?: string; description?: string };
 
@@ -36,6 +36,9 @@ type Turn = {
   pending?: GoPendingAction[];
   /** Resolution of the pending actions, once the user decides. */
   resolved?: "applied" | "cancelled";
+  /** Rehydrated from saved history (reload) → the proposal is historical, so
+   *  its cards are view-only (no add/confirm actions to re-trigger). */
+  hydrated?: boolean;
 };
 
 /** Starter affordances shown in the Blank input (design trips-new-v5). */
@@ -44,17 +47,25 @@ const HINTS = ["una città", "un weekend", "un long-haul"];
 export function GoAgentChat({
   ensureTripId,
   onTurnComplete,
+  onResult,
   initialTurns,
   selectedDay,
+  existingKeys,
   className,
 }: {
   ensureTripId: () => Promise<string>;
   onTurnComplete?: () => void;
+  /** Raw result of each completed turn — for dev/debug surfaces (model, usage…). */
+  onResult?: (res: GoAgentResult) => void;
   /** Saved conversation to hydrate on reload (loaded by the host), including
    *  any confirm-gated proposals so the widgets/cards come back. */
   initialTurns?: { role: "user" | "assistant"; content: string; pending?: GoPendingAction[] }[];
   /** Currently selected day number (from the DayRail), or null. */
   selectedDay?: number | null;
+  /** Signatures (`${dayNumber}:${title}`) of activities already on the trip, so
+   *  a proposed card shows "Aggiunta" instead of re-proposing — survives reload
+   *  because it's derived from the trip, not from ephemeral click state. */
+  existingKeys?: Set<string>;
   className?: string;
 }) {
   const [debug] = useDebugMode();
@@ -67,13 +78,20 @@ export function GoAgentChat({
   const [yumeKeys, setYumeKeys] = useState<Set<string>>(new Set());
   const [yumeBusyKey, setYumeBusyKey] = useState<string | null>(null);
   const [infoCards, setInfoCards] = useState<{ id: string; title: string }[]>([]);
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const tripIdRef = useRef<string | null>(null);
+
+  const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+  /** A proposed activity is "added" if the trip already has it on that day. */
+  const isOnTrip = (dayNum: number | null | undefined, title: string | undefined) =>
+    dayNum != null && !!title && (existingKeys?.has(`${dayNum}:${title.trim().toLowerCase()}`) ?? false);
 
   // Hydrate once from saved history (arrives async); never clobber a live thread.
   useEffect(() => {
     if (initialTurns && initialTurns.length > 0) {
-      setTurns((prev) => (prev.length === 0 ? initialTurns.map((t) => ({ id: crypto.randomUUID(), ...t })) : prev));
+      setTurns((prev) => (prev.length === 0 ? initialTurns.map((t) => ({ id: crypto.randomUUID(), hydrated: true, ...t })) : prev));
     }
   }, [initialTurns]);
 
@@ -86,8 +104,8 @@ export function GoAgentChat({
     const t0 = Date.now();
     try {
       const tripId = await ensureTripId();
-      tripIdRef.current = tripId;
       const res = await api.go.agent({ tripId, message: text, selectedDay, debug });
+      onResult?.(res);
       setTurns((prev) => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -123,40 +141,40 @@ export function GoAgentChat({
 
   // Confirm the proposed writes for a turn: apply each, then refetch.
   const confirmTurn = async (turn: Turn) => {
-    const tripId = tripIdRef.current;
-    if (!tripId || !turn.pending || applying) return;
+    if (!turn.pending || applying) return;
     setApplying(true);
+    setActionError(null);
     try {
+      const tripId = await ensureTripId();
       for (const action of turn.pending) {
         await api.go.agentApply(tripId, { name: action.name, arguments: action.arguments });
       }
       setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, resolved: "applied" } : t)));
       onTurnComplete?.();
-    } catch {
-      // leave pending so the user can retry
+    } catch (e) {
+      // Leave pending so the user can retry — but surface why it failed.
+      setActionError(`Non sono riuscito ad applicare la proposta: ${errMsg(e)}`);
     } finally {
       setApplying(false);
     }
   };
 
-  const cancelTurn = (turn: Turn) => {
-    setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, resolved: "cancelled" } : t)));
-  };
 
   // Add one proposed activity to a specific day (per-card flow).
   const addOne = async (key: string, item: ActItem, day: number) => {
-    const tripId = tripIdRef.current;
-    if (!tripId || busyKey) return;
+    if (busyKey) return;
     setBusyKey(key);
+    setActionError(null);
     try {
+      const tripId = await ensureTripId();
       await api.go.agentApply(tripId, {
         name: "addActivities",
         arguments: { items: [{ ...item, day }] },
       });
       setAddedKeys((prev) => new Set(prev).add(key));
       onTurnComplete?.();
-    } catch {
-      // leave un-added so the user can retry
+    } catch (e) {
+      setActionError(`Non sono riuscito ad aggiungere «${item.title ?? "attività"}»: ${errMsg(e)}`);
     } finally {
       setBusyKey(null);
     }
@@ -173,11 +191,12 @@ export function GoAgentChat({
   const saveYume = async (key: string, item: ActItem) => {
     if (yumeBusyKey) return;
     setYumeBusyKey(key);
+    setActionError(null);
     try {
       await api.yumes.create({ title: item.title, short_desc: item.description, category: item.category });
       setYumeKeys((prev) => new Set(prev).add(key));
-    } catch {
-      // leave unsaved so the user can retry
+    } catch (e) {
+      setActionError(`Non sono riuscito a salvare «${item.title ?? "attività"}» in Yumeji: ${errMsg(e)}`);
     } finally {
       setYumeBusyKey(null);
     }
@@ -270,7 +289,12 @@ export function GoAgentChat({
                           <div key={ai} className="flex flex-col gap-2">
                             {((a.arguments.items as ActItem[] | undefined) ?? []).map((it, ii) => {
                               const key = `${t.id}:${ai}:${ii}`;
-                              const dayNum = selectedDay ?? it.day;
+                              if (dismissedKeys.has(key)) return null;
+                              // Each proposed item carries the day the model chose
+                              // (a multi-day proposal spans several days), so it
+                              // wins; the selected day is only a fallback for items
+                              // with no day of their own.
+                              const dayNum = it.day ?? selectedDay ?? undefined;
                               const data: ActivityCardData = {
                                 title: it.title ?? "—",
                                 category: it.category,
@@ -284,12 +308,13 @@ export function GoAgentChat({
                                   key={ii}
                                   data={data}
                                   addLabel={dayNum != null ? `Aggiungi a g${dayNum}` : "Aggiungi"}
-                                  onAdd={dayNum != null ? () => void addOne(key, it, dayNum) : undefined}
-                                  added={addedKeys.has(key)}
+                                  onAdd={!t.hydrated && dayNum != null ? () => void addOne(key, it, dayNum) : undefined}
+                                  added={addedKeys.has(key) || isOnTrip(dayNum, it.title)}
                                   adding={busyKey === key}
-                                  onYumeji={() => void saveYume(key, it)}
+                                  onYumeji={!t.hydrated ? () => void saveYume(key, it) : undefined}
                                   yumeSaved={yumeKeys.has(key)}
                                   yumeSaving={yumeBusyKey === key}
+                                  onDismiss={() => setDismissedKeys((prev) => new Set(prev).add(key))}
                                 />
                               );
                             })}
@@ -299,30 +324,22 @@ export function GoAgentChat({
                         )
                       ))}
 
-                      {!t.resolved && (
+                      {/* Only block proposals (e.g. legs, edits) need a confirm.
+                          No cancel button — the user just ignores it or tells Go
+                          otherwise; activity cards carry their own per-card add.
+                          Hydrated (historical) proposals are view-only. */}
+                      {!t.resolved && !t.hydrated && hasBlock && (
                         <div className="flex gap-2 mt-0.5">
-                          {hasBlock && (
-                            <button
-                              type="button"
-                              onClick={() => void confirmTurn(t)}
-                              disabled={applying}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini font-medium border-0 transition-colors",
-                                applying ? "bg-surface-soft text-ink-faint cursor-default" : "bg-ink text-white hover:bg-ink-hover cursor-pointer",
-                              )}
-                            >
-                              <IconCheck size={14} /> {applying ? "Applico…" : "Conferma"}
-                            </button>
-                          )}
-                          {/* Block proposals can be cancelled; activity card sets
-                              are just dismissed (the cards remain in the thread). */}
                           <button
                             type="button"
-                            onClick={() => cancelTurn(t)}
+                            onClick={() => void confirmTurn(t)}
                             disabled={applying}
-                            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini text-ink-soft border border-border-strong bg-transparent hover:bg-surface-soft cursor-pointer transition-colors"
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-mini font-medium border-0 transition-colors",
+                              applying ? "bg-surface-soft text-ink-faint cursor-default" : "bg-ink text-white hover:bg-ink-hover cursor-pointer",
+                            )}
                           >
-                            <IconX size={14} /> {hasBlock ? "Annulla" : "Chiudi"}
+                            <IconCheck size={14} /> {applying ? "Applico…" : "Conferma"}
                           </button>
                         </div>
                       )}
@@ -360,12 +377,13 @@ export function GoAgentChat({
                 autoOpenInfo
                 addLabel={selectedDay != null ? `Aggiungi a g${selectedDay}` : undefined}
                 onAdd={selectedDay != null ? () => void addOne(key, item, selectedDay) : undefined}
-                added={addedKeys.has(key)}
+                added={addedKeys.has(key) || isOnTrip(selectedDay, c.title)}
                 adding={busyKey === key}
                 addHint={selectedDay == null ? "Seleziona un giorno per aggiungerlo all'itinerario" : undefined}
                 onYumeji={() => void saveYume(key, item)}
                 yumeSaved={yumeKeys.has(key)}
                 yumeSaving={yumeBusyKey === key}
+                onDismiss={() => setInfoCards((prev) => prev.filter((x) => x.id !== c.id))}
               />
             </div>
           );
@@ -374,6 +392,20 @@ export function GoAgentChat({
         {loading && <div className="font-serif italic text-ink-faint text-meta">Go sta pensando…</div>}
         <div ref={bottomRef} />
       </div>
+
+      {actionError && (
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2 text-mini text-danger-fg">
+          <span className="flex-1">{actionError}</span>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="shrink-0 text-danger-fg/70 hover:text-danger-fg border-0 bg-transparent cursor-pointer"
+            aria-label="Chiudi"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <form
         onSubmit={(e) => { e.preventDefault(); void send(); }}

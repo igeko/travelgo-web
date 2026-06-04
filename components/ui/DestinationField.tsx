@@ -153,6 +153,7 @@ export function DestinationField(props: DestinationFieldProps) {
   return (
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
       <SoftField
+        variant="inline"
         value={inputText}
         onChange={(text) =>
           handleInputChange(text, () => {
@@ -164,6 +165,22 @@ export function DestinationField(props: DestinationFieldProps) {
         labelAlwaysVisible={labelAlwaysVisible}
         disabled={isDisabled}
         autoComplete="off"
+        icon={
+          chips.length > 0 ? (
+            <span className="flex items-center gap-1.5 flex-wrap">
+              {chips.map((chip) => (
+                <Chip
+                  key={chip.placeId}
+                  label={chip.name || chip.formatted}
+                  onRemove={() => removeChip(chip.placeId)}
+                  disabled={isDisabled}
+                />
+              ))}
+            </span>
+          ) : (
+            <IconMapPin className={cn("transition-opacity duration-150", isLoading && "opacity-40")} />
+          )
+        }
         inputProps={{
           autoFocus,
           onKeyDown: (e) => handleKeyDown(e, handleSelect),
@@ -172,29 +189,7 @@ export function DestinationField(props: DestinationFieldProps) {
           "aria-controls": isOpen ? listboxId : undefined,
           "aria-expanded": isOpen,
         }}
-      >
-        {/* Chips + pin prefix */}
-        <SoftField.Prefix>
-          <span className="flex items-center gap-1.5 flex-wrap">
-            {chips.map((chip) => (
-              <Chip
-                key={chip.placeId}
-                label={chip.name || chip.formatted}
-                onRemove={() => removeChip(chip.placeId)}
-                disabled={isDisabled}
-              />
-            ))}
-            {chips.length === 0 && (
-              <IconMapPin
-                className={cn(
-                  "size-3.5 shrink-0 transition-opacity duration-150",
-                  isLoading ? "opacity-40" : "text-ink-faint",
-                )}
-              />
-            )}
-          </span>
-        </SoftField.Prefix>
-      </SoftField>
+      />
 
       {/* Dropdown */}
       {isOpen && suggestions.length > 0 && (

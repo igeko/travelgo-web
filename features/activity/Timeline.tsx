@@ -611,7 +611,7 @@ export function Timeline({ dayId, tripId, initialBlocks, editMode = false, hideS
   const slotGroups = useMemo(() => {
     const groups: Record<SlotKey, Block[]> = { morning: [], afternoon: [], evening: [], night: [] };
     for (const b of blocks) {
-      const slot = (b.slot as SlotKey) ?? "morning";
+      const slot: SlotKey = SLOT_ORDER.includes(b.slot as SlotKey) ? (b.slot as SlotKey) : "morning";
       groups[slot].push(b);
     }
     // Within each slot: sort by time ascending; fuzzy/no-time blocks go last,
