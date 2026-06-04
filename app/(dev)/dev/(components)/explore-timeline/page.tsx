@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import type { TripSnapshot } from "@/lib/dal";
 import { Timeline } from "@/features/explore/Timeline";
+import { resolveAccommodations } from "@/features/explore/resolveAccommodations";
 import { StatePicker } from "../_components/StatePicker";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -48,7 +49,9 @@ export default function ExploreTimelineSandboxPage() {
     load(JAPAN_2026);
   }, [load]);
 
-  const days = source === "mock" ? MOCK_DAYS : (snapshot?.days ?? []);
+  const days = resolveAccommodations(
+    source === "mock" ? MOCK_DAYS : (snapshot?.days ?? []),
+  );
   const totalActs = days.reduce((n, d) => n + d.activities.length, 0);
 
   return (

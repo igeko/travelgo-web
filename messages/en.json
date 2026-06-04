@@ -9,7 +9,8 @@
     "nightRoute": "Night route",
     "day": "Day {n}",
     "days": "Days {from}–{to}",
-    "openLink": "Open link"
+    "openLink": "Open link",
+    "nightOfStay": "Night {index} of {total}"
   },
   "ExploreCategories": {
     "dormi": "Sleep",

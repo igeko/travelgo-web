@@ -40,6 +40,7 @@ export type Day = {
   accommodation_place_id: string | null;
   accommodation_lat: number | null;
   accommodation_lng: number | null;
+  use_previous_accommodation: boolean;
   show_map: boolean;
   notes: string | null;
   summary: string | null;

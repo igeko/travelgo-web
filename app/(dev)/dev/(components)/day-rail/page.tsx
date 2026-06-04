@@ -21,6 +21,7 @@ function mkDay(n: number, date: string, city: string | null, label: string | nul
     accommodation_place_id: null,
     accommodation_lat: null,
     accommodation_lng: null,
+    use_previous_accommodation: false,
     show_map: false,
     notes: null,
     summary: null,

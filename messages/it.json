@@ -9,7 +9,8 @@
     "nightRoute": "Percorso notti",
     "day": "Giorno {n}",
     "days": "Giorni {from}–{to}",
-    "openLink": "Apri link"
+    "openLink": "Apri link",
+    "nightOfStay": "Notte {index} di {total}"
   },
   "ExploreCategories": {
     "dormi": "Dormi",

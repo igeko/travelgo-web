@@ -22,17 +22,46 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { Fragment, useState } from "react";
+import { type ComponentType, Fragment, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
-import { IconMapPin } from "@/components/ui/icons";
+import {
+  IconBed,
+  IconBuildingCottage,
+  IconHome,
+  IconMapPin,
+  IconTent,
+} from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
 import { DayBadge } from "./TimelineDay";
 import { ActivityStop } from "./ActivityStop";
 import { FuzzyStop } from "./FuzzyStop";
 import { Transfer, type TransferLeg, type TransferStep } from "./Transfer";
+import type { AccommodationDisplay } from "./resolveAccommodations";
 
-export type TimelineDayData = Day & { activities: Activity[] };
+export type TimelineDayData = Day & {
+  activities: Activity[];
+  /** Derived by resolveAccommodations from the legacy days.accommodation_*
+   *  columns. Null when the day has no lodging (e.g. overnight flight). */
+  accommodation?: AccommodationDisplay | null;
+};
+
+type IconCmp = ComponentType<{ size?: number; className?: string }>;
+
+/** Type → icon mapping for the accommodation stop badge. */
+function accommodationIcon(type: string | null): IconCmp {
+  switch (type) {
+    case "campground":
+      return IconTent;
+    case "apartment":
+      return IconHome;
+    case "ryokan":
+      return IconBuildingCottage;
+    default:
+      return IconBed;
+  }
+}
 
 type Props = {
   days: TimelineDayData[];
@@ -100,17 +129,46 @@ function bridgeTransfer(b: BridgeData): TransferVM {
 /* ── Item model ─────────────────────────────────────────────────── */
 
 type Item =
-  | { kind: "activity"; activity: Activity }
+  | { kind: "activity"; activity: Activity; accent?: "ink" | "primary" }
+  | {
+      kind: "lodging";
+      id: string;
+      title: string;
+      icon: IconCmp;
+      address: string | null;
+      nightIndex: number;
+      nightsTotal: number;
+    }
   | { kind: "transfer"; id: string; transfer: TransferVM };
 
 /** Build the visible row sequence for a day. When collapsed, fuzzy stops
- *  are dropped; transfers are derived between the *visible* stops. */
-function buildItems(acts: Activity[], expanded: boolean, injectSample: boolean): Item[] {
+ *  are dropped; transfers are derived between the *visible* stops. The
+ *  accommodation (when present) is inserted as the first item — primary
+ *  accent — matching the Figma "Hotel Tavinos Asakusa" row. */
+function buildItems(
+  acts: Activity[],
+  accommodation: AccommodationDisplay | null | undefined,
+  expanded: boolean,
+  injectSample: boolean,
+): Item[] {
+  const items: Item[] = [];
+
+  if (accommodation) {
+    items.push({
+      kind: "lodging",
+      id: `lodging-${accommodation.place_id ?? accommodation.name}`,
+      title: accommodation.name,
+      icon: accommodationIcon(accommodation.type),
+      address: accommodation.address,
+      nightIndex: accommodation.night_index,
+      nightsTotal: accommodation.nights_total,
+    });
+  }
+
   const visible = [...acts]
     .sort((a, b) => a.position - b.position)
     .filter((a) => expanded || a.fuzzy !== true);
 
-  const items: Item[] = [];
   visible.forEach((activity, i) => {
     items.push({ kind: "activity", activity });
     const last = i === visible.length - 1;
@@ -130,6 +188,7 @@ function buildItems(acts: Activity[], expanded: boolean, injectSample: boolean):
 /* ── Timeline ───────────────────────────────────────────────────── */
 
 export function Timeline({ days, injectSampleTransfers = false, className }: Props) {
+  const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [hoverDay, setHoverDay] = useState<string | null>(null);
@@ -154,15 +213,19 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
         // Times follow the TimelineDay states: hidden by default, revealed
         // when the day's spine is hovered, kept while the day is expanded.
         const showTimes = expanded || hoverDay === day.id;
-        const items = buildItems(day.activities, expanded, injectSampleTransfers);
+        const items = buildItems(day.activities, day.accommodation, expanded, injectSampleTransfers);
         const isFirst = dayIdx === 0;
         const showNotes = expanded && !!day.notes;
         const spineHover = {
           onMouseEnter: () => setHoverDay(day.id),
           onMouseLeave: () => setHoverDay((c) => (c === day.id ? null : c)),
         };
-        // Rows: 1 = badge/header · 2..N+1 = items · (N+2 = notes when shown)
-        const lastRow = items.length + 1 + (showNotes ? 1 : 0);
+        // The lodging item, when present, shares row 1 with the DayBadge (col 2)
+        // so the icon badge's top edge lines up with the DayBadge's top stripe.
+        // All other items shift one row up.
+        const lodgingFirst = items[0]?.kind === "lodging";
+        // Rows: 1 = badge (+ lodging when present) · 2..N+(0|1) = items · last = notes
+        const lastRow = items.length + (lodgingFirst ? 0 : 1) + (showNotes ? 1 : 0);
 
         return (
           <div
@@ -197,14 +260,6 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
             </button>
 
-            {/* Day header (city) — col 2, row 1 */}
-            <div
-              style={{ gridColumn: 2, gridRow: 1 }}
-              className="flex h-[43px] items-center text-mini font-medium text-ink-soft"
-            >
-              {day.city ?? ""}
-            </div>
-
             {/* Expanded day — faint city/landscape backdrop behind the stops.
                 Rendered before the content cells so they paint on top (all are
                 non-positioned grid items → DOM order = paint order). */}
@@ -225,9 +280,11 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               />
             ) : null}
 
-            {/* Items: time on the rail (col 1) + stop/transfer (col 2), same row */}
+            {/* Items: time on the rail (col 1) + stop/transfer (col 2), same row.
+                When lodging is the first item it occupies row 1 alongside the
+                DayBadge — every other item then shifts one row up. */}
             {items.map((item, i) => {
-              const row = i + 2;
+              const row = lodgingFirst ? i + 1 : i + 2;
               if (item.kind === "transfer") {
                 const open = openId === item.id;
                 return (
@@ -244,6 +301,39 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
                       steps={item.transfer.steps}
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
+                    />
+                  </div>
+                );
+              }
+
+              if (item.kind === "lodging") {
+                const open = openId === item.id;
+                const description =
+                  item.nightsTotal > 1
+                    ? t("nightOfStay", {
+                        index: item.nightIndex + 1,
+                        total: item.nightsTotal,
+                      })
+                    : item.address;
+                // -mt-1.5 (6px) lifts the row so the icon badge's top edge sits
+                // exactly on the DayBadge's primary stripe: 2px of outer py-0.5
+                // + 4px of ActivityStop's inner py-1 = 6px to compensate.
+                return (
+                  <div
+                    key={item.id}
+                    style={{ gridColumn: 2, gridRow: row }}
+                    className="-mt-1.5 py-0.5 self-start"
+                  >
+                    <ActivityStop
+                      title={item.title}
+                      icon={item.icon}
+                      accent="primary"
+                      state={open ? "open" : "default"}
+                      mode="sleep"
+                      description={description ?? undefined}
+                      onOpen={() => setOpenId(item.id)}
+                      onClose={() => setOpenId(null)}
+                      onRemove={() => setOpenId(null)}
                     />
                   </div>
                 );

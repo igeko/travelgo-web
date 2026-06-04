@@ -36,6 +36,7 @@ import { ArrivalDeparture, type ActivityTime } from "./ArrivalDeparture";
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
 
 export type ActivityStopState = "default" | "hover" | "selected" | "open";
+export type ActivityStopAccent = "ink" | "primary";
 export type LodgingMode = "sleep" | "stop";
 
 export type { ActivityTime };
@@ -49,6 +50,7 @@ export function ActivityStop({
   title,
   icon = IconBed,
   state = "default",
+  accent = "ink",
   mode = "sleep",
   onModeChange,
   nights = 2,
@@ -69,6 +71,9 @@ export function ActivityStop({
   title: string;
   icon?: IconCmp;
   state?: ActivityStopState;
+  /** Collapsed badge tone. "primary" paints the icon badge orange (used
+   *  for accommodation rows in the Explore timeline). */
+  accent?: ActivityStopAccent;
   mode?: LodgingMode;
   onModeChange?: (mode: LodgingMode) => void;
   nights?: number;
@@ -94,26 +99,39 @@ export function ActivityStop({
   if (state !== "open") {
     const selected = state === "selected";
     const Wrapper = onOpen ? "button" : "div";
+    // `state === "hover"` keeps the explicit demo state working in the
+    // sandbox; the `hover:` / `group-hover:` pair adds the native pointer
+    // affordance inside Timeline, where the parent doesn't track hover.
+    const interactive = !!onOpen && !selected;
     return (
       <Wrapper
         type={onOpen ? "button" : undefined}
         onClick={onOpen}
         className={cn(
-          "flex min-h-8 w-full items-center justify-between gap-3 rounded-sm py-1 pr-3.5 pl-1",
+          "group flex min-h-8 w-full items-center justify-between gap-3 rounded-sm py-1 pr-3.5 pl-1",
           onOpen && "cursor-pointer",
           state === "hover" && "bg-surface-soft",
+          interactive && "hover:bg-surface-soft focus-visible:bg-surface-soft",
           selected && "bg-ink",
           className,
         )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2">
-          <StopIconBadge icon={icon} tone={selected ? "primary" : "ink"} />
+          <StopIconBadge icon={icon} tone={selected || accent === "primary" ? "primary" : "ink"} />
           <span className={cn("truncate text-[14px]", selected ? "text-white" : "text-ink")}>
             {title}
           </span>
         </span>
-        {state === "hover" ? (
-          <IconGripVertical size={16} className="shrink-0 text-ink-faint" />
+        {!selected ? (
+          <IconGripVertical
+            size={16}
+            className={cn(
+              "shrink-0 text-ink-faint transition-opacity",
+              state === "hover"
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+            )}
+          />
         ) : null}
       </Wrapper>
     );
