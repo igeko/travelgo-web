@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { ActivityStop, type ActivityStopState, type LodgingMode } from "@/features/explore/ActivityStop";
 import { IconCar } from "@/components/ui/icons";
+import { cn } from "@/lib/cn";
 import { StatePicker } from "../_components/StatePicker";
 
 const STATES: ActivityStopState[] = ["default", "hover", "selected", "open"];
@@ -19,7 +20,8 @@ export default function ExploreActivitySandboxPage() {
   const [forced, setForced] = useState<ActivityStopState>("default");
   const [hovering, setHovering] = useState(false);
   const [mode, setMode] = useState<LodgingMode>("sleep");
-  const [nights, setNights] = useState(2);
+  const [nights, setNights] = useState(3);
+  const [nightIndex, setNightIndex] = useState(0);
 
   // Real hover only matters while collapsed in the resting state.
   const state: ActivityStopState = forced === "default" && hovering ? "hover" : forced;
@@ -50,7 +52,11 @@ export default function ExploreActivitySandboxPage() {
               mode={mode}
               onModeChange={setMode}
               nights={nights}
-              onNightsChange={setNights}
+              nightIndex={nightIndex}
+              onNightsChange={(next) => {
+                setNights(next);
+                if (next > 0 && nightIndex > next - 1) setNightIndex(next - 1);
+              }}
               dateRange="Thu 04 → Sat 06"
               description={DESCRIPTION}
               arrival={{ time: "22:00", date: "Thu, 04 Aug" }}
@@ -60,11 +66,34 @@ export default function ExploreActivitySandboxPage() {
               onRemove={() => setForced("default")}
             />
           </div>
+
+          {/* Sandbox-only: pick which night within the stay is being shown. */}
+          {nights > 1 ? (
+            <div className="mt-4 flex items-center gap-2 text-mini text-ink-soft">
+              <span>nightIndex:</span>
+              {Array.from({ length: nights }, (_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setNightIndex(i)}
+                  className={cn(
+                    "rounded-pill border px-2 py-0.5 text-tiny",
+                    nightIndex === i
+                      ? "border-ink bg-ink text-white"
+                      : "border-border bg-transparent text-ink-soft",
+                  )}
+                >
+                  N{i + 1}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <p className="mt-4 text-mini text-ink-faint">
           Stato attivo: <span className="font-medium text-ink-soft">{state}</span> · modo{" "}
-          <span className="font-medium text-ink-soft">{mode}</span> · {nights} nights
+          <span className="font-medium text-ink-soft">{mode}</span> · notte{" "}
+          <span className="font-medium text-ink-soft">{nightIndex + 1}</span> di {nights}
         </p>
       </main>
     </div>

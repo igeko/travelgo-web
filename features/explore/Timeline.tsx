@@ -23,7 +23,6 @@
  */
 
 import { type ComponentType, useState } from "react";
-import { useTranslations } from "next-intl";
 import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
 import {
   IconBed,
@@ -192,7 +191,6 @@ function buildItems(
 /* ── Timeline ───────────────────────────────────────────────────── */
 
 export function Timeline({ days, injectSampleTransfers = false, className }: Props) {
-  const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
@@ -328,13 +326,6 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
 
               if (item.kind === "lodging") {
                 const open = openId === item.id;
-                const description =
-                  item.nightsTotal > 1
-                    ? t("nightOfStay", {
-                        index: item.nightIndex + 1,
-                        total: item.nightsTotal,
-                      })
-                    : item.address;
                 return (
                   <div
                     key={item.id}
@@ -347,7 +338,8 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
                       accent="primary"
                       state={open ? "open" : "default"}
                       mode="sleep"
-                      description={description ?? undefined}
+                      nights={item.nightsTotal}
+                      nightIndex={item.nightIndex}
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={() => setOpenId(null)}

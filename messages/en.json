@@ -10,7 +10,8 @@
     "day": "Day {n}",
     "days": "Days {from}–{to}",
     "openLink": "Open link",
-    "nightOfStay": "Night {index} of {total}"
+    "nightSingular": "night",
+    "nightsPlural": "nights"
   },
   "ExploreCategories": {
     "dormi": "Sleep",

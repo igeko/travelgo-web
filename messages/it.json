@@ -10,7 +10,8 @@
     "day": "Giorno {n}",
     "days": "Giorni {from}–{to}",
     "openLink": "Apri link",
-    "nightOfStay": "Notte {index} di {total}"
+    "nightSingular": "notte",
+    "nightsPlural": "notti"
   },
   "ExploreCategories": {
     "dormi": "Dormi",

@@ -17,6 +17,7 @@
  */
 
 import { type ComponentType, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconGripVertical,
   IconBed,
@@ -54,6 +55,7 @@ export function ActivityStop({
   mode = "sleep",
   onModeChange,
   nights = 2,
+  nightIndex = 0,
   dateRange = "Thu 04 → Sat 06",
   duration = "30 minutes",
   timeRange = "10:30 → 11:00",
@@ -78,6 +80,10 @@ export function ActivityStop({
   mode?: LodgingMode;
   onModeChange?: (mode: LodgingMode) => void;
   nights?: number;
+  /** 0-based index of the current night within a multi-night stay. Surfaced
+   *  in the "Sleep" editor card as `nightIndex + 1` (the human-facing "1 / 3
+   *  notti" label). Ignored when `nights <= 1`. */
+  nightIndex?: number;
   dateRange?: string;
   /** "Stop" mode — how long the stop lasts. */
   duration?: string;
@@ -99,6 +105,7 @@ export function ActivityStop({
   onNightsChange?: (next: number) => void;
   className?: string;
 }) {
+  const t = useTranslations("Explore");
   const [addressValue, setAddressValue] = useState<PlaceResult | null>(address);
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
@@ -172,13 +179,19 @@ export function ActivityStop({
           {mode === "sleep" ? (
             <div className="flex w-full items-center justify-between px-2">
               <div className="flex items-center gap-2">
-                <IconCalendar size={14} className="shrink-0 text-ink" />
+                <IconCalendar size={14} className="shrink-0 text-ink-soft" />
                 <div className="flex flex-col">
-                  <p className="leading-none text-ink">
-                    <span className="text-[20px] font-medium">{nights}</span>{" "}
-                    <span className="text-nano font-medium">nights</span>
+                  <p className="flex items-baseline gap-0.5 leading-none">
+                    <span className="text-[22px] font-medium text-ink">
+                      {nightIndex + 1}
+                    </span>
+                    <span className="text-tiny font-medium text-ink-faint">
+                      {nights > 1
+                        ? ` / ${nights} ${t("nightsPlural")}`
+                        : ` ${t("nightSingular")}`}
+                    </span>
                   </p>
-                  <p className="text-nano text-ink-soft">{dateRange}</p>
+                  <p className="mt-[3px] text-micro text-ink-faint">{dateRange}</p>
                 </div>
               </div>
               <Stepper
