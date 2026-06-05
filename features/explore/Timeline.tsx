@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
-import { DayBadge } from "./TimelineDay";
+import { DayBadge } from "./DayBadge";
 import { ActivityStop } from "./ActivityStop";
 import { FuzzyStop } from "./FuzzyStop";
 import { Transfer, type TransferLeg, type TransferStep } from "./Transfer";

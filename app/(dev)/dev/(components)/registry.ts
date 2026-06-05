@@ -140,13 +140,6 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Figma Switch (SwitcherV2) · toggle segmentato icona+label, segmento attivo bianco su track bg · usato in Activity Sleep/Stop",
   },
   {
-    slug: "explore-timeline-day",
-    title: "TimelineDay",
-    group: "Features",
-    subgroup: "Explore",
-    description: "Figma Timeline-Day · spina verticale del giorno: badge weekday+data + rail orari · stati default/hover/selected/first",
-  },
-  {
     slug: "explore-activity",
     title: "ActivityStop",
     group: "Features",
