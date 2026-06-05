@@ -2,7 +2,12 @@ import { notFound } from "next/navigation";
 import { serverDal } from "@/lib/dal";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import { resolveAccommodations } from "@/features/explore/resolveAccommodations";
+import { selectNightRoute } from "@/lib/explore/nightRoute";
+import type { LatLng } from "@/components/ui/Map";
 import { ExploreNextShell } from "./ExploreNextShell";
+
+/** Tokyo — fallback centre when the trip has no geocoded days yet. */
+const FALLBACK_CENTER: LatLng = { lat: 35.6762, lng: 139.6503 };
 
 /**
  * Explore (next) — surface parallela alla Explore attuale, usata come palestra
@@ -27,6 +32,21 @@ export default async function TripExploreNextPage({
   // canonica — qui niente di nuovo.
   const daysWithLodging = resolveAccommodations(days);
 
+  // Stessa derivazione della pagina /explore — media delle coordinate degli
+  // accommodation o fallback Tokyo, più il night-route precalcolato per
+  // l'overlay opzionale.
+  const located = days.filter(
+    (d): d is typeof d & { accommodation_lat: number; accommodation_lng: number } =>
+      d.accommodation_lat != null && d.accommodation_lng != null,
+  );
+  const center: LatLng = located.length
+    ? {
+        lat: located.reduce((sum, d) => sum + d.accommodation_lat, 0) / located.length,
+        lng: located.reduce((sum, d) => sum + d.accommodation_lng, 0) / located.length,
+      }
+    : FALLBACK_CENTER;
+  const nightRoute = selectNightRoute(days);
+
   return (
     <div className="h-screen flex flex-col bg-bg">
       <AppHeaderServer
@@ -37,7 +57,13 @@ export default async function TripExploreNextPage({
         tripId={id}
       />
       <main className="flex-1 min-h-0 relative">
-        <ExploreNextShell days={daysWithLodging} />
+        <ExploreNextShell
+          tripId={id}
+          days={daysWithLodging}
+          center={center}
+          zoom={located.length ? 12 : 5}
+          nightRoute={nightRoute}
+        />
       </main>
     </div>
   );

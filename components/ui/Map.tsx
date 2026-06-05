@@ -1,10 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
-import { makeAdHocPin, makeNightPin, INK, ORANGE, NEUTRAL, NIGHT } from "./mapPins";
+import {
+  makeAdHocPin,
+  makeNightPin,
+  makePinIcon,
+  INK,
+  ORANGE,
+  NEUTRAL,
+  NIGHT,
+  type StopRole,
+} from "./mapPins";
+import { SLOT_COLORS, type SlotKey as RouteSlot } from "@/features/activity/types";
 import { decodePolyline } from "./mapRoute";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -38,8 +57,26 @@ export type MapMarker = {
   id?: string;
   /** Inner SVG (from `iconGlyph`) to draw in the pin head instead of the dot. */
   glyph?: string;
-  /** Pin style. "night" uses the dedicated night-route pin (indigo badge). */
-  variant?: "night";
+  /**
+   * Pin style.
+   *  - `"stop"`  → teardrop `makePinIcon` (itinerary day stops). Requires
+   *               `stopRole`; optional `slot` colours the body.
+   *  - `"night"` → indigo `makeNightPin` (Explore night-route layer).
+   *  - default   → dot `makeAdHocPin` (Go suggestions, category results).
+   */
+  variant?: "stop" | "night";
+  /** Role in the day sequence — drives start/mid/end shape (variant "stop"). */
+  stopRole?: StopRole;
+  /** Time-of-day slot — drives the pin body colour (variant "stop"). */
+  slot?: RouteSlot;
+  /**
+   * If true, the marker is added to a shared `MarkerClusterer` instead of being
+   * mounted directly on the map. Styling/icon path stays identical — only the
+   * mounting strategy changes. Use for dense layers (category area-search);
+   * keep low-cardinality semantic pins (Go suggestions, night route, itinerary
+   * stops) regular so they remain individually visible at every zoom.
+   */
+  clustered?: boolean;
 };
 
 /**
@@ -108,6 +145,30 @@ export type MapProps = {
   onMarkerClose?: (id: string) => void;
   /** Optional night-route overlay (dedicated pins + connecting polyline). */
   routeLayer?: MapRouteLayer | null;
+  /**
+   * Pixel offset of the visible viewport relative to the map container — use it
+   * when UI panels (e.g. a left timeline) cover part of the map. The
+   * `onViewportChange` centre/radius are computed against the *visible* area
+   * (the container bounds minus the inset), so category area-searches stay
+   * centred on what the user actually sees.
+   */
+  viewportInset?: { left?: number; right?: number; top?: number; bottom?: number };
+};
+
+/**
+ * Imperative handle exposed by `Map` — gives wrapper components (e.g.
+ * `RouteMap`) access to the underlying SDK instance for operations not covered
+ * by props (drawing polylines, custom `fitBounds`, …) without duplicating the
+ * init code.
+ */
+export type MapHandle = {
+  /** The SDK map instance, or `null` until the SDK has loaded. */
+  getMap: () => google.maps.Map | null;
+  /** Fit the map to the given bounds, with optional padding. No-op when not ready. */
+  fitBounds: (
+    bounds: google.maps.LatLngBounds,
+    padding?: number | google.maps.Padding,
+  ) => void;
 };
 
 /** Hover dwell before a pin's card appears, and grace before it closes. */
@@ -205,27 +266,36 @@ function createSelectedPinOverlay(): SelectedPinOverlay {
   return overlay;
 }
 
-export function Map({
-  center,
-  zoom = 13,
-  className,
-  style,
-  mapTypeId = "roadmap",
-  controls = {},
-  markers,
-  selectedMarkerId,
-  onMapClick,
-  onPoiClick,
-  onMarkerClick,
-  onViewportChange,
-  renderPinCard,
-  onMarkerClose,
-  routeLayer,
-}: MapProps) {
+export const Map = forwardRef<MapHandle, MapProps>(function Map(
+  {
+    center,
+    zoom = 13,
+    className,
+    style,
+    mapTypeId = "roadmap",
+    controls = {},
+    markers,
+    selectedMarkerId,
+    onMapClick,
+    onPoiClick,
+    onMarkerClick,
+    onViewportChange,
+    renderPinCard,
+    onMarkerClose,
+    routeLayer,
+    viewportInset,
+  },
+  ref,
+) {
   const status = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersByKey = useRef<Record<string, google.maps.Marker>>({});
+  // Shared clusterer for markers flagged `clustered: true`. Lazily created on
+  // first use and torn down on unmount. Re-synced on every reconcile cycle
+  // (clearMarkers + addMarkers): incremental clusterer maintenance is more
+  // intricate than the gains for the cardinalities Explore handles today.
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
@@ -239,10 +309,26 @@ export function Map({
   const onPoiClickRef = useRef(onPoiClick);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onViewportChangeRef = useRef(onViewportChange);
+  // viewportInset lives in a ref too — the `idle` listener reads it on every
+  // emission and we don't want a panel-width tick to re-bind the listener.
+  const viewportInsetRef = useRef(viewportInset);
   onMapClickRef.current = onMapClick;
   onPoiClickRef.current = onPoiClick;
   onMarkerClickRef.current = onMarkerClick;
   onViewportChangeRef.current = onViewportChange;
+  viewportInsetRef.current = viewportInset;
+
+  // Imperative escape hatch for wrapper components that need the SDK instance
+  // (e.g. drawing polylines from RouteMap). Identity is stable — the handle
+  // closes over `mapRef`, which itself is a ref.
+  useImperativeHandle(
+    ref,
+    () => ({
+      getMap: () => mapRef.current,
+      fitBounds: (bounds, padding) => mapRef.current?.fitBounds(bounds, padding),
+    }),
+    [],
+  );
 
   // The pin whose card is currently shown (hover preview wins over selection).
   const activeCardId = hoverId ?? selectedMarkerId ?? null;
@@ -308,10 +394,52 @@ export function Map({
       if (!cb || !mapRef.current) return;
       const b = mapRef.current.getBounds();
       if (!b) return;
+
       const ne = b.getNorthEast();
       const sw = b.getSouthWest();
-      const center = { lat: (ne.lat() + sw.lat()) / 2, lng: (ne.lng() + sw.lng()) / 2 };
-      cb({ center, radiusMeters: metersBetween(center, { lat: ne.lat(), lng: ne.lng() }) });
+      const inset = viewportInsetRef.current ?? {};
+
+      // No inset → keep the legacy fast-path (centre = bounds centre, radius =
+      // corner distance). Otherwise compute the visible rectangle by removing
+      // the panel-covered pixels from each side.
+      const hasInset =
+        (inset.left ?? 0) > 0 ||
+        (inset.right ?? 0) > 0 ||
+        (inset.top ?? 0) > 0 ||
+        (inset.bottom ?? 0) > 0;
+
+      if (!hasInset) {
+        const center = {
+          lat: (ne.lat() + sw.lat()) / 2,
+          lng: (ne.lng() + sw.lng()) / 2,
+        };
+        cb({
+          center,
+          radiusMeters: metersBetween(center, { lat: ne.lat(), lng: ne.lng() }),
+        });
+        return;
+      }
+
+      const mapDiv = mapRef.current.getDiv();
+      const mapW = mapDiv.offsetWidth || 1;
+      const mapH = mapDiv.offsetHeight || 1;
+      const lngPerPx = (ne.lng() - sw.lng()) / mapW;
+      const latPerPx = (ne.lat() - sw.lat()) / mapH;
+
+      // Visible-area bounds (container bounds minus the inset rectangles).
+      const visWest  = sw.lng() + lngPerPx * (inset.left   ?? 0);
+      const visEast  = ne.lng() - lngPerPx * (inset.right  ?? 0);
+      const visSouth = sw.lat() + latPerPx * (inset.bottom ?? 0);
+      const visNorth = ne.lat() - latPerPx * (inset.top    ?? 0);
+
+      const center = {
+        lat: (visSouth + visNorth) / 2,
+        lng: (visWest + visEast) / 2,
+      };
+      cb({
+        center,
+        radiusMeters: metersBetween(center, { lat: visNorth, lng: visEast }),
+      });
     });
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
   // center/zoom intentionally excluded: handled by the effects below
@@ -354,9 +482,11 @@ export function Map({
     for (const m of desired) {
       const key = keyOf(m);
       if (markersByKey.current[key]) continue;
+      // Clustered markers are mounted by `MarkerClusterer` (see below) — passing
+      // `map` here would double-mount them. Regular markers attach directly.
       const marker = new google.maps.Marker({
         position: { lat: m.lat, lng: m.lng },
-        map,
+        map: m.clustered ? null : map,
         title: m.title,
       });
       marker.addListener("click", () => onMarkerClickRef.current?.(key));
@@ -366,6 +496,17 @@ export function Map({
       added = true;
     }
 
+    // Bucket existing marker instances into regular vs clustered for this
+    // cycle. `clustered` toggling on an existing marker is uncommon but
+    // supported: the marker is in the right bucket here, and the clusterer is
+    // re-synced wholesale below so the membership always matches `desired`.
+    const clusteredMarkers: google.maps.Marker[] = [];
+    for (const m of desired) {
+      const marker = markersByKey.current[keyOf(m)];
+      if (!marker) continue;
+      if (m.clustered) clusteredMarkers.push(marker);
+    }
+
     // (Re)style every marker by selection: selected → blue (on top), rest
     // neutral slate. A category glyph replaces the dot when present.
     for (const m of desired) {
@@ -373,7 +514,14 @@ export function Map({
       const marker = markersByKey.current[key];
       if (!marker) continue;
       const isSelected = selectedMarkerId != null && key === selectedMarkerId;
-      if (m.variant === "night") {
+      if (m.variant === "stop") {
+        // Itinerary stop: teardrop pin coloured by slot (defaults to ink) and
+        // shaped by role (start/mid/end → flag for end). Selection just
+        // promotes it to the top of the stack — colour stays semantic.
+        const color = m.slot ? SLOT_COLORS[m.slot] : INK;
+        marker.setIcon(makePinIcon(m.stopRole ?? "mid", m.glyph ?? "", color));
+        marker.setZIndex(isSelected ? 1000 : 5);
+      } else if (m.variant === "night") {
         // Night pins keep their indigo identity regardless of selection; the
         // halo overlay still marks the selected one.
         marker.setIcon(makeNightPin(m.glyph ?? ""));
@@ -382,6 +530,17 @@ export function Map({
         marker.setIcon(makeAdHocPin(isSelected ? INK : NEUTRAL, isSelected ? ORANGE : "#fff", m.glyph));
         marker.setZIndex(isSelected ? 1000 : 1);
       }
+    }
+
+    // Sync the clusterer with this cycle's clustered marker set. We rebuild it
+    // wholesale every reconcile — fine for the cardinalities Explore handles,
+    // and immune to drift between marker keys and clusterer membership.
+    if (clusteredMarkers.length > 0) {
+      clustererRef.current ??= new MarkerClusterer({ map });
+      clustererRef.current.clearMarkers();
+      clustererRef.current.addMarkers(clusteredMarkers);
+    } else {
+      clustererRef.current?.clearMarkers();
     }
 
     if (added) {
@@ -435,6 +594,14 @@ export function Map({
   // Tear down the night-route polyline on unmount.
   useEffect(() => () => {
     routePolylineRef.current?.setMap(null);
+  }, []);
+
+  // Tear down the shared MarkerClusterer on unmount. Clustered marker
+  // instances live in `markersByKey` and are dropped by the standard reconcile
+  // path; the clusterer just needs its internal references released.
+  useEffect(() => () => {
+    clustererRef.current?.clearMarkers();
+    clustererRef.current = null;
   }, []);
 
   // Decorate the selected marker with the hero halo + name label overlay.
@@ -541,4 +708,4 @@ export function Map({
       )}
     </div>
   );
-}
+});

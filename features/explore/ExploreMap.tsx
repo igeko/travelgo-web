@@ -63,6 +63,7 @@ export function ExploreMap({
   zoom: tripZoom,
   nightRoute,
   extraMarkers = [],
+  viewportInset,
 }: {
   tripId: string;
   center: LatLng;
@@ -71,6 +72,13 @@ export function ExploreMap({
   /** Static pins injected by the host (e.g. all trip activities). Rendered as a
    *  base layer — Go/category/night pins win on a key collision. */
   extraMarkers?: MapMarker[];
+  /**
+   * Pixel offset of the visible viewport relative to the map container — set it
+   * when an overlapping panel (e.g. a left-side timeline) covers part of the
+   * map. Propagated to the underlying `Map` so the category area-search stays
+   * centred on the visible area.
+   */
+  viewportInset?: { left?: number; right?: number; top?: number; bottom?: number };
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -234,7 +242,12 @@ export function ExploreMap({
         const places = await api.places.areaSearch<AreaPlace>(
           term, vp.center.lat, vp.center.lng, vp.radiusMeters,
         );
-        setCategoryMarkers(places.map((p) => ({ id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph })));
+        // Category area-search can return many dense pins → cluster them.
+        // Go and night layers stay regular (low cardinality, semantic).
+        setCategoryMarkers(places.map((p) => ({
+          id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph,
+          clustered: true,
+        })));
       } catch {
         /* search failed — keep previous pins */
       }
@@ -325,6 +338,7 @@ export function ExploreMap({
         onPoiClick={handlePoiClick}
         onMarkerClick={handleMarkerClick}
         onViewportChange={(vp) => { viewportRef.current = vp; }}
+        viewportInset={viewportInset}
         renderPinCard={(id, close) => {
           // Night pin → saved trip data; Google place → enriched card; manual
           // coordinate-only pin → no card.
