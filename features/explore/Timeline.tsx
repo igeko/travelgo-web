@@ -148,15 +148,18 @@ type Item =
 function buildItems(
   acts: Activity[],
   accommodation: AccommodationDisplay | null | undefined,
+  dayId: string,
   expanded: boolean,
   injectSample: boolean,
 ): Item[] {
   const items: Item[] = [];
 
   if (accommodation) {
+    // ID scoped to the day: the same hotel across 5 nights becomes 5 distinct
+    // lodging items, so opening one doesn't open them all.
     items.push({
       kind: "lodging",
-      id: `lodging-${accommodation.place_id ?? accommodation.name}`,
+      id: `lodging-${dayId}`,
       title: accommodation.name,
       icon: accommodationIcon(accommodation.type),
       address: accommodation.address,
@@ -213,7 +216,7 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
         // Times follow the TimelineDay states: hidden by default, revealed
         // when the day's spine is hovered, kept while the day is expanded.
         const showTimes = expanded || hoverDay === day.id;
-        const items = buildItems(day.activities, day.accommodation, expanded, injectSampleTransfers);
+        const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
         const isFirst = dayIdx === 0;
         const showNotes = expanded && !!day.notes;
         const spineHover = {
@@ -222,8 +225,12 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
         };
         // The lodging item, when present, shares row 1 with the DayBadge (col 2)
         // so the icon badge's top edge lines up with the DayBadge's top stripe.
-        // All other items shift one row up.
-        const lodgingFirst = items[0]?.kind === "lodging";
+        // The DayBadge then spans row 1+2 (col 1) with a 6px top offset, so row 1
+        // is sized by the lodging item — not by the DayBadge's natural height —
+        // keeping the gap below the lodging equal to the gap between activities.
+        const lodgingItemId = items[0]?.kind === "lodging" ? items[0].id : null;
+        const lodgingFirst = lodgingItemId !== null;
+        const lodgingOpen = lodgingItemId !== null && openId === lodgingItemId;
         // Rows: 1 = badge (+ lodging when present) · 2..N+(0|1) = items · last = notes
         const lastRow = items.length + (lodgingFirst ? 0 : 1) + (showNotes ? 1 : 0);
 
@@ -236,26 +243,34 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
             {/* Day rail — the rounded grey segment BELOW the badge, detached by
                 a 3px gap above (mt) and below (the container's row gap), so the
                 day badge floats clear of the rail as in the Figma. Holds the
-                aligned time ticks. */}
+                aligned time ticks. When the lodging is OPEN the rail extends to
+                row 1 too, so the grey column covers the full height of the
+                opened lodging card. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               {...spineHover}
               aria-hidden
               tabIndex={-1}
-              style={{ gridColumn: 1, gridRow: `2 / ${lastRow + 1}` }}
+              style={{ gridColumn: 1, gridRow: `${lodgingOpen ? 1 : 2} / ${lastRow + 1}` }}
               className="my-[3px] w-full cursor-pointer self-stretch rounded-xs bg-timeline-rail transition-colors hover:bg-surface-soft"
             />
 
-            {/* Day badge — sits on top of the rail (col 1, row 1) */}
+            {/* Day badge — sits on top of the rail (col 1, row 1). When a lodging
+                shares row 1 the badge spans row 1+2 with `mt-1.5` so the top
+                stripe lines up with the lodging icon and row 1's height is
+                driven by the lodging item, not by the badge's natural 43px. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               {...spineHover}
               aria-expanded={expanded}
               aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-              style={{ gridColumn: 1, gridRow: 1 }}
-              className="cursor-pointer self-start"
+              style={{
+                gridColumn: 1,
+                gridRow: lodgingFirst ? "1 / span 2" : 1,
+              }}
+              className={cn("cursor-pointer self-start", lodgingFirst && "mt-1.5")}
             >
               <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
             </button>
@@ -315,14 +330,11 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
                         total: item.nightsTotal,
                       })
                     : item.address;
-                // -mt-1.5 (6px) lifts the row so the icon badge's top edge sits
-                // exactly on the DayBadge's primary stripe: 2px of outer py-0.5
-                // + 4px of ActivityStop's inner py-1 = 6px to compensate.
                 return (
                   <div
                     key={item.id}
                     style={{ gridColumn: 2, gridRow: row }}
-                    className="-mt-1.5 py-0.5 self-start"
+                    className="py-0.5 self-start"
                   >
                     <ActivityStop
                       title={item.title}
