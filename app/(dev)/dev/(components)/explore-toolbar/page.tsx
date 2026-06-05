@@ -80,6 +80,9 @@ export default function ExploreToolbarSandboxPage() {
               pinnedSubIds={pinnedSubIds}
               onTogglePin={handleTogglePin}
               onSettingsClick={() => pushLog("onSettingsClick()")}
+              onSelectPlace={(p) =>
+                pushLog(`onSelectPlace("${p.name || p.formatted}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
+              }
             />
           </div>
         </section>
@@ -106,6 +109,9 @@ export default function ExploreToolbarSandboxPage() {
               pinnedSubIds={pinnedSubIds}
               onTogglePin={handleTogglePin}
               onSettingsClick={() => pushLog("onSettingsClick()")}
+              onSelectPlace={(p) =>
+                pushLog(`onSelectPlace("${p.name || p.formatted}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
+              }
             />
           </div>
         </section>

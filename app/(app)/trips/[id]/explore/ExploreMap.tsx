@@ -355,6 +355,20 @@ export function ExploreMap({
             prev.includes(subId) ? prev.filter((id) => id !== subId) : [...prev, subId],
           )
         }
+        onSelectPlace={(place) => {
+          // Re-center the map on the picked place. We don't drop a dedicated
+          // "search result" marker layer here: the existing pin systems
+          // (`categoryMarkers`, `goMarkers`) are scoped to category area-search
+          // and Go's emitted places, and there's no reusable "single POI" marker
+          // helper. Routing through Go's focus would also open the Go panel,
+          // which is unwanted for a plain search. Centring + zooming is enough
+          // for now; if a persistent search pin is needed, add a dedicated
+          // marker layer parallel to `categoryMarkers`.
+          // TODO: add a single-place marker layer for search results.
+          interactedRef.current = true;
+          setCenter({ lat: place.lat, lng: place.lng });
+          setZoom(FOCUS_ZOOM);
+        }}
         orientation={isMobile ? "horizontal" : "vertical"}
         className={
           isMobile

@@ -24,17 +24,27 @@
  *
  * Controlled component: `selectedSubId` and `pinnedSubIds` are owned by the
  * host. Labels arrive already translated (i18n is the consumer's job).
+ *
+ * Search — first item of the rail. Mutually exclusive with the macro chip row:
+ * opening the search panel closes any open macro and vice versa. Google Places
+ * autocomplete is driven internally via `usePlaceAutocomplete`: the host only
+ * gets the final `PlaceResult` through `onSelectPlace` (mirrors AddressField).
  */
 
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import {
   IconAdjustmentsHorizontal,
+  IconMapPin,
   IconPin,
   IconPinnedFilled,
+  IconSearch,
+  IconX,
   type Icon,
 } from "@/components/ui/icons";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
+import { usePlaceAutocomplete } from "@/lib/hooks/usePlaceAutocomplete";
+import type { PlaceResult } from "@/components/ui/AddressField";
 
 export type ExploreToolbarOrientation = "vertical" | "horizontal";
 
@@ -71,10 +81,22 @@ export type ExploreToolbarProps = {
   showSettings?: boolean;
   /** Optional — behaviour TBD; the gear is a placeholder for now. */
   onSettingsClick?: () => void;
+  /**
+   * Emitted when the user picks a suggestion from the Places autocomplete
+   * dropdown (either click or Enter). The hook has already fetched the place
+   * details, so `lat`/`lng` and `placeId` are populated.
+   */
+  onSelectPlace?: (place: PlaceResult) => void;
+  /** Placeholder for the search input. Defaults to "Search places…". */
+  searchPlaceholder?: string;
   /** Rail direction. The host flips this on its breakpoint. Default vertical. */
   orientation?: ExploreToolbarOrientation;
   className?: string;
 };
+
+// Open-panel state. Mutual exclusion is encoded in the type: only one variant
+// can be active. Switching from one to the other replaces the previous.
+type OpenPanel = { kind: "macro"; id: string } | { kind: "search" } | null;
 
 export function ExploreToolbar({
   categories,
@@ -85,17 +107,64 @@ export function ExploreToolbar({
   onTogglePin,
   showSettings = false,
   onSettingsClick,
+  onSelectPlace,
+  searchPlaceholder,
   orientation = "vertical",
   className,
 }: ExploreToolbarProps) {
-  const [openMacroId, setOpenMacroId] = useState<string | null>(null);
+  const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
+
+  // Google Places autocomplete — fully owned by the hook, like AddressField.
+  // The toolbar only forwards the final `PlaceResult` via `onSelectPlace`.
+  const {
+    inputText,
+    suggestions,
+    isOpen: isSuggestionsOpen,
+    setIsOpen: setSuggestionsOpen,
+    activeIndex,
+    setActiveIndex,
+    handleInputChange,
+    selectSuggestion,
+    handleKeyDown,
+  } = usePlaceAutocomplete();
+
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Click outside the search wrapper closes ONLY the suggestions dropdown.
+  // The search panel itself has its own open/close lifecycle (the rail button).
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        searchWrapperRef.current &&
+        !searchWrapperRef.current.contains(e.target as Node)
+      ) {
+        setSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [setSuggestionsOpen]);
 
   const isVertical = orientation === "vertical";
   // Horizontal: the open chip row sits directly below the macro bar, so put
   // tooltips above it to avoid overlapping the chips.
   const tooltipSide = isVertical ? "left" : "top";
+  const openMacroId = openPanel?.kind === "macro" ? openPanel.id : null;
   const openMacro = categories.find((m) => m.id === openMacroId) ?? null;
+  const isSearchOpen = openPanel?.kind === "search";
+  const hasQuery = inputText.trim().length > 0;
   const pinned = resolvePinned(categories, pinnedSubIds);
+
+  // When the search panel closes (a macro is opened, or search rail toggled
+  // off), also close the suggestions dropdown so it doesn't linger.
+  useEffect(() => {
+    if (!isSearchOpen) setSuggestionsOpen(false);
+  }, [isSearchOpen, setSuggestionsOpen]);
+
+  const handlePlacePicked = (place: PlaceResult) => {
+    onSelectPlace?.(place);
+    setOpenPanel(null);
+  };
 
   function toggle(subId: string) {
     const isSelected = selectedSubIds.includes(subId);
@@ -111,6 +180,108 @@ export function ExploreToolbar({
   function macroHasSelection(macro: ExploreMacroCategory) {
     return macro.subs.some((s) => selectedSubIds.includes(s.id));
   }
+
+  // Search panel — same pill shell as chipRow (40px total: p-1.5 + 28px input
+  // row, matching the chips that render py-1.5 + text-mini at ~28px). Width is
+  // 280px in vertical (panel-specific, not a token); full width in horizontal
+  // to mirror the chip row layout below the rail. Wrapped in a `relative` div
+  // so the suggestions dropdown can be positioned absolutely under the pill.
+  const searchPanel = isSearchOpen && (
+    <div
+      ref={searchWrapperRef}
+      className={cn("relative", isVertical ? "w-[280px]" : "w-full max-w-full")}
+    >
+      <div className="flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float">
+        <span className="inline-flex h-7 flex-shrink-0 items-center justify-center pl-2 text-ink-soft">
+          <IconSearch size={15} stroke={1.75} />
+        </span>
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !isSuggestionsOpen) {
+              setOpenPanel(null);
+              return;
+            }
+            handleKeyDown(e, handlePlacePicked);
+          }}
+          onFocus={() => {
+            if (suggestions.length > 0) setSuggestionsOpen(true);
+          }}
+          placeholder={searchPlaceholder ?? "Search places…"}
+          aria-label="Search"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={isSuggestionsOpen}
+          aria-controls={isSuggestionsOpen ? "explore-toolbar-suggestions" : undefined}
+          autoComplete="off"
+          autoFocus
+          className="h-7 min-w-0 flex-1 border-0 bg-transparent px-2 text-mini text-ink outline-none placeholder:text-ink-faint"
+        />
+        {hasQuery && (
+          <button
+            type="button"
+            // Prevent the input from losing focus on mousedown so the input
+            // stays focused after clearing (focus is then re-asserted on click).
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              handleInputChange("");
+              const input = e.currentTarget.parentElement?.querySelector("input");
+              input?.focus();
+            }}
+            aria-label="Clear search"
+            className="inline-flex size-7 flex-shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-surface-soft"
+          >
+            <IconX size={13} stroke={1.75} />
+          </button>
+        )}
+      </div>
+
+      {isSuggestionsOpen && suggestions.length > 0 && (
+        <ul
+          id="explore-toolbar-suggestions"
+          role="listbox"
+          className={cn(
+            "absolute z-50 top-[calc(100%+6px)] left-0 right-0",
+            "bg-surface border border-border rounded-lg shadow-[0_4px_24px_rgba(13,44,61,0.10)]",
+            "py-1 overflow-hidden",
+          )}
+        >
+          {suggestions.map((s, i) => (
+            <li
+              key={s.placeId}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectSuggestion(s, handlePlacePicked);
+              }}
+              onMouseEnter={() => setActiveIndex(i)}
+              className={cn(
+                "flex items-start gap-2.5 px-4 py-2.5 cursor-pointer transition-colors duration-75",
+                i === activeIndex ? "bg-surface-soft" : "hover:bg-surface-soft",
+              )}
+            >
+              <span className="shrink-0 mt-0.5 text-ink-faint [&>svg]:size-3.5">
+                <IconMapPin />
+              </span>
+              <span className="flex flex-col min-w-0">
+                <span className="text-meta font-medium text-ink leading-snug truncate">
+                  {s.mainText}
+                </span>
+                {s.secondaryText && (
+                  <span className="text-tiny text-ink-soft leading-snug truncate">
+                    {s.secondaryText}
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 
   const chipRow = openMacro && openMacro.subs.length > 0 && (
     <div
@@ -185,6 +356,21 @@ export function ExploreToolbar({
         !isVertical && "max-w-full overflow-x-auto scrollbar-none",
       )}
     >
+      {/* Search — first item of the rail. Toggles to search; any open macro
+          is replaced (mutual exclusion via the OpenPanel union). */}
+      <Tooltip label="Search" side={tooltipSide} disabled={isSearchOpen}>
+        <RailButton
+          label="Search"
+          active={isSearchOpen}
+          dot={hasQuery}
+          onClick={() =>
+            setOpenPanel((prev) => (prev?.kind === "search" ? null : { kind: "search" }))
+          }
+        >
+          <IconSearch size={19} stroke={1.75} />
+        </RailButton>
+      </Tooltip>
+
       {categories.map((macro) => {
         const MacroIcon = macro.icon;
         const isOpen = macro.id === openMacroId;
@@ -194,7 +380,13 @@ export function ExploreToolbar({
               label={macro.label}
               active={isOpen}
               dot={macroHasSelection(macro)}
-              onClick={() => setOpenMacroId(isOpen ? null : macro.id)}
+              onClick={() =>
+                setOpenPanel((prev) =>
+                  prev?.kind === "macro" && prev.id === macro.id
+                    ? null
+                    : { kind: "macro", id: macro.id },
+                )
+              }
             >
               <MacroIcon size={19} stroke={1.75} />
             </RailButton>
@@ -243,8 +435,9 @@ export function ExploreToolbar({
     </div>
   );
 
-  // Vertical: chip row to the left of the rail. Horizontal: macro bar on top,
-  // chip row stacked below.
+  // Vertical: search/chip panel to the left of the rail. Horizontal: rail on
+  // top, panel stacked below. Mutual exclusion guarantees only one of
+  // `searchPanel` / `chipRow` is truthy at any time.
   return (
     <div
       className={cn(
@@ -255,12 +448,14 @@ export function ExploreToolbar({
     >
       {isVertical ? (
         <>
+          {searchPanel}
           {chipRow}
           {rail}
         </>
       ) : (
         <>
           {rail}
+          {searchPanel}
           {chipRow}
         </>
       )}
