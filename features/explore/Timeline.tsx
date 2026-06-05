@@ -31,6 +31,7 @@ import {
   IconHome,
   IconMapPin,
   IconTent,
+  IconX,
 } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
@@ -283,11 +284,17 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               />
             ) : null}
 
-            {/* Selected/expanded end marker (TimelineDay "Selected" state) */}
+            {/* Close affordance for the expanded day — an X sits inside the
+                rail's bottom, 8px above its visible bottom edge. Click handling
+                stays on the rail button below (pointer-events-none here), so
+                the icon is purely a visual cue.
+                Rail has `mb-[3px]`, so its visible bottom is at `cell_bottom -
+                3`; `mb-[11px]` puts the icon's bottom edge 8px above that. */}
             {expanded && lastRow >= 2 ? (
-              <span
+              <IconX
+                size={16}
                 style={{ gridColumn: 1, gridRow: lastRow }}
-                className="pointer-events-none z-10 mb-1 size-2 self-end justify-self-center rounded-pill border border-ink-soft"
+                className="pointer-events-none z-10 mb-[11px] self-end justify-self-center text-ink-soft"
                 aria-hidden
               />
             ) : null}
