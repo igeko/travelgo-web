@@ -218,40 +218,44 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, cla
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
+  // Raggruppa giorni vuoti consecutivi: un singolo EmptyDayCard di sfondo
+  // serve l'intero gruppo, evitando la ripetizione visiva di N card identiche
+  // impilate. I giorni con contenuto restano individuali.
+  type Segment =
+    | { kind: "empty"; days: TimelineDayData[]; startIdx: number }
+    | { kind: "active"; day: TimelineDayData; idx: number };
+  const segments: Segment[] = [];
+  sortedDays.forEach((day, idx) => {
+    const isEmpty = !day.accommodation && day.activities.length === 0 && !day.notes;
+    if (isEmpty) {
+      const last = segments[segments.length - 1];
+      if (last && last.kind === "empty") last.days.push(day);
+      else segments.push({ kind: "empty", days: [day], startIdx: idx });
+    } else {
+      segments.push({ kind: "active", day, idx });
+    }
+  });
+
   return (
     <div className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}>
-      {sortedDays.map((day, dayIdx) => {
+      {segments.map((seg) => {
+        if (seg.kind === "empty") {
+          return (
+            <EmptyDaysBlock
+              key={`empty-${seg.days[0].id}`}
+              days={seg.days}
+              startIdx={seg.startIdx}
+              onSelectDay={onSelectDay}
+            />
+          );
+        }
+
+        const day = seg.day;
+        const dayIdx = seg.idx;
         const { weekday, dateLabel } = day.date
           ? formatDay(day.date)
           : { weekday: "", dateLabel: "" };
         const isFirst = dayIdx === 0;
-
-        // Empty day: nessun alloggio, nessuna attività, nessuna nota — la col 2
-        // ospita la EmptyDayCard al posto del rail/items, e la DayBadge resta
-        // cliccabile solo per emettere onSelectDay (niente da espandere).
-        const isEmpty = !day.accommodation && day.activities.length === 0 && !day.notes;
-        if (isEmpty) {
-          return (
-            <div
-              key={day.id}
-              className="grid items-start gap-x-2"
-              style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
-            >
-              <button
-                type="button"
-                onClick={() => onSelectDay?.(day.id)}
-                aria-label={`${weekday} ${dateLabel}`}
-                style={{ gridColumn: 1, gridRow: 1 }}
-                className="cursor-pointer self-start"
-              >
-                <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
-              </button>
-              <div style={{ gridColumn: 2, gridRow: 1 }} className="py-0.5">
-                <EmptyDayCard />
-              </div>
-            </div>
-          );
-        }
 
         const expanded = expandedDays.has(day.id);
         const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
@@ -447,15 +451,61 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, cla
   );
 }
 
+/* ── EmptyDaysBlock ─────────────────────────────────────────────── */
+
+/** Un gruppo di giorni vuoti consecutivi: tutte le DayBadge si impilano in
+ *  col 1, una sola EmptyDayCard occupa col 2 e si estende in altezza per
+ *  servire da sfondo condiviso. Sostituisce la vecchia resa "una card per
+ *  giorno vuoto", che produceva N card identiche impilate. */
+function EmptyDaysBlock({
+  days,
+  startIdx,
+  onSelectDay,
+}: {
+  days: TimelineDayData[];
+  startIdx: number;
+  onSelectDay?: (id: string) => void;
+}) {
+  return (
+    <div className="grid gap-x-2" style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}>
+      <div
+        style={{ gridColumn: 1, gridRow: 1 }}
+        className="flex flex-col gap-2 self-start py-0.5"
+      >
+        {days.map((day, i) => {
+          const { weekday, dateLabel } = day.date
+            ? formatDay(day.date)
+            : { weekday: "", dateLabel: "" };
+          const isFirst = startIdx + i === 0;
+          return (
+            <button
+              key={day.id}
+              type="button"
+              onClick={() => onSelectDay?.(day.id)}
+              aria-label={`${weekday} ${dateLabel}`}
+              className="cursor-pointer"
+            >
+              <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ gridColumn: 2, gridRow: 1 }} className="py-0.5">
+        <EmptyDayCard />
+      </div>
+    </div>
+  );
+}
+
 /* ── EmptyDayCard ───────────────────────────────────────────────── */
 
-/** Shown in col 2 of the Timeline when a day has no accommodation, no
- *  activities and no notes — replaces the rail/items zone with a 340×280
- *  bordered card (gradient strip + map glyph + centered "Niente pianificato"
- *  payload). Self-contained: no expand state, no rail. */
+/** Card di sfondo per giorni senza alloggio/attività/note — striscia con
+ *  gradient + map glyph in alto, payload "Niente pianificato" centrato sotto.
+ *  Stretcha in altezza per coprire l'intero gruppo di DayBadge accanto (min
+ *  280px quando c'è un solo giorno). */
 function EmptyDayCard() {
   return (
-    <div className="flex h-[280px] w-full max-w-[340px] flex-col overflow-hidden rounded-md border border-border">
+    <div className="flex h-full min-h-[280px] w-full max-w-[340px] flex-col overflow-hidden rounded-md border border-border">
       <div className="flex h-12 flex-shrink-0 items-center justify-center bg-gradient-to-b from-surface-soft to-surface">
         <IconMap size={22} className="text-ink/10" />
       </div>
