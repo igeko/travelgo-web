@@ -543,15 +543,13 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       clustererRef.current?.clearMarkers();
     }
 
-    if (added) {
-      if (desired.length === 1) {
-        map.setCenter({ lat: desired[0].lat, lng: desired[0].lng });
-        map.setZoom(15);
-      } else if (desired.length > 1) {
-        const bounds = new google.maps.LatLngBounds();
-        desired.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
-        map.fitBounds(bounds, 64);
-      }
+    // Auto-fit solo per batch multi-marker (es. suggerimenti Go). Il caso
+    // singolo non riframma più: rispetta il contratto controlled-only e non
+    // forza zoom-in quando l'utente clicca per droppare un singolo pin.
+    if (added && desired.length > 1) {
+      const bounds = new google.maps.LatLngBounds();
+      desired.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+      map.fitBounds(bounds, 64);
     }
   }, [markers, status, selectedMarkerId, hoverPin, unhoverPin]);
 
