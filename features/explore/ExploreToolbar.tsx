@@ -193,7 +193,7 @@ export function ExploreToolbar({
     >
       <div className="flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float">
         <span className="inline-flex h-7 flex-shrink-0 items-center justify-center pl-2 text-ink-soft">
-          <IconSearch size={15} stroke={1.75} />
+          <IconMapPin size={15} stroke={1.75} />
         </span>
         <input
           type="text"
