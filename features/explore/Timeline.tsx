@@ -250,7 +250,8 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               tabIndex={-1}
               style={{ gridColumn: 1, gridRow: `${lodgingOpen ? 1 : 2} / ${lastRow + 1}` }}
               className={cn(
-                "w-full cursor-pointer self-stretch rounded-xs bg-timeline-rail transition-colors hover:bg-surface-soft mb-[3px]",
+                "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
+                expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
                 lodgingFirst && !lodgingOpen ? "mt-[16px]" : "mt-[3px]",
               )}
             />
@@ -294,7 +295,7 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               <IconX
                 size={16}
                 style={{ gridColumn: 1, gridRow: lastRow }}
-                className="pointer-events-none z-10 mb-[11px] self-end justify-self-center text-ink-soft"
+                className="pointer-events-none z-10 mb-[11px] self-end justify-self-center text-white"
                 aria-hidden
               />
             ) : null}
