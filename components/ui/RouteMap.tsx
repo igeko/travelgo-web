@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
@@ -8,8 +8,8 @@ import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { BlockType, BridgeData } from "@/lib/dal/domain";
 import { SLOT_COLORS, type SlotKey } from "@/features/activity/types";
 import type { PlaceResult } from "./AddressField";
-import { MAP_STYLES, type MapControls } from "./Map";
-import { INK, makePinIcon, makeAdHocPin, type StopRole } from "./mapPins";
+import { Map, type MapControls, type MapHandle, type MapMarker } from "./Map";
+import { INK, makeAdHocPin, type StopRole } from "./mapPins";
 import { decodePolyline } from "./mapRoute";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -27,7 +27,9 @@ import { decodePolyline } from "./mapRoute";
    - Fits the map bounds to all points automatically.
    - Fetches the route from the server-side route handler (key stays safe).
    - If routing fails, falls back to markers only — no polyline.
-   - Orange numbered markers consistent with ActivityRow pin style.
+   - Stop markers and lifecycle are delegated to `<Map />`; this wrapper
+     only manages polylines, framing, and the ad-hoc focus pin via the
+     `MapHandle.getMap()` imperative escape hatch.
 ───────────────────────────────────────────────────────────────── */
 
 export type TravelMode = "WALKING" | "DRIVING" | "BICYCLING" | "TRANSIT";
@@ -146,6 +148,16 @@ function legStyle(t: TransportMode | null | undefined, color: string = INK): goo
   }
 }
 
+/** Stable initial centre for the inner <Map /> — superseded by fitBounds as
+ *  soon as markers/polylines are placed. Tokyo is the historic default. */
+const INITIAL_CENTER = { lat: 35.6762, lng: 139.6503 };
+
+/** Stable per-point id used both for the inner <Map /> marker key and for
+ *  `focusPoint`/`fitAll` so stale focus intents drop when points change. */
+function stopKey(p: RouteStop, i: number): string {
+  return `${i}:${p.placeId ?? `${p.lat},${p.lng}`}`;
+}
+
 export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function RouteMap({
   points,
   travelMode = "WALKING",
@@ -156,9 +168,7 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   controls = {},
 }, ref) {
   const status = useGoogleMaps();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const mapHandle = useRef<MapHandle>(null);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
   // A focus request queued until the map (SDK) is ready. Survives the async
   // route fetch so its late re-frame doesn't snap the camera back.
@@ -170,9 +180,31 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   const prevPointsRef = useRef(points);
   const [routeError, setRouteError] = useState(false);
 
+  // Stop markers in the `<Map />` shape — variant "stop" + role + slot colour.
+  // Memoised on `points` so identity changes (and re-fires the polyline effect)
+  // only when the stop set actually changes.
+  const stopMarkers = useMemo<MapMarker[]>(
+    () =>
+      points.map((p, i) => {
+        const role: StopRole =
+          i === 0 ? "start" : i === points.length - 1 ? "end" : "mid";
+        return {
+          id: stopKey(p, i),
+          lat: p.lat,
+          lng: p.lng,
+          title: p.name || p.formatted,
+          variant: "stop",
+          stopRole: role,
+          slot: p.slot ?? undefined,
+          glyph: resolveGlyph(p),
+        };
+      }),
+    [points],
+  );
+
   // ── Camera controls (stable across renders) ─────────────────────
   const frameAll = useCallback(() => {
-    const map = mapRef.current;
+    const map = mapHandle.current?.getMap();
     if (!map || points.length === 0) return;
     if (points.length === 1) {
       map.setCenter({ lat: points[0].lat, lng: points[0].lng });
@@ -185,7 +217,7 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       pl.getPath().forEach((ll) => bounds.extend(ll)),
     );
     // Padding leaves room for the 32px markers; extra on top for the halo.
-    map.fitBounds(bounds, { top: 56, right: 44, bottom: 44, left: 44 });
+    mapHandle.current?.fitBounds(bounds, { top: 56, right: 44, bottom: 44, left: 44 });
     google.maps.event.addListenerOnce(map, "idle", () => {
       const z = map.getZoom();
       if (z != null && z > 16) map.setZoom(16);
@@ -195,7 +227,7 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   // Apply a queued focus if both the map and target stop are available.
   // Returns whether it ran, so auto-framing can defer to an explicit focus.
   const applyFocus = useCallback(() => {
-    const map = mapRef.current;
+    const map = mapHandle.current?.getMap();
     const req = pendingFocusRef.current;
     const p = req ? points[req.index] : undefined;
     if (!map || !req || !p) return false;
@@ -213,7 +245,7 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   // Place/move the ad-hoc pin and pan onto it. No-op until the SDK is ready —
   // the request stays queued and the markers effect replays it via autoFit.
   const applyCoordFocus = useCallback(() => {
-    const map = mapRef.current;
+    const map = mapHandle.current?.getMap();
     const req = pendingCoordRef.current;
     if (!map || !req) return false;
     const position = { lat: req.lat, lng: req.lng };
@@ -263,43 +295,21 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
 
   useImperativeHandle(ref, () => ({ focusPoint, focusCoord, fitAll }), [focusPoint, focusCoord, fitAll]);
 
-  // ── Initialize map ──────────────────────────────────────────────
+  // Replay an ad-hoc pin queued before the SDK was ready. The polyline effect
+  // below only fires for routes with ≥2 stops, so a queued Go pin on an empty
+  // route would otherwise stay dropped.
   useEffect(() => {
-    if (status !== "ready" || !containerRef.current) return;
-    if (mapRef.current) return;
-
-    mapRef.current = new google.maps.Map(containerRef.current, {
-      center: { lat: 35.6762, lng: 139.6503 },
-      zoom: 13,
-      mapTypeId,
-      styles: MAP_STYLES,
-      disableDefaultUI: true,
-      // Native zoom control is replaced by our token-styled MapZoomControls.
-      zoomControl:        false,
-      fullscreenControl:  controls.fullscreenControl  ?? false,
-      mapTypeControl:     controls.mapTypeControl     ?? false,
-      streetViewControl:  controls.streetViewControl  ?? false,
-      scaleControl:       controls.scaleControl       ?? false,
-      // Greedy: scroll/drag zoom directly — no "use Ctrl + scroll" overlay.
-      gestureHandling: "greedy",
-    });
-
-    // Replay an ad-hoc pin queued before the SDK was ready. The markers effect
-    // only replays via autoFit when there are stops, so an empty route would
-    // otherwise drop the queued Go pin.
+    if (status !== "ready") return;
     applyCoordFocus();
   }, [status, applyCoordFocus]);
 
-  // ── Update map type when prop changes ──────────────────────────
+  // ── Redraw polylines + apply autoFit whenever points/travelMode change ──
+  // Marker lifecycle (creation/removal/styling) is handled by `<Map />` from
+  // `stopMarkers`. This effect owns only the route polylines and re-framing.
   useEffect(() => {
-    if (!mapRef.current) return;
-    mapRef.current.setMapTypeId(mapTypeId);
-  }, [mapTypeId]);
-
-  // ── Redraw markers + fetch route whenever points/travelMode change
-  useEffect(() => {
-    if (status !== "ready" || !mapRef.current) return;
-    const map = mapRef.current;
+    if (status !== "ready") return;
+    const map = mapHandle.current?.getMap();
+    if (!map) return;
 
     // Drop a stale focus intent when the stop set changes (e.g. day switch),
     // so we don't snap onto the wrong activity. A focus queued for the current
@@ -313,29 +323,12 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
     // This run owns the latest async work; later runs flip it to abort.
     let cancelled = false;
 
-    // Clear previous markers + polylines
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
+    // Clear previous polylines — markers are reconciled by `<Map />`.
     polylinesRef.current.forEach((p) => p.setMap(null));
     polylinesRef.current = [];
     setRouteError(false);
 
     if (points.length === 0) return;
-
-    // Place markers — icon by type, role for start/end
-    points.forEach((point, i) => {
-      const role: StopRole =
-        i === 0 ? "start" : i === points.length - 1 ? "end" : "mid";
-      const color = point.slot ? SLOT_COLORS[point.slot] : INK;
-      const marker = new google.maps.Marker({
-        position: { lat: point.lat, lng: point.lng },
-        map,
-        icon: makePinIcon(role, resolveGlyph(point), color),
-        title: point.name || point.formatted,
-        zIndex: 10 + i,
-      });
-      markersRef.current.push(marker);
-    });
 
     autoFit();
 
@@ -413,53 +406,25 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   // ── Cleanup on unmount ──────────────────────────────────────────
   useEffect(() => {
     return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
       polylinesRef.current.forEach((p) => p.setMap(null));
       adHocMarkerRef.current?.setMap(null);
     };
   }, []);
 
   return (
-    <div
-      className={cn("relative overflow-hidden rounded-lg bg-surface-soft", className)}
-      style={style}
-    >
-      {/* Map container */}
-      <div
-        ref={containerRef}
-        className={cn(
-          "absolute inset-0 transition-opacity duration-300",
-          status === "ready" ? "opacity-100" : "opacity-0",
-        )}
+    <div className={cn("relative", className)} style={style}>
+      <Map
+        ref={mapHandle}
+        center={INITIAL_CENTER}
+        zoom={13}
+        mapTypeId={mapTypeId}
+        controls={controls}
+        markers={stopMarkers}
+        className="absolute inset-0"
       />
 
-      {/* Loading */}
-      {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-6 h-6 rounded-full border-2 border-border border-t-orange animate-spin" />
-            <span className="text-tiny text-ink-faint">Loading map…</span>
-          </div>
-        </div>
-      )}
-
-      {/* SDK error */}
-      {status === "error" && (
-        <div className="absolute inset-0 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="text-meta font-medium text-ink mb-1">Map unavailable</div>
-            <div className="text-tiny text-ink-faint">
-              Set{" "}
-              <code className="bg-surface-soft px-1 rounded text-micro">
-                NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-              </code>{" "}
-              in .env.local
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Route error badge — non-blocking, markers still visible */}
+      {/* Route error badge — non-blocking, markers still visible. Stays a
+          sibling overlay of <Map /> so it floats above the basemap. */}
       {routeError && status === "ready" && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur-sm border border-border rounded-pill px-3 py-1.5 text-tiny text-ink-soft">
           Route unavailable — showing stops only

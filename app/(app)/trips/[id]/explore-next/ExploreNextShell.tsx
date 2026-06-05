@@ -37,19 +37,18 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const panelRef = useRef<HTMLElement>(null);
   const [panelWidth, setPanelWidth] = useState(376);
 
-  // Giorno selezionato nella Timeline. La Timeline organism non espone ancora
-  // `onSelectDay`, quindi per ora la selezione è fissa sul primo giorno
-  // (default cronologico). Quando Timeline esporrà il callback, sostituire
-  // questo `useState` placeholder con un setter cablato dalla Timeline.
-  // TODO: estendere Timeline con un callback `onSelectDay` per pilotare i
-  //       marker dell'itinerario dal click sul DayBadge.
+  // Giorno selezionato nella Timeline → guida il filtraggio dei marker
+  // itinerario sulla mappa. Il default è il primo giorno cronologico; la
+  // Timeline aggiorna la selezione via `onSelectDay` quando l'utente espande
+  // un DayBadge (modello "ultimo aperto vince", non single-selection rigido).
   const sortedDays = useMemo(
     () => [...days].sort((a, b) => a.day_number - b.day_number),
     [days],
   );
-  const [selectedDayId] = useState<string | null>(null);
-  const selectedDay =
-    sortedDays.find((d) => d.id === selectedDayId) ?? sortedDays[0] ?? null;
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(
+    sortedDays[0]?.id ?? null,
+  );
+  const selectedDay = sortedDays.find((d) => d.id === selectedDayId) ?? null;
   const selectedDayStops = useMemo(() => {
     if (!selectedDay) return [];
     return [...selectedDay.activities]
@@ -111,7 +110,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <Timeline days={days} />
+          <Timeline days={days} onSelectDay={setSelectedDayId} />
         </div>
       </aside>
     </div>

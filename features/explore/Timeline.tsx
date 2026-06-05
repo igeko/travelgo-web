@@ -68,6 +68,13 @@ type Props = {
   /** Japan & co. carry no bridge data — inject a sample Transfer between
    *  stops so the connector can be seen in context. */
   injectSampleTransfers?: boolean;
+  /**
+   * Fired when the user opens a day (expands its DayBadge/rail). Hosts use
+   * it to drive surfaces tied to the day in focus — e.g. ExploreNextShell
+   * filtering the map's itinerary markers to that day's stops. Not called
+   * on collapse: the model is "last opened wins", not single-selection.
+   */
+  onSelectDay?: (dayId: string) => void;
   className?: string;
 };
 
@@ -190,15 +197,20 @@ function buildItems(
 
 /* ── Timeline ───────────────────────────────────────────────────── */
 
-export function Timeline({ days, injectSampleTransfers = false, className }: Props) {
+export function Timeline({ days, injectSampleTransfers = false, onSelectDay, className }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   const toggleDay = (id: string) =>
     setExpandedDays((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
+      const wasOpen = next.has(id);
+      if (wasOpen) next.delete(id);
       else next.add(id);
+      // Emit the "day in focus" signal on open only. Hosts that need a
+      // single-selection model can ignore the multi-expand state and just
+      // treat each fired id as the current day.
+      if (!wasOpen) onSelectDay?.(id);
       return next;
     });
 
