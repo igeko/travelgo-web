@@ -46,3 +46,6 @@ next-env.d.ts
 
 # claude code worktrees (live working copies, never commit as gitlinks)
 .claude/worktrees/
+
+# local scratch / design references (figma screenshots, etc.) — never commit
+/.tmp/
