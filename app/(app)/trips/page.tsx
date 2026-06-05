@@ -83,10 +83,16 @@ export default function TripsPage() {
       <main className={cn("mx-auto w-full py-10", PAGE_MAX, PAGE_PX)}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-[24px] font-semibold text-ink">{t("title")}</h1>
-          <Button variant="solid" tone="neutral" iconOnly={false} onClick={() => router.push("/trips/new")}>
-            <IconPlus />
-            {t("newTrip")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="solid" tone="neutral" iconOnly={false} onClick={() => setShowCreate(true)}>
+              <IconPlus />
+              {t("newTrip")}
+            </Button>
+            <Button variant="outline" tone="neutral" iconOnly={false} onClick={() => router.push("/trips/new")}>
+              <IconSparkles />
+              {t("createTrip")}
+            </Button>
+          </div>
         </div>
 
         {loading && (
