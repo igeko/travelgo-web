@@ -57,6 +57,7 @@ export function ActivityStop({
   dateRange = "Thu 04 → Sat 06",
   duration = "30 minutes",
   timeRange = "10:30 → 11:00",
+  time,
   description,
   address = null,
   onAddressChange,
@@ -82,6 +83,10 @@ export function ActivityStop({
   duration?: string;
   /** "Stop" mode — the time window. */
   timeRange?: string;
+  /** Collapsed row — small clock label rendered at the right edge before the
+   *  drag handle. Used by the Explore timeline to surface the activity time
+   *  on each row when the day is expanded. */
+  time?: string;
   description?: string;
   /** Initial address (the field manages its own value afterwards). */
   address?: PlaceResult | null;
@@ -122,6 +127,16 @@ export function ActivityStop({
             {title}
           </span>
         </span>
+        {time ? (
+          <span
+            className={cn(
+              "shrink-0 text-nano tabular-nums",
+              selected ? "text-white/70" : "text-ink-soft",
+            )}
+          >
+            {time}
+          </span>
+        ) : null}
         {!selected ? (
           <IconGripVertical
             size={16}

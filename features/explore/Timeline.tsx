@@ -12,9 +12,9 @@
  * expands it to full height, revealing the fuzzy stops and the TODAY
  * NOTES panel.
  *
- * Beyond the Figma: per-activity times are rendered on the rail,
- * vertically centred on their stop via an explicit CSS grid (the rail
- * spans every row, each time shares its stop's gridRow).
+ * Beyond the Figma: per-activity times are rendered on the right edge of
+ * each ActivityStop row (before the drag handle), and only revealed when
+ * the day is expanded.
  *
  * Data in = the trip snapshot's days (Day + their scheduled Activity[]).
  *
@@ -22,7 +22,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, Fragment, useState } from "react";
+import { type ComponentType, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
 import {
@@ -194,7 +194,6 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
   const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-  const [hoverDay, setHoverDay] = useState<string | null>(null);
 
   const toggleDay = (id: string) =>
     setExpandedDays((prev) => {
@@ -213,16 +212,9 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
           ? formatDay(day.date)
           : { weekday: "", dateLabel: "" };
         const expanded = expandedDays.has(day.id);
-        // Times follow the TimelineDay states: hidden by default, revealed
-        // when the day's spine is hovered, kept while the day is expanded.
-        const showTimes = expanded || hoverDay === day.id;
         const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
         const isFirst = dayIdx === 0;
         const showNotes = expanded && !!day.notes;
-        const spineHover = {
-          onMouseEnter: () => setHoverDay(day.id),
-          onMouseLeave: () => setHoverDay((c) => (c === day.id ? null : c)),
-        };
         // The lodging item, when present, shares row 1 with the DayBadge (col 2)
         // so the icon badge's top edge lines up with the DayBadge's top stripe.
         // The DayBadge then spans row 1+2 (col 1) with a 6px top offset, so row 1
@@ -253,7 +245,6 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
-              {...spineHover}
               aria-hidden
               tabIndex={-1}
               style={{ gridColumn: 1, gridRow: `${lodgingOpen ? 1 : 2} / ${lastRow + 1}` }}
@@ -270,7 +261,6 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
-              {...spineHover}
               aria-expanded={expanded}
               aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
               style={{
@@ -362,47 +352,38 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               const open = openId === a.id;
               const fuzzy = a.fuzzy === true;
               const Icon = getStopIcon(a.icon) ?? IconMapPin;
-              const time = !fuzzy && a.time ? a.time : null;
+              // Per-row time label: hidden by default, revealed only when the
+              // day is expanded (the user-facing rule — there's no on-hover
+              // disclosure for the time).
+              const rowTime = !fuzzy && expanded && a.time ? a.time : undefined;
 
               return (
-                <Fragment key={a.id}>
-                  {/* time — only when the day's spine is hovered/expanded.
-                      `self-center` centres it on the stop row despite the grid's
-                      items-start; pointer-events-none keeps the rail clickable. */}
-                  {time && showTimes ? (
-                    <div
-                      style={{ gridColumn: 1, gridRow: row }}
-                      className="pointer-events-none z-10 self-center justify-self-center text-nano text-ink"
-                    >
-                      {time}
-                    </div>
-                  ) : null}
-                  <div style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
-                    {fuzzy ? (
-                      <FuzzyStop
-                        title={a.title}
-                        icon={Icon}
-                        state={open ? "open" : "default"}
-                        description={a.short_desc ?? undefined}
-                        onOpen={() => setOpenId(a.id)}
-                        onClose={() => setOpenId(null)}
-                        onRemove={() => setOpenId(null)}
-                      />
-                    ) : (
-                      <ActivityStop
-                        title={a.title}
-                        icon={Icon}
-                        state={open ? "open" : "default"}
-                        mode="stop"
-                        timeRange={a.time ?? "—"}
-                        description={a.short_desc ?? undefined}
-                        onOpen={() => setOpenId(a.id)}
-                        onClose={() => setOpenId(null)}
-                        onRemove={() => setOpenId(null)}
-                      />
-                    )}
-                  </div>
-                </Fragment>
+                <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
+                  {fuzzy ? (
+                    <FuzzyStop
+                      title={a.title}
+                      icon={Icon}
+                      state={open ? "open" : "default"}
+                      description={a.short_desc ?? undefined}
+                      onOpen={() => setOpenId(a.id)}
+                      onClose={() => setOpenId(null)}
+                      onRemove={() => setOpenId(null)}
+                    />
+                  ) : (
+                    <ActivityStop
+                      title={a.title}
+                      icon={Icon}
+                      state={open ? "open" : "default"}
+                      mode="stop"
+                      timeRange={a.time ?? "—"}
+                      time={rowTime}
+                      description={a.short_desc ?? undefined}
+                      onOpen={() => setOpenId(a.id)}
+                      onClose={() => setOpenId(null)}
+                      onRemove={() => setOpenId(null)}
+                    />
+                  )}
+                </div>
               );
             })}
 
