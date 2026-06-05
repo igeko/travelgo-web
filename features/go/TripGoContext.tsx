@@ -14,6 +14,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { GoChatFloat, type GoChatPosition } from "./GoChatFloat";
 import type { GoEvent, GoEventType, GoEventOf, GoPlace } from "./events";
 
@@ -88,6 +89,12 @@ export function useTripGo(): TripGoContextValue {
 ───────────────────────────────────────────────────────────────── */
 
 export function TripGoProvider({ children }: { children: ReactNode }) {
+  // Su /explore-next la chat di Go è disabilitata: il contesto resta montato
+  // (i consumer come ExploreMap.useTripGo continuano a compilare), ma il
+  // GoChatFloat non viene renderizzato.
+  const pathname = usePathname();
+  const hideFloat = pathname?.includes("/explore-next") ?? false;
+
   const [open, setOpen]                         = useState(false);
   const [hasBeenOpened, setHasBeenOpened]       = useState(false);
   const [tripContext, setTripContextState]       = useState<string | undefined>(undefined);
@@ -197,20 +204,22 @@ export function TripGoProvider({ children }: { children: ReactNode }) {
   return (
     <TripGoContext.Provider value={contextValue}>
       {children}
-      <GoChatFloat
-        open={open}
-        onClose={closeGo}
-        position={goPosition}
-        wideWidth={goWideWidth}
-        tripContext={tripContext}
-        pendingMessage={pendingMessage}
-        onPendingMessageConsumed={() => setPendingMessage(undefined)}
-        activeEditMatch={activeEditMatch}
-        focus={goFocus}
-        onClearFocus={() => setGoFocus(null)}
-        onEvent={emit}
-        listeningTypes={listeningTypes}
-      />
+      {!hideFloat && (
+        <GoChatFloat
+          open={open}
+          onClose={closeGo}
+          position={goPosition}
+          wideWidth={goWideWidth}
+          tripContext={tripContext}
+          pendingMessage={pendingMessage}
+          onPendingMessageConsumed={() => setPendingMessage(undefined)}
+          activeEditMatch={activeEditMatch}
+          focus={goFocus}
+          onClearFocus={() => setGoFocus(null)}
+          onEvent={emit}
+          listeningTypes={listeningTypes}
+        />
+      )}
     </TripGoContext.Provider>
   );
 }
