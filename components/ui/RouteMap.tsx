@@ -4,15 +4,12 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
-import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
-import {
-  IconMapPin, IconSoup, IconTree, IconKey, IconTrain,
-} from "@/components/ui/icons";
+import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { BlockType, BridgeData } from "@/lib/dal/domain";
 import { SLOT_COLORS, type SlotKey } from "@/features/activity/types";
 import type { PlaceResult } from "./AddressField";
 import { MAP_STYLES, type MapControls } from "./Map";
-import { INK, ORANGE, makePinIcon, makeAdHocPin, iconGlyph, type StopRole } from "./mapPins";
+import { INK, makePinIcon, makeAdHocPin, type StopRole } from "./mapPins";
 import { decodePolyline } from "./mapRoute";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -98,33 +95,6 @@ export type RouteMapHandle = {
   /** Re-frame all stops + route geometry (the default overview). */
   fitAll: () => void;
 };
-
-/* ─────────────────────────────────────────────────────────────────
-   Marker glyphs — reuse the same Tabler icons as Timeline / ActivityRow.
-   Tabler components render to <svg viewBox="0 0 24 24">…</svg>; we strip
-   the wrapper and re-embed the inner paths (which inherit stroke from a
-   wrapping <g>) so the marker is the icon itself — no circle, no number —
-   with a white halo for legibility on the map. Memoised per cache key.
-───────────────────────────────────────────────────────────────── */
-const TYPE_CMP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
-  place:  IconMapPin,
-  meal:   IconSoup,
-  pause:  IconTree,
-  action: IconKey,
-  move:   IconTrain,
-};
-
-/** Resolve a stop to its icon paths, falling back to a generic map pin. */
-function resolveGlyph(stop: RouteStop): string {
-  if (stop.iconKey) {
-    const Cmp = getStopIcon(stop.iconKey);
-    if (Cmp) return iconGlyph(`stop:${stop.iconKey}`, Cmp);
-  }
-  if (stop.type && TYPE_CMP[stop.type]) {
-    return iconGlyph(`type:${stop.type}`, TYPE_CMP[stop.type]);
-  }
-  return iconGlyph("type:place", IconMapPin);
-}
 
 /* ─────────────────────────────────────────────────────────────────
    Transport → routing mode + polyline style.

@@ -3,7 +3,7 @@ import { serverDal } from "@/lib/dal";
 import { AppHeaderServer } from "@/features/app/AppHeaderServer";
 import type { LatLng } from "@/components/ui/Map";
 import { selectNightRoute } from "@/lib/explore/nightRoute";
-import { ExploreMap } from "./ExploreMap";
+import { ExploreMap } from "@/features/explore/ExploreMap";
 import { ExploreGoLauncher } from "./ExploreGoLauncher";
 
 /** Tokyo — fallback center when the trip has no geocoded days yet. */

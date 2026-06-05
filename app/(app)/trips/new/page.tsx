@@ -24,7 +24,7 @@ import { DayRail } from "@/features/day/DayRail";
 import { Itinerary } from "@/features/activity/Itinerary";
 import { IconList, IconMap } from "@/components/ui/icons";
 import type { ActivityData } from "@/features/activity/ActivityEditForm";
-import { ExploreMap } from "../[id]/explore/ExploreMap";
+import { ExploreMap } from "@/features/explore/ExploreMap";
 import { selectNightRoute } from "@/lib/explore/nightRoute";
 import type { LatLng, MapMarker } from "@/components/ui/Map";
 import { api } from "@/lib/client";
