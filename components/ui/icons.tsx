@@ -34,6 +34,7 @@ export {
   IconBug,
   IconBulb,
   IconCalendar,
+  IconCalendarPlus,
   IconCalendarTime,
   IconCheck,
   IconCheckbox,

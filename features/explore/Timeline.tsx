@@ -27,7 +27,9 @@ import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
 import {
   IconBed,
   IconBuildingCottage,
+  IconCalendarPlus,
   IconHome,
+  IconMap,
   IconMapPin,
   IconTent,
   IconX,
@@ -222,9 +224,37 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, cla
         const { weekday, dateLabel } = day.date
           ? formatDay(day.date)
           : { weekday: "", dateLabel: "" };
+        const isFirst = dayIdx === 0;
+
+        // Empty day: nessun alloggio, nessuna attività, nessuna nota — la col 2
+        // ospita la EmptyDayCard al posto del rail/items, e la DayBadge resta
+        // cliccabile solo per emettere onSelectDay (niente da espandere).
+        const isEmpty = !day.accommodation && day.activities.length === 0 && !day.notes;
+        if (isEmpty) {
+          return (
+            <div
+              key={day.id}
+              className="grid items-start gap-x-2"
+              style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
+            >
+              <button
+                type="button"
+                onClick={() => onSelectDay?.(day.id)}
+                aria-label={`${weekday} ${dateLabel}`}
+                style={{ gridColumn: 1, gridRow: 1 }}
+                className="cursor-pointer self-start"
+              >
+                <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
+              </button>
+              <div style={{ gridColumn: 2, gridRow: 1 }} className="py-0.5">
+                <EmptyDayCard />
+              </div>
+            </div>
+          );
+        }
+
         const expanded = expandedDays.has(day.id);
         const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
-        const isFirst = dayIdx === 0;
         const showNotes = expanded && !!day.notes;
         // The lodging item, when present, shares row 1 with the DayBadge (col 2)
         // so the icon badge's top edge lines up with the DayBadge's top stripe.
@@ -413,6 +443,32 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, cla
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ── EmptyDayCard ───────────────────────────────────────────────── */
+
+/** Shown in col 2 of the Timeline when a day has no accommodation, no
+ *  activities and no notes — replaces the rail/items zone with a 340×280
+ *  bordered card (gradient strip + map glyph + centered "Niente pianificato"
+ *  payload). Self-contained: no expand state, no rail. */
+function EmptyDayCard() {
+  return (
+    <div className="flex h-[280px] w-full max-w-[340px] flex-col overflow-hidden rounded-md border border-border">
+      <div className="flex h-12 flex-shrink-0 items-center justify-center bg-gradient-to-b from-surface-soft to-surface">
+        <IconMap size={22} className="text-ink/10" />
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-surface px-6 text-center">
+        <div className="flex size-11 items-center justify-center rounded-full bg-bg">
+          <IconCalendarPlus size={22} className="text-ink/25" />
+        </div>
+        <p className="mt-0.5 text-meta font-medium text-ink/50">Niente pianificato</p>
+        <p className="text-mini leading-[1.6] text-ink/30">
+          Aggiungi la prima attività
+          <br />o chiedi suggerimenti a Go.
+        </p>
+      </div>
     </div>
   );
 }
