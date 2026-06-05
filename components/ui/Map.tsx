@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { cn } from "@/lib/cn";
 import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
@@ -68,6 +69,14 @@ export type MapMarker = {
   stopRole?: StopRole;
   /** Time-of-day slot — drives the pin body colour (variant "stop"). */
   slot?: RouteSlot;
+  /**
+   * If true, the marker is added to a shared `MarkerClusterer` instead of being
+   * mounted directly on the map. Styling/icon path stays identical — only the
+   * mounting strategy changes. Use for dense layers (category area-search);
+   * keep low-cardinality semantic pins (Go suggestions, night route, itinerary
+   * stops) regular so they remain individually visible at every zoom.
+   */
+  clustered?: boolean;
 };
 
 /**
@@ -282,6 +291,11 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersByKey = useRef<Record<string, google.maps.Marker>>({});
+  // Shared clusterer for markers flagged `clustered: true`. Lazily created on
+  // first use and torn down on unmount. Re-synced on every reconcile cycle
+  // (clearMarkers + addMarkers): incremental clusterer maintenance is more
+  // intricate than the gains for the cardinalities Explore handles today.
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
@@ -468,9 +482,11 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     for (const m of desired) {
       const key = keyOf(m);
       if (markersByKey.current[key]) continue;
+      // Clustered markers are mounted by `MarkerClusterer` (see below) — passing
+      // `map` here would double-mount them. Regular markers attach directly.
       const marker = new google.maps.Marker({
         position: { lat: m.lat, lng: m.lng },
-        map,
+        map: m.clustered ? null : map,
         title: m.title,
       });
       marker.addListener("click", () => onMarkerClickRef.current?.(key));
@@ -478,6 +494,17 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       marker.addListener("mouseout", () => unhoverPin());
       markersByKey.current[key] = marker;
       added = true;
+    }
+
+    // Bucket existing marker instances into regular vs clustered for this
+    // cycle. `clustered` toggling on an existing marker is uncommon but
+    // supported: the marker is in the right bucket here, and the clusterer is
+    // re-synced wholesale below so the membership always matches `desired`.
+    const clusteredMarkers: google.maps.Marker[] = [];
+    for (const m of desired) {
+      const marker = markersByKey.current[keyOf(m)];
+      if (!marker) continue;
+      if (m.clustered) clusteredMarkers.push(marker);
     }
 
     // (Re)style every marker by selection: selected → blue (on top), rest
@@ -503,6 +530,17 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         marker.setIcon(makeAdHocPin(isSelected ? INK : NEUTRAL, isSelected ? ORANGE : "#fff", m.glyph));
         marker.setZIndex(isSelected ? 1000 : 1);
       }
+    }
+
+    // Sync the clusterer with this cycle's clustered marker set. We rebuild it
+    // wholesale every reconcile — fine for the cardinalities Explore handles,
+    // and immune to drift between marker keys and clusterer membership.
+    if (clusteredMarkers.length > 0) {
+      clustererRef.current ??= new MarkerClusterer({ map });
+      clustererRef.current.clearMarkers();
+      clustererRef.current.addMarkers(clusteredMarkers);
+    } else {
+      clustererRef.current?.clearMarkers();
     }
 
     if (added) {
@@ -556,6 +594,14 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   // Tear down the night-route polyline on unmount.
   useEffect(() => () => {
     routePolylineRef.current?.setMap(null);
+  }, []);
+
+  // Tear down the shared MarkerClusterer on unmount. Clustered marker
+  // instances live in `markersByKey` and are dropped by the standard reconcile
+  // path; the clusterer just needs its internal references released.
+  useEffect(() => () => {
+    clustererRef.current?.clearMarkers();
+    clustererRef.current = null;
   }, []);
 
   // Decorate the selected marker with the hero halo + name label overlay.

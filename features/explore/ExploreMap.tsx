@@ -242,7 +242,12 @@ export function ExploreMap({
         const places = await api.places.areaSearch<AreaPlace>(
           term, vp.center.lat, vp.center.lng, vp.radiusMeters,
         );
-        setCategoryMarkers(places.map((p) => ({ id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph })));
+        // Category area-search can return many dense pins → cluster them.
+        // Go and night layers stay regular (low cardinality, semantic).
+        setCategoryMarkers(places.map((p) => ({
+          id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph,
+          clustered: true,
+        })));
       } catch {
         /* search failed — keep previous pins */
       }
