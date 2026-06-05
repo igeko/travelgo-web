@@ -12,6 +12,10 @@
     "openLink": "Apri link",
     "nightOfStay": "Notte {index} di {total}"
   },
+  "ExploreNext": {
+    "searchPlaceholder": "Cerca tappa…",
+    "settingsLabel": "Regola vista"
+  },
   "ExploreCategories": {
     "dormi": "Dormi",
     "hotel": "Hotel",
@@ -46,6 +50,7 @@
       "trip": "Viaggio",
       "dayByDay": "Giorno per giorno",
       "explore": "Esplora",
+      "exploreNext": "Esplora (next)",
       "budget": "Budget",
       "notes": "Note"
     },

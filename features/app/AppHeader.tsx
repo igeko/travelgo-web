@@ -19,7 +19,7 @@ import { YumejiGlyph } from "@/features/yumeji/YumejiGlyph";
    This lets the sandbox mobile-frame work correctly at 390px.
 ───────────────────────────────────────────────────────────────── */
 
-export type AppHeaderTab = "trip" | "day-by-day" | "explore" | "budget" | "notes";
+export type AppHeaderTab = "trip" | "day-by-day" | "explore" | "explore-next" | "budget" | "notes";
 
 export type AppHeaderProps = {
   activeNav?: "trips" | "explore" | "yumeji";
@@ -99,9 +99,10 @@ export function AppHeader({
   ];
 
   const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
-    { id: "trip",       label: t("tabs.trip"),      href: (id) => `/trips/${id}/overview` },
-    { id: "day-by-day", label: t("tabs.dayByDay"),  href: (id) => `/trips/${id}` },
-    { id: "explore",    label: t("tabs.explore"),    href: (id) => `/trips/${id}/explore` },
+    { id: "trip",         label: t("tabs.trip"),         href: (id) => `/trips/${id}/overview` },
+    { id: "day-by-day",   label: t("tabs.dayByDay"),     href: (id) => `/trips/${id}` },
+    { id: "explore",      label: t("tabs.explore"),      href: (id) => `/trips/${id}/explore` },
+    { id: "explore-next", label: t("tabs.exploreNext"),  href: (id) => `/trips/${id}/explore-next` },
   ];
 
   return (
