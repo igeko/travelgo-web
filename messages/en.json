@@ -12,10 +12,6 @@
     "openLink": "Open link",
     "nightOfStay": "Night {index} of {total}"
   },
-  "ExploreNext": {
-    "searchPlaceholder": "Search a stop…",
-    "settingsLabel": "Adjust view"
-  },
   "ExploreCategories": {
     "dormi": "Sleep",
     "hotel": "Hotels",

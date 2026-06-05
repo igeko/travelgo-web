@@ -12,10 +12,6 @@
     "openLink": "Apri link",
     "nightOfStay": "Notte {index} di {total}"
   },
-  "ExploreNext": {
-    "searchPlaceholder": "Cerca tappa…",
-    "settingsLabel": "Regola vista"
-  },
   "ExploreCategories": {
     "dormi": "Dormi",
     "hotel": "Hotel",
