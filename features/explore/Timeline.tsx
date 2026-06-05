@@ -245,7 +245,11 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
                 day badge floats clear of the rail as in the Figma. Holds the
                 aligned time ticks. When the lodging is OPEN the rail extends to
                 row 1 too, so the grey column covers the full height of the
-                opened lodging card. */}
+                opened lodging card.
+                When a closed lodging shares row 1, the badge (43px intrinsic +
+                6px mt = 49) overflows the row sized by the lodging (36px) by
+                13px into row 2, so the rail's top margin is 13 + 3 = 16 to
+                keep the visible gap below the badge at the intended 3px. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
@@ -253,7 +257,10 @@ export function Timeline({ days, injectSampleTransfers = false, className }: Pro
               aria-hidden
               tabIndex={-1}
               style={{ gridColumn: 1, gridRow: `${lodgingOpen ? 1 : 2} / ${lastRow + 1}` }}
-              className="my-[3px] w-full cursor-pointer self-stretch rounded-xs bg-timeline-rail transition-colors hover:bg-surface-soft"
+              className={cn(
+                "w-full cursor-pointer self-stretch rounded-xs bg-timeline-rail transition-colors hover:bg-surface-soft mb-[3px]",
+                lodgingFirst && !lodgingOpen ? "mt-[16px]" : "mt-[3px]",
+              )}
             />
 
             {/* Day badge — sits on top of the rail (col 1, row 1). When a lodging
