@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mapsConfigured, placeDetails } from "@/lib/maps/provider";
+import { mapsConfigured, placeDetailsV1 } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/details?placeId=<id>
  *
- * Proxies the Google Place Details API. Returns the structured
- * address, coordinates and address components for a given place_id.
+ * Proxies the Google Place Details API (v1). Returns the structured
+ * address, coordinates and address components for a given place_id in the
+ * same `{ place: { formatted, name, placeId, lat, lng, components } }` shape
+ * the frontend (`lib/client/places.ts`, `AddressField`) expects.
  */
+
+type V1AddressComponent = {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+};
+
+type V1PlaceDetails = {
+  id?: string;
+  formattedAddress?: string;
+  displayName?: { text?: string };
+  location?: { latitude?: number; longitude?: number };
+  addressComponents?: V1AddressComponent[];
+};
+
+// Field mask owned by the route, passed to the provider. Keep it tight to
+// reduce billing — see https://developers.google.com/maps/documentation/places/web-service/place-details
+const FIELD_MASK = "id,displayName,formattedAddress,location,addressComponents";
+
 export async function GET(req: NextRequest) {
   const placeId = req.nextUrl.searchParams.get("placeId")?.trim();
 
@@ -23,51 +44,48 @@ export async function GET(req: NextRequest) {
   }
 
   // Place details (address, coords) are very stable — cache aggressively.
-  // Only fetch the fields we actually use — reduces billing cost.
-  const res = await placeDetails(
-    {
-      place_id: placeId,
-      language: "en",
-      fields: "formatted_address,geometry/location,address_components,name",
-    },
-    86400,
-  );
+  const res = await placeDetailsV1(placeId, FIELD_MASK, {
+    languageCode: "en",
+    revalidate: 86400,
+  });
 
   if (!res.ok) {
+    // v1 returns non-2xx HTTP for errors (no `status: REQUEST_DENIED` envelope).
+    let upstreamMessage = "";
+    try {
+      const errBody = (await res.json()) as { error?: { message?: string } };
+      upstreamMessage = errBody.error?.message ?? "";
+    } catch {
+      // ignore — best-effort log only
+    }
+    console.error("[places/details] upstream error:", res.status, upstreamMessage);
     return NextResponse.json(
       { error: "Upstream error from Google Places" },
       { status: 502 },
     );
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as V1PlaceDetails;
 
-  if (data.status !== "OK") {
-    console.error("[places/details] Google error:", data.status, data.error_message);
-    return NextResponse.json(
-      { error: data.error_message ?? data.status },
-      { status: 502 },
-    );
-  }
-
-  const r = data.result;
-
-  // Flatten address_components into a simple Record<type, long_name>
-  // e.g. { locality: "Tokyo", country: "Japan", postal_code: "100-0001", … }
+  // Flatten addressComponents into a simple Record<type, longText>
+  // e.g. { locality: "Tokyo", country: "Japan", postal_code: "100-0001", … }.
+  // Note: legacy was `long_name`/`types`, v1 is `longText`/`types`. The
+  // `types[]` strings (locality, country, postal_code, …) are unchanged.
   const components: Record<string, string> = {};
-  for (const comp of r.address_components ?? []) {
-    for (const type of comp.types as string[]) {
-      components[type] = comp.long_name;
+  for (const comp of data.addressComponents ?? []) {
+    const longText = comp.longText ?? "";
+    for (const type of comp.types ?? []) {
+      components[type] = longText;
     }
   }
 
   return NextResponse.json({
     place: {
-      formatted: r.formatted_address as string,
-      name: (r.name as string) ?? "",
+      formatted: data.formattedAddress ?? "",
+      name: data.displayName?.text ?? "",
       placeId,
-      lat: r.geometry.location.lat as number,
-      lng: r.geometry.location.lng as number,
+      lat: data.location?.latitude ?? 0,
+      lng: data.location?.longitude ?? 0,
       components,
     },
   });
