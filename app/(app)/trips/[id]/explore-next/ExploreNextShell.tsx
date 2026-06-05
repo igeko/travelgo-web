@@ -31,7 +31,7 @@ export function ExploreNextShell({ days }: Props) {
       <RouteMap points={[]} className="absolute inset-0 rounded-none" />
 
       {/* Panel sinistro — card arrotondata che contiene la Timeline. */}
-      <aside className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg bg-surface shadow-float">
+      <aside className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Timeline days={days} />
         </div>
