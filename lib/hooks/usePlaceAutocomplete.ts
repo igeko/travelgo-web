@@ -11,12 +11,19 @@ export type Suggestion = {
   secondaryText: string;
 };
 
-export type UsePlaceAutocompleteOptions = {
+export type UsePlaceAutocompleteOptions<P> = {
   /** Google Places autocomplete type filter. Default: undefined (uses API default). */
   types?: string;
+  /**
+   * Place-details fetcher fired on selection. Defaults to `api.places.details`
+   * (returns `PlaceResult` — name, coords, address components). Pass
+   * `api.places.enriched` (or any compatible fetcher) to skip a second round-trip
+   * when the consumer needs the richer payload (rating, photos, hours…).
+   */
+  detailFetcher?: (placeId: string) => Promise<P | null>;
 };
 
-export type UsePlaceAutocompleteReturn = {
+export type UsePlaceAutocompleteReturn<P> = {
   inputText: string;
   setInputText: (text: string) => void;
   suggestions: Suggestion[];
@@ -28,8 +35,8 @@ export type UsePlaceAutocompleteReturn = {
   isLoadingDetails: boolean;
   isLoading: boolean;
   handleInputChange: (text: string, onClear?: () => void) => void;
-  selectSuggestion: (suggestion: Suggestion, onSelect: (place: PlaceResult) => void) => Promise<void>;
-  handleKeyDown: (e: React.KeyboardEvent, onSelect: (place: PlaceResult) => void) => void;
+  selectSuggestion: (suggestion: Suggestion, onSelect: (place: P) => void) => Promise<void>;
+  handleKeyDown: (e: React.KeyboardEvent, onSelect: (place: P) => void) => void;
 };
 
 /**
@@ -38,8 +45,10 @@ export type UsePlaceAutocompleteReturn = {
  * detail fetch to /api/places/details, keyboard navigation,
  * and loading states.
  */
-export function usePlaceAutocomplete(options: UsePlaceAutocompleteOptions = {}): UsePlaceAutocompleteReturn {
-  const { types } = options;
+export function usePlaceAutocomplete<P = PlaceResult>(
+  options: UsePlaceAutocompleteOptions<P> = {},
+): UsePlaceAutocompleteReturn<P> {
+  const { types, detailFetcher } = options;
   const [inputText, setInputText] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -94,34 +103,47 @@ export function usePlaceAutocomplete(options: UsePlaceAutocompleteOptions = {}):
 
   /* ── Place details fetch on selection ── */
   const selectSuggestion = useCallback(
-    async (suggestion: Suggestion, onSelect: (place: PlaceResult) => void) => {
+    async (suggestion: Suggestion, onSelect: (place: P) => void) => {
       setIsOpen(false);
       setInputText(suggestion.description);
       setSuggestions([]);
 
       setIsLoadingDetails(true);
       try {
-        const place = await api.places.details<PlaceResult>(suggestion.placeId);
+        // Default fetcher is `api.places.details<PlaceResult>` — when the caller
+        // doesn't override it, the generic `P` defaults to `PlaceResult`, so the
+        // cast is a no-op. With a custom fetcher (e.g. `enriched`), `P` is
+        // whatever the caller chose.
+        const fetcher =
+          detailFetcher ?? ((id: string) => api.places.details<P>(id));
+        const place = await fetcher(suggestion.placeId);
         if (place) onSelect(place);
       } catch {
-        onSelect({
-          formatted: suggestion.description,
-          name: suggestion.mainText,
-          placeId: suggestion.placeId,
-          lat: 0,
-          lng: 0,
-          components: {},
-        });
+        // Fallback only for the default (PlaceResult) fetcher — preserves
+        // historical AddressField behaviour: even on a Place Details outage
+        // the field receives a partial selection (no coords) so the user
+        // sees what they picked. With a custom fetcher the result shape is
+        // unknown and a synthetic fallback would be a lie.
+        if (!detailFetcher) {
+          onSelect({
+            formatted: suggestion.description,
+            name: suggestion.mainText,
+            placeId: suggestion.placeId,
+            lat: 0,
+            lng: 0,
+            components: {},
+          } as unknown as P);
+        }
       } finally {
         setIsLoadingDetails(false);
       }
     },
-    [],
+    [detailFetcher],
   );
 
   /* ── Keyboard navigation ── */
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, onSelect: (place: PlaceResult) => void) => {
+    (e: React.KeyboardEvent, onSelect: (place: P) => void) => {
       if (!isOpen || suggestions.length === 0) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();

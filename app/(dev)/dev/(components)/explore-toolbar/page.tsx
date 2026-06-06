@@ -81,7 +81,7 @@ export default function ExploreToolbarSandboxPage() {
               onTogglePin={handleTogglePin}
               onSettingsClick={() => pushLog("onSettingsClick()")}
               onSelectPlace={(p) =>
-                pushLog(`onSelectPlace("${p.name || p.formatted}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
+                pushLog(`onSelectPlace("${p.name || p.address}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
               }
             />
           </div>
@@ -110,7 +110,7 @@ export default function ExploreToolbarSandboxPage() {
               onTogglePin={handleTogglePin}
               onSettingsClick={() => pushLog("onSettingsClick()")}
               onSelectPlace={(p) =>
-                pushLog(`onSelectPlace("${p.name || p.formatted}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
+                pushLog(`onSelectPlace("${p.name || p.address}" @ ${p.lat.toFixed(4)},${p.lng.toFixed(4)})`)
               }
             />
           </div>

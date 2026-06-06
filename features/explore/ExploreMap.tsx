@@ -9,6 +9,7 @@ import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
 import { YumejiPinnedColumn, useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
 import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHoverCard";
+import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
 import { iconGlyph, NIGHT, type GlyphCmp } from "@/components/ui/mapPins";
@@ -98,6 +99,12 @@ export function ExploreMap({
   // Selected night pin (by coords key) — drives the saved-info card, kept apart
   // from `goFocus` so it never triggers the Google PlaceHoverCard.
   const [nightSelId, setNightSelId] = useState<string | null>(null);
+  // Single search-result pin (toolbar autocomplete → enriched fetch). Stays
+  // separate from `goFocus` so picking a search hit does NOT open the Go panel —
+  // a search is a passive lookup, not a conversation kick-off. The full
+  // `PlaceEnriched` object is kept here so the hover card can render via
+  // `initialPlace` (no second Google round-trip).
+  const [searchPlace, setSearchPlace] = useState<PlaceEnriched | null>(null);
 
   const [goMarkers, setGoMarkers] = useState<MapMarker[]>([]);
   const [categoryMarkers, setCategoryMarkers] = useState<MapMarker[]>([]);
@@ -182,10 +189,23 @@ export function ExploreMap({
     [showNightRoute, nightRoute],
   );
 
+  // Search-result pin — a bare ad-hoc pin keyed by the Google placeId. Sits in
+  // the topmost layer so it visually wins over any other pin at the same point.
+  const searchMarker = useMemo<MapMarker | null>(() => {
+    if (!searchPlace) return null;
+    return {
+      id: searchPlace.placeId,
+      lat: searchPlace.lat,
+      lng: searchPlace.lng,
+      title: searchPlace.name,
+    };
+  }, [searchPlace]);
+
   // Markers shown on the map = the focus pin (derived from goFocus — a single,
   // self-replacing "manual" pin when it's an ad-hoc click) + Go markers +
-  // category results + night-route pins. Later layers win on dup, so a focused
-  // place shows its real marker (icon/glyph) instead of the bare focus pin.
+  // category results + night-route pins + the single search-result pin.
+  // Later layers win on dup, so a focused place shows its real marker
+  // (icon/glyph) instead of the bare focus pin.
   const allMarkers = useMemo(() => {
     const byKey: Record<string, MapMarker> = {};
     for (const m of extraMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
@@ -196,8 +216,9 @@ export function ExploreMap({
     for (const m of goMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     for (const m of categoryMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     for (const m of nightMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
+    if (searchMarker) byKey[searchMarker.id ?? `${searchMarker.lat},${searchMarker.lng}`] = searchMarker;
     return Object.values(byKey);
-  }, [extraMarkers, goFocus, goMarkers, categoryMarkers, nightMarkers]);
+  }, [extraMarkers, goFocus, goMarkers, categoryMarkers, nightMarkers, searchMarker]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
@@ -289,6 +310,7 @@ export function ExploreMap({
   const handleMapClick = (latlng: LatLng) => {
     interactedRef.current = true;
     setNightSelId(null);
+    setSearchPlace(null);
     const coords = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
     setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
     openGo();
@@ -298,6 +320,7 @@ export function ExploreMap({
   const handlePoiClick = (placeId: string, latlng: LatLng) => {
     interactedRef.current = true;
     setNightSelId(null);
+    setSearchPlace(null);
     const fallback = t("placeFallback");
     // Focus immediately at the click point; refine the label with the place name.
     setGoFocus({ title: fallback, lat: latlng.lat, lng: latlng.lng, placeId });
@@ -314,6 +337,13 @@ export function ExploreMap({
   // Re-clicking the manual (ad-hoc) pin removes it; normal pins are never deleted.
   const handleMarkerClick = (id: string) => {
     interactedRef.current = true;
+    // Search-result pin (toolbar autocomplete): toggle off on re-click, never
+    // opens Go — a search hit is a passive lookup, the hover card carries the
+    // info and the only side-effect is "Add to trip" once the user opts in.
+    if (searchPlace && id === searchPlace.placeId) {
+      setSearchPlace(null);
+      return;
+    }
     // Night-route pin: show its saved-info card (no Google lookup) and send the
     // place to Go, like every other pin. Toggle on re-click — never deletes, the
     // pin is sourced from trip data.
@@ -327,6 +357,7 @@ export function ExploreMap({
       return;
     }
     setNightSelId(null);
+    setSearchPlace(null);
     const inGo = goMarkers.some((m) => (m.id ?? `${m.lat},${m.lng}`) === id);
     const inCategory = categoryMarkers.some((m) => (m.id ?? `${m.lat},${m.lng}`) === id);
     const isManualPin = goFocus != null && keyOfPlace(goFocus) === id && !inGo && !inCategory;
@@ -344,13 +375,34 @@ export function ExploreMap({
         zoom={zoom}
         zoomControlPosition="RIGHT_BOTTOM"
         markers={allMarkers}
-        selectedMarkerId={nightSelId ?? (goFocus ? keyOfPlace(goFocus) : null)}
+        // Selection precedence: search hit > night pin > Go focus. Search wins
+        // because the user just explicitly picked it from the autocomplete.
+        selectedMarkerId={
+          searchPlace?.placeId ?? nightSelId ?? (goFocus ? keyOfPlace(goFocus) : null)
+        }
         onMapClick={handleMapClick}
         onPoiClick={handlePoiClick}
         onMarkerClick={handleMarkerClick}
         onViewportChange={(vp) => { viewportRef.current = vp; }}
         viewportInset={viewportInset}
         renderPinCard={(id, close) => {
+          // Search-result pin → enriched card with the pre-fetched payload
+          // (no second Google round-trip). "Add to trip" is wired in but
+          // intentionally a no-op for now — UX scaffolding only.
+          if (searchPlace && id === searchPlace.placeId) {
+            return (
+              <PlaceHoverCard
+                key={id}
+                initialPlace={searchPlace}
+                fallbackName={searchPlace.name}
+                onClose={close}
+                onAddToTrip={() => {
+                  // TODO: wire to the trip add-to-day flow once the host
+                  // exposes it. Keeping the prop set so the CTA renders.
+                }}
+              />
+            );
+          }
           // Night pin → saved trip data; Google place → enriched card; manual
           // coordinate-only pin → no card.
           const nw = nightById[id];
@@ -362,6 +414,7 @@ export function ExploreMap({
           return <PlaceHoverCard key={id} placeId={id} fallbackName={m.title ?? t("placeFallback")} onClose={close} />;
         }}
         onMarkerClose={(id) => {
+          if (searchPlace && id === searchPlace.placeId) { setSearchPlace(null); return; }
           if (nightById[id]) setNightSelId(null);
           setGoFocus(null);
         }}
@@ -381,16 +434,16 @@ export function ExploreMap({
           )
         }
         onSelectPlace={(place) => {
-          // Re-center the map on the picked place. We don't drop a dedicated
-          // "search result" marker layer here: the existing pin systems
-          // (`categoryMarkers`, `goMarkers`) are scoped to category area-search
-          // and Go's emitted places, and there's no reusable "single POI" marker
-          // helper. Routing through Go's focus would also open the Go panel,
-          // which is unwanted for a plain search. Centring + zooming is enough
-          // for now; if a persistent search pin is needed, add a dedicated
-          // marker layer parallel to `categoryMarkers`.
-          // TODO: add a single-place marker layer for search results.
+          // Single search-result pin layer — distinct from `categoryMarkers`
+          // (which is plural, area-scoped) and `goFocus` (which would open the
+          // Go panel). Toolbar already fetched the enriched payload, so we
+          // stash it whole and PlaceHoverCard renders without a second
+          // round-trip. Other selections are cleared so only the search hit
+          // shows the active halo + card.
           interactedRef.current = true;
+          setNightSelId(null);
+          setGoFocus(null);
+          setSearchPlace(place);
           setCenter({ lat: place.lat, lng: place.lng });
           setZoom(FOCUS_ZOOM);
         }}

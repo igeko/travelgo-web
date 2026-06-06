@@ -27,8 +27,10 @@
  *
  * Search — first item of the rail. Mutually exclusive with the macro chip row:
  * opening the search panel closes any open macro and vice versa. Google Places
- * autocomplete is driven internally via `usePlaceAutocomplete`: the host only
- * gets the final `PlaceResult` through `onSelectPlace` (mirrors AddressField).
+ * autocomplete is driven internally via `usePlaceAutocomplete` with the
+ * `enriched` fetcher: a single Places call returns coords + rating + photos +
+ * hours, so the host can hand the result straight to `PlaceHoverCard` via
+ * `initialPlace` and skip the card's lazy fetch.
  */
 
 import { forwardRef, useEffect, useRef, useState } from "react";
@@ -44,7 +46,8 @@ import {
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { usePlaceAutocomplete } from "@/lib/hooks/usePlaceAutocomplete";
-import type { PlaceResult } from "@/components/ui/AddressField";
+import { api } from "@/lib/client";
+import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 
 export type ExploreToolbarOrientation = "vertical" | "horizontal";
 
@@ -83,10 +86,11 @@ export type ExploreToolbarProps = {
   onSettingsClick?: () => void;
   /**
    * Emitted when the user picks a suggestion from the Places autocomplete
-   * dropdown (either click or Enter). The hook has already fetched the place
-   * details, so `lat`/`lng` and `placeId` are populated.
+   * dropdown (either click or Enter). The toolbar has already fetched the
+   * enriched place (coords + rating + photos + hours), so the host can hand
+   * this object straight to `PlaceHoverCard` via `initialPlace`.
    */
-  onSelectPlace?: (place: PlaceResult) => void;
+  onSelectPlace?: (place: PlaceEnriched) => void;
   /** Placeholder for the search input. Defaults to "Search places…". */
   searchPlaceholder?: string;
   /** Rail direction. The host flips this on its breakpoint. Default vertical. */
@@ -115,7 +119,9 @@ export function ExploreToolbar({
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
 
   // Google Places autocomplete — fully owned by the hook, like AddressField.
-  // The toolbar only forwards the final `PlaceResult` via `onSelectPlace`.
+  // We swap the default `details` fetcher for `enriched`: one call now returns
+  // everything `PlaceHoverCard` needs (coords + rating + photos + hours), so
+  // the host can render the card without a second round-trip.
   const {
     inputText,
     suggestions,
@@ -126,7 +132,9 @@ export function ExploreToolbar({
     handleInputChange,
     selectSuggestion,
     handleKeyDown,
-  } = usePlaceAutocomplete();
+  } = usePlaceAutocomplete<PlaceEnriched>({
+    detailFetcher: (id) => api.places.enriched<PlaceEnriched>(id),
+  });
 
   const searchWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -161,9 +169,11 @@ export function ExploreToolbar({
     if (!isSearchOpen) setSuggestionsOpen(false);
   }, [isSearchOpen, setSuggestionsOpen]);
 
-  const handlePlacePicked = (place: PlaceResult) => {
+  const handlePlacePicked = (place: PlaceEnriched) => {
     onSelectPlace?.(place);
-    setOpenPanel(null);
+    // Keep the search panel open so the user can refine the query or pick
+    // another place without re-opening it. We only close the suggestions
+    // dropdown — the hook already did that via `setIsOpen(false)`.
   };
 
   function toggle(subId: string) {
