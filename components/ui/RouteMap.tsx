@@ -77,6 +77,15 @@ export type RouteMapProps = {
   style?: React.CSSProperties;
   /** UI controls to show on the map. Zoom is on by default. */
   controls?: MapControls;
+  /**
+   * Detail card rendered on hover (and for the selected pin), anchored above
+   * the pin. Receives the marker id (stopKey format `"${index}:${placeId}"`)
+   * and a `close` callback. Return null for no card.
+   * Mirrors the same prop on `<Map>` — RouteMap just forwards it through.
+   */
+  renderPinCard?: (id: string, close: () => void) => React.ReactNode;
+  /** Fired when a pin card is closed via its close affordance. */
+  onMarkerClose?: (id: string) => void;
 };
 
 /**
@@ -166,6 +175,8 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
   className,
   style,
   controls = {},
+  renderPinCard,
+  onMarkerClose,
 }, ref) {
   const status = useGoogleMaps();
   const mapHandle = useRef<MapHandle>(null);
@@ -420,6 +431,8 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
         mapTypeId={mapTypeId}
         controls={controls}
         markers={stopMarkers}
+        renderPinCard={renderPinCard}
+        onMarkerClose={onMarkerClose}
         className="absolute inset-0"
       />
 

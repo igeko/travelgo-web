@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { RouteMap, type RouteMapHandle, type RouteStop, type TravelMode } from "@/components/ui/RouteMap";
 import { MapStopsBar } from "./MapStopsBar";
@@ -25,11 +25,18 @@ export type ActivityRouteMapProps = {
   mapClassName?: string;
   /** Classes for the outer wrapper. */
   className?: string;
+  /**
+   * Custom hover card for a pin. Receives the marker id (`"${index}:${placeId}"`)
+   * and a close callback. Return null for no card on that pin.
+   */
+  renderPinCard?: (id: string, close: () => void) => ReactNode;
+  /** Fired when a pin card is closed via its close affordance. */
+  onMarkerClose?: (id: string) => void;
 };
 
 export const ActivityRouteMap = forwardRef<RouteMapHandle, ActivityRouteMapProps>(
   function ActivityRouteMap(
-    { points, travelMode = "WALKING", showStopsBar = true, mapClassName, className },
+    { points, travelMode = "WALKING", showStopsBar = true, mapClassName, className, renderPinCard, onMarkerClose },
     ref,
   ) {
     const inner = useRef<RouteMapHandle>(null);
@@ -49,6 +56,8 @@ export const ActivityRouteMap = forwardRef<RouteMapHandle, ActivityRouteMapProps
           ref={inner}
           points={points}
           travelMode={travelMode}
+          renderPinCard={renderPinCard}
+          onMarkerClose={onMarkerClose}
           className={cn("w-full", mapClassName ?? "h-[308px]")}
         />
         {showStopsBar && points.length > 0 && (

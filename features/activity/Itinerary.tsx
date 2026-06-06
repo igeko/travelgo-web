@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLocalStorageState";
 import { IconMap, IconPlus } from "@/components/ui/icons";
+import { PlaceHoverCard } from "@/features/explore/PlaceHoverCard";
 import { Button } from "@/components/ui/Button";
 import { type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
 import { ActivityList } from "./ActivityList";
@@ -122,8 +123,10 @@ export function Itinerary({
 
   // Map points + a lookup from activity id → its index in the points array
   // (points skip activities without coordinates, so indexes can differ).
-  const { mapPoints, mapIndexById } = useMemo(() => {
+  // mapActivities[i] is the full Activity for mapPoints[i] — used by renderPinCard.
+  const { mapPoints, mapIndexById, mapActivities } = useMemo(() => {
     const points: RouteStop[] = [];
+    const acts: Activity[] = [];
     const indexById = new Map<string, number>();
     for (const a of sorted) {
       if (a.location_lat == null || a.location_lng == null) continue;
@@ -139,8 +142,9 @@ export function Itinerary({
         transportOut: a.bridge_out_json?.transport ?? null,
         slot: a.slot,
       });
+      acts.push(a);
     }
-    return { mapPoints: points, mapIndexById: indexById };
+    return { mapPoints: points, mapIndexById: indexById, mapActivities: acts };
   }, [sorted]);
 
   // When the map was hidden at click time, focus once it has mounted.
@@ -283,6 +287,40 @@ export function Itinerary({
               points={mapPoints}
               mapClassName="h-[308px]"
               className="mb-3"
+              renderPinCard={(id, close) => {
+                const idx = parseInt(id, 10);
+                const activity = mapActivities[idx];
+                if (!activity) return null;
+                // Prefer Google enrichment when we have a real place id.
+                if (activity.location_place_id) {
+                  return (
+                    <PlaceHoverCard
+                      key={id}
+                      placeId={activity.location_place_id}
+                      fallbackName={activity.title}
+                      onClose={close}
+                    />
+                  );
+                }
+                // Fallback: render saved activity data without a Google fetch.
+                return (
+                  <PlaceHoverCard
+                    key={id}
+                    saved={{
+                      name: activity.title,
+                      image: activity.hero_image ?? null,
+                      description: activity.short_desc ?? null,
+                      address: activity.location ?? null,
+                      time: activity.time ? activity.time.slice(0, 5) : null,
+                      dayLabel: null,
+                      typeLabel: null,
+                      url: null,
+                    }}
+                    fallbackName={activity.title}
+                    onClose={close}
+                  />
+                );
+              }}
             />
           )}
 
