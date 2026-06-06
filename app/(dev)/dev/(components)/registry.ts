@@ -167,6 +167,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Explore",
     description: "Figma Timeline · organismo Explore da dati reali del viaggio · orari allineati alle attività · control trip id (default Japan 2026)",
   },
+  {
+    slug: "place-hover",
+    title: "PlaceHoverCard",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Popover 270px ancorato sopra un pin Explore · variante desktop di /design/place-hover · modalità Google (fetch lazy) o saved (dati del viaggio)",
+  },
   // App subgroup
   {
     slug: "app-header",
