@@ -32,7 +32,7 @@ function loadScript(apiKey: string) {
   notify("loading");
 
   const script = document.createElement("script");
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps&v=weekly`;
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker&v=weekly`;
   script.async = true;
   script.defer = true;
   script.onload = () => notify("ready");

@@ -189,8 +189,9 @@ function metersBetween(a: LatLng, b: LatLng): number {
 /**
  * Travel-focused map styles — hides business clutter and minor administrative
  * labels, but keeps attractions, monuments, parks and transit visible so the
- * map is useful for trip planning. Shared with RouteMap so both surfaces look
- * identical. Only applies to raster maps (no vector mapId is configured).
+ * map is useful for trip planning. Applied as raster fallback when
+ * NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID is not set; once a vector Map ID is configured,
+ * equivalent rules live in cloud-based styling and `styles` is ignored.
  */
 export const MAP_STYLES: google.maps.MapTypeStyle[] = [
   // Hide commercial clutter — shops, restaurants, hotels, etc.
@@ -360,11 +361,13 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     if (status !== "ready" || !containerRef.current) return;
     if (mapRef.current) return; // already initialized
 
+    const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
     mapRef.current = new google.maps.Map(containerRef.current, {
       center,
       zoom,
       mapTypeId,
-      styles: MAP_STYLES,
+      // Vector map (cloud-based styling) when configured; raster + MAP_STYLES otherwise.
+      ...(mapId ? { mapId } : { styles: MAP_STYLES }),
       disableDefaultUI: true,
       // Native zoom control is replaced by our token-styled MapZoomControls.
       zoomControl:        false,
