@@ -1,7 +1,8 @@
 /**
  * components/ui/mapRoute.ts
  * ─────────────────────────────────────────────────────────────────
- * Shared route-polyline helpers for the Google Maps surfaces (RouteMap, Map).
+ * Shared route-polyline helpers for the Map surface (decoding the encoded
+ * polyline format returned by the Google Routes API).
  * Pure geometry — no SDK objects are created here, so it is safe to import
  * anywhere; the actual google.maps.Polyline is built by the consumer.
  * ─────────────────────────────────────────────────────────────────

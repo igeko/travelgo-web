@@ -50,13 +50,13 @@ const GOOGLE_ROWS: Row[] = [
   },
   {
     name: "Routes API · Compute Routes",
-    usage: "TransitVerifier / RouteMap — tratte e bridge tra attività",
+    usage: "TransitVerifier / ActivityRouteMap — tratte e bridge tra attività",
     price: "$5.00",
     unit: "/ 1.000 richieste (Basic)",
   },
   {
     name: "Maps JavaScript · Dynamic Maps",
-    usage: "Map / RouteMap — rendering mappa lato client",
+    usage: "Map / ActivityRouteMap — rendering mappa lato client",
     price: "$7.00",
     unit: "/ 1.000 caricamenti",
   },

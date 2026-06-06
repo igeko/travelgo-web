@@ -6,7 +6,7 @@ import { useLocalStorageState, type LocalStorageCodec } from "@/lib/hooks/useLoc
 import { IconMap, IconPlus } from "@/components/ui/icons";
 import { PlaceHoverCard } from "@/features/explore/PlaceHoverCard";
 import { Button } from "@/components/ui/Button";
-import { type RouteStop, type RouteMapHandle } from "@/components/ui/RouteMap";
+import { type RouteStop, type RouteMapHandle } from "@/features/activity/types";
 import { ActivityList } from "./ActivityList";
 import { ActivityRouteMap } from "./ActivityRouteMap";
 import { ActivityEditForm, type ActivityData } from "./ActivityEditForm";

@@ -1,10 +1,10 @@
 /**
  * components/ui/mapPins.ts
  * ─────────────────────────────────────────────────────────────────
- * Shared Google Maps marker icons + brand colours, so RouteMap and Map
- * render identical pins. These build SVG data-URI icons and therefore must
- * only be called client-side, after the Maps SDK is ready (they reference
- * `google.maps.Size`/`Point`).
+ * Shared Google Maps marker icons + brand colours used by the Map
+ * primitive (stop / ad-hoc / night pins). These build SVG data-URI icons
+ * and therefore must only be called client-side, after the Maps SDK is
+ * ready (they reference `google.maps.Size`/`Point`).
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -18,7 +18,7 @@ export const NIGHT = "#4338ca"; // indigo — Explore night-route layer (--color
 export type StopRole = "start" | "mid" | "end";
 
 /* ─────────────────────────────────────────────────────────────────
-   Icon → inner SVG geometry (shared by RouteMap stop pins and the
+   Icon → inner SVG geometry (shared by itinerary stop pins and the
    ad-hoc/category pins). Renders a Tabler icon component to its child
    shapes WITHOUT pulling in react-dom/server. Cached per key.
 ───────────────────────────────────────────────────────────────── */

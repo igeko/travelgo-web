@@ -7,7 +7,7 @@ import { IconCheck, IconGripVertical, IconPencil, IconPlus, IconUnlink, IconX } 
 import { TimeField } from "@/components/ui/TimeField";
 import { ActivitySearchField } from "@/features/activity/ActivitySearchField";
 import { ActivityRouteMap } from "@/features/activity/ActivityRouteMap";
-import type { RouteStop, RouteMapHandle } from "@/components/ui/RouteMap";
+import type { RouteStop, RouteMapHandle } from "@/features/activity/types";
 import type { TripActivityOption } from "@/features/activity/types";
 import { isYumeDrag, readYumeDrag } from "@/features/yumeji/yumeDrag";
 

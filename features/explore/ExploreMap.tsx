@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Map, type LatLng, type MapMarker, type MapRouteLayer } from "@/components/ui/Map";
+import { Map, type LatLng, type MapMarker, type RouteSpec } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHoverCard";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
-import { iconGlyph, type GlyphCmp } from "@/components/ui/mapPins";
+import { iconGlyph, NIGHT, type GlyphCmp } from "@/components/ui/mapPins";
 import { IconBed, IconMapPin, IconRoute } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
@@ -119,7 +119,7 @@ export function ExploreMap({
   // gives them the SAME behaviour as every other pin (click → detail card, focus
   // sent to Go, selection halo). The only difference is they can't be deleted —
   // they're sourced from trip data, so re-clicking just deselects (see below),
-  // never removes the pin. The connecting polyline is added via `routeLayer`.
+  // never removes the pin. The connecting polyline is added via `routes`.
   const nightMarkers = useMemo<MapMarker[]>(() => {
     if (!showNightRoute || nightRoute.length === 0) return [];
     return nightRoute.map((w) => {
@@ -163,11 +163,22 @@ export function ExploreMap({
     url: nw.url,
   });
 
-  const routeLayer = useMemo<MapRouteLayer | null>(
+  // Night-route is the only `RouteSpec` Explore draws today. `fitOnLoad: true`
+  // mirrors the legacy `routeLayer` behaviour — the camera reframes once when
+  // the user toggles the night route on, so the whole route is visible at a
+  // glance. Subsequent renders (without identity change) don't refit.
+  const routes = useMemo<RouteSpec[]>(
     () =>
-      showNightRoute && nightRoute.length > 0
-        ? { travelMode: "DRIVING", points: nightRoute.map((w) => ({ lat: w.lat, lng: w.lng })) }
-        : null,
+      showNightRoute && nightRoute.length >= 2
+        ? [{
+            id: "night",
+            travelMode: "DRIVING",
+            points: nightRoute.map((w) => ({ lat: w.lat, lng: w.lng })),
+            style: { color: NIGHT, weight: 4, opacity: 0.9 },
+            fitOnLoad: true,
+            fitPadding: 80,
+          }]
+        : [],
     [showNightRoute, nightRoute],
   );
 
@@ -354,7 +365,7 @@ export function ExploreMap({
           if (nightById[id]) setNightSelId(null);
           setGoFocus(null);
         }}
-        routeLayer={routeLayer}
+        routes={routes}
         className="h-full w-full rounded-none"
       />
 

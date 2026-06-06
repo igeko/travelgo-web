@@ -118,10 +118,10 @@ export const sandboxRegistry: SandboxEntry[] = [
   },
   {
     slug: "route-map",
-    title: "RouteMap",
+    title: "ActivityRouteMap",
     group: "Atoms",
     subgroup: "Map",
-    description: "Numbered orange markers + Routes API polyline · accepts PlaceResult[]",
+    description: "Day's itinerary map · stop markers + per-leg routed polyline · built on Map's routes API",
   },
   // ── Features ─────────────────────────────────────────────────────
   // Explore subgroup

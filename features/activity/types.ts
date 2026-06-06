@@ -1,5 +1,7 @@
 import type { Activity, BlockType, BookingStatus, BridgeData } from "@/lib/dal/domain";
 import type { ActivityScheduledInstance } from "@/lib/dal";
+import type { PlaceResult } from "@/components/ui/AddressField";
+import type { TransportMode } from "@/components/ui/mapTypes";
 
 export type { BlockType, BookingStatus, BridgeData };
 
@@ -29,7 +31,7 @@ export const SLOT_LABEL: Record<SlotKey, string> = {
 
 /**
  * Time-of-day reference colours — single source of truth shared by the day map
- * (RouteMap markers + legs) and the activity list slot dividers. Deep, saturated
+ * (ActivityRouteMap markers + legs) and the activity list slot dividers. Deep, saturated
  * hues so thin strokes stay legible over the light basemap and the four slots
  * read at a glance (gold / sky / rose / indigo).
  */
@@ -82,4 +84,48 @@ export type InstancePatch = {
   instance_note?: string | null;
   booking_status?: BookingStatus | null;
   slot?: SlotKey;
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   Itinerary map — types shared by ActivityRouteMap and its consumers.
+   (Used to live in components/ui/RouteMap; relocated here when routing
+   was consolidated into the Map primitive.)
+───────────────────────────────────────────────────────────────── */
+
+/** Time-of-day slot a stop belongs to. Re-exported alias of `SlotKey` for
+ *  the map surface, where "slot" reads more naturally than "key". */
+export type RouteSlot = SlotKey;
+
+/**
+ * One stop on the itinerary map. Extends `PlaceResult` (pure geometry from
+ * the address autocomplete) with the trip-domain semantics needed to render
+ * a typed pin and a per-leg-styled route.
+ */
+export type RouteStop = PlaceResult & {
+  /** Stop icon key (STOP_ICONS) — usually `activity.icon`. */
+  iconKey?: string | null;
+  /** Activity type — fallback icon when `iconKey` is absent. */
+  type?: BlockType | null;
+  /** Transport used to LEAVE this stop toward the next one. */
+  transportOut?: TransportMode | null;
+  /** Time-of-day slot — colours the marker and the incoming leg when set. */
+  slot?: RouteSlot | null;
+};
+
+/**
+ * Imperative handle exposed by `ActivityRouteMap`. Lets consumers drive the
+ * camera (focus a stop by index, drop an ad-hoc pin at arbitrary coords,
+ * or reframe the overview) without prop drilling.
+ */
+export type RouteMapHandle = {
+  /** Pan + zoom onto the stop at `index` (default zoom 16). No-op out of range. */
+  focusPoint: (index: number, zoom?: number) => void;
+  /**
+   * Drop a transient orange ad-hoc pin at arbitrary coordinates and pan/zoom
+   * onto it. The pin replaces any prior ad-hoc pin and persists until
+   * `fitAll()` is called or the stop set changes.
+   */
+  focusCoord: (lat: number, lng: number, opts?: { label?: string; zoom?: number }) => void;
+  /** Re-frame all stops + route geometry (the default overview). */
+  fitAll: () => void;
 };

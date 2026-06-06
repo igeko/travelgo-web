@@ -2,7 +2,7 @@
  * features/activity/resolveGlyph.ts
  * ─────────────────────────────────────────────────────────────────
  * Activity stop → inner-SVG glyph resolver shared by every map surface
- * (RouteMap polyline pins, ExploreNextShell itinerary markers, …). Picks
+ * (ActivityRouteMap stop pins, ExploreNextShell itinerary markers, …). Picks
  * the most specific icon available for a stop: the activity's `iconKey`
  * first, then the block-`type` fallback, and finally a generic map pin
  * for stops with neither.

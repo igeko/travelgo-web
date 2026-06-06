@@ -4,7 +4,7 @@ import { createElement, useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { IconChevronRight, IconMapPin } from "@/components/ui/icons";
 import { getStopIcon } from "./Timeline/stopIcons";
-import type { RouteStop } from "@/components/ui/RouteMap";
+import type { RouteStop } from "@/features/activity/types";
 
 type Props = {
   /** Ordered stops shown on the map (only activities with coordinates). */

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
-import { RouteMap } from "@/components/ui/RouteMap";
+import { ActivityRouteMap } from "@/features/activity/ActivityRouteMap";
 import { api } from "@/lib/client";
 import type { TransitOption, TransitSegment, RideSegment } from "@/lib/client/routes";
 import type { BridgeData } from "@/lib/dal/domain";
@@ -50,7 +50,7 @@ export function TransitVerifier({
   const [selected, setSelected] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Stable points for the RouteMap so selecting an option doesn't recreate
+  // Stable points for the map so selecting an option doesn't recreate
   // the array and trigger a fresh Google Routes fetch.
   const mapPoints = useMemo(
     () => [
@@ -228,10 +228,11 @@ export function TransitVerifier({
 
           {showMap && options[selected] && (
             <div className="mb-3 overflow-hidden rounded-md border border-border">
-              <RouteMap
+              <ActivityRouteMap
                 points={mapPoints}
                 travelMode="TRANSIT"
-                style={{ height: 180 }}
+                showStopsBar={false}
+                mapClassName="h-[180px]"
               />
             </div>
           )}

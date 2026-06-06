@@ -25,6 +25,12 @@ import {
 } from "./mapPins";
 import { SLOT_COLORS, type SlotKey as RouteSlot } from "@/features/activity/types";
 import { decodePolyline } from "./mapRoute";
+import type { LatLng, RouteSpec, TravelMode, TransportMode } from "./mapTypes";
+
+// Re-exported for consumer convenience — Map is the canonical surface for
+// these types, even if the definitions live in `./mapTypes` (pure types, no
+// runtime imports).
+export type { LatLng, RouteSpec, TravelMode, TransportMode };
 
 /* ─────────────────────────────────────────────────────────────────
    Map · Google Maps JS SDK wrapper.
@@ -41,11 +47,6 @@ import { decodePolyline } from "./mapRoute";
    - Re-centers smoothly when `center` prop changes.
    - Controlled-only: no internal position state.
 ───────────────────────────────────────────────────────────────── */
-
-export type LatLng = {
-  lat: number;
-  lng: number;
-};
 
 /** A simple point marker rendered on the basemap. */
 export type MapMarker = {
@@ -77,17 +78,6 @@ export type MapMarker = {
    * stops) regular so they remain individually visible at every zoom.
    */
   clustered?: boolean;
-};
-
-/**
- * Optional connecting route drawn through `points` in order (the night-route
- * polyline). The pins themselves are regular `markers` with variant "night", so
- * they keep full click/card/selection behaviour; this layer only adds the line.
- */
-export type MapRouteLayer = {
-  points: LatLng[];
-  /** Google travel mode for the connecting route. Default "DRIVING". */
-  travelMode?: string;
 };
 
 /**
@@ -143,8 +133,12 @@ export type MapProps = {
   renderPinCard?: (id: string, close: () => void) => ReactNode;
   /** Fired when a pin's card is closed via its close affordance. */
   onMarkerClose?: (id: string) => void;
-  /** Optional night-route overlay (dedicated pins + connecting polyline). */
-  routeLayer?: MapRouteLayer | null;
+  /**
+   * Drawable routes — each spec is rendered as its own polyline (single-call
+   * when transport and colour are uniform across legs, per-leg otherwise).
+   * Multiple specs coexist on the same map (e.g. itinerary + Explore night).
+   */
+  routes?: RouteSpec[];
   /**
    * Pixel offset of the visible viewport relative to the map container — use it
    * when UI panels (e.g. a left timeline) cover part of the map. The
@@ -157,7 +151,7 @@ export type MapProps = {
 
 /**
  * Imperative handle exposed by `Map` — gives wrapper components (e.g.
- * `RouteMap`) access to the underlying SDK instance for operations not covered
+ * `ActivityRouteMap`) access to the underlying SDK instance for operations not covered
  * by props (drawing polylines, custom `fitBounds`, …) without duplicating the
  * init code.
  */
@@ -169,6 +163,29 @@ export type MapHandle = {
     bounds: google.maps.LatLngBounds,
     padding?: number | google.maps.Padding,
   ) => void;
+  /**
+   * Drop (or move) the transient orange ad-hoc pin at the given coordinates
+   * and pan/zoom the camera onto it. There is at most ONE ad-hoc pin at a
+   * time — calling `focusCoord` again replaces it. The pin persists until
+   * `clearAdHoc()` or `fitAll()` is called, or the Map unmounts. If the SDK
+   * isn't ready yet, the request is queued and applied on `ready`.
+   */
+  focusCoord: (lat: number, lng: number, opts?: { label?: string; zoom?: number }) => void;
+  /** Remove the ad-hoc pin without touching the camera. */
+  clearAdHoc: () => void;
+  /**
+   * `true` if an ad-hoc focus is currently active — either applied (pin on
+   * map) or queued (waiting for the SDK). Wrappers (e.g. ActivityRouteMap) use it to
+   * decide whether an automatic reframing should defer to the user's focus.
+   */
+  hasAdHocFocus: () => boolean;
+  /**
+   * Reframe the camera to fit all current markers + route geometries.
+   * Clears any prior ad-hoc pin (the user explicitly asked for the overview).
+   * `opts.maxZoom` clamps the resulting zoom — useful to avoid the
+   * over-zoomed corner case when only one point is in the bounds.
+   */
+  fitAll: (opts?: { padding?: number | google.maps.Padding; maxZoom?: number }) => void;
 };
 
 /** Hover dwell before a pin's card appears, and grace before it closes. */
@@ -204,6 +221,145 @@ export const MAP_STYLES: google.maps.MapTypeStyle[] = [
   { featureType: "administrative.neighborhood", elementType: "labels", stylers: [{ visibility: "off" }] },
   { featureType: "landscape", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
+
+/* ─────────────────────────────────────────────────────────────────
+   Routing helpers (private — used by the `routes` polyline effect).
+   Consolidated here so the routing logic has a single home (this primitive
+   replaces the legacy RouteMap that used to wrap this file).
+───────────────────────────────────────────────────────────────── */
+
+/** Domain transport → Google Routes API travel mode. */
+function transportToTravelMode(t: TransportMode): TravelMode {
+  switch (t) {
+    case "walk":  return "WALKING";
+    case "bike":  return "BICYCLING";
+    case "car":
+    case "taxi":  return "DRIVING";
+    case "metro":
+    case "bus":
+    case "train": return "TRANSIT";
+    default:      return "WALKING";
+  }
+}
+
+/**
+ * PolylineOptions (minus path/map) for a transport mode. The pattern
+ * (dotted/dashed/solid/thick) encodes the mode; `color` overrides the
+ * default brand ink so callers can colour each leg independently.
+ */
+function legStyle(t: TransportMode | null | undefined, color: string = INK): google.maps.PolylineOptions {
+  const dot = (repeat: string): google.maps.PolylineOptions => ({
+    strokeColor: color,
+    strokeOpacity: 0,
+    icons: [{
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 2.2, fillColor: color, fillOpacity: 0.9, strokeOpacity: 0 },
+      offset: "0",
+      repeat,
+    }],
+  });
+  switch (t) {
+    case "walk":
+    case "bike":
+      return dot("9px");                                                  // dotted
+    case "bus":
+      return { strokeColor: color, strokeOpacity: 0,                      // dashed
+        icons: [{ icon: { path: "M 0,-1 0,1", strokeColor: color, strokeOpacity: 1, strokeWeight: 3, scale: 3 }, offset: "0", repeat: "14px" }],
+      };
+    case "car":
+    case "taxi":
+      return { strokeColor: color, strokeOpacity: 0.95, strokeWeight: 4 }; // solid thick
+    case "metro":
+    case "train":
+    default:
+      return { strokeColor: color, strokeOpacity: 0.9, strokeWeight: 3 };  // solid
+  }
+}
+
+/**
+ * Draw one `RouteSpec` onto the given map. Picks single-call vs per-leg
+ * based on transport/colour uniformity (and on the TRANSIT-multi-stop
+ * carve-out, since Google's Routes API rejects intermediates in TRANSIT
+ * mode). All polylines are appended to `sink` so the caller owns cleanup,
+ * and every async branch consults `isCancelled` before drawing — so a
+ * spec swap mid-flight never leaves stale lines on the map.
+ */
+function drawRouteSpec(
+  map: google.maps.Map,
+  spec: RouteSpec,
+  isCancelled: () => boolean,
+  sink: google.maps.Polyline[],
+): void {
+  const { points } = spec;
+  if (points.length < 2) return;
+
+  const sharedColor = spec.style?.color ?? INK;
+  const sharedWeight = spec.style?.weight ?? 3;
+  const sharedOpacity = spec.style?.opacity ?? 0.9;
+  const defaultMode: TravelMode = spec.travelMode ?? "WALKING";
+
+  const legCount = points.length - 1;
+  const legTransports: (TransportMode | null)[] = Array.from({ length: legCount }, (_, i) =>
+    spec.perLegTransport?.[i] ?? null,
+  );
+  const effectiveLegColors: string[] = Array.from({ length: legCount }, (_, i) =>
+    spec.legColors?.[i] ?? sharedColor,
+  );
+
+  const uniformTransport = new Set(legTransports).size <= 1;
+  const uniformColor = effectiveLegColors.every((c) => c === effectiveLegColors[0]);
+  const sharedTransport = uniformTransport ? legTransports[0] ?? null : null;
+  const sharedMode = sharedTransport ? transportToTravelMode(sharedTransport) : defaultMode;
+  const singleCall = uniformTransport && uniformColor && !(sharedMode === "TRANSIT" && points.length > 2);
+
+  const draw = (encoded: string, options: google.maps.PolylineOptions) => {
+    if (isCancelled()) return;
+    sink.push(new google.maps.Polyline({ path: decodePolyline(encoded), map, ...options }));
+  };
+
+  const maybeFit = (encodedList: string[]) => {
+    if (!spec.fitOnLoad || isCancelled()) return;
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend(p));
+    for (const e of encodedList) decodePolyline(e).forEach((ll) => bounds.extend(ll));
+    map.fitBounds(bounds, spec.fitPadding ?? 64);
+  };
+
+  if (singleCall) {
+    const opts: google.maps.PolylineOptions = sharedTransport
+      ? legStyle(sharedTransport, effectiveLegColors[0] ?? sharedColor)
+      : { strokeColor: sharedColor, strokeWeight: sharedWeight, strokeOpacity: sharedOpacity };
+    api.routes
+      .compute(points, sharedMode)
+      .then((data) => {
+        if (isCancelled()) return;
+        if (!data.polyline) { spec.onError?.(); return; }
+        draw(data.polyline, opts);
+        maybeFit([data.polyline]);
+        spec.onDraw?.();
+      })
+      .catch(() => { if (!isCancelled()) spec.onError?.(); });
+    return;
+  }
+
+  Promise.all(
+    points.slice(0, -1).map((from, i) => {
+      const to = points[i + 1];
+      const transport = legTransports[i] ?? null;
+      const mode = transport ? transportToTravelMode(transport) : defaultMode;
+      return api.routes
+        .compute([{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }], mode)
+        .then((data) => (data.polyline ? { encoded: data.polyline, transport, color: effectiveLegColors[i] ?? sharedColor } : null))
+        .catch(() => null);
+    }),
+  ).then((legs) => {
+    if (isCancelled()) return;
+    const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null; color: string } => l != null);
+    if (ok.length === 0) { spec.onError?.(); return; }
+    ok.forEach((l) => draw(l.encoded, legStyle(l.transport, l.color)));
+    maybeFit(ok.map((l) => l.encoded));
+    spec.onDraw?.();
+  });
+}
 
 /**
  * A decorative DOM overlay drawn on top of the selected marker: a pulsing
@@ -283,7 +439,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     onViewportChange,
     renderPinCard,
     onMarkerClose,
-    routeLayer,
+    routes,
     viewportInset,
   },
   ref,
@@ -297,7 +453,21 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   // (clearMarkers + addMarkers): incremental clusterer maintenance is more
   // intricate than the gains for the cardinalities Explore handles today.
   const clustererRef = useRef<MarkerClusterer | null>(null);
-  const routePolylineRef = useRef<google.maps.Polyline | null>(null);
+  // All polylines drawn for the current `routes`. One spec may produce 1
+  // (single-call) or N−1 (per-leg) polylines, so the shape is a flat list —
+  // we clean up wholesale on every change.
+  const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
+  // Transient ad-hoc pin (a place outside the route — Go suggestions, "show
+  // on map", category result the consumer wants to focus on). Single instance
+  // managed by the `focusCoord` / `clearAdHoc` / `fitAll` handle methods.
+  const adHocMarkerRef = useRef<google.maps.Marker | null>(null);
+  // A `focusCoord` request queued before the SDK was ready. Replayed when
+  // `status` flips to `ready` and on every imperative call.
+  const pendingCoordRef = useRef<{ lat: number; lng: number; label?: string; zoom: number } | null>(null);
+  // Latest `markers` array — kept in a ref so `fitAll` can read the current
+  // set without needing to re-create the imperative handle on every render.
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
   const selectedOverlayRef = useRef<SelectedPinOverlay | null>(null);
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
   // Pin under the cursor (after a dwell). The card shows for `hoverId ?? selectedMarkerId`.
@@ -319,17 +489,94 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   onViewportChangeRef.current = onViewportChange;
   viewportInsetRef.current = viewportInset;
 
-  // Imperative escape hatch for wrapper components that need the SDK instance
-  // (e.g. drawing polylines from RouteMap). Identity is stable — the handle
-  // closes over `mapRef`, which itself is a ref.
+  // Apply (or replay) the queued ad-hoc focus. Returns `true` if the request
+  // was applied; `false` if nothing was queued or the SDK isn't ready. Stable
+  // identity (closes over refs only) so the replay effect can depend on it
+  // without re-firing.
+  const applyPendingCoord = useCallback((): boolean => {
+    const map = mapRef.current;
+    const req = pendingCoordRef.current;
+    if (!map || !req) return false;
+    const position = { lat: req.lat, lng: req.lng };
+    if (adHocMarkerRef.current) {
+      adHocMarkerRef.current.setPosition(position);
+      if (req.label) adHocMarkerRef.current.setTitle(req.label);
+    } else {
+      adHocMarkerRef.current = new google.maps.Marker({
+        position,
+        map,
+        icon: makeAdHocPin(),
+        title: req.label,
+        zIndex: 1000,
+      });
+    }
+    map.panTo(position);
+    map.setZoom(req.zoom);
+    return true;
+  }, []);
+
+  // Remove the ad-hoc pin without touching the camera. Used by `clearAdHoc`
+  // on the imperative handle and by `fitAll` (overview supersedes ad-hoc).
+  const removeAdHoc = useCallback(() => {
+    adHocMarkerRef.current?.setMap(null);
+    adHocMarkerRef.current = null;
+    pendingCoordRef.current = null;
+  }, []);
+
+  // Imperative escape hatch for wrapper components that need to drive the map
+  // directly (focus, framing, raw SDK instance). Identity is stable — every
+  // method closes over refs only.
   useImperativeHandle(
     ref,
     () => ({
       getMap: () => mapRef.current,
       fitBounds: (bounds, padding) => mapRef.current?.fitBounds(bounds, padding),
+      focusCoord: (lat, lng, opts) => {
+        pendingCoordRef.current = { lat, lng, label: opts?.label, zoom: opts?.zoom ?? 16 };
+        applyPendingCoord();
+      },
+      clearAdHoc: removeAdHoc,
+      hasAdHocFocus: () => adHocMarkerRef.current != null || pendingCoordRef.current != null,
+      fitAll: (opts) => {
+        const map = mapRef.current;
+        if (!map) return;
+        // Overview supersedes any transient focus state.
+        removeAdHoc();
+        const bounds = new google.maps.LatLngBounds();
+        let any = false;
+        (markersRef.current ?? []).forEach((m) => {
+          bounds.extend({ lat: m.lat, lng: m.lng });
+          any = true;
+        });
+        for (const pl of routePolylinesRef.current) {
+          pl.getPath().forEach((ll) => { bounds.extend(ll); any = true; });
+        }
+        if (!any) return;
+        map.fitBounds(bounds, opts?.padding ?? 64);
+        const maxZoom = opts?.maxZoom;
+        if (maxZoom != null) {
+          google.maps.event.addListenerOnce(map, "idle", () => {
+            const z = map.getZoom();
+            if (z != null && z > maxZoom) map.setZoom(maxZoom);
+          });
+        }
+      },
     }),
-    [],
+    [applyPendingCoord, removeAdHoc],
   );
+
+  // Replay a queued ad-hoc focus when the SDK becomes ready, so a `focusCoord`
+  // call made before init doesn't get silently dropped.
+  useEffect(() => {
+    if (status !== "ready") return;
+    applyPendingCoord();
+  }, [status, applyPendingCoord]);
+
+  // Tear down the ad-hoc pin on unmount.
+  useEffect(() => () => {
+    adHocMarkerRef.current?.setMap(null);
+    adHocMarkerRef.current = null;
+  }, []);
 
   // The pin whose card is currently shown (hover preview wins over selection).
   const activeCardId = hoverId ?? selectedMarkerId ?? null;
@@ -556,45 +803,29 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     }
   }, [markers, status, selectedMarkerId, hoverPin, unhoverPin]);
 
-  // Night-route polyline: connects the night pins (regular markers with variant
-  // "night") in order. Clears + redraws when the layer changes, and tears itself
-  // down when the layer is removed (toggle off). The pins live in `markers`.
+  // Route polylines: every entry in `routes` is drawn as its own polyline
+  // (single-call when transport+colour are uniform, per-leg otherwise).
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     const map = mapRef.current;
 
-    routePolylineRef.current?.setMap(null);
-    routePolylineRef.current = null;
+    // Drop every polyline from the previous render — in-flight fetches will
+    // see `cancelled` and skip their draw, so no stale geometry leaks.
+    for (const poly of routePolylinesRef.current) poly.setMap(null);
+    routePolylinesRef.current = [];
 
-    const points = routeLayer?.points ?? [];
-    if (points.length < 2) return;
+    if (!routes || routes.length === 0) return;
 
     let cancelled = false;
-    api.routes
-      .compute(points, routeLayer?.travelMode ?? "DRIVING")
-      .then((data) => {
-        if (cancelled || !data.polyline) return;
-        const path = decodePolyline(data.polyline);
-        routePolylineRef.current = new google.maps.Polyline({
-          path,
-          map,
-          strokeColor: NIGHT,
-          strokeOpacity: 0.9,
-          strokeWeight: 4,
-        });
-        const bounds = new google.maps.LatLngBounds();
-        points.forEach((p) => bounds.extend(p));
-        path.forEach((ll) => bounds.extend(ll));
-        map.fitBounds(bounds, 80);
-      })
-      .catch(() => { /* routing failed — keep the pins, skip the line */ });
+    for (const spec of routes) drawRouteSpec(map, spec, () => cancelled, routePolylinesRef.current);
 
     return () => { cancelled = true; };
-  }, [routeLayer, status]);
+  }, [routes, status]);
 
-  // Tear down the night-route polyline on unmount.
+  // Tear down all route polylines on unmount.
   useEffect(() => () => {
-    routePolylineRef.current?.setMap(null);
+    for (const poly of routePolylinesRef.current) poly.setMap(null);
+    routePolylinesRef.current = [];
   }, []);
 
   // Tear down the shared MarkerClusterer on unmount. Clustered marker
