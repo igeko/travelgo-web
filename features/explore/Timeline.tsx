@@ -109,6 +109,13 @@ type Props = {
   onExtendStay?: (stayId: string) => void | Promise<void>;
   /** Stepper "−" on a lodging row: reduces the stay by one night. */
   onReduceStay?: (stayId: string) => void | Promise<void>;
+  /**
+   * When set, force-open that item id (overrides the local open state).
+   * Hosts use it after a cross-table conversion so the inline popover
+   * stays open on the new row even though the id changes (scheduled.id
+   * ↔ lodging-{dayId}). Setting to null forces closed.
+   */
+  openOverride?: string | null;
   className?: string;
 };
 
@@ -259,6 +266,7 @@ export function Timeline({
   onConvertToStop,
   onExtendStay,
   onReduceStay,
+  openOverride,
   className,
 }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -270,6 +278,20 @@ export function Timeline({
   useEffect(() => {
     onSelectActivity?.(openId);
   }, [openId, onSelectActivity]);
+
+  // Allow hosts to force-open a specific row after a cross-table mutation
+  // (Stop↔Sleep) — without this, the row's id changes and the popover snaps
+  // shut. undefined ⇒ no override (default), null ⇒ force-close.
+  //
+  // Pattern: "adjusting state when props change" — compare against the
+  // previous value during render and update synchronously, rather than in
+  // an effect (which would cascade a second render). See
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [lastOpenOverride, setLastOpenOverride] = useState(openOverride);
+  if (openOverride !== lastOpenOverride) {
+    setLastOpenOverride(openOverride);
+    if (openOverride !== undefined) setOpenId(openOverride);
+  }
 
   const toggleDay = (id: string) =>
     setExpandedDays((prev) => {

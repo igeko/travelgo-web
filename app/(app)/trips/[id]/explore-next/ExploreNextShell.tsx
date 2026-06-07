@@ -11,6 +11,10 @@ import { INK } from "@/components/ui/mapPins";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { Activity } from "@/lib/dal/domain";
+import {
+  applyOptStayActions,
+  type OptStayAction,
+} from "@/features/explore/optStayActions";
 
 /** Opacità della polyline percorso: piena per il giorno in focus (o quando
  *  nessun giorno è focused), ridotta per gli altri quando un giorno è focused. */
@@ -118,6 +122,25 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     });
   }, [days, pendingAdds, pendingRemoves]);
 
+  // Optimistic Stop↔Sleep / stepper overlay: applied on top of visibleDays
+  // so both the Timeline and the map pins / day-path routes downstream all
+  // see the same projected state. Cleared during render when the server
+  // snapshot lands via router.refresh() (pattern: "adjusting state when
+  // props change", https://react.dev/reference/react/useState#storing-information-from-previous-renders).
+  const [optStayActions, setOptStayActions] = useState<OptStayAction[]>([]);
+  const [openOverride, setOpenOverride] = useState<string | null | undefined>(undefined);
+  const [lastDaysRef, setLastDaysRef] = useState(days);
+  if (days !== lastDaysRef) {
+    setLastDaysRef(days);
+    if (optStayActions.length > 0) setOptStayActions([]);
+    if (openOverride !== undefined) setOpenOverride(undefined);
+  }
+
+  const effectiveDays = useMemo<TimelineDayData[]>(() => {
+    if (optStayActions.length === 0) return visibleDays;
+    return applyOptStayActions(visibleDays, optStayActions);
+  }, [visibleDays, optStayActions]);
+
   // Marker itinerario — spec /design/roadmap-pins.
   //   - dayFocused=false (avvio o reset)            → tutti i pin "default"
   //   - dayFocused=true e attività nel giorno       → "default"
@@ -131,7 +154,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // ottimistiche si riflettono anche sui pin a mappa, non solo sulla Timeline.
   const itineraryMarkers = useMemo<MapMarker[]>(() => {
     const out: MapMarker[] = [];
-    for (const day of visibleDays) {
+    for (const day of effectiveDays) {
       const isFocusDay = dayFocused && day.id === selectedDayId;
       const state = !dayFocused || isFocusDay ? "default" : "dimmed";
       for (const stop of day.activities) {
@@ -148,7 +171,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       }
     }
     return out;
-  }, [visibleDays, dayFocused, selectedDayId]);
+  }, [effectiveDays, dayFocused, selectedDayId]);
 
   // Percorso reale tra tappe consecutive — una RouteSpec per giorno, che
   // collega in ordine TUTTE le tappe del giorno con coordinate. Geometria
@@ -167,7 +190,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // altri vanno in dimmed, coerente con i roadmap-pin.
   const dayPathRoutes = useMemo<RouteSpec[]>(() => {
     const out: RouteSpec[] = [];
-    for (const day of visibleDays) {
+    for (const day of effectiveDays) {
       const stops = [...day.activities]
         .sort((a, b) => a.position - b.position)
         .filter((s): s is typeof s & { location_lat: number; location_lng: number } =>
@@ -186,7 +209,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       });
     }
     return out;
-  }, [visibleDays, dayFocused, selectedDayId]);
+  }, [effectiveDays, dayFocused, selectedDayId]);
 
   // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
   // rapida sequenza al click ma React non ha ancora unmountato la card).
@@ -266,57 +289,97 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
-  // ── Sleep ↔ Stop toggle + stepper +/− nights ────────────────────
-  //
-  // No optimistic UI here yet: the cross-table conversion (and the
-  // stepper extend/reduce on multi-night stays) is too involved to
-  // mirror locally — we fire the mutation, then let router.refresh()
-  // bring back the SSR snapshot. A latch prevents double-fire while
-  // an op is in flight.
-  const stayOpRef = useRef(false);
+  const popOptAction = useCallback((id: string) => {
+    setOptStayActions((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
-  const runStayOp = useCallback(
-    async (op: () => Promise<unknown>, errLabel: string) => {
-      if (stayOpRef.current) return;
-      stayOpRef.current = true;
+  const fireStayOp = useCallback(
+    async (
+      action: OptStayAction,
+      op: () => Promise<unknown>,
+      label: string,
+    ) => {
+      setOptStayActions((prev) => [...prev, action]);
       try {
         await op();
         router.refresh();
       } catch (err) {
-        console.error(`[ExploreNextShell] ${errLabel} failed:`, err);
+        console.error(`[ExploreNextShell] ${label} failed:`, err);
+        popOptAction(action.id);
+        setOpenOverride(undefined);
         setPillState({ kind: "error", action: "remove" });
-      } finally {
-        stayOpRef.current = false;
       }
     },
-    [router],
+    [router, popOptAction],
   );
 
+  /** Lightweight unique id for queued actions. crypto.randomUUID is widely
+   *  available in modern browsers; falling back to Math.random keeps SSR &
+   *  older environments happy. */
+  const newActionId = () => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+    return `act-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  };
+
   const handleConvertToSleep = useCallback(
-    (scheduledId: string) =>
-      runStayOp(
+    (scheduledId: string) => {
+      const day = visibleDays.find((d) =>
+        d.activities.some((a) => a.id === scheduledId),
+      );
+      if (day) setOpenOverride(`lodging-${day.id}`);
+      return fireStayOp(
+        { id: newActionId(), kind: "convertToSleep", scheduledId },
         () => api.accommodations.convertFromScheduled(scheduledId),
         "convertToSleep",
-      ),
-    [runStayOp],
+      );
+    },
+    [visibleDays, fireStayOp],
   );
 
   const handleConvertToStop = useCallback(
-    (stayId: string) =>
-      runStayOp(() => api.accommodations.convertToStop(stayId), "convertToStop"),
-    [runStayOp],
+    (stayId: string) => {
+      // Find the check-in day; the synthesized scheduled-activity placeholder
+      // uses `opt:${stayId}` as its id — match that so the popover follows.
+      setOpenOverride(`opt:${stayId}`);
+      return fireStayOp(
+        { id: newActionId(), kind: "convertToStop", stayId },
+        () => api.accommodations.convertToStop(stayId),
+        "convertToStop",
+      );
+    },
+    [fireStayOp],
   );
 
   const handleExtendStay = useCallback(
-    (stayId: string) =>
-      runStayOp(() => api.accommodations.extend(stayId), "extendStay"),
-    [runStayOp],
+    (stayId: string) => {
+      // Keep the popover where it was — the active row is the one the user
+      // clicked the "+" on, which still exists in the projection.
+      return fireStayOp(
+        { id: newActionId(), kind: "extend", stayId },
+        () => api.accommodations.extend(stayId),
+        "extendStay",
+      );
+    },
+    [fireStayOp],
   );
 
   const handleReduceStay = useCallback(
-    (stayId: string) =>
-      runStayOp(() => api.accommodations.reduce(stayId), "reduceStay"),
-    [runStayOp],
+    (stayId: string) => {
+      // If reducing from a single-night stay, the lodging row disappears
+      // entirely — close the popover. Otherwise leave it where it was.
+      const stayDays = effectiveDays.filter(
+        (d) => d.accommodation?.stay_id === stayId,
+      );
+      if (stayDays.length <= 1) setOpenOverride(null);
+      return fireStayOp(
+        { id: newActionId(), kind: "reduce", stayId },
+        () => api.accommodations.reduce(stayId),
+        "reduceStay",
+      );
+    },
+    [effectiveDays, fireStayOp],
   );
 
   // ResizeObserver per il pannello sinistro.
@@ -352,7 +415,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Timeline
-            days={visibleDays}
+            days={effectiveDays}
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
@@ -360,6 +423,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onConvertToStop={handleConvertToStop}
             onExtendStay={handleExtendStay}
             onReduceStay={handleReduceStay}
+            openOverride={openOverride}
           />
         </div>
       </aside>
