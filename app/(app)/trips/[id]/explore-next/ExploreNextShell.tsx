@@ -154,12 +154,14 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // collega in ordine TUTTE le tappe del giorno con coordinate. Geometria
   // calcolata da Google Routes via `api.routes.compute` (con cache
   // localStorage 30gg implicita): la prima volta su un giorno scatena
-  // 1 call per giorno (single-call quando le modalità sono uniformi),
-  // poi è cache hit finché i punti non cambiano.
+  // 1 call (single-call uniforme), poi è cache hit finché i punti non
+  // cambiano.
   //
-  // Travel mode default: DRIVING (auto). Quando una tappa ha
-  // `bridge_out_json.transport` salvato (es. dopo addPlace), quel leg
-  // usa il transport persistito tramite `perLegTransport`.
+  // Travel mode: DRIVING. Niente `perLegTransport` — il transport
+  // salvato in `bridge_out_json` resta usato per duration/UI nel
+  // Timeline, ma sulla mappa preferiamo una linea continua uniforme
+  // (legStyle("walk") sarebbe dotted, "bus" dashed, ecc. — visivamente
+  // rumoroso. Si decide di non encodare la modalità via stile qui).
   //
   // Quando `dayFocused`, il giorno in focus mantiene piena opacità, gli
   // altri vanno in dimmed, coerente con i roadmap-pin.
@@ -176,17 +178,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       const isFocusDay = dayFocused && day.id === selectedDayId;
       const opacity = !dayFocused || isFocusDay ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED;
 
-      const points: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
-      // perLegTransport[i] = transport del segmento points[i]→points[i+1].
-      // Lo prendiamo dal bridge_out_json della tappa di partenza quando
-      // esiste; altrimenti `null` → falls back al `travelMode` default.
-      const perLegTransport = stops.slice(0, -1).map((s) => s.bridge_out_json?.transport ?? null);
-
       out.push({
         id: `day-${day.id}`,
-        points,
+        points: stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng })),
         travelMode: "DRIVING",
-        perLegTransport,
         style: { color: INK, weight: 3, opacity },
       });
     }
