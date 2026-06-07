@@ -147,6 +147,62 @@ export function makeNightPin(glyph: string, color: string = NIGHT, isGhost = fal
   };
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   Roadmap pin — pin teardrop "compatto" delle attività pianificate
+   sull'Explore map. Vedi /design/roadmap-pins.
+
+   3 stati cablati su mappa: "default" (giorno in focus o nessuno selezionato),
+   "dimmed" (attività di altri giorni quando un giorno è in focus), "overflow"
+   (timing/geo). Lo stato "selected" della spec NON è gestito qui: la selezione
+   sul pin continua a usare il halo overlay esistente, così la grafica del
+   marker resta stabile fra "non selezionato" e "selezionato".
+
+   Anchor sempre al bottom-center (tip).
+───────────────────────────────────────────────────────────────── */
+export type RoadmapPinState = "default" | "dimmed" | "overflow";
+
+type RoadmapShape = { w: number; h: number; d: string; cx: number; iconSize: number };
+const ROADMAP_SHAPES: Record<RoadmapPinState, RoadmapShape> = {
+  default:  { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 13 },
+  dimmed:   { w: 22, h: 28, d: "M11 1C6 1 1 5.5 1 11c0 6.5 10 16 10 16s10-9.5 10-16C21 5.5 16 1 11 1Z", cx: 11, iconSize: 10 },
+  overflow: { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 13 },
+};
+
+const ROADMAP_COLORS: Record<RoadmapPinState, { fill: string; stroke: string; strokeW: number; icon: string }> = {
+  default:  { fill: "#ffffff", stroke: "#0d2c3d",            strokeW: 1.5, icon: "#0d2c3d" },
+  dimmed:   { fill: "#f5f3ee", stroke: "rgba(13,44,61,0.20)", strokeW: 1.2, icon: "rgba(13,44,61,0.30)" },
+  overflow: { fill: "#fcebeb", stroke: "#9a3015",            strokeW: 1.5, icon: "#9a3015" },
+};
+
+/** Build a roadmap pin marker. `glyph` is the inner 24-box SVG (typically
+ *  from `iconGlyph(IconClockExclamation)` for overflow/timing, `iconGlyph(
+ *  IconMapPinExclamation)` for overflow/geo, or the activity's icon). */
+export function makeRoadmapPin(state: RoadmapPinState, glyph: string, isGhost = false): google.maps.Icon {
+  const shape = ROADMAP_SHAPES[state];
+  const c = ROADMAP_COLORS[state];
+  const teardrop =
+    `<path d="${shape.d}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="${c.strokeW}" stroke-linejoin="round"/>`;
+  // 24-box icon scaled into the head (centred at the circle's centre, with
+  // a -1 vertical offset that matches the spec — keeps the icon optically
+  // centred above the tip).
+  const iconScale = shape.iconSize / 24;
+  const iconX = shape.cx - shape.iconSize / 2;
+  const iconY = shape.cx - shape.iconSize / 2 - 1;
+  const icon =
+    `<g transform="translate(${iconX} ${iconY}) scale(${iconScale})" fill="none" stroke="${c.icon}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+
+  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
+  const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${shape.w}" height="${shape.h}" viewBox="0 0 ${shape.w} ${shape.h}">${defs}${wrap}</svg>`;
+
+  const s = isGhost ? GHOST_SCALE : 1;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(shape.w * s, shape.h * s),
+    anchor: new google.maps.Point((shape.w * s) / 2, shape.h * s),
+  };
+}
+
 export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string, isGhost = false): google.maps.Icon {
   // Either the category icon (knocked out white, centred in the head) or a dot.
   const center = glyph

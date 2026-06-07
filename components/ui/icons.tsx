@@ -69,6 +69,7 @@ export {
   IconLoader2,
   IconMap,
   IconMapPin,
+  IconMapPinExclamation,
   IconMinus,
   IconMapSearch,
   IconMessage,

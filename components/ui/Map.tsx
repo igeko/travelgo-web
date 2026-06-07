@@ -17,6 +17,7 @@ import {
   makeAdHocPin,
   makeNightPin,
   makePinIcon,
+  makeRoadmapPin,
   INK,
   ORANGE,
   NEUTRAL,
@@ -60,12 +61,18 @@ export type MapMarker = {
   glyph?: string;
   /**
    * Pin style.
-   *  - `"stop"`  → teardrop `makePinIcon` (itinerary day stops). Requires
-   *               `stopRole`; optional `slot` colours the body.
-   *  - `"night"` → indigo `makeNightPin` (Explore night-route layer).
-   *  - default   → dot `makeAdHocPin` (Go suggestions, category results).
+   *  - `"roadmap"` → teardrop `makeRoadmapPin` (itinerary activities — spec
+   *                 /design/roadmap-pins). Drives shape/size via `roadmapState`.
+   *  - `"stop"`    → teardrop `makePinIcon` (legacy itinerary day stops).
+   *                 Requires `stopRole`; optional `slot` colours the body.
+   *  - `"night"`   → indigo `makeNightPin` (Explore night-route layer).
+   *  - default     → dot `makeAdHocPin` (Go suggestions, category results).
    */
-  variant?: "stop" | "night";
+  variant?: "roadmap" | "stop" | "night";
+  /** Roadmap pin visual state (variant "roadmap"). Lo stato "selected"
+   *  della spec NON è gestito qui — la selezione resta a carico del halo
+   *  overlay (vedi `selectedMarkerId`). */
+  roadmapState?: import("./mapPins").RoadmapPinState;
   /** Role in the day sequence — drives start/mid/end shape (variant "stop"). */
   stopRole?: StopRole;
   /** Time-of-day slot — drives the pin body colour (variant "stop"). */
@@ -216,6 +223,12 @@ const PIN_CARD_GRACE = 180;
  * on the halo overlay to communicate selection.
  */
 function iconForMarker(m: MapMarker, isSelected: boolean, isGhost: boolean): google.maps.Icon {
+  if (m.variant === "roadmap") {
+    // Lo stato selected NON cambia l'icona: il pin selezionato resta nella
+    // sua variante di base e la selezione viene comunicata dal halo overlay
+    // (coerente con la regola dei pin stop/night).
+    return makeRoadmapPin(m.roadmapState ?? "default", m.glyph ?? "", isGhost);
+  }
   if (m.variant === "stop") {
     const color = m.slot ? SLOT_COLORS[m.slot] : INK;
     return makePinIcon(m.stopRole ?? "mid", m.glyph ?? "", color, isGhost);
@@ -865,7 +878,13 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       marker.setPosition({ lat: m.lat, lng: m.lng });
       const isSelected = selectedMarkerId != null && key === selectedMarkerId;
       marker.setIcon(iconForMarker(m, isSelected, false));
-      if (m.variant === "stop") {
+      if (m.variant === "roadmap") {
+        // dimmed < default < overflow: l'overflow chiede attenzione e
+        // non deve essere mai coperto da pin "normali" sovrapposti.
+        const z = m.roadmapState === "overflow" ? 7 :
+                  m.roadmapState === "dimmed"   ? 3 : 5;
+        marker.setZIndex(isSelected ? 1000 : z);
+      } else if (m.variant === "stop") {
         marker.setZIndex(isSelected ? 1000 : 5);
       } else if (m.variant === "night") {
         marker.setZIndex(isSelected ? 1000 : 500);

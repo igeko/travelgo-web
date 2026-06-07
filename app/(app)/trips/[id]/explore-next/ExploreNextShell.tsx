@@ -7,7 +7,6 @@ import type { LatLng, MapMarker } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
-import type { StopRole } from "@/components/ui/mapPins";
 import { api } from "@/lib/client";
 
 type Props = {
@@ -30,8 +29,11 @@ type Props = {
  * viene misurato a runtime con ResizeObserver e propagato a ExploreMap così
  * che la ricerca per categoria si centri sull'area effettivamente visibile.
  *
- * I marker dell'itinerario sono derivati dalle attività del giorno selezionato
- * nella Timeline — pin teardrop ("stop" variant) coloriti per slot.
+ * I marker dell'itinerario sono pin "roadmap" (spec /design/roadmap-pins):
+ * una pin per ogni attività di qualsiasi giorno con coordinate. Quando un
+ * giorno è esplicitamente in focus (l'utente l'ha espanso nella Timeline),
+ * le sue attività restano in stato "default" e quelle degli altri giorni
+ * passano a "dimmed".
  */
 export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Props) {
   const router = useRouter();
@@ -51,42 +53,52 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [selectedDayId, setSelectedDayId] = useState<string | null>(
     sortedDays[0]?.id ?? null,
   );
+  // Cooperazione con il roadmap-pin: la mappa entra in "day-focus mode" solo
+  // dopo che l'utente ha esplicitamente espanso un giorno dalla Timeline.
+  // Finché nessun giorno è stato focused, tutti i pin sono in stato default;
+  // dopo, i pin del giorno selezionato restano default e gli altri diventano
+  // dimmed. Il default-id all'avvio (primo giorno cronologico) NON conta come
+  // focus esplicito — è solo il preselect logico per la Timeline.
+  const [dayFocused, setDayFocused] = useState(false);
+  const handleSelectDay = useCallback((id: string) => {
+    setSelectedDayId(id);
+    setDayFocused(true);
+  }, []);
   // Driven by Timeline's "open activity" (a stop expanded inline by click).
   // Fed to the Add-to-Trip algorithm via ExploreMap so the CTA on a place
   // card knows where (after which stop) the new place should land. Null
   // when no row is open — the algorithm falls back to selectedDayId, then
   // to "end of last populated day".
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
-  const selectedDay = sortedDays.find((d) => d.id === selectedDayId) ?? null;
-  const selectedDayStops = useMemo(() => {
-    if (!selectedDay) return [];
-    return [...selectedDay.activities]
-      .sort((a, b) => a.position - b.position)
-      .filter((a): a is typeof a & { location_lat: number; location_lng: number } =>
-        a.location_lat != null && a.location_lng != null,
-      );
-  }, [selectedDay]);
 
-  // Marker itinerario → pin teardrop coloriti per slot, con ruolo
-  // start/mid/end. Gli stop senza coordinate sono già stati filtrati sopra.
-  const itineraryMarkers = useMemo<MapMarker[]>(
-    () =>
-      selectedDayStops.map((stop, i, arr) => {
-        const role: StopRole =
-          i === 0 ? "start" : i === arr.length - 1 ? "end" : "mid";
-        return {
+  // Marker itinerario — spec /design/roadmap-pins.
+  //   - dayFocused=false (avvio o reset)            → tutti i pin "default"
+  //   - dayFocused=true e attività nel giorno       → "default"
+  //   - dayFocused=true e attività in altro giorno  → "dimmed"
+  // Lo stato "overflow" è un hook tipato pronto, non ancora cablato (arriverà
+  // quando avremo la sorgente per timing/geo). Lo stato "selected" della spec
+  // non viene mai applicato qui — la selezione del marker resta sul halo
+  // overlay esistente, così il pin selezionato non cambia di forma.
+  const itineraryMarkers = useMemo<MapMarker[]>(() => {
+    const out: MapMarker[] = [];
+    for (const day of sortedDays) {
+      const isFocusDay = dayFocused && day.id === selectedDayId;
+      const state = !dayFocused || isFocusDay ? "default" : "dimmed";
+      for (const stop of day.activities) {
+        if (stop.location_lat == null || stop.location_lng == null) continue;
+        out.push({
           id: stop.id,
           lat: stop.location_lat,
           lng: stop.location_lng,
           title: stop.title,
           glyph: resolveGlyph({ iconKey: stop.icon, type: stop.type ?? null }),
-          variant: "stop" as const,
-          stopRole: role,
-          slot: stop.slot ?? undefined,
-        };
-      }),
-    [selectedDayStops],
-  );
+          variant: "roadmap" as const,
+          roadmapState: state,
+        });
+      }
+    }
+    return out;
+  }, [sortedDays, dayFocused, selectedDayId]);
 
   // Remove dell'attività dal dettaglio inline della Timeline. Chiamata
   // ottimistica? No: rispettiamo il pattern del resto dell'app — DELETE
@@ -141,7 +153,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Timeline
             days={days}
-            onSelectDay={setSelectedDayId}
+            onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
           />
