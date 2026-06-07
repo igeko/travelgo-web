@@ -254,6 +254,14 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
+  // L'onboarding hint ("Niente pianificato — aggiungi la prima attività")
+  // ha senso solo finché il viaggio è completamente vuoto. Appena UNA
+  // qualsiasi tappa esiste, il messaggio diventa rumore sui giorni che
+  // restano vuoti: lo nascondiamo, mostrando solo i badge a sinistra.
+  const tripHasContent = sortedDays.some(
+    (d) => d.accommodation || d.activities.length > 0 || d.notes,
+  );
+
   // Raggruppa giorni vuoti consecutivi: un singolo EmptyDayCard di sfondo
   // serve l'intero gruppo, evitando la ripetizione visiva di N card identiche
   // impilate. I giorni con contenuto restano individuali.
@@ -283,6 +291,7 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
               startIdx={seg.startIdx}
               totalDays={sortedDays.length}
               onSelectDay={onSelectDay}
+              showHintCard={!tripHasContent}
             />
           );
         }
@@ -525,12 +534,17 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
 /** Un gruppo di giorni vuoti consecutivi: tutte le DayBadge si impilano in
  *  col 1, una sola EmptyDayCard occupa col 2 e si estende in altezza per
  *  servire da sfondo condiviso. Sostituisce la vecchia resa "una card per
- *  giorno vuoto", che produceva N card identiche impilate. */
+ *  giorno vuoto", che produceva N card identiche impilate.
+ *
+ *  `showHintCard` controlla la card "Niente pianificato": è ON solo quando
+ *  l'intero viaggio è vuoto (onboarding). Appena esiste UNA tappa qualsiasi,
+ *  il blocco mostra solo i badge — niente card laterale rumorosa. */
 function EmptyDaysBlock({
   days,
   startIdx,
   totalDays,
   onSelectDay,
+  showHintCard = true,
 }: {
   days: TimelineDayData[];
   startIdx: number;
@@ -538,6 +552,8 @@ function EmptyDaysBlock({
    *  del block coincide con l'ultimo dell'intera lista (→ doppia barretta). */
   totalDays: number;
   onSelectDay?: (id: string) => void;
+  /** false = il viaggio ha già contenuto altrove → niente card laterale. */
+  showHintCard?: boolean;
 }) {
   const lastIdxOverall = startIdx + days.length - 1;
   const blockEndsTimeline = lastIdxOverall === totalDays - 1;
@@ -572,7 +588,7 @@ function EmptyDaysBlock({
         )}
       </div>
       <div style={{ gridColumn: 2, gridRow: 1 }} className="py-0.5">
-        <EmptyDayCard />
+        {showHintCard ? <EmptyDayCard /> : null}
       </div>
     </div>
   );
