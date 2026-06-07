@@ -249,43 +249,63 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return out;
   }, [effectiveDays, dayFocused, selectedDayId]);
 
-  // Percorso reale tra tappe consecutive — una RouteSpec per giorno, che
-  // collega in ordine TUTTE le tappe del giorno con coordinate. Geometria
-  // calcolata da Google Routes via `api.routes.compute` (con cache
-  // localStorage 30gg implicita): la prima volta su un giorno scatena
-  // 1 call (single-call uniforme), poi è cache hit finché i punti non
-  // cambiano.
+  // Percorso reale tra tappe consecutive — una RouteSpec per giorno.
   //
-  // Travel mode: DRIVING. Niente `perLegTransport` — il transport
-  // salvato in `bridge_out_json` resta usato per duration/UI nel
-  // Timeline, ma sulla mappa preferiamo una linea continua uniforme
-  // (legStyle("walk") sarebbe dotted, "bus" dashed, ecc. — visivamente
-  // rumoroso. Si decide di non encodare la modalità via stile qui).
+  // Modello: la "catena" del giorno è [act1, act2, ..., accommodation].
+  // Per gestire le TRANSIZIONI tra giorni (es. ultima notte hotel → nuovo
+  // alloggio in altra città), prependiamo il "tail" del giorno precedente
+  // (l'ultimo punto raggiunto: accommodation se esiste, altrimenti
+  // l'ultima activity) quando DIFFERISCE dal primo punto del giorno
+  // corrente. Senza questo, un giorno di solo accommodation (1 punto)
+  // verrebbe scartato dal filtro `< 2 punti` e la transizione hotel→
+  // campeggio non sarebbe mai disegnata.
+  //
+  // Per giorni di solo accommodation che NON cambia (stessa stay
+  // multi-night), il prepend non scatta (firstPt == prevTail) e il
+  // giorno resta scartato — giusto: nessun movimento reale da disegnare.
+  //
+  // Geometria via Google Routes (`api.routes.compute`, cache localStorage
+  // 30gg). Travel mode DRIVING uniforme, niente `perLegTransport`
+  // (legStyle("walk") sarebbe dotted ecc. — visivamente rumoroso).
   //
   // Quando `dayFocused`, il giorno in focus mantiene piena opacità, gli
   // altri vanno in dimmed, coerente con i roadmap-pin.
   const dayPathRoutes = useMemo<RouteSpec[]>(() => {
     const out: RouteSpec[] = [];
+    const sameCoord = (a: LatLng | null, b: LatLng | null) =>
+      !!a && !!b && a.lat === b.lat && a.lng === b.lng;
+    let prevTail: LatLng | null = null;
+
     for (const day of effectiveDays) {
       const stops = [...day.activities]
         .sort((a, b) => a.position - b.position)
         .filter((s): s is typeof s & { location_lat: number; location_lng: number } =>
           s.location_lat != null && s.location_lng != null,
         );
-
-      const points: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
-      // Append accommodation come ultimo nodo del giorno (check-in serale,
-      // coerente col brief 06). Così il path racconta "wake up → places → bed".
-      // Dedup banale: se l'ultima activity coincide con le coords
-      // dell'accommodation (es. la sleep nasce DA un'activity convertita) la
-      // saltiamo, altrimenti vedremmo un segmento di lunghezza zero.
       const acc = day.accommodation;
-      if (acc?.lat != null && acc?.lng != null) {
-        const last = points[points.length - 1];
-        if (!last || last.lat !== acc.lat || last.lng !== acc.lng) {
-          points.push({ lat: acc.lat, lng: acc.lng });
-        }
+      const accPoint: LatLng | null =
+        acc?.lat != null && acc?.lng != null ? { lat: acc.lat, lng: acc.lng } : null;
+
+      // Catena grezza del giorno: activities + accommodation (se esiste e
+      // diversa dall'ultima activity per evitare zero-length leg).
+      const ownPoints: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
+      if (accPoint && !sameCoord(ownPoints[ownPoints.length - 1] ?? null, accPoint)) {
+        ownPoints.push(accPoint);
       }
+
+      // Prepend del tail giorno precedente se differisce dal primo punto.
+      // Così le transizioni cross-day (cambio alloggio) diventano un leg
+      // visibile sul giorno di destinazione.
+      const points: LatLng[] = [...ownPoints];
+      const firstPt = points[0] ?? null;
+      if (prevTail && firstPt && !sameCoord(prevTail, firstPt)) {
+        points.unshift(prevTail);
+      }
+
+      // Aggiorna tail per il prossimo giorno: l'ultimo punto effettivamente
+      // raggiunto oggi (accommodation > ultima activity > tail precedente).
+      prevTail = accPoint ?? (ownPoints[ownPoints.length - 1] ?? prevTail);
+
       if (points.length < 2) continue;
 
       const isFocusDay = dayFocused && day.id === selectedDayId;
