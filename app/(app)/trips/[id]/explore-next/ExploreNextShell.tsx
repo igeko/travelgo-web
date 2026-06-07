@@ -3,13 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap";
-import type { LatLng, MapMarker } from "@/components/ui/Map";
+import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
+import { INK } from "@/components/ui/mapPins";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { Activity } from "@/lib/dal/domain";
+
+/** Opacità della polyline percorso: piena per il giorno in focus (o quando
+ *  nessun giorno è focused), ridotta per gli altri quando un giorno è focused. */
+const PATH_OPACITY_DEFAULT = 0.8;
+const PATH_OPACITY_DIMMED = 0.18;
 
 type Props = {
   tripId: string;
@@ -144,6 +150,51 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return out;
   }, [visibleDays, dayFocused, selectedDayId]);
 
+  // Percorso tra tappe consecutive — una polyline lineare neutra per ogni
+  // segmento della catena dove `prev.bridge_out_json` è già salvato e
+  // entrambi gli endpoint hanno coordinate. Niente Google call al render
+  // (`straight: true`). I segmenti senza bridge salvato vengono saltati:
+  // la catena si spezza e ripartiamo dal punto successivo.
+  //
+  // Quando `dayFocused`, il giorno in focus mantiene piena opacità, gli
+  // altri vanno in dimmed, coerente con i roadmap-pin.
+  const dayPathRoutes = useMemo<RouteSpec[]>(() => {
+    const out: RouteSpec[] = [];
+    for (const day of visibleDays) {
+      const isFocusDay = dayFocused && day.id === selectedDayId;
+      const opacity = !dayFocused || isFocusDay ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED;
+
+      const stops = [...day.activities].sort((a, b) => a.position - b.position);
+      // Spezza la catena ovunque manchi un bridge salvato o le coordinate.
+      // Risultato: una o più RouteSpec per giorno, ciascuna con un sotto-
+      // segmento contiguo di tappe collegate.
+      let chunk: LatLng[] = [];
+      let chunkIdx = 0;
+      const flush = () => {
+        if (chunk.length < 2) { chunk = []; return; }
+        out.push({
+          id: `day-${day.id}-chunk-${chunkIdx++}`,
+          points: chunk,
+          straight: true,
+          style: { color: INK, weight: 2, opacity },
+        });
+        chunk = [];
+      };
+      for (let i = 0; i < stops.length; i++) {
+        const s = stops[i];
+        if (s.location_lat == null || s.location_lng == null) { flush(); continue; }
+        const point = { lat: s.location_lat, lng: s.location_lng };
+        if (chunk.length === 0) { chunk.push(point); continue; }
+        // Connesso al precedente solo se `prev.bridge_out_json` esiste.
+        const prev = stops[i - 1];
+        if (prev?.bridge_out_json) chunk.push(point);
+        else { flush(); chunk.push(point); }
+      }
+      flush();
+    }
+    return out;
+  }, [visibleDays, dayFocused, selectedDayId]);
+
   // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
   // rapida sequenza al click ma React non ha ancora unmountato la card).
   const addingRef = useRef(false);
@@ -240,6 +291,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         zoom={zoom}
         nightRoute={nightRoute}
         extraMarkers={itineraryMarkers}
+        extraRoutes={dayPathRoutes}
         viewportInset={{ left: panelWidth }}
         onAddToTripRequest={handleAddToTripRequest}
         // Night-route off: la Timeline a sinistra mostra già l'alloggio

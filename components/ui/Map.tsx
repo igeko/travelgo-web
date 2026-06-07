@@ -349,6 +349,29 @@ function drawRouteSpec(
   const sharedOpacity = spec.style?.opacity ?? 0.9;
   const defaultMode: TravelMode = spec.travelMode ?? "WALKING";
 
+  // `straight: true` → polyline lineare diretta sui `points`, niente call
+  // a Google Routes. Usata quando il bridge è già persistito (durata + mode)
+  // ma la geometria non serve essere precisa: vogliamo solo segnare che i
+  // due stop sono collegati. Skippa anche la cache localStorage.
+  if (spec.straight) {
+    sink.push(
+      new google.maps.Polyline({
+        path: points.map((p) => ({ lat: p.lat, lng: p.lng })),
+        map,
+        strokeColor: sharedColor,
+        strokeWeight: sharedWeight,
+        strokeOpacity: sharedOpacity,
+      }),
+    );
+    if (spec.fitOnLoad) {
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach((p) => bounds.extend(p));
+      map.fitBounds(bounds, spec.fitPadding ?? 64);
+    }
+    spec.onDraw?.();
+    return;
+  }
+
   const legCount = points.length - 1;
   const legTransports: (TransportMode | null)[] = Array.from({ length: legCount }, (_, i) =>
     spec.perLegTransport?.[i] ?? null,

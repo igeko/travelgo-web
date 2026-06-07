@@ -78,6 +78,7 @@ export function ExploreMap({
   onExtraMarkerDragEnd,
   onAddToTripRequest,
   enableNightRoute = true,
+  extraRoutes = [],
 }: {
   tripId: string;
   center: LatLng;
@@ -115,6 +116,13 @@ export function ExploreMap({
    * informazione (alloggi giorno-per-giorno) rendendola ridondante.
    */
   enableNightRoute?: boolean;
+  /**
+   * RouteSpec aggiuntive iniettate dal host — es. il percorso tra le
+   * tappe di un giorno (Explore Next). Vengono mergiate con la route
+   * interna del night-route (quando abilitata) e passate alla `Map`
+   * come un singolo array. Default `[]`.
+   */
+  extraRoutes?: RouteSpec[];
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -209,22 +217,24 @@ export function ExploreMap({
     url: nw.url,
   });
 
-  // Night-route is the only `RouteSpec` Explore draws today. Auto-fit
-  // disabilitato: il toggle ON disegna la polyline ma NON reframma la
-  // camera — lo zoom resta deciso dall'utente. Reintrodurremo un fit-to-
-  // route esplicito (es. bottone "centra percorso") quando deciderete dove.
-  const routes = useMemo<RouteSpec[]>(
-    () =>
-      enableNightRoute && showNightRoute && nightRoute.length >= 2
-        ? [{
-            id: "night",
-            travelMode: "DRIVING",
-            points: nightRoute.map((w) => ({ lat: w.lat, lng: w.lng })),
-            style: { color: NIGHT, weight: 4, opacity: 0.9 },
-          }]
-        : [],
-    [enableNightRoute, showNightRoute, nightRoute],
-  );
+  // Routes disegnate sulla mappa = night-route (quando abilitata + on) +
+  // qualsiasi `extraRoutes` iniettata dall'host (es. il percorso fra le
+  // tappe di un giorno in Explore Next). Auto-fit disabilitato per tutte:
+  // lo zoom resta deciso dall'utente; reintrodurremo un fit-to-route
+  // esplicito (es. bottone "centra percorso") quando deciderete dove.
+  const routes = useMemo<RouteSpec[]>(() => {
+    const out: RouteSpec[] = [];
+    if (enableNightRoute && showNightRoute && nightRoute.length >= 2) {
+      out.push({
+        id: "night",
+        travelMode: "DRIVING",
+        points: nightRoute.map((w) => ({ lat: w.lat, lng: w.lng })),
+        style: { color: NIGHT, weight: 4, opacity: 0.9 },
+      });
+    }
+    out.push(...extraRoutes);
+    return out;
+  }, [enableNightRoute, showNightRoute, nightRoute, extraRoutes]);
 
   // Search-result pin — a bare ad-hoc pin keyed by the Google placeId. Sits in
   // the topmost layer so it visually wins over any other pin at the same point.

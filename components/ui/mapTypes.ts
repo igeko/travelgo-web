@@ -78,6 +78,16 @@ export type RouteSpec = {
   };
 
   /**
+   * Quando `true` la mappa disegna una polyline LINEARE che collega i
+   * `points` in ordine, senza chiamare `/api/routes` (e quindi senza
+   * passare per Google Routes API né per la cache localStorage). Usato
+   * quando i bridge sono già stati persistiti su DB e vogliamo solo
+   * un segno visivo "qui c'è un transfer" senza incorrere in altre
+   * call. Default `false` → geometry reale via Google.
+   */
+  straight?: boolean;
+
+  /**
    * Fit the map viewport to the route bounds when polylines (re)render.
    * Default `false` — the consumer keeps full control of the camera.
    * Itinerary uses `true` (the day's route reframes the camera on change).
