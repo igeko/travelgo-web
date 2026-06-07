@@ -16,7 +16,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useState } from "react";
+import type { ComponentType } from "react";
 import { useTranslations } from "next-intl";
 import {
   IconGripVertical,
@@ -106,7 +106,6 @@ export function ActivityStop({
   className?: string;
 }) {
   const t = useTranslations("Explore");
-  const [addressValue, setAddressValue] = useState<PlaceResult | null>(address);
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
     const selected = state === "selected";
@@ -211,11 +210,8 @@ export function ActivityStop({
         {/* Inline "passport row" — pin + value, underlined like the design mock
             (see AddressRow). No eyebrow label: the card already names the field. */}
         <AddressField
-          value={addressValue}
-          onChange={(place) => {
-            setAddressValue(place);
-            onAddressChange?.(place);
-          }}
+          value={address}
+          onChange={(place) => onAddressChange?.(place)}
           variant="inline"
           placeholder="Address"
           className="border-b border-ink"

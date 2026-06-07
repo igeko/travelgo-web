@@ -38,6 +38,7 @@ import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
 import { DayBadge } from "./DayBadge";
 import { ActivityStop } from "./ActivityStop";
+import type { PlaceResult } from "@/components/ui/AddressField";
 import { FuzzyStop } from "./FuzzyStop";
 import { Transfer, type TransferLeg, type TransferStep } from "./Transfer";
 import type { AccommodationDisplay } from "./resolveAccommodations";
@@ -110,6 +111,16 @@ type Props = {
   /** Stepper "−" on a lodging row: reduces the stay by one night. */
   onReduceStay?: (stayId: string) => void | Promise<void>;
   /**
+   * Address change from inside the activity detail. Receives the
+   * underlying Property activity id (activities.id) and the new place
+   * (or null when cleared). The host writes location/place_id/lat/lng
+   * onto the activity entity and refreshes.
+   */
+  onAddressChange?: (
+    activityId: string,
+    place: PlaceResult | null,
+  ) => void | Promise<void>;
+  /**
    * When set, force-open that item id (overrides the local open state).
    * Hosts use it after a cross-table conversion so the inline popover
    * stays open on the new row even though the id changes (scheduled.id
@@ -118,6 +129,33 @@ type Props = {
   openOverride?: string | null;
   className?: string;
 };
+
+/* ── Address helper ─────────────────────────────────────────────── */
+
+/**
+ * Synthesise a PlaceResult from the flat location/place_id/lat/lng triple
+ * that lives on activities and AccommodationDisplay. Returns null when no
+ * location is set so AddressField shows its empty placeholder.
+ *
+ * The components map is left empty — AddressField doesn't use it for
+ * rendering, only for re-emit on selection of a new place from autocomplete
+ * (which carries its own full PlaceResult).
+ */
+function placeFromFields(
+  location: string | null | undefined,
+  placeId: string | null | undefined,
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): PlaceResult | null {
+  if (!location && !placeId && lat == null && lng == null) return null;
+  return {
+    formatted: location ?? "",
+    name: location ?? "",
+    placeId: placeId ?? "",
+    lat: lat ?? 0,
+    lng: lng ?? 0,
+  };
+}
 
 /* ── Date helpers ───────────────────────────────────────────────── */
 
@@ -198,11 +236,16 @@ type Item =
       title: string;
       icon: IconCmp;
       address: string | null;
+      placeId: string | null;
+      lat: number | null;
+      lng: number | null;
       nightIndex: number;
       nightsTotal: number;
       /** Stay id — present when projected from accommodation_nights; lets
        *  the Sleep/Stop toggle and the Stepper mutate the right stay. */
       stayId?: string;
+      /** Property activity id — target for Property-level edits (address). */
+      activityId?: string;
     }
   | { kind: "transfer"; id: string; transfer: TransferVM };
 
@@ -228,9 +271,13 @@ function buildItems(
       title: accommodation.name,
       icon: accommodationIcon(accommodation.type),
       address: accommodation.address,
+      placeId: accommodation.place_id,
+      lat: accommodation.lat,
+      lng: accommodation.lng,
       nightIndex: accommodation.night_index,
       nightsTotal: accommodation.nights_total,
       stayId: accommodation.stay_id,
+      activityId: accommodation.activity_id,
     });
   }
 
@@ -266,6 +313,7 @@ export function Timeline({
   onConvertToStop,
   onExtendStay,
   onReduceStay,
+  onAddressChange,
   openOverride,
   className,
 }: Props) {
@@ -482,7 +530,14 @@ export function Timeline({
               if (item.kind === "lodging") {
                 const open = openId === item.id;
                 const stayId = item.stayId;
+                const activityId = item.activityId;
                 const currentNights = item.nightsTotal;
+                const placeValue = placeFromFields(
+                  item.address,
+                  item.placeId,
+                  item.lat,
+                  item.lng,
+                );
                 return (
                   <div
                     key={item.id}
@@ -497,6 +552,10 @@ export function Timeline({
                       mode="sleep"
                       nights={item.nightsTotal}
                       nightIndex={item.nightIndex}
+                      address={placeValue}
+                      onAddressChange={(place) => {
+                        if (activityId) void onAddressChange?.(activityId, place);
+                      }}
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={() => setOpenId(null)}
@@ -557,6 +616,19 @@ export function Timeline({
                       timeRange={a.time ?? "—"}
                       time={rowTime}
                       description={a.short_desc ?? undefined}
+                      address={placeFromFields(
+                        a.location,
+                        a.location_place_id,
+                        a.location_lat,
+                        a.location_lng,
+                      )}
+                      onAddressChange={(place) => {
+                        // Edit goes to the Property activity entity (a.activity_id),
+                        // not to the scheduled instance (a.id) — the address is
+                        // entity-level data shared by every occurrence.
+                        const entityId = a.activity_id ?? a.entity_id ?? null;
+                        if (entityId) void onAddressChange?.(entityId, place);
+                      }}
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={handleRemove}
