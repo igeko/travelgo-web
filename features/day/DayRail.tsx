@@ -25,6 +25,12 @@ function localDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Carico per giorno usato dal compact mode per pilotare fill bar + overflow.
+ *  Chiavi = day.id. Lasciare undefined / mappa vuota se il chiamante non
+ *  aggrega ancora le attività di tutti i giorni — il badge mostrerà fill bar
+ *  vuota senza rompere il layout. */
+export type DayLoadMap = Record<string, { fillPct: number; overflow: boolean }>;
+
 export type DayRailProps = {
   days: Day[];
   /** Controlled selection (a day id). */
@@ -40,6 +46,9 @@ export type DayRailProps = {
    * "label" (just the ITINERARY eyebrow). Default "full".
    */
   header?: "full" | "label";
+  /** Compact-only — riempimento del giorno per pilotare la fill bar e lo
+   *  stato di overflow del badge. Vedi [[DayLoadMap]]. */
+  dayLoadMap?: DayLoadMap;
   className?: string;
   style?: React.CSSProperties;
 };
@@ -53,6 +62,7 @@ export function DayRail({
   collapsed = false,
   onToggleCollapse,
   header = "full",
+  dayLoadMap,
   className,
   style,
 }: DayRailProps) {
@@ -118,19 +128,26 @@ export function DayRail({
 
       {/* Items */}
       <ol className="m-0 p-0 py-1.5 pl-1 list-none flex-1 overflow-y-auto min-h-0 scrollbar-thin-hover">
-        {days.map((d) => (
-          <DayItem
-            key={d.id}
-            id={`day-${d.day_number - 1}`}
-            dow={d.date ? getDow(d.date) : ""}
-            dayNumber={d.date ? localDate(d.date).getDate() : d.day_number}
-            zone={d.city ?? undefined}
-            place={d.label ?? undefined}
-            selected={d.id === selectedDayId}
-            compact={collapsed}
-            onClick={() => onSelect(d.id)}
-          />
-        ))}
+        {days.map((d, i) => {
+          const load = dayLoadMap?.[d.id];
+          return (
+            <DayItem
+              key={d.id}
+              id={`day-${d.day_number - 1}`}
+              dow={d.date ? getDow(d.date) : ""}
+              dayNumber={d.date ? localDate(d.date).getDate() : d.day_number}
+              zone={d.city ?? undefined}
+              place={d.label ?? undefined}
+              selected={d.id === selectedDayId}
+              compact={collapsed}
+              fillPct={load?.fillPct}
+              overflow={load?.overflow}
+              isFirst={collapsed && i === 0}
+              isLast={collapsed && i === days.length - 1}
+              onClick={() => onSelect(d.id)}
+            />
+          );
+        })}
       </ol>
     </aside>
   );

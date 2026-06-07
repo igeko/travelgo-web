@@ -105,6 +105,20 @@ function formatDay(iso: string): { weekday: string; dateLabel: string } {
   return { weekday, dateLabel: `${d.getDate()} ${month}` };
 }
 
+/* ── Day load (fill bar input) ──────────────────────────────────── */
+
+/** Riempimento stimato del giorno in % rispetto a 10 h disponibili (600 min).
+ *  Le fuzzy non contano (non sono pianificate). Manca `duration_min` sul
+ *  model Activity → stima a 45 min/stop, come da spec
+ *  /design/day-rail-states. */
+function computeDayLoad(activities: Activity[]): { fillPct: number; overflow: boolean } {
+  const totalMinutes = activities.filter((a) => a.fuzzy !== true).length * 45;
+  return {
+    fillPct: Math.min(100, Math.round((totalMinutes / 600) * 100)),
+    overflow: totalMinutes > 600,
+  };
+}
+
 /* ── Bridge → Transfer mapping ──────────────────────────────────── */
 
 const SAMPLE_LEGS: TransferLeg[] = [
@@ -259,6 +273,7 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
               key={`empty-${seg.days[0].id}`}
               days={seg.days}
               startIdx={seg.startIdx}
+              totalDays={sortedDays.length}
               onSelectDay={onSelectDay}
             />
           );
@@ -270,6 +285,8 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
           ? formatDay(day.date)
           : { weekday: "", dateLabel: "" };
         const isFirst = dayIdx === 0;
+        const isLast = dayIdx === sortedDays.length - 1;
+        const dayLoad = computeDayLoad(day.activities);
 
         const expanded = expandedDays.has(day.id);
         const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
@@ -329,7 +346,14 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
               }}
               className={cn("cursor-pointer self-start", lodgingFirst && "mt-1.5")}
             >
-              <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
+              <DayBadge
+                weekday={weekday}
+                date={dateLabel}
+                fillPct={dayLoad.fillPct}
+                overflow={dayLoad.overflow}
+                selected={expanded}
+                isFirst={isFirst}
+              />
             </button>
 
             {/* Expanded day — faint city/landscape backdrop behind the stops.
@@ -458,6 +482,19 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
                 </div>
               </div>
             ) : null}
+
+            {/* Terminatore inferiore — doppia barretta ink/15 sotto il rail
+                dell'ultimo giorno. Speculare alla barretta isFirst del DayBadge. */}
+            {isLast ? (
+              <div
+                aria-hidden
+                style={{ gridColumn: 1, gridRow: lastRow + 1 }}
+                className="flex w-9 flex-col items-center"
+              >
+                <div className="h-0.5" />
+                <div className="h-1 w-full bg-ink/15" />
+              </div>
+            ) : null}
           </div>
         );
       })}
@@ -474,12 +511,18 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
 function EmptyDaysBlock({
   days,
   startIdx,
+  totalDays,
   onSelectDay,
 }: {
   days: TimelineDayData[];
   startIdx: number;
+  /** Lunghezza totale della timeline — serve per sapere se l'ultimo giorno
+   *  del block coincide con l'ultimo dell'intera lista (→ doppia barretta). */
+  totalDays: number;
   onSelectDay?: (id: string) => void;
 }) {
+  const lastIdxOverall = startIdx + days.length - 1;
+  const blockEndsTimeline = lastIdxOverall === totalDays - 1;
   return (
     <div className="grid gap-x-2" style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}>
       <div
@@ -499,10 +542,16 @@ function EmptyDaysBlock({
               aria-label={`${weekday} ${dateLabel}`}
               className="cursor-pointer"
             >
-              <DayBadge weekday={weekday} date={dateLabel} tone={isFirst ? "ink" : "primary"} />
+              <DayBadge weekday={weekday} date={dateLabel} isFirst={isFirst} />
             </button>
           );
         })}
+        {blockEndsTimeline && (
+          <div aria-hidden className="flex w-9 flex-col items-center">
+            <div className="h-0.5" />
+            <div className="h-1 w-full bg-ink/15" />
+          </div>
+        )}
       </div>
       <div style={{ gridColumn: 2, gridRow: 1 }} className="py-0.5">
         <EmptyDayCard />

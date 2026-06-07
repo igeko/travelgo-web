@@ -72,6 +72,13 @@
   --color-success-deep: #3d6e0e;
   --color-success-border: rgba(61, 110, 14, 0.25);
 
+  /* OK — verde semantico della fill bar del DayBadge (riempimento giorno).
+     Distinto da success-* (più caldo/saturato per leggibilità su 4px). */
+  --color-ok-bg: #eef5e0;
+  --color-ok-fg: #639922;
+  --color-ok-deep: #3f6512;
+  --color-ok-border: rgba(99, 153, 34, 0.25);
+
   /* Type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
     "Inter", Arial, sans-serif;
