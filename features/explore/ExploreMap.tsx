@@ -79,6 +79,7 @@ export function ExploreMap({
   onAddToTripRequest,
   enableNightRoute = true,
   extraRoutes = [],
+  fitAllOnMount = false,
 }: {
   tripId: string;
   center: LatLng;
@@ -123,6 +124,12 @@ export function ExploreMap({
    * come un singolo array. Default `[]`.
    */
   extraRoutes?: RouteSpec[];
+  /**
+   * Forwardato a `Map`: una sola fit-to-all della camera al primo
+   * render con contenuto disponibile, niente refit successivi. Default
+   * `false`. Vedi `Map.fitAllOnMount` per le note complete.
+   */
+  fitAllOnMount?: boolean;
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -553,6 +560,7 @@ export function ExploreMap({
           // — re-hover or re-click brings the card back via Map's dismiss reset.
         }}
         routes={routes}
+        fitAllOnMount={fitAllOnMount}
         className="h-full w-full rounded-none"
       />
 

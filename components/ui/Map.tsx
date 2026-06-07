@@ -170,6 +170,15 @@ export type MapProps = {
    * centred on what the user actually sees.
    */
   viewportInset?: { left?: number; right?: number; top?: number; bottom?: number };
+  /**
+   * Quando `true`, al primo render in cui markers o route polylines sono
+   * disponibili la camera viene inquadrata su tutto il contenuto (markers +
+   * polilinee), rispettando `viewportInset` come padding extra. Si attiva una
+   * sola volta per istanza del componente — successive aggiunte/rimozioni
+   * non rifocalizzano (lo zoom dopo il fit iniziale è interamente dell'utente).
+   * Default `false`. Usata da Explore Next per dare un overview all'apertura.
+   */
+  fitAllOnMount?: boolean;
 };
 
 /**
@@ -517,6 +526,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     onMarkerClose,
     routes,
     viewportInset,
+    fitAllOnMount = false,
   },
   ref,
 ) {
@@ -957,6 +967,40 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     for (const poly of routePolylinesRef.current) poly.setMap(null);
     routePolylinesRef.current = [];
   }, []);
+
+  // Initial fit-to-all — opt-in via `fitAllOnMount`. Si attiva UNA VOLTA per
+  // istanza del componente, appena la mappa è pronta e c'è almeno un marker
+  // o una polilinea da inquadrare. Niente refit successivi: lo zoom passa
+  // interamente all'utente dopo l'overview iniziale.
+  //
+  // `viewportInset` viene tradotto in `Padding` di Google Maps così la fit
+  // tiene conto del pannello laterale che copre parte della mappa (es. la
+  // Timeline di Explore Next).
+  const didInitialFitRef = useRef(false);
+  useEffect(() => {
+    if (!fitAllOnMount || didInitialFitRef.current) return;
+    if (status !== "ready" || !mapRef.current) return;
+    const map = mapRef.current;
+    const bounds = new google.maps.LatLngBounds();
+    let any = false;
+    for (const m of markersRef.current ?? []) {
+      bounds.extend({ lat: m.lat, lng: m.lng });
+      any = true;
+    }
+    for (const pl of routePolylinesRef.current) {
+      pl.getPath().forEach((ll) => { bounds.extend(ll); any = true; });
+    }
+    if (!any) return;
+    const inset = viewportInsetRef.current ?? {};
+    const padding: google.maps.Padding = {
+      top: (inset.top ?? 0) + 64,
+      right: (inset.right ?? 0) + 64,
+      bottom: (inset.bottom ?? 0) + 64,
+      left: (inset.left ?? 0) + 64,
+    };
+    map.fitBounds(bounds, padding);
+    didInitialFitRef.current = true;
+  }, [fitAllOnMount, status, markers, routes]);
 
   // Tear down the shared MarkerClusterer on unmount. Clustered marker
   // instances live in `markersByKey` and are dropped by the standard reconcile

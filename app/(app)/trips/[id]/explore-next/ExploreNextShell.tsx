@@ -528,6 +528,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         // Night-route off: la Timeline a sinistra mostra già l'alloggio
         // giorno-per-giorno, l'overlay diventava solo rumore.
         enableNightRoute={false}
+        // All'apertura del trip, inquadra l'intero percorso pianificato
+        // (markers + polyline) così l'utente vede tutto in un colpo. Una
+        // sola volta — dopo, lo zoom resta dell'utente.
+        fitAllOnMount
       />
 
       {/* Panel sinistro — card arrotondata che contiene la Timeline. */}
