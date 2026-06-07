@@ -118,6 +118,31 @@ export function placesTextSearch(params: PlacesParams, revalidate?: number): Pro
   return placesRequest("textsearch/json", params, revalidate != null ? { next: { revalidate } } : undefined);
 }
 
+/**
+ * POST places.googleapis.com/v1/places:searchText (Places API v1).
+ *
+ * Sostituisce `placesTextSearch` per chi non ha piu' la legacy "Places API"
+ * abilitata sulla key (Google ora richiede la migrazione a "Places API (New)"):
+ * il body porta `textQuery` + `locationBias.circle.{center, radius}`, la
+ * field-mask sceglie i campi nella response. Auth via `X-Goog-Api-Key`.
+ */
+export function placesSearchTextV1(
+  body: unknown,
+  fieldMask: string,
+  revalidate?: number,
+): Promise<Response> {
+  return fetch(`${PLACES_V1_BASE}/places:searchText`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": requireKey(),
+      "X-Goog-FieldMask": fieldMask,
+    },
+    body: JSON.stringify(body),
+    ...(revalidate != null ? { next: { revalidate } } : {}),
+  });
+}
+
 /** GET place/photo — Google 302-redirects to the actual image; follow it. */
 export function placePhoto(params: PlacesParams): Promise<Response> {
   return placesRequest("photo", params, { redirect: "follow" });

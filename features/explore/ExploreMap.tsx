@@ -315,14 +315,19 @@ export function ExploreMap({
 
   // Toolbar → Google area search (debounced). Selecting a category searches the
   // visible viewport; deselecting clears the result pins.
+  //
+  // Fallback: se l'utente seleziona una categoria prima che il primo `idle`
+  // event di Google Maps abbia popolato `viewportRef`, usiamo il centro
+  // corrente + 5 km come riserva — meglio cercare in un'area approssimata
+  // che restare senza alcun feedback.
   useEffect(() => {
     const subId = selectedSubIds[0];
     if (!subId) { setCategoryMarkers([]); return; }
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(async () => {
       const term = SUB_GOOGLE[subId];
-      const vp = viewportRef.current;
-      if (!term || !vp) return;
+      if (!term) return;
+      const vp = viewportRef.current ?? { center, radiusMeters: 5000 };
       const glyph = SUB_ICON[subId] ? iconGlyph(`cat:${subId}`, SUB_ICON[subId]) : undefined;
       try {
         const places = await api.places.areaSearch<AreaPlace>(
@@ -334,11 +339,14 @@ export function ExploreMap({
           id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph,
           clustered: true,
         })));
-      } catch {
-        /* search failed — keep previous pins */
+      } catch (err) {
+        console.error("[ExploreMap] category area-search failed:", err);
       }
     }, SEARCH_DEBOUNCE);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+    // `center` letto on-fire dal setTimeout; non vogliamo che un pan rilanci
+    // la search, quindi resta fuori dalle deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubIds]);
 
   // Restore the last focused place once, right after localStorage hydrates —

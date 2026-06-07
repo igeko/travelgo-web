@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mapsConfigured, placesTextSearch } from "@/lib/maps/provider";
+import { mapsConfigured, placesSearchTextV1 } from "@/lib/maps/provider";
 
 /**
  * GET /api/places/area-search?query=<term>&lat=<n>&lng=<n>&radius=<m>
  *
- * Google Places Text Search biased to a circular area (centre + radius), used
- * by the Explore toolbar to find a category within the currently-visible map.
- * Returns lightweight places for map markers (no Details / photos).
+ * Places API (New) — `places:searchText` con bias circolare (centre + radius),
+ * usato dalla Explore toolbar per trovare una categoria nella mappa visibile.
+ * Ritorna place leggeri per i marker (niente Details / photo).
+ *
+ * Nota: si usa Places API (New) perche' la legacy "Places API" (text search)
+ * non e' piu' abilitata sulla key del progetto. La legacy stessa e' stata
+ * deprecata da Google il 1 marzo 2025 — vedi `lib/maps/provider.ts`.
  */
 
 export type AreaPlace = {
@@ -17,12 +21,14 @@ export type AreaPlace = {
   types?: string[];
 };
 
-type TextSearchResult = {
-  place_id?: string;
-  name?: string;
-  geometry?: { location?: { lat?: number; lng?: number } };
+type SearchTextPlace = {
+  id?: string;
+  displayName?: { text?: string };
+  location?: { latitude?: number; longitude?: number };
   types?: string[];
 };
+
+const FIELD_MASK = "places.id,places.displayName,places.location,places.types";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -37,19 +43,34 @@ export async function GET(req: NextRequest) {
   }
   if (!mapsConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
-  const res = await placesTextSearch(
-    { query, location: `${lat},${lng}`, radius: String(Math.round(radius)), language: "en" },
+  const res = await placesSearchTextV1(
+    {
+      textQuery: query,
+      languageCode: "en",
+      maxResultCount: 20,
+      locationBias: {
+        circle: {
+          center: { latitude: lat, longitude: lng },
+          radius: Math.round(radius),
+        },
+      },
+    },
+    FIELD_MASK,
     3600,
   );
-  if (!res.ok) return NextResponse.json({ error: "Text Search upstream error" }, { status: 502 });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("[area-search] upstream error", res.status, body.slice(0, 300));
+    return NextResponse.json({ error: "searchText upstream error" }, { status: 502 });
+  }
 
-  const data = (await res.json()) as { results?: TextSearchResult[] };
-  const places: AreaPlace[] = (data.results ?? [])
+  const data = (await res.json()) as { places?: SearchTextPlace[] };
+  const places: AreaPlace[] = (data.places ?? [])
     .map((r) => ({
-      placeId: r.place_id ?? "",
-      name: r.name ?? "",
-      lat: r.geometry?.location?.lat ?? 0,
-      lng: r.geometry?.location?.lng ?? 0,
+      placeId: r.id ?? "",
+      name: r.displayName?.text ?? "",
+      lat: r.location?.latitude ?? 0,
+      lng: r.location?.longitude ?? 0,
       types: r.types,
     }))
     .filter((p) => p.placeId && p.lat && p.lng);
