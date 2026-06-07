@@ -353,26 +353,14 @@ export function ExploreMap({
   // order as `allMarkers` (later layers override earlier on key collisions),
   // so a search-pin id at the same key always resolves to `searchPlace`. Night
   // pins aren't draggable; `extraMarkers` are forwarded to the host.
-  //
-  // A pin carrying a Google identity (search hit, POI-bound goFocus) LOSES that
-  // identity at drop time. Google's `dragend` gives us only latlng — no
-  // `placeId` payload like in `click` — so we can't natively tell if the drop
-  // landed on another POI. Keeping the old placeId would render the hover card
-  // with stale info (the original place's data, now somewhere else). We demote
-  // to a coords-only goFocus: same state as a click on empty map. The user can
-  // click the moved pin again to reveal what's underneath, mirroring the click
-  // flow exactly. We don't `openGo()` — a drag isn't an explicit "I want to
-  // chat" gesture.
   const handleMarkerDragEnd = (id: string, latlng: LatLng) => {
     interactedRef.current = true;
-    const coords = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
     if (searchPlace && id === searchPlace.placeId) {
-      setSearchPlace(null);
-      setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
+      setSearchPlace({ ...searchPlace, lat: latlng.lat, lng: latlng.lng });
       return;
     }
     if (goFocus && keyOfPlace(goFocus) === id) {
-      setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
+      setGoFocus({ ...goFocus, lat: latlng.lat, lng: latlng.lng });
       return;
     }
     const inCategory = categoryMarkers.some((m) => (m.id ?? `${m.lat},${m.lng}`) === id);
