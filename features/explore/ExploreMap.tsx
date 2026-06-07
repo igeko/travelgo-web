@@ -464,12 +464,28 @@ export function ExploreMap({
           }
           const m = allMarkers.find((mk) => mk.id === id);
           if (!m || id === `${m.lat},${m.lng}`) return null;
-          return <PlaceHoverCard key={id} placeId={id} fallbackName={m.title ?? t("placeFallback")} onClose={close} />;
+          return (
+            <PlaceHoverCard
+              key={id}
+              placeId={id}
+              fallbackName={m.title ?? t("placeFallback")}
+              onClose={close}
+              onAddToTrip={() => {
+                // TODO: wire to the trip add-to-day flow once the host
+                // exposes it. Keeping the prop set so the CTA renders.
+              }}
+            />
+          );
         }}
         onMarkerClose={(id) => {
-          if (searchPlace && id === searchPlace.placeId) { setSearchPlace(null); return; }
+          // Closing the card (X button) must NEVER destroy the pin — Map
+          // handles the visual hide via its own dismiss state. Here we only
+          // touch state whose sole purpose is the card itself: night pins use
+          // an explicit selection id; clearing it turns off the halo so the
+          // saved-mode card doesn't immediately re-anchor on hover.
           if (nightById[id]) setNightSelId(null);
-          setGoFocus(null);
+          // searchPlace / goFocus / category / Go: pin stays, no state change
+          // — re-hover or re-click brings the card back via Map's dismiss reset.
         }}
         routes={routes}
         className="h-full w-full rounded-none"

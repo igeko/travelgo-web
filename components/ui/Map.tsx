@@ -512,6 +512,11 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const cardOverlayRef = useRef<google.maps.OverlayView | null>(null);
   // Pin under the cursor (after a dwell). The card shows for `hoverId ?? selectedMarkerId`.
   const [hoverId, setHoverId] = useState<string | null>(null);
+  // Card explicitly dismissed for this marker — closing the card via X does
+  // NOT remove the underlying pin (it's a Map-internal visual concern, the
+  // parent's marker state is untouched). Reset on the next hover-in or click
+  // on any pin so the card can reopen.
+  const [dismissedCardId, setDismissedCardId] = useState<string | null>(null);
   const [cardPixel, setCardPixel] = useState<{ x: number; y: number } | null>(null);
   const dwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const graceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -633,7 +638,12 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   // The pin whose card is currently shown (hover preview wins over selection).
   // While a drag is in progress the card is suppressed: the marker is moving
   // under the cursor, an anchored card would chase it across the screen.
-  const activeCardId = draggingId ? null : hoverId ?? selectedMarkerId ?? null;
+  // A pin whose card was just dismissed via X stays hidden until a fresh
+  // interaction (hover-in or click) clears the dismissal — the pin itself
+  // remains visible regardless.
+  const candidateCardId = draggingId ? null : hoverId ?? selectedMarkerId ?? null;
+  const activeCardId =
+    candidateCardId && candidateCardId === dismissedCardId ? null : candidateCardId;
   const activeAnchor = activeCardId
     ? (markers ?? []).find((m) => (m.id ?? `${m.lat},${m.lng}`) === activeCardId) ?? null
     : null;
@@ -645,7 +655,10 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const hoverPin = useCallback((id: string) => {
     if (graceTimer.current) { clearTimeout(graceTimer.current); graceTimer.current = null; }
     if (dwellTimer.current) clearTimeout(dwellTimer.current);
-    dwellTimer.current = setTimeout(() => setHoverId(id), PIN_CARD_DWELL);
+    dwellTimer.current = setTimeout(() => {
+      setHoverId(id);
+      setDismissedCardId(null); // fresh hover → card can reopen
+    }, PIN_CARD_DWELL);
   }, []);
   const unhoverPin = useCallback(() => {
     if (dwellTimer.current) { clearTimeout(dwellTimer.current); dwellTimer.current = null; }
@@ -793,7 +806,10 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         map: m.clustered ? null : map,
         title: m.title,
       });
-      marker.addListener("click", () => onMarkerClickRef.current?.(key));
+      marker.addListener("click", () => {
+        setDismissedCardId(null); // re-clicking any pin reopens its card
+        onMarkerClickRef.current?.(key);
+      });
       marker.addListener("mouseover", () => hoverPin(key));
       marker.addListener("mouseout", () => unhoverPin());
       // Drag listeners. The handlers close over `key` only — every other piece
@@ -961,6 +977,9 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const pinCard = activeCardId && renderPinCard
     ? renderPinCard(activeCardId, () => {
         setHoverId(null);
+        // Hide the card locally (Map-internal) and let the parent decide what
+        // else, if anything, to do — closing the card never destroys the pin.
+        setDismissedCardId(activeCardId);
         onMarkerClose?.(activeCardId);
       })
     : null;

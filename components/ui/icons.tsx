@@ -103,6 +103,7 @@ export {
   IconTree,
   IconRoute,
   IconClock,
+  IconClockExclamation,
   // ── set "stop" (fuzzy) ──
   IconCamera,
   IconMountain,
