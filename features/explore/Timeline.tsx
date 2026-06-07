@@ -297,7 +297,10 @@ export function Timeline({
   className,
 }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  // Single-selection model: at most one day is "selected" at a time. A
+  // selected active day is expanded (full content + ink badge); a selected
+  // empty day just gets its badge marked (no content to expand).
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
 
   // Bubble the "open activity" up so hosts can use it as `selectedActivityId`
   // for downstream features (e.g. Add-to-Trip). The state itself stays local
@@ -320,22 +323,15 @@ export function Timeline({
     if (openOverride !== undefined) setOpenId(openOverride);
   }
 
-  const toggleDay = (id: string) => {
-    // Read open-state from the committed snapshot (toggleDay runs from an
-    // event handler) so the setState updater stays pure — React may invoke
-    // the updater multiple times during concurrent rendering, and emitting
-    // onSelectDay from inside it would trigger the parent's setState mid-render.
-    const wasOpen = expandedDays.has(id);
-    setExpandedDays((prev) => {
-      const next = new Set(prev);
-      if (wasOpen) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    // Emit the "day in focus" signal on open only. Hosts that need a
-    // single-selection model can ignore the multi-expand state and just
-    // treat each fired id as the current day.
-    if (!wasOpen) onSelectDay?.(id);
+  // Single-selection toggle. Click on the currently selected day → deselect
+  // (badge un-marks, active day collapses). Click on any other day → switch
+  // selection to it. Empty days share the same handler so they get the same
+  // visual feedback as active ones. onSelectDay fires on selection only (not
+  // on deselect), matching the previous "last opened wins" host contract.
+  const selectDay = (id: string) => {
+    const isCurrent = selectedDayId === id;
+    setSelectedDayId(isCurrent ? null : id);
+    if (!isCurrent) onSelectDay?.(id);
   };
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
@@ -376,7 +372,8 @@ export function Timeline({
               days={seg.days}
               startIdx={seg.startIdx}
               totalDays={sortedDays.length}
-              onSelectDay={onSelectDay}
+              selectedDayId={selectedDayId}
+              onSelectDay={selectDay}
               showHintCard={!tripHasContent}
             />
           );
@@ -391,7 +388,7 @@ export function Timeline({
         const isLast = dayIdx === sortedDays.length - 1;
         const dayLoad = computeDayLoad(day.activities);
 
-        const expanded = expandedDays.has(day.id);
+        const expanded = selectedDayId === day.id;
         const items = buildItems(day.activities, expanded, injectSampleTransfers);
         const lodging = buildLodging(day.accommodation, day.id);
         const showNotes = expanded && !!day.notes;
@@ -444,7 +441,7 @@ export function Timeline({
                 intended 3px. */}
             <button
               type="button"
-              onClick={() => toggleDay(day.id)}
+              onClick={() => selectDay(day.id)}
               aria-hidden
               tabIndex={-1}
               style={{
@@ -465,7 +462,7 @@ export function Timeline({
                 natural 43px. */}
             <button
               type="button"
-              onClick={() => toggleDay(day.id)}
+              onClick={() => selectDay(day.id)}
               aria-expanded={expanded}
               aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
               style={{
@@ -703,6 +700,7 @@ function EmptyDaysBlock({
   days,
   startIdx,
   totalDays,
+  selectedDayId,
   onSelectDay,
   showHintCard = true,
 }: {
@@ -711,6 +709,10 @@ function EmptyDaysBlock({
   /** Lunghezza totale della timeline — serve per sapere se l'ultimo giorno
    *  del block coincide con l'ultimo dell'intera lista (→ doppia barretta). */
   totalDays: number;
+  /** Currently selected day id (Timeline-internal). Used to mark the matching
+   *  empty DayBadge as `selected`, so empty days get the same visual feedback
+   *  as active ones when clicked. */
+  selectedDayId: string | null;
   onSelectDay?: (id: string) => void;
   /** false = il viaggio ha già contenuto altrove → niente card laterale. */
   showHintCard?: boolean;
@@ -734,9 +736,15 @@ function EmptyDaysBlock({
               type="button"
               onClick={() => onSelectDay?.(day.id)}
               aria-label={`${weekday} ${dateLabel}`}
+              aria-pressed={selectedDayId === day.id}
               className="cursor-pointer"
             >
-              <DayBadge weekday={weekday} date={dateLabel} isFirst={isFirst} />
+              <DayBadge
+                weekday={weekday}
+                date={dateLabel}
+                isFirst={isFirst}
+                selected={selectedDayId === day.id}
+              />
             </button>
           );
         })}
