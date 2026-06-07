@@ -1,0 +1,61 @@
+<h2 class="sr-only">Proposta B — contenuto bianco notte corrente di totale</h2>
+<style>
+  :root { --tg-orange: #f47b3a; --tg-ink: #0d2c3d; --tg-soft: #f5f3ee; }
+  .inner { background: #fff; border-radius: 8px; padding: 12px 14px; max-width: 320px; }
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .left { display: flex; align-items: center; gap: 9px; }
+  .cal { font-size: 15px; color: rgba(13,44,61,0.5); }
+  .night-line { display: flex; align-items: baseline; gap: 3px; line-height: 1; }
+  .n-idx { font-size: 22px; font-weight: 500; color: var(--tg-ink); }
+  .n-of { font-size: 11px; font-weight: 500; color: rgba(13,44,61,0.38); }
+  .date { font-size: 10px; color: rgba(13,44,61,0.45); margin-top: 3px; }
+  .stepper { display: flex; gap: 6px; }
+  .st { width: 22px; height: 22px; border-radius: 5px; background: var(--tg-soft); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--tg-ink); cursor: pointer; border: 0.5px solid rgba(0,0,0,0.08); user-select: none; }
+  .st:hover { background: #ebe8e1; }
+  .switcher { display: flex; gap: 5px; margin-top: 10px; }
+  .sw { font-size: 10px; padding: 3px 9px; border-radius: 999px; border: 0.5px solid rgba(0,0,0,0.1); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+  .sw.on { background: var(--tg-ink); color: #fff; border-color: var(--tg-ink); }
+</style>
+
+<div style="padding:1rem 0;">
+  <div class="inner">
+    <div class="row">
+      <div class="left">
+        <i class="ti ti-calendar cal" aria-hidden="true"></i>
+        <div>
+          <div class="night-line">
+            <span class="n-idx" id="idx">1</span>
+            <span class="n-of" id="of">/ 3 notti</span>
+          </div>
+          <div class="date" id="date">Thu 04 → Sat 06</div>
+        </div>
+      </div>
+      <div class="stepper">
+        <div class="st" onclick="adj(-1)">−</div>
+        <div class="st" onclick="adj(+1)">+</div>
+      </div>
+    </div>
+  </div>
+  <div class="switcher">
+    <div class="sw on" id="sw1" onclick="setN(1)">N1</div>
+    <div class="sw" id="sw2" onclick="setN(2)">N2</div>
+    <div class="sw" id="sw3" onclick="setN(3)">N3</div>
+  </div>
+</div>
+
+<script>
+let total = 3, current = 1;
+function render() {
+  document.getElementById('idx').textContent = current;
+  document.getElementById('of').textContent = `/ ${total} notti`;
+  for (let i = 1; i <= 7; i++) {
+    const el = document.getElementById('sw'+i);
+    if (!el) continue;
+    el.style.display = i <= total ? '' : 'none';
+    el.classList.toggle('on', i === current);
+  }
+}
+function setN(n) { current = Math.min(n, total); render(); }
+function adj(d) { total = Math.max(1, Math.min(7, total+d)); if(current>total) current=total; render(); }
+render();
+</script>
