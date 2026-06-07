@@ -242,6 +242,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         extraMarkers={itineraryMarkers}
         viewportInset={{ left: panelWidth }}
         onAddToTripRequest={handleAddToTripRequest}
+        // Night-route off: la Timeline a sinistra mostra già l'alloggio
+        // giorno-per-giorno, l'overlay diventava solo rumore.
+        enableNightRoute={false}
       />
 
       {/* Panel sinistro — card arrotondata che contiene la Timeline. */}

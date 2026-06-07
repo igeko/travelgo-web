@@ -77,6 +77,7 @@ export function ExploreMap({
   viewportInset,
   onExtraMarkerDragEnd,
   onAddToTripRequest,
+  enableNightRoute = true,
 }: {
   tripId: string;
   center: LatLng;
@@ -107,6 +108,13 @@ export function ExploreMap({
    * double-fires.
    */
   onAddToTripRequest?: (request: AddToTripRequest) => void;
+  /**
+   * Mostra l'overlay "Percorso notti" (toggle in basso a destra + pin
+   * notte + polyline). Default true per la Explore legacy; Explore Next
+   * la passa `false` perché la Timeline a sinistra copre già la stessa
+   * informazione (alloggi giorno-per-giorno) rendendola ridondante.
+   */
+  enableNightRoute?: boolean;
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -159,7 +167,7 @@ export function ExploreMap({
   // they're sourced from trip data, so re-clicking just deselects (see below),
   // never removes the pin. The connecting polyline is added via `routes`.
   const nightMarkers = useMemo<MapMarker[]>(() => {
-    if (!showNightRoute || nightRoute.length === 0) return [];
+    if (!enableNightRoute || !showNightRoute || nightRoute.length === 0) return [];
     return nightRoute.map((w) => {
       let glyph: string;
       if (w.kind === "lastActivity") {
@@ -177,15 +185,15 @@ export function ExploreMap({
         variant: "night" as const,
       };
     });
-  }, [showNightRoute, nightRoute]);
+  }, [enableNightRoute, showNightRoute, nightRoute]);
 
   // Coords-key → waypoint, so a clicked night pin resolves to its saved data.
   // (Record, not a JS Map — the `Map` name is the imported component here.)
   const nightById = useMemo(() => {
     const byKey: Record<string, NightWaypoint> = {};
-    if (showNightRoute) for (const w of nightRoute) byKey[`${w.lat},${w.lng}`] = w;
+    if (enableNightRoute && showNightRoute) for (const w of nightRoute) byKey[`${w.lat},${w.lng}`] = w;
     return byKey;
-  }, [showNightRoute, nightRoute]);
+  }, [enableNightRoute, showNightRoute, nightRoute]);
   // Build the shared place card's "saved" payload from a night waypoint.
   const nightSavedFor = (nw: NightWaypoint): SavedPlaceInfo => ({
     name: nw.title,
@@ -207,7 +215,7 @@ export function ExploreMap({
   // route esplicito (es. bottone "centra percorso") quando deciderete dove.
   const routes = useMemo<RouteSpec[]>(
     () =>
-      showNightRoute && nightRoute.length >= 2
+      enableNightRoute && showNightRoute && nightRoute.length >= 2
         ? [{
             id: "night",
             travelMode: "DRIVING",
@@ -215,7 +223,7 @@ export function ExploreMap({
             style: { color: NIGHT, weight: 4, opacity: 0.9 },
           }]
         : [],
-    [showNightRoute, nightRoute],
+    [enableNightRoute, showNightRoute, nightRoute],
   );
 
   // Search-result pin — a bare ad-hoc pin keyed by the Google placeId. Sits in
@@ -570,24 +578,28 @@ export function ExploreMap({
       />
 
       {/* Night-route toggle — dedicated overlay (sleep spots + last activities,
-          connected in day order). Disabled when the trip has no geolocated stops. */}
-      <button
-        type="button"
-        onClick={() => { setShowNightRoute((v) => !v); setNightSelId(null); }}
-        disabled={nightRoute.length === 0}
-        aria-pressed={showNightRoute}
-        className={cn(
-          "absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-pill px-3.5 py-2",
-          "text-mini font-medium shadow-md transition-colors",
-          nightRoute.length === 0 && "opacity-50 pointer-events-none",
-          showNightRoute
-            ? "bg-night text-white"
-            : "bg-surface text-ink-soft hover:text-ink",
-        )}
-      >
-        <IconRoute size={16} />
-        {t("nightRoute")}
-      </button>
+          connected in day order). Disabled when the trip has no geolocated stops.
+          Hidden quando il host non vuole l'overlay (es. Explore Next, dove la
+          Timeline a sinistra già copre la stessa informazione). */}
+      {enableNightRoute && (
+        <button
+          type="button"
+          onClick={() => { setShowNightRoute((v) => !v); setNightSelId(null); }}
+          disabled={nightRoute.length === 0}
+          aria-pressed={showNightRoute}
+          className={cn(
+            "absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-pill px-3.5 py-2",
+            "text-mini font-medium shadow-md transition-colors",
+            nightRoute.length === 0 && "opacity-50 pointer-events-none",
+            showNightRoute
+              ? "bg-night text-white"
+              : "bg-surface text-ink-soft hover:text-ink",
+          )}
+        >
+          <IconRoute size={16} />
+          {t("nightRoute")}
+        </button>
+      )}
 
       {/* Yume — pinned: overlay sopra la mappa (Explore è full-bleed, tutto flotta) */}
       <YumejiPinnedColumn
