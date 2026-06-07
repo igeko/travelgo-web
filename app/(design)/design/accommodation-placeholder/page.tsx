@@ -105,44 +105,6 @@ export function AccommodationPlaceholder({
 
 /* ─── Pagina preview ───────────────────────────────────────────────── */
 
-/* Riga accommodation REALE (riferimento) */
-function AccommodationReal() {
-  return (
-    <div className="w-full flex items-start gap-[10px] px-3 py-[9px] border-b border-[rgba(13,44,61,0.07)]">
-      <span className="mt-px flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-[6px] bg-primary text-white">
-        <IconBed size={15} />
-      </span>
-      <span className="flex-1 flex flex-col gap-[3px]">
-        <span className="text-[13px] font-medium leading-[1.3] text-ink">
-          Hotel Tavinos Asakusa
-        </span>
-        <span className="flex items-center gap-[6px] text-[11px] text-ink/40">
-          <IconMoon size={12} />
-          <span>46 min · 57.5 km</span>
-        </span>
-      </span>
-    </div>
-  );
-}
-
-/* Riga attività (mock) */
-function ActivityRow({ name }: { name: string }) {
-  return (
-    <div className="w-full flex items-start gap-[10px] px-3 py-[9px] border-b border-[rgba(13,44,61,0.07)] last:border-0">
-      <span className="mt-px flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-[6px] bg-ink text-white text-[15px]">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
-      </span>
-      <span className="flex-1 flex flex-col gap-[3px]">
-        <span className="text-[13px] font-medium leading-[1.3] text-ink">{name}</span>
-        <span className="flex items-center gap-[6px] text-[11px] text-ink/40">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          46 min
-        </span>
-      </span>
-    </div>
-  );
-}
-
 export default function AccommodationPlaceholderPage() {
   return (
     <div className="min-h-screen bg-surface p-8">
@@ -163,45 +125,8 @@ export default function AccommodationPlaceholderPage() {
           </p>
         </div>
 
-        {/* ── Confronto side-by-side ── */}
+        {/* ── Componente ── */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-ink uppercase tracking-eyebrow">
-            Confronto
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-
-            {/* Reale */}
-            <div>
-              <p className="text-[11px] text-ink/40 mb-2 uppercase tracking-eyebrow">
-                con alloggio
-              </p>
-              <div className="bg-white border border-[rgba(13,44,61,0.12)] rounded-[10px] overflow-hidden">
-                <AccommodationReal />
-                <ActivityRow name="Ubayama Shrine" />
-                <ActivityRow name="Shell Mound Park" />
-              </div>
-            </div>
-
-            {/* Placeholder */}
-            <div>
-              <p className="text-[11px] text-ink/40 mb-2 uppercase tracking-eyebrow">
-                senza alloggio
-              </p>
-              <div className="bg-white border border-[rgba(13,44,61,0.12)] rounded-[10px] overflow-hidden">
-                <AccommodationPlaceholder />
-                <ActivityRow name="Ubayama Shrine" />
-                <ActivityRow name="Shell Mound Park" />
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        {/* ── Solo il componente isolato ── */}
-        <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-ink uppercase tracking-eyebrow">
-            Componente isolato
-          </h2>
           <div className="bg-white border border-[rgba(13,44,61,0.12)] rounded-[10px] overflow-hidden max-w-xs">
             <AccommodationPlaceholder />
           </div>
