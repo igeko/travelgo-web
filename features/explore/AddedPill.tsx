@@ -4,14 +4,18 @@
  * features/explore/AddedPill.tsx
  * ─────────────────────────────────────────────────────────────────
  * Inline auto-dismissing pill anchored top-center of the Explore map.
- * Surfaced after a successful "Add to trip" so the user knows where
- * the place landed; non-blocking, no actions, fades after 3 seconds.
+ * Single feedback surface for the add/remove side-effects coming from
+ * Explore: pending, success (with optional warnings), and two error
+ * variants (add failed / remove failed). Non-blocking, no actions, fades
+ * after 3 seconds. Pending stays put until success or error replaces it.
  *
  * Stati:
+ *   pending           — "Adding to your trip…" (spinner)
  *   success           — "Aggiunto al Giorno 4 — dopo Shinjuku Gyoen"
  *   success + warning — adds a compact list of warnings (overflow /
  *                        incoherent / duplicate)
- *   error             — "Couldn't add the place. Try again."
+ *   error: "add"      — "Couldn't add the place. Try again."
+ *   error: "remove"   — "Couldn't remove the activity. Try again."
  *
  * Le toast con azione (es. "duplicato — Conferma / Annulla") sono
  * intenzionalmente fuori scope: vivono nel brief UX 06b.
@@ -38,7 +42,7 @@ export type AddedPillState =
       afterTitle: string | null;
       warnings: AddedWarning[];
     }
-  | { kind: "error" };
+  | { kind: "error"; action: "add" | "remove" };
 
 const VISIBLE_MS = 3000;
 
@@ -93,7 +97,7 @@ export function AddedPill({
         )}
       >
         <IconAlertTriangle size={16} />
-        <span>{t("addToTripError")}</span>
+        <span>{state.action === "remove" ? t("removeError") : t("addToTripError")}</span>
       </div>
     );
   }

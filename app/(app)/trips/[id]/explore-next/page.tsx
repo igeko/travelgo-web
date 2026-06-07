@@ -6,6 +6,11 @@ import { selectNightRoute } from "@/lib/explore/nightRoute";
 import type { LatLng } from "@/components/ui/Map";
 import { ExploreNextShell } from "./ExploreNextShell";
 
+// La pagina viene rigenerata server-side dopo ogni mutazione (Add to Trip,
+// Remove). Forziamo dynamic per evitare che Next.js cachi l'RSC payload
+// e router.refresh() restituisca dati stantii.
+export const dynamic = "force-dynamic";
+
 /** Tokyo — fallback centre when the trip has no geocoded days yet. */
 const FALLBACK_CENTER: LatLng = { lat: 35.6762, lng: 139.6503 };
 

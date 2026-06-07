@@ -4,6 +4,7 @@
     "addToTrip": "Add to trip",
     "adding": "Adding to your trip…",
     "addToTripError": "Couldn't add the place. Try again.",
+    "removeError": "Couldn't remove the activity. Try again.",
     "added": {
       "title": "Added to day {n}",
       "after": " — after {title}",

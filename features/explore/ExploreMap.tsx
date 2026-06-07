@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Map, type LatLng, type MapMarker, type RouteSpec } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
@@ -10,7 +9,6 @@ import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
 import { YumejiPinnedColumn, useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
 import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHoverCard";
-import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
@@ -20,7 +18,19 @@ import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { AreaPlace } from "@/app/api/places/area-search/route";
-import type { AddPlaceInput, AddPlaceResult } from "@/lib/services/TripService";
+
+/**
+ * Payload that the CTA "Add to trip" forwards upward. The shell — not the
+ * map — owns the network call, optimistic state and feedback pill, so the
+ * map just describes WHAT to add and where it came from (categories).
+ */
+export type AddToTripRequest = {
+  placeId: string | null;
+  title: string;
+  lat: number;
+  lng: number;
+  categories?: string[];
+};
 
 /** Default activity/day image — used by night cards when the stop has none. */
 const DEFAULT_ACTIVITY_IMAGE = "/media/day-default-banner.png";
@@ -69,8 +79,7 @@ export function ExploreMap({
   extraMarkers = [],
   viewportInset,
   onExtraMarkerDragEnd,
-  selectedDayId = null,
-  selectedActivityId = null,
+  onAddToTripRequest,
 }: {
   tripId: string;
   center: LatLng;
@@ -94,23 +103,17 @@ export function ExploreMap({
    */
   onExtraMarkerDragEnd?: (id: string, latlng: LatLng) => void;
   /**
-   * Selection context surfaced by the host (Timeline → ExploreNextShell).
-   * Forwarded to the Add-to-Trip backend as `selectedDayId` / `selectedActivityId`
-   * so the algorithm can insert the new place into the right day / after the
-   * currently-open stop. Defaults: null → algorithm picks the end of the plan.
+   * Fired when the user hits "Add to trip" on a PlaceHoverCard. The host
+   * owns the network call, optimistic state, selection context (day /
+   * activity) and the feedback pill. ExploreMap closes the card locally
+   * before this fires, so the host can proceed without worrying about
+   * double-fires.
    */
-  selectedDayId?: string | null;
-  selectedActivityId?: string | null;
+  onAddToTripRequest?: (request: AddToTripRequest) => void;
 }) {
-  const router = useRouter();
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
   const categories = useExploreCategories();
-  // Post-insertion feedback: a small pill that fades over the map for 3s.
-  // Driven by handleAddToTrip; the pill component takes care of its own timer.
-  const [addedPill, setAddedPill] = useState<AddedPillState | null>(null);
-  // Latch so the CTA can't fire twice while a request is in-flight.
-  const addingRef = useRef(false);
   const [lastPlace, setLastPlace] = useLocalStorageState<GoPlace | null>(
     `travelgo-explore-last-${tripId}`,
     null,
@@ -439,49 +442,6 @@ export function ExploreMap({
     openGo();
   };
 
-  // Wiring of the PlaceHoverCard "Add to trip" CTA. Returns immediately
-  // so the caller can close the card before the network round-trip — the
-  // server-side orchestration (algorithm + persistence + bridge recalc)
-  // takes a couple of seconds and keeping the card open would invite
-  // accidental double-clicks. The AddedPill flips to "pending" right away
-  // and updates to success/error once the POST settles.
-  const handleAddToTrip = (input: {
-    placeId: string | null;
-    title: string;
-    lat: number;
-    lng: number;
-    categories?: string[];
-  }): void => {
-    if (addingRef.current) return;
-    addingRef.current = true;
-    setAddedPill({ kind: "pending" });
-    const payload: AddPlaceInput = {
-      placeId: input.placeId,
-      title: input.title,
-      lat: input.lat,
-      lng: input.lng,
-      categories: input.categories,
-    };
-    api.trips
-      .addPlace(tripId, { place: payload, selectedDayId, selectedActivityId })
-      .then((res: AddPlaceResult) => {
-        setAddedPill({
-          kind: "success",
-          dayNumber: res.position.dayNumber,
-          afterTitle: res.position.afterTitle,
-          warnings: res.warnings,
-        });
-        router.refresh();
-      })
-      .catch((err) => {
-        console.error("[ExploreMap] addPlace failed:", err);
-        setAddedPill({ kind: "error" });
-      })
-      .finally(() => {
-        addingRef.current = false;
-      });
-  };
-
   return (
     <div className="relative h-full w-full">
       <Map
@@ -512,11 +472,11 @@ export function ExploreMap({
                 fallbackName={searchPlace.name}
                 onClose={close}
                 onAddToTrip={(place) => {
-                  // Close FIRST, fire the request in the background. The pill
-                  // shows pending state instantly; the card going away is the
-                  // user-facing acknowledgement that the click registered.
+                  // Close FIRST, then forward upward. The host (ExploreNextShell)
+                  // shows the pending pill and runs the network call; the card
+                  // going away is the user-facing acknowledgement.
                   close();
-                  handleAddToTrip({
+                  onAddToTripRequest?.({
                     placeId: searchPlace.placeId,
                     title: place?.name ?? searchPlace.name,
                     lat: place?.lat ?? searchPlace.lat,
@@ -543,7 +503,7 @@ export function ExploreMap({
               onClose={close}
               onAddToTrip={(place) => {
                 close();
-                handleAddToTrip({
+                onAddToTripRequest?.({
                   placeId: id,
                   title: place?.name ?? m.title ?? t("placeFallback"),
                   lat: place?.lat ?? m.lat,
@@ -631,11 +591,6 @@ export function ExploreMap({
         floating
         className="hidden md:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
       />
-
-      {/* Post-insertion feedback — small auto-dismissing pill. */}
-      {addedPill && (
-        <AddedPill state={addedPill} onDismiss={() => setAddedPill(null)} />
-      )}
     </div>
   );
 }

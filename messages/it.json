@@ -4,6 +4,7 @@
     "addToTrip": "Aggiungi al viaggio",
     "adding": "Aggiungo al viaggio…",
     "addToTripError": "Non sono riuscito ad aggiungere il luogo. Riprova.",
+    "removeError": "Non sono riuscito a rimuovere la tappa. Riprova.",
     "added": {
       "title": "Aggiunto al Giorno {n}",
       "after": " — dopo {title}",

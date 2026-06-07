@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExploreMap } from "@/features/explore/ExploreMap";
+import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap";
 import type { LatLng, MapMarker } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
+import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
+import type { Activity } from "@/lib/dal/domain";
 
 type Props = {
   tripId: string;
@@ -34,18 +36,18 @@ type Props = {
  * giorno è esplicitamente in focus (l'utente l'ha espanso nella Timeline),
  * le sue attività restano in stato "default" e quelle degli altri giorni
  * passano a "dimmed".
+ *
+ * Owner UNICO dello stato ottimistico di add/remove e della pill di
+ * feedback: ExploreMap richiede l'azione, ExploreNextShell la esegue.
+ * Le attività appaiono/scompaiono dalla Timeline (e dai pin sulla mappa)
+ * subito; il server cattura via router.refresh().
  */
 export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Props) {
   const router = useRouter();
-  // Larghezza misurata del pannello sinistro — default ragionevole (360 panel +
-  // left-4 margin = 376) usato finché il ResizeObserver non scrive il valore reale.
   const panelRef = useRef<HTMLElement>(null);
   const [panelWidth, setPanelWidth] = useState(376);
 
-  // Giorno selezionato nella Timeline → guida il filtraggio dei marker
-  // itinerario sulla mappa. Il default è il primo giorno cronologico; la
-  // Timeline aggiorna la selezione via `onSelectDay` quando l'utente espande
-  // un DayBadge (modello "ultimo aperto vince", non single-selection rigido).
+  // Giorno selezionato nella Timeline (last opened wins).
   const sortedDays = useMemo(
     () => [...days].sort((a, b) => a.day_number - b.day_number),
     [days],
@@ -71,6 +73,45 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // to "end of last populated day".
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
 
+  // Stato ottimistico:
+  //  - pendingAdds: activity restituite dall'addPlace, già visibili in Timeline
+  //    prima che il server snapshot le rimpalla via router.refresh().
+  //  - pendingRemoves: id di attività che il client ha "tolto" subito; il DELETE
+  //    server viaggia in background. Filtrano l'array `days` dell'SSR finché il
+  //    refresh non porta lo stato allineato.
+  const [pendingAdds, setPendingAdds] = useState<Activity[]>([]);
+  const [pendingRemoves, setPendingRemoves] = useState<Set<string>>(new Set());
+  const [pillState, setPillState] = useState<AddedPillState | null>(null);
+
+  // Vista effettiva: SSR + adds - removes, ordinato per position. Sostituisce
+  // l'array `days` puro sia nella Timeline sia nel calcolo dei pin roadmap.
+  //
+  // Dedup contro `day.activities`: una volta che il server snapshot rimpalla
+  // un'attività precedentemente "ottimistica", la riga reale prevale e quella
+  // pending viene ignorata. Niente useEffect di reconcile — `pendingAdds`
+  // accumula durante la sessione, ma le entry stale non producono duplicati.
+  const visibleDays = useMemo<TimelineDayData[]>(() => {
+    if (pendingAdds.length === 0 && pendingRemoves.size === 0) return days;
+    const addsByDay = new Map<string, Activity[]>();
+    for (const a of pendingAdds) {
+      const list = addsByDay.get(a.day_id) ?? [];
+      list.push(a);
+      addsByDay.set(a.day_id, list);
+    }
+    return days.map((d) => {
+      const realIds = new Set(d.activities.map((a) => a.id));
+      const filtered = d.activities.filter((a) => !pendingRemoves.has(a.id));
+      const extras = (addsByDay.get(d.id) ?? []).filter(
+        (a) => !realIds.has(a.id) && !pendingRemoves.has(a.id),
+      );
+      if (extras.length === 0) return { ...d, activities: filtered };
+      return {
+        ...d,
+        activities: [...filtered, ...extras].sort((a, b) => a.position - b.position),
+      };
+    });
+  }, [days, pendingAdds, pendingRemoves]);
+
   // Marker itinerario — spec /design/roadmap-pins.
   //   - dayFocused=false (avvio o reset)            → tutti i pin "default"
   //   - dayFocused=true e attività nel giorno       → "default"
@@ -79,9 +120,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // quando avremo la sorgente per timing/geo). Lo stato "selected" della spec
   // non viene mai applicato qui — la selezione del marker resta sul halo
   // overlay esistente, così il pin selezionato non cambia di forma.
+  //
+  // Sorgente: `visibleDays` (non `sortedDays`) — così le adds/removes
+  // ottimistiche si riflettono anche sui pin a mappa, non solo sulla Timeline.
   const itineraryMarkers = useMemo<MapMarker[]>(() => {
     const out: MapMarker[] = [];
-    for (const day of sortedDays) {
+    for (const day of visibleDays) {
       const isFocusDay = dayFocused && day.id === selectedDayId;
       const state = !dayFocused || isFocusDay ? "default" : "dimmed";
       for (const stop of day.activities) {
@@ -98,29 +142,87 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       }
     }
     return out;
-  }, [sortedDays, dayFocused, selectedDayId]);
+  }, [visibleDays, dayFocused, selectedDayId]);
 
-  // Remove dell'attività dal dettaglio inline della Timeline. Chiamata
-  // ottimistica? No: rispettiamo il pattern del resto dell'app — DELETE
-  // server-side, poi router.refresh() ri-renderizza la timeline col snapshot
-  // aggiornato. Se la DELETE fallisce, lasciamo che l'errore emerga in
-  // console e la tappa rimanga visibile — niente toast per ora (brief 06b
-  // copre la UX di errore).
+  // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
+  // rapida sequenza al click ma React non ha ancora unmountato la card).
+  const addingRef = useRef(false);
+
+  /**
+   * Wired su ExploreMap. Esegue la POST, mostra la pill e — appena la
+   * risposta arriva — inietta la riga ottimistica così la Timeline si
+   * aggiorna SUBITO, senza attendere il `router.refresh()` server-side.
+   */
+  const handleAddToTripRequest = useCallback(
+    (input: AddToTripRequest) => {
+      if (addingRef.current) return;
+      addingRef.current = true;
+      setPillState({ kind: "pending" });
+      api.trips
+        .addPlace(tripId, {
+          place: {
+            placeId: input.placeId,
+            title: input.title,
+            lat: input.lat,
+            lng: input.lng,
+            categories: input.categories,
+          },
+          selectedDayId,
+          selectedActivityId,
+        })
+        .then((res) => {
+          setPendingAdds((prev) => [...prev, res.scheduledActivity]);
+          setPillState({
+            kind: "success",
+            dayNumber: res.position.dayNumber,
+            afterTitle: res.position.afterTitle,
+            warnings: res.warnings,
+          });
+          router.refresh();
+        })
+        .catch((err) => {
+          console.error("[ExploreNextShell] addPlace failed:", err);
+          setPillState({ kind: "error", action: "add" });
+        })
+        .finally(() => {
+          addingRef.current = false;
+        });
+    },
+    [tripId, selectedDayId, selectedActivityId, router],
+  );
+
+  /**
+   * Remove ottimistico: la riga sparisce subito da Timeline. Se il DELETE
+   * fallisce, ripristiniamo lo stato e mostriamo la pill di errore.
+   * Se la riga era anche in `pendingAdds` (la stiamo rimuovendo subito dopo
+   * un add ottimistico non ancora rispalmato dal server), la togliamo da
+   * lì pure — altrimenti riapparirebbe come "extra" in visibleDays.
+   */
   const handleRemoveActivity = useCallback(
     async (scheduledId: string) => {
+      setPendingRemoves((prev) => {
+        const next = new Set(prev);
+        next.add(scheduledId);
+        return next;
+      });
+      setPendingAdds((prev) => prev.filter((a) => a.id !== scheduledId));
       try {
         await api.activities.removeFromDay(scheduledId);
         router.refresh();
       } catch (err) {
         console.error("[ExploreNextShell] removeFromDay failed:", err);
+        setPendingRemoves((prev) => {
+          const next = new Set(prev);
+          next.delete(scheduledId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
       }
     },
     [router],
   );
 
-  // ResizeObserver — il pannello sinistro è `w-[360px] left-4` (≈ 376 px), ma
-  // si adatta su breakpoints/density. Misurare a runtime evita di hardcodare
-  // un valore che dovrà essere mantenuto in sincrono col CSS.
+  // ResizeObserver per il pannello sinistro.
   useEffect(() => {
     if (!panelRef.current) return;
     const ro = new ResizeObserver(() =>
@@ -139,26 +241,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         nightRoute={nightRoute}
         extraMarkers={itineraryMarkers}
         viewportInset={{ left: panelWidth }}
-        selectedDayId={selectedDayId}
-        selectedActivityId={selectedActivityId}
+        onAddToTripRequest={handleAddToTripRequest}
       />
 
-      {/* Panel sinistro — card arrotondata che contiene la Timeline. Il
-          `border-border-strong` è coerente con l'ExploreToolbar (montata da
-          ExploreMap) — mantenerlo per non rompere il rapporto visivo. */}
+      {/* Panel sinistro — card arrotondata che contiene la Timeline. */}
       <aside
         ref={panelRef}
         className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Timeline
-            days={days}
+            days={visibleDays}
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
           />
         </div>
       </aside>
+
+      {/* Pill di feedback — unica per add / remove. */}
+      {pillState && (
+        <AddedPill state={pillState} onDismiss={() => setPillState(null)} />
+      )}
     </div>
   );
 }

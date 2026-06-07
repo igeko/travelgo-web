@@ -676,35 +676,47 @@ export class TripService {
       (next?.bridge_in_json?.transport as BridgeData["transport"] | undefined) ??
       "walk";
 
+    const prevHasCoords = prev?.location_lat != null && prev?.location_lng != null;
+    const nextHasCoords = next?.location_lat != null && next?.location_lng != null;
+
+    // Le due chiamate Google sono indipendenti — eseguirle in parallelo
+    // dimezza il critical path quando l'inserimento è "in mezzo". Quando il
+    // giorno è vuoto (entrambi null) nessuna chiamata viene avviata.
+    const [prevBridge, nextBridge] = await Promise.all([
+      prevHasCoords
+        ? this.computeBridge(
+            { lat: prev!.location_lat as number, lng: prev!.location_lng as number },
+            { lat: newLat, lng: newLng },
+            inheritedTransport,
+          )
+        : Promise.resolve(null),
+      nextHasCoords
+        ? this.computeBridge(
+            { lat: newLat, lng: newLng },
+            { lat: next!.location_lat as number, lng: next!.location_lng as number },
+            inheritedTransport,
+          )
+        : Promise.resolve(null),
+    ]);
+
+    // Anche le scritture sono indipendenti — un solo Promise.all per chiudere.
+    const writes: Promise<unknown>[] = [];
     const newPatch: { bridge_in_json?: BridgeData; bridge_out_json?: BridgeData } = {};
 
-    if (prev?.location_lat != null && prev.location_lng != null) {
-      const bridge = await this.computeBridge(
-        { lat: prev.location_lat, lng: prev.location_lng },
-        { lat: newLat, lng: newLng },
-        inheritedTransport,
-      );
-      if (bridge) {
-        newPatch.bridge_in_json = bridge;
-        await this.dal.trips.updateSchedule(prev.id, { bridge_out_json: bridge });
-      }
+    if (prevBridge && prev) {
+      newPatch.bridge_in_json = prevBridge;
+      writes.push(this.dal.trips.updateSchedule(prev.id, { bridge_out_json: prevBridge }));
     }
-
-    if (next?.location_lat != null && next.location_lng != null) {
-      const bridge = await this.computeBridge(
-        { lat: newLat, lng: newLng },
-        { lat: next.location_lat, lng: next.location_lng },
-        inheritedTransport,
-      );
-      if (bridge) {
-        newPatch.bridge_out_json = bridge;
-        await this.dal.trips.updateSchedule(next.id, { bridge_in_json: bridge });
-      }
+    if (nextBridge && next) {
+      newPatch.bridge_out_json = nextBridge;
+      writes.push(this.dal.trips.updateSchedule(next.id, { bridge_in_json: nextBridge }));
     }
-
     if (Object.keys(newPatch).length > 0) {
-      await this.dal.trips.updateSchedule(newScheduledId, newPatch as Record<string, unknown>);
+      writes.push(
+        this.dal.trips.updateSchedule(newScheduledId, newPatch as Record<string, unknown>),
+      );
     }
+    if (writes.length > 0) await Promise.all(writes);
   }
 
   /**
