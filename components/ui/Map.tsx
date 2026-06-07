@@ -78,6 +78,15 @@ export type MapMarker = {
    * stops) regular so they remain individually visible at every zoom.
    */
   clustered?: boolean;
+  /**
+   * If true, the marker can be dragged. The Map applies a "ghost" lift effect
+   * during the drag (scale 1.15×, stronger drop shadow, opacity 0.9) and emits
+   * `onMarkerDragEnd` with the final coordinates on release. The host is
+   * responsible for updating the marker's `lat`/`lng` in its own state — the
+   * Map does NOT persist anything on its own; without a host update the marker
+   * snaps back on the next reconcile.
+   */
+  draggable?: boolean;
 };
 
 /**
@@ -122,6 +131,13 @@ export type MapProps = {
   onPoiClick?: (placeId: string, latlng: LatLng) => void;
   /** Fired when the user clicks an existing marker (by its key). */
   onMarkerClick?: (id: string) => void;
+  /**
+   * Fired when a draggable marker is released at a new position. The Map does
+   * NOT mutate the marker's coords on its own — the host has to fold the new
+   * latlng into the marker's source state, otherwise the next reconcile snaps
+   * it back to the original position.
+   */
+  onMarkerDragEnd?: (id: string, latlng: LatLng) => void;
   /** Fired (on idle) with the visible area's centre + radius in metres. */
   onViewportChange?: (viewport: { center: LatLng; radiusMeters: number }) => void;
   /**
@@ -191,6 +207,29 @@ export type MapHandle = {
 /** Hover dwell before a pin's card appears, and grace before it closes. */
 const PIN_CARD_DWELL = 200;
 const PIN_CARD_GRACE = 180;
+
+/**
+ * Variant-aware icon resolver — single source of truth for "what does this
+ * marker look like right now". Shared by the styling pass (normal icons) and
+ * the drag listeners (ghost icons). The selection state controls the body
+ * colour of ad-hoc pins; stop/night pins keep their semantic colour and rely
+ * on the halo overlay to communicate selection.
+ */
+function iconForMarker(m: MapMarker, isSelected: boolean, isGhost: boolean): google.maps.Icon {
+  if (m.variant === "stop") {
+    const color = m.slot ? SLOT_COLORS[m.slot] : INK;
+    return makePinIcon(m.stopRole ?? "mid", m.glyph ?? "", color, isGhost);
+  }
+  if (m.variant === "night") {
+    return makeNightPin(m.glyph ?? "", undefined, isGhost);
+  }
+  return makeAdHocPin(
+    isSelected ? INK : NEUTRAL,
+    isSelected ? ORANGE : "#fff",
+    m.glyph,
+    isGhost,
+  );
+}
 
 /** Great-circle distance in metres between two points. */
 function metersBetween(a: LatLng, b: LatLng): number {
@@ -436,6 +475,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     onMapClick,
     onPoiClick,
     onMarkerClick,
+    onMarkerDragEnd,
     onViewportChange,
     renderPinCard,
     onMarkerClose,
@@ -479,6 +519,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const onMapClickRef = useRef(onMapClick);
   const onPoiClickRef = useRef(onPoiClick);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onMarkerDragEndRef = useRef(onMarkerDragEnd);
   const onViewportChangeRef = useRef(onViewportChange);
   // viewportInset lives in a ref too — the `idle` listener reads it on every
   // emission and we don't want a panel-width tick to re-bind the listener.
@@ -486,8 +527,19 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   onMapClickRef.current = onMapClick;
   onPoiClickRef.current = onPoiClick;
   onMarkerClickRef.current = onMarkerClick;
+  onMarkerDragEndRef.current = onMarkerDragEnd;
   onViewportChangeRef.current = onViewportChange;
   viewportInsetRef.current = viewportInset;
+  // Latest `selectedMarkerId` for the drag listeners (they need it to restore
+  // the correct icon on dragend without re-binding on every selection change).
+  const selectedIdRef = useRef(selectedMarkerId);
+  selectedIdRef.current = selectedMarkerId;
+  // Currently-dragged marker key, if any. The styling pass below skips this
+  // marker so the ghost icon set by the drag handler isn't overwritten; the
+  // hover/selection card is also suppressed while a drag is in progress.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const draggingIdRef = useRef<string | null>(null);
+  draggingIdRef.current = draggingId;
 
   // Apply (or replay) the queued ad-hoc focus. Returns `true` if the request
   // was applied; `false` if nothing was queued or the SDK isn't ready. Stable
@@ -579,7 +631,9 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   }, []);
 
   // The pin whose card is currently shown (hover preview wins over selection).
-  const activeCardId = hoverId ?? selectedMarkerId ?? null;
+  // While a drag is in progress the card is suppressed: the marker is moving
+  // under the cursor, an anchored card would chase it across the screen.
+  const activeCardId = draggingId ? null : hoverId ?? selectedMarkerId ?? null;
   const activeAnchor = activeCardId
     ? (markers ?? []).find((m) => (m.id ?? `${m.lat},${m.lng}`) === activeCardId) ?? null
     : null;
@@ -742,6 +796,28 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       marker.addListener("click", () => onMarkerClickRef.current?.(key));
       marker.addListener("mouseover", () => hoverPin(key));
       marker.addListener("mouseout", () => unhoverPin());
+      // Drag listeners. The handlers close over `key` only — every other piece
+      // of state (current descriptor, selection, callback) is read from a ref
+      // so re-binding on prop changes isn't necessary.
+      marker.addListener("dragstart", () => {
+        setDraggingId(key);
+        const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
+        if (desc) marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, true));
+        marker.setOpacity(0.9);
+        // Cancel any pending hover dwell so it doesn't fire mid-drag.
+        if (dwellTimer.current) { clearTimeout(dwellTimer.current); dwellTimer.current = null; }
+      });
+      marker.addListener("dragend", (e: google.maps.MapMouseEvent) => {
+        const ll = e.latLng;
+        setDraggingId(null);
+        marker.setOpacity(1);
+        // Restore the non-ghost icon now; the next reconcile would do this
+        // anyway, but doing it here avoids a one-frame ghost flash on hosts
+        // that don't update `markers` synchronously.
+        const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
+        if (desc) marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false));
+        if (ll) onMarkerDragEndRef.current?.(key, { lat: ll.lat(), lng: ll.lng() });
+      });
       markersByKey.current[key] = marker;
       added = true;
     }
@@ -758,26 +834,26 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     }
 
     // (Re)style every marker by selection: selected → blue (on top), rest
-    // neutral slate. A category glyph replaces the dot when present.
+    // neutral slate. A category glyph replaces the dot when present. The
+    // dragged marker is skipped here — its icon AND position are owned by the
+    // drag handlers for the duration of the drag. Outside drag the position is
+    // synced to the descriptor: data is the source of truth, so a marker whose
+    // `lat`/`lng` change in props moves; a marker dragged but not persisted by
+    // the host snaps back here.
     for (const m of desired) {
       const key = keyOf(m);
       const marker = markersByKey.current[key];
       if (!marker) continue;
+      marker.setDraggable(m.draggable ?? false);
+      if (key === draggingIdRef.current) continue;
+      marker.setPosition({ lat: m.lat, lng: m.lng });
       const isSelected = selectedMarkerId != null && key === selectedMarkerId;
+      marker.setIcon(iconForMarker(m, isSelected, false));
       if (m.variant === "stop") {
-        // Itinerary stop: teardrop pin coloured by slot (defaults to ink) and
-        // shaped by role (start/mid/end → flag for end). Selection just
-        // promotes it to the top of the stack — colour stays semantic.
-        const color = m.slot ? SLOT_COLORS[m.slot] : INK;
-        marker.setIcon(makePinIcon(m.stopRole ?? "mid", m.glyph ?? "", color));
         marker.setZIndex(isSelected ? 1000 : 5);
       } else if (m.variant === "night") {
-        // Night pins keep their indigo identity regardless of selection; the
-        // halo overlay still marks the selected one.
-        marker.setIcon(makeNightPin(m.glyph ?? ""));
         marker.setZIndex(isSelected ? 1000 : 500);
       } else {
-        marker.setIcon(makeAdHocPin(isSelected ? INK : NEUTRAL, isSelected ? ORANGE : "#fff", m.glyph));
         marker.setZIndex(isSelected ? 1000 : 1);
       }
     }

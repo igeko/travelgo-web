@@ -64,6 +64,18 @@ export function iconGlyph(cacheKey: string, Cmp: GlyphCmp): string {
 const FLAG_INNER = `<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 5v16"/><path d="M5 5c3 -1.5 6 -1.5 9 0s6 1.5 9 0v9c-3 1.5 -6 1.5 -9 0s-6 -1.5 -9 0"/>`;
 
 /**
+ * Drag&drop ghost: scale factor applied to scaledSize/anchor, and a stronger
+ * drop-shadow injected into the SVG. Shared by every pin factory so the
+ * "lifted" feel is uniform across stop / night / ad-hoc variants. Opacity is
+ * left to the caller (`marker.setOpacity`) — it's a per-marker runtime style,
+ * not baked into the icon.
+ */
+const GHOST_SCALE = 1.15;
+const GHOST_SHADOW =
+  `<filter id="g" x="-60%" y="-40%" width="220%" height="180%">` +
+  `<feDropShadow dx="0" dy="3" stdDeviation="2.8" flood-color="rgba(13,44,61,0.5)"/></filter>`;
+
+/**
  * Build a teardrop pin marker (40×40): a coloured rounded body with a pointer
  * tail, white outline for map contrast, and the stop's icon knocked out in
  * white inside the head. The "end" role uses a flag. The body colour defaults
@@ -71,8 +83,11 @@ const FLAG_INNER = `<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="
  *
  * `glyph` is a string of inner SVG paths (24-box) inheriting stroke from the
  * wrapping <g> — typically produced by the caller's icon resolver.
+ *
+ * `isGhost: true` returns the "lifted" drag variant — scaled ~1.15× with a
+ * stronger drop shadow.
  */
-export function makePinIcon(role: StopRole, glyph: string, color: string = INK): google.maps.Icon {
+export function makePinIcon(role: StopRole, glyph: string, color: string = INK, isGhost = false): google.maps.Icon {
   const inner = role === "end" ? FLAG_INNER : glyph;
   // Rounded teardrop body: head centred at (20,16), tip at the bottom.
   const body =
@@ -82,12 +97,15 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK):
   const icon =
     `<g transform="translate(11 7) scale(0.75)" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">${body}${icon}</svg>`;
+  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
+  const wrap = isGhost ? `<g filter="url(#g)">${body}${icon}</g>` : `${body}${icon}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">${defs}${wrap}</svg>`;
 
+  const s = isGhost ? GHOST_SCALE : 1;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 38),
+    scaledSize: new google.maps.Size(40 * s, 40 * s),
+    anchor: new google.maps.Point(20 * s, 38 * s),
   };
 }
 
@@ -105,40 +123,52 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK):
  * ring, the stop's glyph (bed for a sleep spot, the activity icon otherwise)
  * knocked out white in the centre. Anchored at the tip.
  */
-export function makeNightPin(glyph: string, color: string = NIGHT): google.maps.Icon {
+export function makeNightPin(glyph: string, color: string = NIGHT, isGhost = false): google.maps.Icon {
   const stem = `<path d="M14 30c2.5 4 6 8.5 8 12 2-3.5 5.5-8 8-12z" fill="${color}"/>`;
   const head = `<circle cx="22" cy="20" r="15" fill="${color}" stroke="#fff" stroke-width="3"/>`;
   const icon =
     `<g transform="translate(13.6 11.6) scale(0.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+  // Stronger shadow when ghost, otherwise the lift effect is barely visible
+  // through the existing dy=1.2 / stdDeviation=1.1 filter.
+  const filter = isGhost
+    ? GHOST_SHADOW
+    : `<filter id="np" x="-40%" y="-20%" width="180%" height="150%">` +
+      `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter>`;
+  const filterId = isGhost ? "g" : "np";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">` +
-    `<defs><filter id="np" x="-40%" y="-20%" width="180%" height="150%">` +
-    `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter></defs>` +
-    `<g filter="url(#np)">${stem}${head}${icon}</g></svg>`;
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})">${stem}${head}${icon}</g></svg>`;
+  const s = isGhost ? GHOST_SCALE : 1;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(44, 52),
-    anchor: new google.maps.Point(22, 46),
+    scaledSize: new google.maps.Size(44 * s, 52 * s),
+    anchor: new google.maps.Point(22 * s, 46 * s),
   };
 }
 
-export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string): google.maps.Icon {
+export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string, isGhost = false): google.maps.Icon {
   // Either the category icon (knocked out white, centred in the head) or a dot.
   const center = glyph
     ? `<g transform="translate(13.5 9.5) scale(0.54)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`
     : `<circle cx="20" cy="16" r="4.2" fill="${dotColor}"/>`;
+  const filter = isGhost
+    ? GHOST_SHADOW
+    : `<filter id="ps" x="-40%" y="-20%" width="180%" height="150%">` +
+      `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter>`;
+  const filterId = isGhost ? "g" : "ps";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="46" viewBox="0 0 44 46">` +
-    `<defs><filter id="ps" x="-40%" y="-20%" width="180%" height="150%">` +
-    `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter></defs>` +
-    `<g filter="url(#ps)" transform="translate(2 2)">` +
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})" transform="translate(2 2)">` +
     `<path d="M20 4c-6.6 0-12 5.2-12 11.7 0 8.1 10.4 18.4 11.3 19.3a1 1 0 0 0 1.4 0C21.6 34.1 32 23.8 32 15.7 32 9.2 26.6 4 20 4z" ` +
     `fill="${color}"/>` +
     center +
     `</g></svg>`;
+  const s = isGhost ? GHOST_SCALE : 1;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(44, 46),
-    anchor: new google.maps.Point(22, 40),
+    scaledSize: new google.maps.Size(44 * s, 46 * s),
+    anchor: new google.maps.Point(22 * s, 40 * s),
   };
 }

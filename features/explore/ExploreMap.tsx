@@ -65,6 +65,7 @@ export function ExploreMap({
   nightRoute,
   extraMarkers = [],
   viewportInset,
+  onExtraMarkerDragEnd,
 }: {
   tripId: string;
   center: LatLng;
@@ -80,6 +81,13 @@ export function ExploreMap({
    * centred on the visible area.
    */
   viewportInset?: { left?: number; right?: number; top?: number; bottom?: number };
+  /**
+   * Fired when a host-provided `extraMarkers` pin is released after a drag.
+   * Only fires for `extraMarkers` ids — search/goFocus/Go/category pins are
+   * owned and updated by ExploreMap itself. The host must fold the new latlng
+   * into its own state, otherwise the marker snaps back on the next reconcile.
+   */
+  onExtraMarkerDragEnd?: (id: string, latlng: LatLng) => void;
 }) {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -191,6 +199,7 @@ export function ExploreMap({
 
   // Search-result pin — a bare ad-hoc pin keyed by the Google placeId. Sits in
   // the topmost layer so it visually wins over any other pin at the same point.
+  // Draggable: the user can reposition the search hit anywhere on the map.
   const searchMarker = useMemo<MapMarker | null>(() => {
     if (!searchPlace) return null;
     return {
@@ -198,6 +207,7 @@ export function ExploreMap({
       lat: searchPlace.lat,
       lng: searchPlace.lng,
       title: searchPlace.name,
+      draggable: true,
     };
   }, [searchPlace]);
 
@@ -206,15 +216,20 @@ export function ExploreMap({
   // category results + night-route pins + the single search-result pin.
   // Later layers win on dup, so a focused place shows its real marker
   // (icon/glyph) instead of the bare focus pin.
+  //
+  // Drag policy: every pin ExploreMap owns is draggable (search, goFocus, Go
+  // suggestions, category results). Night-route pins stay fixed — they're
+  // derived from immutable trip data and would rubber-band on the next
+  // reconcile. `extraMarkers` respect the host's own `draggable` field.
   const allMarkers = useMemo(() => {
     const byKey: Record<string, MapMarker> = {};
     for (const m of extraMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     if (goFocus) {
       const k = keyOfPlace(goFocus);
-      byKey[k] = { id: k, lat: goFocus.lat, lng: goFocus.lng, title: goFocus.title };
+      byKey[k] = { id: k, lat: goFocus.lat, lng: goFocus.lng, title: goFocus.title, draggable: true };
     }
-    for (const m of goMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
-    for (const m of categoryMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
+    for (const m of goMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = { ...m, draggable: true };
+    for (const m of categoryMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = { ...m, draggable: true };
     for (const m of nightMarkers) byKey[m.id ?? `${m.lat},${m.lng}`] = m;
     if (searchMarker) byKey[searchMarker.id ?? `${searchMarker.lat},${searchMarker.lng}`] = searchMarker;
     return Object.values(byKey);
@@ -333,6 +348,55 @@ export function ExploreMap({
       .catch(() => { /* keep the optimistic focus */ });
   };
 
+  // Drag&drop: when the user releases a pin at a new position, fold the latlng
+  // into the layer that owns the marker. We check layers in the SAME priority
+  // order as `allMarkers` (later layers override earlier on key collisions),
+  // so a search-pin id at the same key always resolves to `searchPlace`. Night
+  // pins aren't draggable; `extraMarkers` are forwarded to the host.
+  //
+  // A pin carrying a Google identity (search hit, POI-bound goFocus) LOSES that
+  // identity at drop time. Google's `dragend` gives us only latlng — no
+  // `placeId` payload like in `click` — so we can't natively tell if the drop
+  // landed on another POI. Keeping the old placeId would render the hover card
+  // with stale info (the original place's data, now somewhere else). We demote
+  // to a coords-only goFocus: same state as a click on empty map. The user can
+  // click the moved pin again to reveal what's underneath, mirroring the click
+  // flow exactly. We don't `openGo()` — a drag isn't an explicit "I want to
+  // chat" gesture.
+  const handleMarkerDragEnd = (id: string, latlng: LatLng) => {
+    interactedRef.current = true;
+    const coords = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
+    if (searchPlace && id === searchPlace.placeId) {
+      setSearchPlace(null);
+      setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
+      return;
+    }
+    if (goFocus && keyOfPlace(goFocus) === id) {
+      setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
+      return;
+    }
+    const inCategory = categoryMarkers.some((m) => (m.id ?? `${m.lat},${m.lng}`) === id);
+    if (inCategory) {
+      setCategoryMarkers((prev) =>
+        prev.map((m) =>
+          (m.id ?? `${m.lat},${m.lng}`) === id ? { ...m, lat: latlng.lat, lng: latlng.lng } : m,
+        ),
+      );
+      return;
+    }
+    const inGo = goMarkers.some((m) => (m.id ?? `${m.lat},${m.lng}`) === id);
+    if (inGo) {
+      setGoMarkers((prev) =>
+        prev.map((m) =>
+          (m.id ?? `${m.lat},${m.lng}`) === id ? { ...m, lat: latlng.lat, lng: latlng.lng } : m,
+        ),
+      );
+      return;
+    }
+    // Not a layer ExploreMap owns → must be a host `extraMarkers` pin.
+    onExtraMarkerDragEnd?.(id, latlng);
+  };
+
   // Map → Go: click an existing pin (incl. category result) → focus + open Go.
   // Re-clicking the manual (ad-hoc) pin removes it; normal pins are never deleted.
   const handleMarkerClick = (id: string) => {
@@ -383,6 +447,7 @@ export function ExploreMap({
         onMapClick={handleMapClick}
         onPoiClick={handlePoiClick}
         onMarkerClick={handleMarkerClick}
+        onMarkerDragEnd={handleMarkerDragEnd}
         onViewportChange={(vp) => { viewportRef.current = vp; }}
         viewportInset={viewportInset}
         renderPinCard={(id, close) => {
