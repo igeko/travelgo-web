@@ -35,9 +35,6 @@ export type AddToTripRequest = {
 /** Default activity/day image — used by night cards when the stop has none. */
 const DEFAULT_ACTIVITY_IMAGE = "/media/day-default-banner.png";
 
-/** Zoom used when (re)opening focused on a single place. */
-const FOCUS_ZOOM = 14;
-
 /** Grace period before clearing the focus, so switching cards doesn't flicker. */
 const FOCUS_CLEAR_DELAY = 450;
 
@@ -140,7 +137,11 @@ export function ExploreMap({
   const [categoryMarkers, setCategoryMarkers] = useState<MapMarker[]>([]);
   const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
   const [center, setCenter] = useState<LatLng>(tripCenter);
-  const [zoom, setZoom] = useState<number>(tripZoom);
+  // Zoom è "set-once": l'inizializzazione viene dal trip, poi resta interamente
+  // in mano all'utente (auto-zoom disabilitato — vedi note più sotto). Niente
+  // setter — se servirà un cambio di zoom programmatico useremo l'imperativo
+  // di Map (`mapHandle.fitAll` / `focusCoord`) dietro un trigger esplicito.
+  const [zoom] = useState<number>(tripZoom);
   const [isMobile, setIsMobile] = useState(false);
   const yumejiPinned = !!useYumejiDrawer()?.isPinned;
 
@@ -200,10 +201,10 @@ export function ExploreMap({
     url: nw.url,
   });
 
-  // Night-route is the only `RouteSpec` Explore draws today. `fitOnLoad: true`
-  // mirrors the legacy `routeLayer` behaviour — the camera reframes once when
-  // the user toggles the night route on, so the whole route is visible at a
-  // glance. Subsequent renders (without identity change) don't refit.
+  // Night-route is the only `RouteSpec` Explore draws today. Auto-fit
+  // disabilitato: il toggle ON disegna la polyline ma NON reframma la
+  // camera — lo zoom resta deciso dall'utente. Reintrodurremo un fit-to-
+  // route esplicito (es. bottone "centra percorso") quando deciderete dove.
   const routes = useMemo<RouteSpec[]>(
     () =>
       showNightRoute && nightRoute.length >= 2
@@ -212,8 +213,6 @@ export function ExploreMap({
             travelMode: "DRIVING",
             points: nightRoute.map((w) => ({ lat: w.lat, lng: w.lng })),
             style: { color: NIGHT, weight: 4, opacity: 0.9 },
-            fitOnLoad: true,
-            fitPadding: 80,
           }]
         : [],
     [showNightRoute, nightRoute],
@@ -326,10 +325,13 @@ export function ExploreMap({
 
   // Restore the last focused place once, right after localStorage hydrates —
   // only on a genuine fresh load (skip if the user already interacted).
+  // Auto-zoom disabilitato per scelta: il restore PANNA al place ma rispetta
+  // il livello di zoom corrente. L'utente forzerà eventuali "fit/focus zoom"
+  // a comando esplicito (mapHandle.fitAll / focusCoord) quando avremo deciso
+  // dove ha senso farlo.
   useEffect(() => {
     if (restoredRef.current || interactedRef.current || !lastPlace) return;
     restoredRef.current = true;
-    setZoom(FOCUS_ZOOM);
     setGoFocus(lastPlace);
   }, [lastPlace, setGoFocus]);
 
@@ -546,12 +548,13 @@ export function ExploreMap({
           // stash it whole and PlaceHoverCard renders without a second
           // round-trip. Other selections are cleared so only the search hit
           // shows the active halo + card.
+          // Pan al risultato ma niente cambio di zoom: l'utente decide il
+          // livello di dettaglio. Vedi nota sopra sull'auto-zoom disabilitato.
           interactedRef.current = true;
           setNightSelId(null);
           setGoFocus(null);
           setSearchPlace(place);
           setCenter({ lat: place.lat, lng: place.lng });
-          setZoom(FOCUS_ZOOM);
         }}
         orientation={isMobile ? "horizontal" : "vertical"}
         className={

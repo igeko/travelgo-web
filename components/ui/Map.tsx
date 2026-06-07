@@ -808,7 +808,6 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       }
     }
 
-    let added = false;
     for (const m of desired) {
       const key = keyOf(m);
       if (markersByKey.current[key]) continue;
@@ -848,7 +847,6 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         if (ll) onMarkerDragEndRef.current?.(key, { lat: ll.lat(), lng: ll.lng() });
       });
       markersByKey.current[key] = marker;
-      added = true;
     }
 
     // Bucket existing marker instances into regular vs clustered for this
@@ -904,14 +902,12 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       clustererRef.current?.clearMarkers();
     }
 
-    // Auto-fit solo per batch multi-marker (es. suggerimenti Go). Il caso
-    // singolo non riframma più: rispetta il contratto controlled-only e non
-    // forza zoom-in quando l'utente clicca per droppare un singolo pin.
-    if (added && desired.length > 1) {
-      const bounds = new google.maps.LatLngBounds();
-      desired.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
-      map.fitBounds(bounds, 64);
-    }
+    // Auto-fit disabilitato: la mappa NON riframma più quando arrivano nuovi
+    // marker (es. suggerimenti Go, ricerche per categoria, roadmap pins
+    // ottimistici). Era la fonte degli zoom in/out "casuali" che l'utente
+    // ha riportato. Lo zoom è ora interamente controllato dall'utente; i
+    // wrapper possono ancora reframmare a comando esplicito via
+    // `mapHandle.fitAll()` (vedi useImperativeHandle sopra).
   }, [markers, status, selectedMarkerId, hoverPin, unhoverPin]);
 
   // Route polylines: every entry in `routes` is drawn as its own polyline
