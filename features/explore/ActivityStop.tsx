@@ -16,8 +16,9 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useMemo, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
+import { api } from "@/lib/client";
 import {
   IconGripVertical,
   IconBed,
@@ -118,12 +119,41 @@ export function ActivityStop({
   className?: string;
 }) {
   const t = useTranslations("Explore");
+
+  // Activities created via Add-to-Trip / Go agent often save only
+  // place_id + lat/lng on the entity, leaving the human-readable
+  // `location` text NULL. When the user opens the detail card and we
+  // would otherwise show an empty AddressField, we backfill the display
+  // by calling /api/places/details (Google Place Details v1). The
+  // result is cached server-side (24h) so repeat opens are free.
+  const [fetchedFormatted, setFetchedFormatted] = useState<string | null>(null);
+  useEffect(() => {
+    if (state !== "open") return;
+    if (addressLocation) return;
+    if (!addressPlaceId) return;
+    if (fetchedFormatted) return;
+    let cancelled = false;
+    api.places
+      .details<{ formatted?: string }>(addressPlaceId)
+      .then((p) => {
+        if (!cancelled && p?.formatted) setFetchedFormatted(p.formatted);
+      })
+      .catch(() => {
+        /* silent — keep empty placeholder */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state, addressLocation, addressPlaceId, fetchedFormatted]);
+
   // Stable PlaceResult: rebuilt only when one of the four primitive fields
-  // actually changes, so AddressField's sync effect doesn't fire on every
-  // parent render and stomp on the user's in-progress text.
+  // (or the lazily-fetched fallback) actually changes, so AddressField's
+  // sync effect doesn't fire on every parent render and stomp on what the
+  // user is typing.
   const addressValue = useMemo<PlaceResult | null>(() => {
+    const effectiveLocation = addressLocation || fetchedFormatted;
     if (
-      !addressLocation &&
+      !effectiveLocation &&
       !addressPlaceId &&
       addressLat == null &&
       addressLng == null
@@ -131,13 +161,13 @@ export function ActivityStop({
       return null;
     }
     return {
-      formatted: addressLocation ?? "",
-      name: addressLocation ?? "",
+      formatted: effectiveLocation ?? "",
+      name: effectiveLocation ?? "",
       placeId: addressPlaceId ?? "",
       lat: addressLat ?? 0,
       lng: addressLng ?? 0,
     };
-  }, [addressLocation, addressPlaceId, addressLat, addressLng]);
+  }, [addressLocation, addressPlaceId, addressLat, addressLng, fetchedFormatted]);
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
     const selected = state === "selected";
