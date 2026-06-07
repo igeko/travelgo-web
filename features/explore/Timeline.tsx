@@ -130,33 +130,6 @@ type Props = {
   className?: string;
 };
 
-/* ── Address helper ─────────────────────────────────────────────── */
-
-/**
- * Synthesise a PlaceResult from the flat location/place_id/lat/lng triple
- * that lives on activities and AccommodationDisplay. Returns null when no
- * location is set so AddressField shows its empty placeholder.
- *
- * The components map is left empty — AddressField doesn't use it for
- * rendering, only for re-emit on selection of a new place from autocomplete
- * (which carries its own full PlaceResult).
- */
-function placeFromFields(
-  location: string | null | undefined,
-  placeId: string | null | undefined,
-  lat: number | null | undefined,
-  lng: number | null | undefined,
-): PlaceResult | null {
-  if (!location && !placeId && lat == null && lng == null) return null;
-  return {
-    formatted: location ?? "",
-    name: location ?? "",
-    placeId: placeId ?? "",
-    lat: lat ?? 0,
-    lng: lng ?? 0,
-  };
-}
-
 /* ── Date helpers ───────────────────────────────────────────────── */
 
 function localDate(iso: string): Date {
@@ -568,12 +541,10 @@ export function Timeline({
                       timeRange={a.time ?? "—"}
                       time={rowTime}
                       description={a.short_desc ?? undefined}
-                      address={placeFromFields(
-                        a.location,
-                        a.location_place_id,
-                        a.location_lat,
-                        a.location_lng,
-                      )}
+                      addressLocation={a.location}
+                      addressPlaceId={a.location_place_id}
+                      addressLat={a.location_lat}
+                      addressLng={a.location_lng}
                       onAddressChange={(place) => {
                         // Edit goes to the Property activity entity (a.activity_id),
                         // not to the scheduled instance (a.id) — the address is
@@ -620,12 +591,6 @@ export function Timeline({
               const stayId = lodging.stayId;
               const activityId = lodging.activityId;
               const currentNights = lodging.nightsTotal;
-              const placeValue = placeFromFields(
-                lodging.address,
-                lodging.placeId,
-                lodging.lat,
-                lodging.lng,
-              );
               return (
                 <div
                   style={{ gridColumn: 2, gridRow: lodgingRow }}
@@ -639,7 +604,10 @@ export function Timeline({
                     mode="sleep"
                     nights={lodging.nightsTotal}
                     nightIndex={lodging.nightIndex}
-                    address={placeValue}
+                    addressLocation={lodging.address}
+                    addressPlaceId={lodging.placeId}
+                    addressLat={lodging.lat}
+                    addressLng={lodging.lng}
                     onAddressChange={(place) => {
                       if (activityId) void onAddressChange?.(activityId, place);
                     }}

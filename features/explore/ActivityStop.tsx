@@ -16,7 +16,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { ComponentType } from "react";
+import { useMemo, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
 import {
   IconGripVertical,
@@ -61,7 +61,10 @@ export function ActivityStop({
   timeRange = "10:30 → 11:00",
   time,
   description,
-  address = null,
+  addressLocation = null,
+  addressPlaceId = null,
+  addressLat = null,
+  addressLng = null,
   onAddressChange,
   arrival,
   departure,
@@ -94,8 +97,17 @@ export function ActivityStop({
    *  on each row when the day is expanded. */
   time?: string;
   description?: string;
-  /** Initial address (the field manages its own value afterwards). */
-  address?: PlaceResult | null;
+  /**
+   * Address as four primitive props (NOT a pre-built PlaceResult object) so
+   * the AddressField below sees a referentially stable `value` across renders.
+   * Passing a freshly-allocated PlaceResult each render would re-fire the
+   * field's sync effect on every keystroke and overwrite what the user typed.
+   * We synthesise the PlaceResult via useMemo once per primitive change.
+   */
+  addressLocation?: string | null;
+  addressPlaceId?: string | null;
+  addressLat?: number | null;
+  addressLng?: number | null;
   onAddressChange?: (place: PlaceResult | null) => void;
   arrival?: ActivityTime;
   departure?: ActivityTime;
@@ -106,6 +118,26 @@ export function ActivityStop({
   className?: string;
 }) {
   const t = useTranslations("Explore");
+  // Stable PlaceResult: rebuilt only when one of the four primitive fields
+  // actually changes, so AddressField's sync effect doesn't fire on every
+  // parent render and stomp on the user's in-progress text.
+  const addressValue = useMemo<PlaceResult | null>(() => {
+    if (
+      !addressLocation &&
+      !addressPlaceId &&
+      addressLat == null &&
+      addressLng == null
+    ) {
+      return null;
+    }
+    return {
+      formatted: addressLocation ?? "",
+      name: addressLocation ?? "",
+      placeId: addressPlaceId ?? "",
+      lat: addressLat ?? 0,
+      lng: addressLng ?? 0,
+    };
+  }, [addressLocation, addressPlaceId, addressLat, addressLng]);
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
     const selected = state === "selected";
@@ -210,7 +242,7 @@ export function ActivityStop({
         {/* Inline "passport row" — pin + value, underlined like the design mock
             (see AddressRow). No eyebrow label: the card already names the field. */}
         <AddressField
-          value={address}
+          value={addressValue}
           onChange={(place) => onAddressChange?.(place)}
           variant="inline"
           placeholder="Address"
