@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { route, readJson, ok } from "@/lib/api";
 import { badRequest } from "@/lib/api/errors";
 import { requireTripEditor } from "@/lib/api/guards";
@@ -53,5 +54,14 @@ export const POST = route<{ id: string }>(async ({ req, params }) => {
 
   const services = await serverServices();
   const result: AddPlaceResult = await services.trips.addPlace(params.id, place, context);
+
+  // Invalidate every page that renders the trip's day/activity data so that
+  // the client's router.refresh() can return fresh server-rendered output.
+  // Without this, Next.js's Router Cache can keep serving stale RSC payloads
+  // and the just-added stop stays invisible.
+  revalidatePath(`/trips/${params.id}/explore-next`);
+  revalidatePath(`/trips/${params.id}/explore`);
+  revalidatePath(`/trips/${params.id}`);
+
   return ok(result, { status: 201 });
 });

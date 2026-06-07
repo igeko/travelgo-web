@@ -24,12 +24,13 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
-import { IconCheck, IconAlertTriangle } from "@/components/ui/icons";
+import { IconCheck, IconAlertTriangle, IconLoader2 } from "@/components/ui/icons";
 
 /** Algorithm output flags surfaced to the user. Mirrors AddWarning. */
 type AddedWarning = "overflow" | "incoherent" | "duplicate";
 
 export type AddedPillState =
+  | { kind: "pending" }
   | {
       kind: "success";
       dayNumber: number;
@@ -50,10 +51,33 @@ export function AddedPill({
 }) {
   const t = useTranslations("Explore");
 
+  // Auto-dismiss only when the request has settled. Pending stays put until
+  // success/error arrives — otherwise the user would briefly see "Adding…",
+  // a blank, and then the success, which reads as a flicker.
   useEffect(() => {
+    if (state.kind === "pending") return;
     const timer = setTimeout(onDismiss, VISIBLE_MS);
     return () => clearTimeout(timer);
   }, [state, onDismiss]);
+
+  if (state.kind === "pending") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "absolute left-1/2 top-4 z-[1200] -translate-x-1/2",
+          "flex items-center gap-2 rounded-pill border px-3.5 py-2 shadow-float",
+          "bg-surface text-ink-soft border-border-strong",
+          "text-mini font-medium",
+          "animate-in fade-in slide-in-from-top-2 duration-200",
+        )}
+      >
+        <IconLoader2 size={16} className="animate-spin" />
+        <span>{t("adding")}</span>
+      </div>
+    );
+  }
 
   if (state.kind === "error") {
     return (

@@ -2,6 +2,7 @@
   "Explore": {
     "wishlist": "Yumeji",
     "addToTrip": "Add to trip",
+    "adding": "Adding to your trip…",
     "addToTripError": "Couldn't add the place. Try again.",
     "added": {
       "title": "Added to day {n}",

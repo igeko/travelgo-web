@@ -84,6 +84,14 @@ type Props = {
    * `selectedActivityId`. `null` when no row is open.
    */
   onSelectActivity?: (activityId: string | null) => void;
+  /**
+   * Fired when the user hits "Remove" inside an activity's expanded
+   * editor. The host is responsible for the API call + any post-delete
+   * refresh; Timeline only closes the inline popover. Receives the
+   * scheduled_activity.id. Lodging rows (derived from the Day record)
+   * are NOT routed here — those have their own editing flow.
+   */
+  onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   className?: string;
 };
 
@@ -220,7 +228,7 @@ function buildItems(
 
 /* ── Timeline ───────────────────────────────────────────────────── */
 
-export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onSelectActivity, className }: Props) {
+export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onSelectActivity, onRemoveActivity, className }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
@@ -441,6 +449,16 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
               // disclosure for the time).
               const rowTime = !fuzzy && expanded && a.time ? a.time : undefined;
 
+              // Remove handler shared by FuzzyStop / ActivityStop: close the
+              // inline popover and forward the scheduled id to the host. If
+              // no host handler is supplied we still close the popover, so
+              // the UI stays responsive in non-editing surfaces (e.g. the
+              // canonical Explore page that doesn't wire deletion yet).
+              const handleRemove = () => {
+                setOpenId(null);
+                onRemoveActivity?.(a.id);
+              };
+
               return (
                 <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
                   {fuzzy ? (
@@ -451,7 +469,7 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
                       description={a.short_desc ?? undefined}
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
-                      onRemove={() => setOpenId(null)}
+                      onRemove={handleRemove}
                     />
                   ) : (
                     <ActivityStop
@@ -464,7 +482,7 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
                       description={a.short_desc ?? undefined}
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
-                      onRemove={() => setOpenId(null)}
+                      onRemove={handleRemove}
                     />
                   )}
                 </div>

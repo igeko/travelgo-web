@@ -439,47 +439,47 @@ export function ExploreMap({
     openGo();
   };
 
-  // Wiring of the PlaceHoverCard "Add to trip" CTA. The whole orchestration
-  // (algorithm + persistence + bridge recalc) runs server-side in a single
-  // POST. On success we surface the AddedPill and refresh the route so the
-  // Timeline rerenders with the new stop. On failure we re-enable the CTA
-  // and show the pill in error mode — the brief 06b will cover the richer
-  // toast UX, this is the minimum so the user always sees the outcome.
-  const handleAddToTrip = async (input: {
+  // Wiring of the PlaceHoverCard "Add to trip" CTA. Returns immediately
+  // so the caller can close the card before the network round-trip — the
+  // server-side orchestration (algorithm + persistence + bridge recalc)
+  // takes a couple of seconds and keeping the card open would invite
+  // accidental double-clicks. The AddedPill flips to "pending" right away
+  // and updates to success/error once the POST settles.
+  const handleAddToTrip = (input: {
     placeId: string | null;
     title: string;
     lat: number;
     lng: number;
     categories?: string[];
-  }) => {
+  }): void => {
     if (addingRef.current) return;
     addingRef.current = true;
-    try {
-      const payload: AddPlaceInput = {
-        placeId: input.placeId,
-        title: input.title,
-        lat: input.lat,
-        lng: input.lng,
-        categories: input.categories,
-      };
-      const res: AddPlaceResult = await api.trips.addPlace(tripId, {
-        place: payload,
-        selectedDayId,
-        selectedActivityId,
+    setAddedPill({ kind: "pending" });
+    const payload: AddPlaceInput = {
+      placeId: input.placeId,
+      title: input.title,
+      lat: input.lat,
+      lng: input.lng,
+      categories: input.categories,
+    };
+    api.trips
+      .addPlace(tripId, { place: payload, selectedDayId, selectedActivityId })
+      .then((res: AddPlaceResult) => {
+        setAddedPill({
+          kind: "success",
+          dayNumber: res.position.dayNumber,
+          afterTitle: res.position.afterTitle,
+          warnings: res.warnings,
+        });
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error("[ExploreMap] addPlace failed:", err);
+        setAddedPill({ kind: "error" });
+      })
+      .finally(() => {
+        addingRef.current = false;
       });
-      setAddedPill({
-        kind: "success",
-        dayNumber: res.position.dayNumber,
-        afterTitle: res.position.afterTitle,
-        warnings: res.warnings,
-      });
-      router.refresh();
-    } catch (err) {
-      console.error("[ExploreMap] addPlace failed:", err);
-      setAddedPill({ kind: "error" });
-    } finally {
-      addingRef.current = false;
-    }
   };
 
   return (
@@ -511,15 +511,18 @@ export function ExploreMap({
                 initialPlace={searchPlace}
                 fallbackName={searchPlace.name}
                 onClose={close}
-                onAddToTrip={async (place) => {
-                  await handleAddToTrip({
+                onAddToTrip={(place) => {
+                  // Close FIRST, fire the request in the background. The pill
+                  // shows pending state instantly; the card going away is the
+                  // user-facing acknowledgement that the click registered.
+                  close();
+                  handleAddToTrip({
                     placeId: searchPlace.placeId,
                     title: place?.name ?? searchPlace.name,
                     lat: place?.lat ?? searchPlace.lat,
                     lng: place?.lng ?? searchPlace.lng,
                     categories: place?.types ?? searchPlace.types,
                   });
-                  close();
                 }}
               />
             );
@@ -538,15 +541,15 @@ export function ExploreMap({
               placeId={id}
               fallbackName={m.title ?? t("placeFallback")}
               onClose={close}
-              onAddToTrip={async (place) => {
-                await handleAddToTrip({
+              onAddToTrip={(place) => {
+                close();
+                handleAddToTrip({
                   placeId: id,
                   title: place?.name ?? m.title ?? t("placeFallback"),
                   lat: place?.lat ?? m.lat,
                   lng: place?.lng ?? m.lng,
                   categories: place?.types,
                 });
-                close();
               }}
             />
           );

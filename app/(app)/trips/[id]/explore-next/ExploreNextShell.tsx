@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ExploreMap } from "@/features/explore/ExploreMap";
 import type { LatLng, MapMarker } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import type { StopRole } from "@/components/ui/mapPins";
+import { api } from "@/lib/client";
 
 type Props = {
   tripId: string;
@@ -32,6 +34,7 @@ type Props = {
  * nella Timeline — pin teardrop ("stop" variant) coloriti per slot.
  */
 export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Props) {
+  const router = useRouter();
   // Larghezza misurata del pannello sinistro — default ragionevole (360 panel +
   // left-4 margin = 376) usato finché il ResizeObserver non scrive il valore reale.
   const panelRef = useRef<HTMLElement>(null);
@@ -85,6 +88,24 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [selectedDayStops],
   );
 
+  // Remove dell'attività dal dettaglio inline della Timeline. Chiamata
+  // ottimistica? No: rispettiamo il pattern del resto dell'app — DELETE
+  // server-side, poi router.refresh() ri-renderizza la timeline col snapshot
+  // aggiornato. Se la DELETE fallisce, lasciamo che l'errore emerga in
+  // console e la tappa rimanga visibile — niente toast per ora (brief 06b
+  // copre la UX di errore).
+  const handleRemoveActivity = useCallback(
+    async (scheduledId: string) => {
+      try {
+        await api.activities.removeFromDay(scheduledId);
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] removeFromDay failed:", err);
+      }
+    },
+    [router],
+  );
+
   // ResizeObserver — il pannello sinistro è `w-[360px] left-4` (≈ 376 px), ma
   // si adatta su breakpoints/density. Misurare a runtime evita di hardcodare
   // un valore che dovrà essere mantenuto in sincrono col CSS.
@@ -122,6 +143,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             days={days}
             onSelectDay={setSelectedDayId}
             onSelectActivity={setSelectedActivityId}
+            onRemoveActivity={handleRemoveActivity}
           />
         </div>
       </aside>
