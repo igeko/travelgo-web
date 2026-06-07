@@ -150,47 +150,45 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return out;
   }, [visibleDays, dayFocused, selectedDayId]);
 
-  // Percorso tra tappe consecutive — una polyline lineare neutra per ogni
-  // segmento della catena dove `prev.bridge_out_json` è già salvato e
-  // entrambi gli endpoint hanno coordinate. Niente Google call al render
-  // (`straight: true`). I segmenti senza bridge salvato vengono saltati:
-  // la catena si spezza e ripartiamo dal punto successivo.
+  // Percorso reale tra tappe consecutive — una RouteSpec per giorno, che
+  // collega in ordine TUTTE le tappe del giorno con coordinate. Geometria
+  // calcolata da Google Routes via `api.routes.compute` (con cache
+  // localStorage 30gg implicita): la prima volta su un giorno scatena
+  // 1 call per giorno (single-call quando le modalità sono uniformi),
+  // poi è cache hit finché i punti non cambiano.
+  //
+  // Travel mode default: DRIVING (auto). Quando una tappa ha
+  // `bridge_out_json.transport` salvato (es. dopo addPlace), quel leg
+  // usa il transport persistito tramite `perLegTransport`.
   //
   // Quando `dayFocused`, il giorno in focus mantiene piena opacità, gli
   // altri vanno in dimmed, coerente con i roadmap-pin.
   const dayPathRoutes = useMemo<RouteSpec[]>(() => {
     const out: RouteSpec[] = [];
     for (const day of visibleDays) {
+      const stops = [...day.activities]
+        .sort((a, b) => a.position - b.position)
+        .filter((s): s is typeof s & { location_lat: number; location_lng: number } =>
+          s.location_lat != null && s.location_lng != null,
+        );
+      if (stops.length < 2) continue;
+
       const isFocusDay = dayFocused && day.id === selectedDayId;
       const opacity = !dayFocused || isFocusDay ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED;
 
-      const stops = [...day.activities].sort((a, b) => a.position - b.position);
-      // Spezza la catena ovunque manchi un bridge salvato o le coordinate.
-      // Risultato: una o più RouteSpec per giorno, ciascuna con un sotto-
-      // segmento contiguo di tappe collegate.
-      let chunk: LatLng[] = [];
-      let chunkIdx = 0;
-      const flush = () => {
-        if (chunk.length < 2) { chunk = []; return; }
-        out.push({
-          id: `day-${day.id}-chunk-${chunkIdx++}`,
-          points: chunk,
-          straight: true,
-          style: { color: INK, weight: 2, opacity },
-        });
-        chunk = [];
-      };
-      for (let i = 0; i < stops.length; i++) {
-        const s = stops[i];
-        if (s.location_lat == null || s.location_lng == null) { flush(); continue; }
-        const point = { lat: s.location_lat, lng: s.location_lng };
-        if (chunk.length === 0) { chunk.push(point); continue; }
-        // Connesso al precedente solo se `prev.bridge_out_json` esiste.
-        const prev = stops[i - 1];
-        if (prev?.bridge_out_json) chunk.push(point);
-        else { flush(); chunk.push(point); }
-      }
-      flush();
+      const points: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
+      // perLegTransport[i] = transport del segmento points[i]→points[i+1].
+      // Lo prendiamo dal bridge_out_json della tappa di partenza quando
+      // esiste; altrimenti `null` → falls back al `travelMode` default.
+      const perLegTransport = stops.slice(0, -1).map((s) => s.bridge_out_json?.transport ?? null);
+
+      out.push({
+        id: `day-${day.id}`,
+        points,
+        travelMode: "DRIVING",
+        perLegTransport,
+        style: { color: INK, weight: 3, opacity },
+      });
     }
     return out;
   }, [visibleDays, dayFocused, selectedDayId]);
