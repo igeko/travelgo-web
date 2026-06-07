@@ -228,58 +228,41 @@ function bridgeTransfer(b: BridgeData): TransferVM {
 
 /* ── Item model ─────────────────────────────────────────────────── */
 
+/** Stop-column items rendered between the DayBadge (row 1) and the bottom
+ *  accommodation row. Lodging is NOT part of this union — it has its own
+ *  pinned-to-bottom slot, separate from the stop sequence. */
 type Item =
   | { kind: "activity"; activity: Activity; accent?: "ink" | "primary" }
-  | {
-      kind: "lodging";
-      id: string;
-      title: string;
-      icon: IconCmp;
-      address: string | null;
-      placeId: string | null;
-      lat: number | null;
-      lng: number | null;
-      nightIndex: number;
-      nightsTotal: number;
-      /** Stay id — present when projected from accommodation_nights; lets
-       *  the Sleep/Stop toggle and the Stepper mutate the right stay. */
-      stayId?: string;
-      /** Property activity id — target for Property-level edits (address). */
-      activityId?: string;
-    }
   | { kind: "transfer"; id: string; transfer: TransferVM };
 
-/** Build the visible row sequence for a day. When collapsed, fuzzy stops
- *  are dropped; transfers are derived between the *visible* stops. The
- *  accommodation (when present) is inserted as the first item — primary
- *  accent — matching the Figma "Hotel Tavinos Asakusa" row. */
+type LodgingItem = {
+  kind: "lodging";
+  id: string;
+  title: string;
+  icon: IconCmp;
+  address: string | null;
+  placeId: string | null;
+  lat: number | null;
+  lng: number | null;
+  nightIndex: number;
+  nightsTotal: number;
+  /** Stay id — present when projected from accommodation_nights; lets
+   *  the Sleep/Stop toggle and the Stepper mutate the right stay. */
+  stayId?: string;
+  /** Property activity id — target for Property-level edits (address). */
+  activityId?: string;
+};
+
+/** Build the day's stop sequence (activities + their transfers). The
+ *  accommodation is intentionally NOT included here — it's pinned to the
+ *  bottom of the day's column (after Today notes when expanded) by the
+ *  Timeline render, so it stays the last visible element in any state. */
 function buildItems(
   acts: Activity[],
-  accommodation: AccommodationDisplay | null | undefined,
-  dayId: string,
   expanded: boolean,
   injectSample: boolean,
 ): Item[] {
   const items: Item[] = [];
-
-  if (accommodation) {
-    // ID scoped to the day: the same hotel across 5 nights becomes 5 distinct
-    // lodging items, so opening one doesn't open them all.
-    items.push({
-      kind: "lodging",
-      id: `lodging-${dayId}`,
-      title: accommodation.name,
-      icon: accommodationIcon(accommodation.type),
-      address: accommodation.address,
-      placeId: accommodation.place_id,
-      lat: accommodation.lat,
-      lng: accommodation.lng,
-      nightIndex: accommodation.night_index,
-      nightsTotal: accommodation.nights_total,
-      stayId: accommodation.stay_id,
-      activityId: accommodation.activity_id,
-    });
-  }
 
   const visible = [...acts]
     .sort((a, b) => a.position - b.position)
@@ -299,6 +282,29 @@ function buildItems(
     }
   });
   return items;
+}
+
+function buildLodging(
+  accommodation: AccommodationDisplay | null | undefined,
+  dayId: string,
+): LodgingItem | null {
+  if (!accommodation) return null;
+  // ID scoped to the day: the same hotel across 5 nights becomes 5 distinct
+  // lodging items, so opening one doesn't open them all.
+  return {
+    kind: "lodging",
+    id: `lodging-${dayId}`,
+    title: accommodation.name,
+    icon: accommodationIcon(accommodation.type),
+    address: accommodation.address,
+    placeId: accommodation.place_id,
+    lat: accommodation.lat,
+    lng: accommodation.lng,
+    nightIndex: accommodation.night_index,
+    nightsTotal: accommodation.nights_total,
+    stayId: accommodation.stay_id,
+    activityId: accommodation.activity_id,
+  };
 }
 
 /* ── Timeline ───────────────────────────────────────────────────── */
@@ -341,18 +347,23 @@ export function Timeline({
     if (openOverride !== undefined) setOpenId(openOverride);
   }
 
-  const toggleDay = (id: string) =>
+  const toggleDay = (id: string) => {
+    // Read open-state from the committed snapshot (toggleDay runs from an
+    // event handler) so the setState updater stays pure — React may invoke
+    // the updater multiple times during concurrent rendering, and emitting
+    // onSelectDay from inside it would trigger the parent's setState mid-render.
+    const wasOpen = expandedDays.has(id);
     setExpandedDays((prev) => {
       const next = new Set(prev);
-      const wasOpen = next.has(id);
       if (wasOpen) next.delete(id);
       else next.add(id);
-      // Emit the "day in focus" signal on open only. Hosts that need a
-      // single-selection model can ignore the multi-expand state and just
-      // treat each fired id as the current day.
-      if (!wasOpen) onSelectDay?.(id);
       return next;
     });
+    // Emit the "day in focus" signal on open only. Hosts that need a
+    // single-selection model can ignore the multi-expand state and just
+    // treat each fired id as the current day.
+    if (!wasOpen) onSelectDay?.(id);
+  };
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
@@ -408,18 +419,20 @@ export function Timeline({
         const dayLoad = computeDayLoad(day.activities);
 
         const expanded = expandedDays.has(day.id);
-        const items = buildItems(day.activities, day.accommodation, day.id, expanded, injectSampleTransfers);
+        const items = buildItems(day.activities, expanded, injectSampleTransfers);
+        const lodging = buildLodging(day.accommodation, day.id);
         const showNotes = expanded && !!day.notes;
-        // The lodging item, when present, shares row 1 with the DayBadge (col 2)
-        // so the icon badge's top edge lines up with the DayBadge's top stripe.
-        // The DayBadge then spans row 1+2 (col 1) with a 6px top offset, so row 1
-        // is sized by the lodging item — not by the DayBadge's natural height —
-        // keeping the gap below the lodging equal to the gap between activities.
-        const lodgingItemId = items[0]?.kind === "lodging" ? items[0].id : null;
-        const lodgingFirst = lodgingItemId !== null;
-        const lodgingOpen = lodgingItemId !== null && openId === lodgingItemId;
-        // Rows: 1 = badge (+ lodging when present) · 2..N+(0|1) = items · last = notes
-        const lastRow = items.length + (lodgingFirst ? 0 : 1) + (showNotes ? 1 : 0);
+        // Row layout:
+        //   1                                  → day badge
+        //   2 .. items.length + 1              → stops (activities + transfers)
+        //   notesRow (only if showNotes)       → today notes
+        //   lastRow (only if lodging present)  → accommodation, pinned at bottom
+        // The accommodation is intentionally rendered AFTER notes, so it stays
+        // the literal last element of the day in both collapsed and expanded
+        // states (the "in fondo sempre" constraint).
+        const notesRow = showNotes ? items.length + 2 : null;
+        const lastRow = 1 + items.length + (showNotes ? 1 : 0) + (lodging ? 1 : 0);
+        const lodgingRow = lodging ? lastRow : null;
 
         return (
           <div
@@ -430,40 +443,27 @@ export function Timeline({
             {/* Day rail — the rounded grey segment BELOW the badge, detached by
                 a 3px gap above (mt) and below (the container's row gap), so the
                 day badge floats clear of the rail as in the Figma. Holds the
-                aligned time ticks. When the lodging is OPEN the rail extends to
-                row 1 too, so the grey column covers the full height of the
-                opened lodging card.
-                When a closed lodging shares row 1, the badge (43px intrinsic +
-                6px mt = 49) overflows the row sized by the lodging (36px) by
-                13px into row 2, so the rail's top margin is 13 + 3 = 16 to
-                keep the visible gap below the badge at the intended 3px. */}
+                aligned time ticks. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               aria-hidden
               tabIndex={-1}
-              style={{ gridColumn: 1, gridRow: `${lodgingOpen ? 1 : 2} / ${lastRow + 1}` }}
+              style={{ gridColumn: 1, gridRow: `2 / ${lastRow + 1}` }}
               className={cn(
-                "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
+                "w-full cursor-pointer self-stretch rounded-xs transition-colors mt-[3px] mb-[3px]",
                 expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
-                lodgingFirst && !lodgingOpen ? "mt-[16px]" : "mt-[3px]",
               )}
             />
 
-            {/* Day badge — sits on top of the rail (col 1, row 1). When a lodging
-                shares row 1 the badge spans row 1+2 with `mt-1.5` so the top
-                stripe lines up with the lodging icon and row 1's height is
-                driven by the lodging item, not by the badge's natural 43px. */}
+            {/* Day badge — sits on top of the rail (col 1, row 1). */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               aria-expanded={expanded}
               aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-              style={{
-                gridColumn: 1,
-                gridRow: lodgingFirst ? "1 / span 2" : 1,
-              }}
-              className={cn("cursor-pointer self-start", lodgingFirst && "mt-1.5")}
+              style={{ gridColumn: 1, gridRow: 1 }}
+              className="cursor-pointer self-start"
             >
               <DayBadge
                 weekday={weekday}
@@ -501,11 +501,12 @@ export function Timeline({
               />
             ) : null}
 
-            {/* Items: time on the rail (col 1) + stop/transfer (col 2), same row.
-                When lodging is the first item it occupies row 1 alongside the
-                DayBadge — every other item then shifts one row up. */}
+            {/* Stops: time on the rail (col 1) + stop/transfer (col 2), same row.
+                Row 1 is the DayBadge; stops occupy rows 2..items.length+1.
+                Accommodation and Today notes are rendered AFTER this loop, so
+                the accommodation stays the literal last element. */}
             {items.map((item, i) => {
-              const row = lodgingFirst ? i + 1 : i + 2;
+              const row = i + 2;
               if (item.kind === "transfer") {
                 const open = openId === item.id;
                 return (
@@ -522,55 +523,6 @@ export function Timeline({
                       steps={item.transfer.steps}
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
-                    />
-                  </div>
-                );
-              }
-
-              if (item.kind === "lodging") {
-                const open = openId === item.id;
-                const stayId = item.stayId;
-                const activityId = item.activityId;
-                const currentNights = item.nightsTotal;
-                const placeValue = placeFromFields(
-                  item.address,
-                  item.placeId,
-                  item.lat,
-                  item.lng,
-                );
-                return (
-                  <div
-                    key={item.id}
-                    style={{ gridColumn: 2, gridRow: row }}
-                    className="py-0.5 self-start"
-                  >
-                    <ActivityStop
-                      title={item.title}
-                      icon={item.icon}
-                      accent="primary"
-                      state={open ? "open" : "default"}
-                      mode="sleep"
-                      nights={item.nightsTotal}
-                      nightIndex={item.nightIndex}
-                      address={placeValue}
-                      onAddressChange={(place) => {
-                        if (activityId) void onAddressChange?.(activityId, place);
-                      }}
-                      onOpen={() => setOpenId(item.id)}
-                      onClose={() => setOpenId(null)}
-                      onRemove={() => setOpenId(null)}
-                      onModeChange={(next) => {
-                        // sleep → stop: cross-table conversion. Requires a
-                        // stay_id (we can't mutate the legacy days.* shape).
-                        if (next === "stop" && stayId) {
-                          void onConvertToStop?.(stayId);
-                        }
-                      }}
-                      onNightsChange={(next) => {
-                        if (!stayId) return;
-                        if (next > currentNights) void onExtendStay?.(stayId);
-                        else if (next < currentNights) void onReduceStay?.(stayId);
-                      }}
                     />
                   </div>
                 );
@@ -645,9 +597,11 @@ export function Timeline({
               );
             })}
 
-            {/* TODAY NOTES — only when the day is expanded */}
-            {showNotes ? (
-              <div style={{ gridColumn: 2, gridRow: lastRow }} className="py-3">
+            {/* TODAY NOTES — only when the day is expanded. Sits BELOW the
+                stops and ABOVE the accommodation (which is pinned to the
+                very bottom of the day). */}
+            {showNotes && notesRow !== null ? (
+              <div style={{ gridColumn: 2, gridRow: notesRow }} className="py-3">
                 <div className="flex flex-col gap-2.5 rounded-sm bg-surface-warm/70 p-4">
                   <p className="text-mini font-medium uppercase tracking-meta text-primary">
                     Today notes
@@ -656,6 +610,58 @@ export function Timeline({
                 </div>
               </div>
             ) : null}
+
+            {/* ACCOMMODATION — last visible element of the day, always. Rendered
+                here (not inside the items map) so it sits below Today notes
+                when the day is expanded — chronologically you reach the hotel
+                at the end of the day. */}
+            {lodging && lodgingRow !== null ? (() => {
+              const open = openId === lodging.id;
+              const stayId = lodging.stayId;
+              const activityId = lodging.activityId;
+              const currentNights = lodging.nightsTotal;
+              const placeValue = placeFromFields(
+                lodging.address,
+                lodging.placeId,
+                lodging.lat,
+                lodging.lng,
+              );
+              return (
+                <div
+                  style={{ gridColumn: 2, gridRow: lodgingRow }}
+                  className="py-0.5"
+                >
+                  <ActivityStop
+                    title={lodging.title}
+                    icon={lodging.icon}
+                    accent="primary"
+                    state={open ? "open" : "default"}
+                    mode="sleep"
+                    nights={lodging.nightsTotal}
+                    nightIndex={lodging.nightIndex}
+                    address={placeValue}
+                    onAddressChange={(place) => {
+                      if (activityId) void onAddressChange?.(activityId, place);
+                    }}
+                    onOpen={() => setOpenId(lodging.id)}
+                    onClose={() => setOpenId(null)}
+                    onRemove={() => setOpenId(null)}
+                    onModeChange={(next) => {
+                      // sleep → stop: cross-table conversion. Requires a
+                      // stay_id (we can't mutate the legacy days.* shape).
+                      if (next === "stop" && stayId) {
+                        void onConvertToStop?.(stayId);
+                      }
+                    }}
+                    onNightsChange={(next) => {
+                      if (!stayId) return;
+                      if (next > currentNights) void onExtendStay?.(stayId);
+                      else if (next < currentNights) void onReduceStay?.(stayId);
+                    }}
+                  />
+                </div>
+              );
+            })() : null}
 
             {/* Terminatore inferiore — doppia barretta ink/15 sotto il rail
                 dell'ultimo giorno. Speculare alla barretta isFirst del DayBadge. */}
