@@ -134,10 +134,6 @@ export function ExploreMap({
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
   const categories = useExploreCategories();
-  const [lastPlace, setLastPlace] = useLocalStorageState<GoPlace | null>(
-    `travelgo-explore-last-${tripId}`,
-    null,
-  );
   const [pinnedSubIds, setPinnedSubIds] = useLocalStorageState<string[]>(
     `travelgo-explore-pins-${tripId}`,
     [],
@@ -168,7 +164,6 @@ export function ExploreMap({
   const [isMobile, setIsMobile] = useState(false);
   const yumejiPinned = !!useYumejiDrawer()?.isPinned;
 
-  const restoredRef = useRef(false);
   const interactedRef = useRef(false);
   const goFocusRef = useRef(goFocus);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -356,26 +351,14 @@ export function ExploreMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubIds]);
 
-  // Restore the last focused place once, right after localStorage hydrates —
-  // only on a genuine fresh load (skip if the user already interacted).
-  // Auto-zoom disabilitato per scelta: il restore PANNA al place ma rispetta
-  // il livello di zoom corrente. L'utente forzerà eventuali "fit/focus zoom"
-  // a comando esplicito (mapHandle.fitAll / focusCoord) quando avremo deciso
-  // dove ha senso farlo.
-  useEffect(() => {
-    if (restoredRef.current || interactedRef.current || !lastPlace) return;
-    restoredRef.current = true;
-    setGoFocus(lastPlace);
-  }, [lastPlace, setGoFocus]);
-
-  // Focus changed → pan to it and persist it. The focus pin itself is derived
-  // in `allMarkers`, so an ad-hoc click never accumulates into goMarkers — there
-  // is always exactly one manual pin, replaced when the focus changes.
+  // Focus changed → pan to it. La mappa NON ricorda più l'ultimo pin
+  // attivo tra una sessione e l'altra: all'apertura non c'è alcun pin
+  // pre-selezionato. La selezione esiste solo a seguito di una vera
+  // interazione (click su un marker, search hit, drop di un pin).
   useEffect(() => {
     if (!goFocus) return;
     setCenter({ lat: goFocus.lat, lng: goFocus.lng });
-    setLastPlace(goFocus);
-  }, [goFocus, setLastPlace]);
+  }, [goFocus]);
 
   // Map → Go: drop a pin on empty map → focus + open Go. We don't reverse-geocode
   // (Maps key not authorized for Geocoding), so the label is coordinate-based.
