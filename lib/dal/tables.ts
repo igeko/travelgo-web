@@ -52,3 +52,9 @@ export enum GoTable {
   Sessions = "go_sessions",
   Messages = "go_messages",
 }
+
+/** Planning / Add-to-Trip configuration tables. */
+export enum PlanningTable {
+  /** Default duration (minutes) per place category — feeds resolveDuration. */
+  CategoryDurations = "category_durations",
+}

@@ -31,13 +31,14 @@ export * from "./tables";
 export * from "./domain";
 export * from "./supabase";
 
-export { Trips }       from "./entities/Trips";
-export { Activities }  from "./entities/Activities";
-export { Membership }  from "./entities/Membership";
-export { Users }       from "./entities/Users";
-export { Feedback }    from "./entities/Feedback";
-export { Airports }    from "./entities/Airports";
-export { Go }          from "./entities/Go";
+export { Trips }              from "./entities/Trips";
+export { Activities }         from "./entities/Activities";
+export { Membership }         from "./entities/Membership";
+export { Users }              from "./entities/Users";
+export { Feedback }           from "./entities/Feedback";
+export { Airports }           from "./entities/Airports";
+export { Go }                 from "./entities/Go";
+export { CategoryDurations }  from "./entities/CategoryDurations";
 
 export type {
   CreateTripInput, UpdateTripInput,
@@ -58,33 +59,36 @@ export type { GoSessionRow, GoMessageRow, GoMessageRole, InsertGoMessage, Update
 // ── DAL factory ───────────────────────────────────────────────────
 
 import { getBrowserClient, getServerClient, getServiceClient, type SupabaseClient } from "./supabase";
-import { Trips }       from "./entities/Trips";
-import { Activities }  from "./entities/Activities";
-import { Membership }  from "./entities/Membership";
-import { Users }       from "./entities/Users";
-import { Feedback }    from "./entities/Feedback";
-import { Airports }    from "./entities/Airports";
-import { Go }          from "./entities/Go";
+import { Trips }              from "./entities/Trips";
+import { Activities }         from "./entities/Activities";
+import { Membership }         from "./entities/Membership";
+import { Users }              from "./entities/Users";
+import { Feedback }           from "./entities/Feedback";
+import { Airports }           from "./entities/Airports";
+import { Go }                 from "./entities/Go";
+import { CategoryDurations }  from "./entities/CategoryDurations";
 
 export type Dal = {
-  trips:      Trips;
-  activities: Activities;
-  members:    Membership;
-  users:      Users;
-  feedback:   Feedback;
-  airports:   Airports;
-  go:         Go;
+  trips:              Trips;
+  activities:         Activities;
+  members:            Membership;
+  users:              Users;
+  feedback:           Feedback;
+  airports:           Airports;
+  go:                 Go;
+  categoryDurations:  CategoryDurations;
 };
 
 function buildDal(client: SupabaseClient): Dal {
   return {
-    trips:      new Trips(client),
-    activities: new Activities(client),
-    members:    new Membership(client),
-    users:      new Users(client),
-    feedback:   new Feedback(client),
-    airports:   new Airports(client),
-    go:         new Go(client),
+    trips:              new Trips(client),
+    activities:         new Activities(client),
+    members:            new Membership(client),
+    users:              new Users(client),
+    feedback:           new Feedback(client),
+    airports:           new Airports(client),
+    go:                 new Go(client),
+    categoryDurations:  new CategoryDurations(client),
   };
 }
 

@@ -262,6 +262,19 @@ export type DbTaxonomyTerm = {
   created_at: string;
 };
 
+/**
+ * Default duration (minutes) per place category — feeds the Add-to-Trip
+ * algorithm's `resolveDuration` step. Keys are LOOSE strings (Google Place
+ * types, our explore sub-ids, or any other taxonomy we layer on top); the
+ * algorithm tries each candidate the place provides in order.
+ */
+export type DbCategoryDuration = {
+  category: string;
+  duration_min: number;
+  label: string | null;
+  updated_at: string;
+};
+
 // ── Generic DAL result type ───────────────────────────────────────
 
 export type DalResult<T> =
