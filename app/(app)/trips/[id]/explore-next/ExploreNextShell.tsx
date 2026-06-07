@@ -7,7 +7,8 @@ import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
-import { INK } from "@/components/ui/mapPins";
+import { iconGlyph, INK } from "@/components/ui/mapPins";
+import { IconBed } from "@/components/ui/icons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { Activity } from "@/lib/dal/domain";
@@ -169,6 +170,24 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           roadmapState: state,
         });
       }
+      // Accommodation pin — quando un'attività viene convertita in "sleep"
+      // (Stop→Sleep), migra da `day.activities` a `day.accommodation`. Senza
+      // questa branch il pin scomparirebbe completamente dalla mappa. Glyph
+      // bed, stesso state di dimming del giorno. Su multi-night la stessa
+      // accommodation appare con id distinto per ogni giorno: i marker
+      // overlappano ma il reconcile gestisce le entry separate senza drift.
+      const acc = day.accommodation;
+      if (acc?.lat != null && acc?.lng != null) {
+        out.push({
+          id: `acc-${day.id}`,
+          lat: acc.lat,
+          lng: acc.lng,
+          title: acc.name,
+          glyph: iconGlyph("acc:bed", IconBed),
+          variant: "roadmap" as const,
+          roadmapState: state,
+        });
+      }
     }
     return out;
   }, [effectiveDays, dayFocused, selectedDayId]);
@@ -196,14 +215,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         .filter((s): s is typeof s & { location_lat: number; location_lng: number } =>
           s.location_lat != null && s.location_lng != null,
         );
-      if (stops.length < 2) continue;
+
+      const points: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
+      // Append accommodation come ultimo nodo del giorno (check-in serale,
+      // coerente col brief 06). Così il path racconta "wake up → places → bed".
+      // Dedup banale: se l'ultima activity coincide con le coords
+      // dell'accommodation (es. la sleep nasce DA un'activity convertita) la
+      // saltiamo, altrimenti vedremmo un segmento di lunghezza zero.
+      const acc = day.accommodation;
+      if (acc?.lat != null && acc?.lng != null) {
+        const last = points[points.length - 1];
+        if (!last || last.lat !== acc.lat || last.lng !== acc.lng) {
+          points.push({ lat: acc.lat, lng: acc.lng });
+        }
+      }
+      if (points.length < 2) continue;
 
       const isFocusDay = dayFocused && day.id === selectedDayId;
       const opacity = !dayFocused || isFocusDay ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED;
 
       out.push({
         id: `day-${day.id}`,
-        points: stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng })),
+        points,
         travelMode: "DRIVING",
         style: { color: INK, weight: 3, opacity },
       });
