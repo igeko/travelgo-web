@@ -18,6 +18,7 @@ import { trips } from "./trips";
 import { airports } from "./airports";
 import { days } from "./days";
 import { activities } from "./activities";
+import { accommodations } from "./accommodations";
 import { yumes } from "./yumes";
 import { user } from "./user";
 import { feedback } from "./feedback";
@@ -34,6 +35,7 @@ export const api = {
   airports,
   days,
   activities,
+  accommodations,
   yumes,
   user,
   feedback,

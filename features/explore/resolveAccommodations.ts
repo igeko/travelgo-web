@@ -1,17 +1,23 @@
 /**
  * features/explore/resolveAccommodations.ts
  * ─────────────────────────────────────────────────────────────────
- * Reads the legacy days.accommodation_* columns and derives an
- * AccommodationDisplay per day, resolving the use_previous_accommodation
- * chain and tagging arrival/departure/night-index across each stay.
+ * Two resolvers for the timeline's per-day "sleep" display:
  *
- * Bridge layer — the new accommodations / scheduled_accommodations tables
- * are not yet populated. When they are, this resolver will be replaced
- * by a direct projection from the scheduled rows.
+ *   accommodationsFromNights(nights, days)
+ *     The canonical resolver — projects accommodation_nights + stays +
+ *     Property activity onto each day. Source of truth.
+ *
+ *   resolveAccommodations(days)
+ *     Legacy fallback — reads days.accommodation_* columns. Kept until
+ *     all consumers migrate.
+ *
+ * Both produce the same AccommodationDisplay shape so the Timeline
+ * organism remains source-agnostic.
  * ─────────────────────────────────────────────────────────────────
  */
 
 import type { Day } from "@/lib/dal/domain";
+import type { NightWithStay } from "@/lib/dal";
 
 export type AccommodationDisplay = {
   name: string;
@@ -27,7 +33,59 @@ export type AccommodationDisplay = {
   night_index: number;
   /** Total nights of the stay this day belongs to. */
   nights_total: number;
+  /**
+   * Stay id — present when the AccommodationDisplay was projected from
+   * accommodation_nights. Missing when derived from the legacy days.*
+   * columns (those will be deprecated once all writes migrate).
+   */
+  stay_id?: string;
 };
+
+// ── Canonical resolver: from nights ───────────────────────────────
+
+/**
+ * Project accommodation_nights onto days. Each night already carries
+ * stay → activity (Property), so all we need to do is index by day_id
+ * and compute nights_total per stay.
+ */
+export function accommodationsFromNights<D extends { id: string }>(
+  nights: NightWithStay[],
+  days: D[],
+): Array<D & { accommodation: AccommodationDisplay | null }> {
+  // nights_total per stay: count of materialized nights.
+  const totalByStay = new Map<string, number>();
+  for (const n of nights) {
+    totalByStay.set(n.stay_id, (totalByStay.get(n.stay_id) ?? 0) + 1);
+  }
+
+  // Index nights by day_id (each day has at most one stay under our
+  // exclusion constraint, so the lookup is 1:1).
+  const byDay = new Map<string, NightWithStay>();
+  for (const n of nights) byDay.set(n.day_id, n);
+
+  return days.map((d) => {
+    const n = byDay.get(d.id);
+    if (!n) return { ...d, accommodation: null };
+    const a = n.stay.activity;
+    return {
+      ...d,
+      accommodation: {
+        name: a.title,
+        type: null,
+        address: a.location,
+        url: a.url,
+        place_id: a.location_place_id,
+        lat: a.location_lat,
+        lng: a.location_lng,
+        is_arrival: n.is_arrival,
+        is_departure: n.is_departure,
+        night_index: n.night_index,
+        nights_total: totalByStay.get(n.stay_id) ?? 1,
+        stay_id: n.stay_id,
+      },
+    };
+  });
+}
 
 type Effective = Pick<
   Day,

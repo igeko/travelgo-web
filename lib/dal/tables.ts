@@ -16,6 +16,12 @@ export enum TripTable {
   ScheduledActivities = "scheduled_activities",
 }
 
+/** Lodging: reservations as ranges + their per-day projection. */
+export enum AccommodationTable {
+  Stays = "accommodation_stays",
+  Nights = "accommodation_nights",
+}
+
 /** Activity entity and its rich-content relations. */
 export enum ActivityTable {
   Activities = "activities",

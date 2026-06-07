@@ -421,6 +421,29 @@ export class Trips {
     return (data as { day_id: string } | null)?.day_id ?? null;
   }
 
+  /** Fetch a single scheduled-activity row by id (raw shape, no JOIN). */
+  async findScheduledById(
+    scheduledActivityId: string,
+  ): Promise<DbScheduledActivity | null> {
+    const { data } = await this.db
+      .from(TripTable.ScheduledActivities)
+      .select("*")
+      .eq("id", scheduledActivityId)
+      .maybeSingle();
+    return (data as DbScheduledActivity | null) ?? null;
+  }
+
+  /** Resolve a day id within a trip from its ISO date "YYYY-MM-DD". */
+  async dayIdForDate(tripId: string, date: string): Promise<string | null> {
+    const { data } = await this.db
+      .from(TripTable.Days)
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("date", date)
+      .maybeSingle();
+    return (data as { id: string } | null)?.id ?? null;
+  }
+
   // ── Composed UI reads (slim/merged shapes from domain.ts) ─────────
 
   /** Slim trip for the trip header / shell. */

@@ -92,6 +92,23 @@ type Props = {
    * are NOT routed here — those have their own editing flow.
    */
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
+  /**
+   * Stop → Sleep conversion. Receives the scheduled_activity.id; the
+   * host deletes the scheduled row and creates a 1-night stay starting
+   * on its day. Triggered when the user flips the Sleep/Stop toggle of
+   * a non-lodging row to "sleep".
+   */
+  onConvertToSleep?: (scheduledId: string) => void | Promise<void>;
+  /**
+   * Sleep → Stop conversion. Receives the accommodation_stays.id; the
+   * host drops the stay (+ nights) and recreates one scheduled row on
+   * the stay's check-in day. Extra nights of multi-night stays are lost.
+   */
+  onConvertToStop?: (stayId: string) => void | Promise<void>;
+  /** Stepper "+" on a lodging row: extends the stay by one night. */
+  onExtendStay?: (stayId: string) => void | Promise<void>;
+  /** Stepper "−" on a lodging row: reduces the stay by one night. */
+  onReduceStay?: (stayId: string) => void | Promise<void>;
   className?: string;
 };
 
@@ -176,6 +193,9 @@ type Item =
       address: string | null;
       nightIndex: number;
       nightsTotal: number;
+      /** Stay id — present when projected from accommodation_nights; lets
+       *  the Sleep/Stop toggle and the Stepper mutate the right stay. */
+      stayId?: string;
     }
   | { kind: "transfer"; id: string; transfer: TransferVM };
 
@@ -203,6 +223,7 @@ function buildItems(
       address: accommodation.address,
       nightIndex: accommodation.night_index,
       nightsTotal: accommodation.nights_total,
+      stayId: accommodation.stay_id,
     });
   }
 
@@ -228,7 +249,18 @@ function buildItems(
 
 /* ── Timeline ───────────────────────────────────────────────────── */
 
-export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onSelectActivity, onRemoveActivity, className }: Props) {
+export function Timeline({
+  days,
+  injectSampleTransfers = false,
+  onSelectDay,
+  onSelectActivity,
+  onRemoveActivity,
+  onConvertToSleep,
+  onConvertToStop,
+  onExtendStay,
+  onReduceStay,
+  className,
+}: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
@@ -427,6 +459,8 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
 
               if (item.kind === "lodging") {
                 const open = openId === item.id;
+                const stayId = item.stayId;
+                const currentNights = item.nightsTotal;
                 return (
                   <div
                     key={item.id}
@@ -444,6 +478,18 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={() => setOpenId(null)}
+                      onModeChange={(next) => {
+                        // sleep → stop: cross-table conversion. Requires a
+                        // stay_id (we can't mutate the legacy days.* shape).
+                        if (next === "stop" && stayId) {
+                          void onConvertToStop?.(stayId);
+                        }
+                      }}
+                      onNightsChange={(next) => {
+                        if (!stayId) return;
+                        if (next > currentNights) void onExtendStay?.(stayId);
+                        else if (next < currentNights) void onReduceStay?.(stayId);
+                      }}
                     />
                   </div>
                 );
@@ -492,6 +538,13 @@ export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onS
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={handleRemove}
+                      onModeChange={(next) => {
+                        // stop → sleep: cross-table conversion. The scheduled
+                        // row is replaced by a 1-night stay starting on its day.
+                        if (next === "sleep") {
+                          void onConvertToSleep?.(a.id);
+                        }
+                      }}
                     />
                   )}
                 </div>

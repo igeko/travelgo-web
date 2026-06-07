@@ -21,10 +21,11 @@ import { FeedbackService } from "./FeedbackService";
 import { UserService } from "./UserService";
 import { YumeService } from "./YumeService";
 import { GoService } from "./GoService";
+import { AccommodationService } from "./AccommodationService";
 
 // Scheduler is intentionally NOT exported: it is a private engine reached only
 // through TripService, so the day↔activity write-path stays single.
-export { TripService, MembershipService, FeedbackService, UserService, YumeService, GoService };
+export { TripService, MembershipService, FeedbackService, UserService, YumeService, GoService, AccommodationService };
 export type { CreateTripRequest, UpdateTripPatch } from "./TripService";
 export type { Me } from "./UserService";
 export type { Yume } from "./YumeService";
@@ -40,6 +41,8 @@ export type Services = {
   yumes: YumeService;
   /** Go agent persistence: session + conversation thread. */
   go: GoService;
+  /** Lodging stays + per-day nights projection. */
+  accommodations: AccommodationService;
 };
 
 function build(dal: Dal): Services {
@@ -51,6 +54,7 @@ function build(dal: Dal): Services {
     users: new UserService(dal),
     yumes,
     go: new GoService(dal),
+    accommodations: new AccommodationService(dal),
   };
 }
 

@@ -266,6 +266,59 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
+  // ── Sleep ↔ Stop toggle + stepper +/− nights ────────────────────
+  //
+  // No optimistic UI here yet: the cross-table conversion (and the
+  // stepper extend/reduce on multi-night stays) is too involved to
+  // mirror locally — we fire the mutation, then let router.refresh()
+  // bring back the SSR snapshot. A latch prevents double-fire while
+  // an op is in flight.
+  const stayOpRef = useRef(false);
+
+  const runStayOp = useCallback(
+    async (op: () => Promise<unknown>, errLabel: string) => {
+      if (stayOpRef.current) return;
+      stayOpRef.current = true;
+      try {
+        await op();
+        router.refresh();
+      } catch (err) {
+        console.error(`[ExploreNextShell] ${errLabel} failed:`, err);
+        setPillState({ kind: "error", action: "remove" });
+      } finally {
+        stayOpRef.current = false;
+      }
+    },
+    [router],
+  );
+
+  const handleConvertToSleep = useCallback(
+    (scheduledId: string) =>
+      runStayOp(
+        () => api.accommodations.convertFromScheduled(scheduledId),
+        "convertToSleep",
+      ),
+    [runStayOp],
+  );
+
+  const handleConvertToStop = useCallback(
+    (stayId: string) =>
+      runStayOp(() => api.accommodations.convertToStop(stayId), "convertToStop"),
+    [runStayOp],
+  );
+
+  const handleExtendStay = useCallback(
+    (stayId: string) =>
+      runStayOp(() => api.accommodations.extend(stayId), "extendStay"),
+    [runStayOp],
+  );
+
+  const handleReduceStay = useCallback(
+    (stayId: string) =>
+      runStayOp(() => api.accommodations.reduce(stayId), "reduceStay"),
+    [runStayOp],
+  );
+
   // ResizeObserver per il pannello sinistro.
   useEffect(() => {
     if (!panelRef.current) return;
@@ -303,6 +356,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
+            onConvertToSleep={handleConvertToSleep}
+            onConvertToStop={handleConvertToStop}
+            onExtendStay={handleExtendStay}
+            onReduceStay={handleReduceStay}
           />
         </div>
       </aside>

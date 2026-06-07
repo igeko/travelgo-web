@@ -126,6 +126,20 @@ export const requireScheduledEditor = async (scheduledId: string) =>
 export const requireScheduledMember = async (scheduledId: string) =>
   requireDayMember(await dayIdForScheduledOr404(scheduledId));
 
+// ── Accommodation-stay-scoped ─────────────────────────────────────
+
+async function tripIdForStayOr404(stayId: string): Promise<string> {
+  const dal = await serverDal();
+  const tripId = await dal.accommodations.tripIdOfStay(stayId);
+  if (!tripId) throw notFound();
+  return tripId;
+}
+
+export const requireStayEditor = async (stayId: string) =>
+  requireTripEditor(await tripIdForStayOr404(stayId));
+export const requireStayMember = async (stayId: string) =>
+  requireTripMember(await tripIdForStayOr404(stayId));
+
 // ── Platform-scoped ───────────────────────────────────────────────
 
 /** Require a platform role from `allowed`; returns the user's full role set. */

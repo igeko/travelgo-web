@@ -155,6 +155,48 @@ export type DbScheduledActivity = {
   updated_at: string;
 };
 
+/** Booking lifecycle for a lodging reservation. */
+export type StayBookingStatus = "todo" | "booked" | "paid" | "cancelled";
+
+/**
+ * A lodging reservation — range-based, one row per stay.
+ * Links a trip to a Property (an `activities` row of category 'lodging').
+ */
+export type DbAccommodationStay = {
+  id: string;
+  trip_id: string;
+  activity_id: string;
+  created_by: string | null;
+  /** Postgres daterange serialised as "[YYYY-MM-DD,YYYY-MM-DD)". */
+  stay_range: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  booking_status: StayBookingStatus;
+  confirmation_code: string | null;
+  total_cost_amount: number | null;
+  total_cost_currency: string | null;
+  paid: boolean;
+  instance_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Projection of an accommodation_stay onto a single day. Maintained by
+ * the sync_accommodation_nights trigger as a pure function of stay_range.
+ * Read-only via API: writes happen through the trigger.
+ */
+export type DbAccommodationNight = {
+  id: string;
+  stay_id: string;
+  day_id: string;
+  night_index: number;
+  is_arrival: boolean;
+  is_departure: boolean;
+  position: number;
+  created_at: string;
+};
+
 // ── Composite types for queries with JOIN ─────────────────────────
 
 export type ScheduledActivityWithDetails = DbScheduledActivity & {

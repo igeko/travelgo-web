@@ -33,6 +33,7 @@ export * from "./supabase";
 
 export { Trips }              from "./entities/Trips";
 export { Activities }         from "./entities/Activities";
+export { Accommodations }     from "./entities/Accommodations";
 export { Membership }         from "./entities/Membership";
 export { Users }              from "./entities/Users";
 export { Feedback }           from "./entities/Feedback";
@@ -51,6 +52,9 @@ export type {
   ActivitySearchInput, ActivitySearchResult,
   ActivityScheduledInstance, ActivitySearchWishlistRow,
 } from "./entities/Activities";
+export type {
+  CreateStayInput, UpdateStayInput, StayWithActivity, NightWithStay,
+} from "./entities/Accommodations";
 export type { AddMemberInput, CreateInviteInput } from "./entities/Membership";
 export type { UserProfile, UpdateProfileInput } from "./entities/Users";
 export type { CreateTesterNoteInput } from "./entities/Feedback";
@@ -61,6 +65,7 @@ export type { GoSessionRow, GoMessageRow, GoMessageRole, InsertGoMessage, Update
 import { getBrowserClient, getServerClient, getServiceClient, type SupabaseClient } from "./supabase";
 import { Trips }              from "./entities/Trips";
 import { Activities }         from "./entities/Activities";
+import { Accommodations }     from "./entities/Accommodations";
 import { Membership }         from "./entities/Membership";
 import { Users }              from "./entities/Users";
 import { Feedback }           from "./entities/Feedback";
@@ -71,6 +76,7 @@ import { CategoryDurations }  from "./entities/CategoryDurations";
 export type Dal = {
   trips:              Trips;
   activities:         Activities;
+  accommodations:     Accommodations;
   members:            Membership;
   users:              Users;
   feedback:           Feedback;
@@ -83,6 +89,7 @@ function buildDal(client: SupabaseClient): Dal {
   return {
     trips:              new Trips(client),
     activities:         new Activities(client),
+    accommodations:     new Accommodations(client),
     members:            new Membership(client),
     users:              new Users(client),
     feedback:           new Feedback(client),
