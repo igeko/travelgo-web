@@ -2,6 +2,16 @@
   "Explore": {
     "wishlist": "Yumeji",
     "addToTrip": "Aggiungi al viaggio",
+    "addToTripError": "Non sono riuscito ad aggiungere il luogo. Riprova.",
+    "added": {
+      "title": "Aggiunto al Giorno {n}",
+      "after": " — dopo {title}",
+      "warning": {
+        "overflow": "Il giorno supera la mezzanotte",
+        "incoherent": "Lontano dalle altre tappe del giorno",
+        "duplicate": "Già presente nel viaggio"
+      }
+    },
     "website": "Sito",
     "open": "Aperto",
     "closed": "Chiuso",

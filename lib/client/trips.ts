@@ -5,7 +5,14 @@ import type { TripSummary, TripSnapshot, DbTrip, MemberRole, InviteRole } from "
 import type { HomeMeta } from "@/lib/trip-home/meta";
 import type { TripAirport } from "@/lib/trip-home/airports";
 import type { TripMemberView, TripInviteView } from "@/lib/trip-members/types";
+import type { AddPlaceInput, AddPlaceResult } from "@/lib/services/TripService";
 import { get, post, patch, del } from "./http";
+
+export type AddPlacePayload = {
+  place: AddPlaceInput;
+  selectedDayId?: string | null;
+  selectedActivityId?: string | null;
+};
 
 export type CreateTripPayload = {
   title: string;
@@ -48,6 +55,14 @@ export const trips = {
   /** GET /api/trips/[id]/home-meta — AI-resolved Trip Home content for a locale. */
   homeMeta: (id: string, locale: string) =>
     get<HomeMeta>(`/api/trips/${id}/home-meta?locale=${encodeURIComponent(locale)}`),
+
+  /**
+   * POST /api/trips/[id]/add-place — wiring of the Explore "Add to trip" CTA.
+   * Runs the Add-to-Trip algorithm server-side (positioning + warnings),
+   * persists the new scheduled activity, and recomputes the affected bridges.
+   */
+  addPlace: (id: string, payload: AddPlacePayload) =>
+    post<AddPlaceResult>(`/api/trips/${id}/add-place`, payload),
 
   // ── Members ──────────────────────────────────────────────────────
 

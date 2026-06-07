@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Map, type LatLng, type MapMarker, type RouteSpec } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
@@ -9,6 +10,7 @@ import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
 import { YumejiPinnedColumn, useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
 import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHoverCard";
+import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
@@ -18,6 +20,7 @@ import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { AreaPlace } from "@/app/api/places/area-search/route";
+import type { AddPlaceInput, AddPlaceResult } from "@/lib/services/TripService";
 
 /** Default activity/day image — used by night cards when the stop has none. */
 const DEFAULT_ACTIVITY_IMAGE = "/media/day-default-banner.png";
@@ -66,6 +69,8 @@ export function ExploreMap({
   extraMarkers = [],
   viewportInset,
   onExtraMarkerDragEnd,
+  selectedDayId = null,
+  selectedActivityId = null,
 }: {
   tripId: string;
   center: LatLng;
@@ -88,10 +93,24 @@ export function ExploreMap({
    * into its own state, otherwise the marker snaps back on the next reconcile.
    */
   onExtraMarkerDragEnd?: (id: string, latlng: LatLng) => void;
+  /**
+   * Selection context surfaced by the host (Timeline → ExploreNextShell).
+   * Forwarded to the Add-to-Trip backend as `selectedDayId` / `selectedActivityId`
+   * so the algorithm can insert the new place into the right day / after the
+   * currently-open stop. Defaults: null → algorithm picks the end of the plan.
+   */
+  selectedDayId?: string | null;
+  selectedActivityId?: string | null;
 }) {
+  const router = useRouter();
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
   const categories = useExploreCategories();
+  // Post-insertion feedback: a small pill that fades over the map for 3s.
+  // Driven by handleAddToTrip; the pill component takes care of its own timer.
+  const [addedPill, setAddedPill] = useState<AddedPillState | null>(null);
+  // Latch so the CTA can't fire twice while a request is in-flight.
+  const addingRef = useRef(false);
   const [lastPlace, setLastPlace] = useLocalStorageState<GoPlace | null>(
     `travelgo-explore-last-${tripId}`,
     null,
@@ -420,6 +439,49 @@ export function ExploreMap({
     openGo();
   };
 
+  // Wiring of the PlaceHoverCard "Add to trip" CTA. The whole orchestration
+  // (algorithm + persistence + bridge recalc) runs server-side in a single
+  // POST. On success we surface the AddedPill and refresh the route so the
+  // Timeline rerenders with the new stop. On failure we re-enable the CTA
+  // and show the pill in error mode — the brief 06b will cover the richer
+  // toast UX, this is the minimum so the user always sees the outcome.
+  const handleAddToTrip = async (input: {
+    placeId: string | null;
+    title: string;
+    lat: number;
+    lng: number;
+    categories?: string[];
+  }) => {
+    if (addingRef.current) return;
+    addingRef.current = true;
+    try {
+      const payload: AddPlaceInput = {
+        placeId: input.placeId,
+        title: input.title,
+        lat: input.lat,
+        lng: input.lng,
+        categories: input.categories,
+      };
+      const res: AddPlaceResult = await api.trips.addPlace(tripId, {
+        place: payload,
+        selectedDayId,
+        selectedActivityId,
+      });
+      setAddedPill({
+        kind: "success",
+        dayNumber: res.position.dayNumber,
+        afterTitle: res.position.afterTitle,
+        warnings: res.warnings,
+      });
+      router.refresh();
+    } catch (err) {
+      console.error("[ExploreMap] addPlace failed:", err);
+      setAddedPill({ kind: "error" });
+    } finally {
+      addingRef.current = false;
+    }
+  };
+
   return (
     <div className="relative h-full w-full">
       <Map
@@ -440,8 +502,8 @@ export function ExploreMap({
         viewportInset={viewportInset}
         renderPinCard={(id, close) => {
           // Search-result pin → enriched card with the pre-fetched payload
-          // (no second Google round-trip). "Add to trip" is wired in but
-          // intentionally a no-op for now — UX scaffolding only.
+          // (no second Google round-trip). "Add to trip" posts to the
+          // server-side orchestrator and closes the card on success.
           if (searchPlace && id === searchPlace.placeId) {
             return (
               <PlaceHoverCard
@@ -449,9 +511,15 @@ export function ExploreMap({
                 initialPlace={searchPlace}
                 fallbackName={searchPlace.name}
                 onClose={close}
-                onAddToTrip={() => {
-                  // TODO: wire to the trip add-to-day flow once the host
-                  // exposes it. Keeping the prop set so the CTA renders.
+                onAddToTrip={async (place) => {
+                  await handleAddToTrip({
+                    placeId: searchPlace.placeId,
+                    title: place?.name ?? searchPlace.name,
+                    lat: place?.lat ?? searchPlace.lat,
+                    lng: place?.lng ?? searchPlace.lng,
+                    categories: place?.types ?? searchPlace.types,
+                  });
+                  close();
                 }}
               />
             );
@@ -470,9 +538,15 @@ export function ExploreMap({
               placeId={id}
               fallbackName={m.title ?? t("placeFallback")}
               onClose={close}
-              onAddToTrip={() => {
-                // TODO: wire to the trip add-to-day flow once the host
-                // exposes it. Keeping the prop set so the CTA renders.
+              onAddToTrip={async (place) => {
+                await handleAddToTrip({
+                  placeId: id,
+                  title: place?.name ?? m.title ?? t("placeFallback"),
+                  lat: place?.lat ?? m.lat,
+                  lng: place?.lng ?? m.lng,
+                  categories: place?.types,
+                });
+                close();
               }}
             />
           );
@@ -554,6 +628,11 @@ export function ExploreMap({
         floating
         className="hidden md:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
       />
+
+      {/* Post-insertion feedback — small auto-dismissing pill. */}
+      {addedPill && (
+        <AddedPill state={addedPill} onDismiss={() => setAddedPill(null)} />
+      )}
     </div>
   );
 }

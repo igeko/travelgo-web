@@ -48,6 +48,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [selectedDayId, setSelectedDayId] = useState<string | null>(
     sortedDays[0]?.id ?? null,
   );
+  // Driven by Timeline's "open activity" (a stop expanded inline by click).
+  // Fed to the Add-to-Trip algorithm via ExploreMap so the CTA on a place
+  // card knows where (after which stop) the new place should land. Null
+  // when no row is open — the algorithm falls back to selectedDayId, then
+  // to "end of last populated day".
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const selectedDay = sortedDays.find((d) => d.id === selectedDayId) ?? null;
   const selectedDayStops = useMemo(() => {
     if (!selectedDay) return [];
@@ -100,6 +106,8 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         nightRoute={nightRoute}
         extraMarkers={itineraryMarkers}
         viewportInset={{ left: panelWidth }}
+        selectedDayId={selectedDayId}
+        selectedActivityId={selectedActivityId}
       />
 
       {/* Panel sinistro — card arrotondata che contiene la Timeline. Il
@@ -110,7 +118,11 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <Timeline days={days} onSelectDay={setSelectedDayId} />
+          <Timeline
+            days={days}
+            onSelectDay={setSelectedDayId}
+            onSelectActivity={setSelectedActivityId}
+          />
         </div>
       </aside>
     </div>

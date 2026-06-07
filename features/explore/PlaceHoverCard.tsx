@@ -69,8 +69,12 @@ export function PlaceHoverCard({
   fallbackName: string;
   onClose: () => void;
   onFavorite?: () => void;
-  /** Add this place to the current trip (Google mode only). */
-  onAddToTrip?: () => void;
+  /**
+   * Add this place to the current trip (Google mode only). The current
+   * enriched Place is forwarded when available, so callers don't need a
+   * second Google round-trip just to read the categories / coordinates.
+   */
+  onAddToTrip?: (place: PlaceEnriched | null) => void;
 }) {
   const t = useTranslations("Explore");
   const [place, setPlace] = useState<PlaceEnriched | null>(initialPlace ?? null);
@@ -248,7 +252,7 @@ export function PlaceHoverCard({
                 variant="solid"
                 tone="neutral"
                 size="sm"
-                onClick={onAddToTrip}
+                onClick={() => onAddToTrip(place)}
                 className="flex-1 bg-primary border-primary text-white hover:bg-orange-deep hover:border-orange-deep hover:text-white"
               >
                 <IconCalendarPlus /> {t("addToTrip")}

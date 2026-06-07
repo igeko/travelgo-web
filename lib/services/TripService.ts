@@ -8,6 +8,7 @@
  */
 
 import type { Dal, TripSummary, TripSnapshot, DbTrip, DbDay, UpdateTripInput, Activity } from "@/lib/dal";
+import type { BridgeData } from "@/lib/dal/domain";
 import { notFound, badRequest, upstream } from "@/lib/api/errors";
 import type { Scheduler } from "./Scheduler";
 import { isCurrencyCode } from "@/lib/api/validation";
@@ -22,6 +23,14 @@ import {
 import { buildHomeMessages, parseHomeMeta } from "@/lib/trip-home/home-prompt";
 import { type TripAirport } from "@/lib/trip-home/airports";
 import { unwrap } from "./util";
+import {
+  addPlaceToTrip,
+  AddToTripError,
+  snapshotToPlan,
+  type AddWarning,
+  type CandidatePlace,
+} from "@/lib/planning/addToTrip";
+import { computeRoutes } from "@/lib/maps/provider";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -50,6 +59,52 @@ export type UpdateTripPatch = {
 
 const MAX_TRIP_DAYS = 366;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Wire input for `addPlace`. Mirrors `CandidatePlace` from the planning
+ * lib but kept inline so route handlers don't need a second import.
+ */
+export type AddPlaceInput = {
+  placeId: string | null;
+  title: string;
+  lat: number;
+  lng: number;
+  categories?: string[];
+  durationHintMin?: number | null;
+  isAccommodation?: boolean;
+};
+
+export type AddPlaceContext = {
+  selectedDayId?: string | null;
+  selectedActivityId?: string | null;
+};
+
+export type AddPlaceResult = {
+  scheduledActivity: Activity;
+  position: {
+    dayId: string;
+    dayNumber: number;
+    afterActivityId: string | null;
+    /** Title of the activity the new stop landed after — for the UI pill. */
+    afterTitle: string | null;
+  };
+  warnings: AddWarning[];
+};
+
+/**
+ * BridgeData.transport → Google Routes API travelMode. Walk/bike/car/bus/
+ * train all have a direct match; metro and taxi don't and we fall back to
+ * the closest reasonable mode (TRANSIT and DRIVE respectively).
+ */
+const TRANSPORT_TO_GOOGLE_TRAVEL_MODE: Record<BridgeData["transport"], string> = {
+  walk: "WALK",
+  bike: "BICYCLE",
+  car: "DRIVE",
+  taxi: "DRIVE",
+  bus: "TRANSIT",
+  metro: "TRANSIT",
+  train: "TRANSIT",
+};
 
 function safeIsoDate(value: unknown): string | null {
   if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return null;
@@ -491,6 +546,202 @@ export class TripService {
   /** AI reorder of a day: decides the order, then applies it via reorderDay. */
   organize(dayId: string): Promise<Activity[]> {
     return this.scheduler.organize(dayId);
+  }
+
+  /**
+   * Add a place picked from Explore to the trip.
+   *
+   * Orchestrates the brief 06 algorithm end-to-end:
+   *   1. snapshot + category durations → plan
+   *   2. addPlaceToTrip → { activity, position, warnings }
+   *   3. persist via Scheduler.addToDay
+   *   4. recompute the two bridges that span the new stop
+   *      (prev→new and new→next), inheriting the broken bridge's transport
+   *
+   * Returns the merged scheduled Activity, a position payload with the
+   * day number + the title of the activity it landed after (for the UI
+   * pill), and any non-blocking warnings raised by the algorithm.
+   */
+  async addPlace(
+    tripId: string,
+    place: AddPlaceInput,
+    context: AddPlaceContext = {},
+  ): Promise<AddPlaceResult> {
+    const snapshot = await this.dal.trips.getSnapshot(tripId);
+    if (!snapshot) throw notFound("Trip not found");
+    const durationMap = await this.dal.categoryDurations.asMap();
+    const plan = snapshotToPlan(snapshot);
+
+    const candidate: CandidatePlace = {
+      placeId: place.placeId ?? null,
+      title: place.title,
+      lat: place.lat,
+      lng: place.lng,
+      categories: place.categories ?? [],
+      durationHintMin: place.durationHintMin ?? null,
+      isAccommodation: !!place.isAccommodation,
+    };
+
+    let outcome;
+    try {
+      outcome = addPlaceToTrip(plan, candidate, {
+        selectedDayId: context.selectedDayId ?? null,
+        selectedActivityId: context.selectedActivityId ?? null,
+        getCategoryDurationMin: (cat) => durationMap.get(cat) ?? null,
+      });
+    } catch (err) {
+      if (err instanceof AddToTripError) throw badRequest(err.message);
+      throw err;
+    }
+    const { activity: built, position, warnings } = outcome;
+
+    // Capture prev/next BEFORE the insertion mutates the day. Both are needed
+    // for the bridge recalc + the "after X" label in the UI pill.
+    const targetDay = snapshot.days.find((d) => d.id === position.dayId);
+    if (!targetDay) throw upstream("Day disappeared between plan and persist");
+    const sortedActs = [...targetDay.activities].sort((a, b) => a.position - b.position);
+
+    let prevActivity: Activity | null = null;
+    let nextActivity: Activity | null = null;
+    if (position.afterActivityId) {
+      const idx = sortedActs.findIndex((a) => a.id === position.afterActivityId);
+      if (idx >= 0) {
+        prevActivity = sortedActs[idx];
+        nextActivity = sortedActs[idx + 1] ?? null;
+      }
+    } else {
+      prevActivity = sortedActs[sortedActs.length - 1] ?? null;
+    }
+    const afterTitle = prevActivity?.title ?? null;
+
+    // Persist — Scheduler creates entity + scheduled row in one shot.
+    const scheduledActivity = await this.scheduler.addToDay(position.dayId, {
+      title: built.title,
+      location: built.location,
+      location_place_id: built.location_place_id,
+      location_lat: built.location_lat,
+      location_lng: built.location_lng,
+      slot: built.slot,
+      time: built.time,
+      position: built.position,
+      type: built.type,
+    });
+
+    // Bridge recalc (Fase 2). Best-effort: if Google fails we surface in logs
+    // and leave the warnings as they are — the insertion itself succeeded.
+    try {
+      await this.recomputeBridgesAround({
+        newScheduledId: scheduledActivity.id,
+        newLat: built.location_lat,
+        newLng: built.location_lng,
+        prev: prevActivity,
+        next: nextActivity,
+      });
+    } catch (err) {
+      console.error("[TripService.addPlace] bridge recalc failed:", err);
+    }
+
+    return {
+      scheduledActivity,
+      position: {
+        dayId: position.dayId,
+        dayNumber: targetDay.day_number,
+        afterActivityId: position.afterActivityId,
+        afterTitle,
+      },
+      warnings,
+    };
+  }
+
+  /**
+   * Recompute the bridges spanning the freshly inserted stop. Replaces the
+   * single "prev→next" bridge (which doesn't exist anymore) with two new
+   * ones: prev→new and new→next. The transport mode is inherited from the
+   * broken bridge (or falls back to 'walk').
+   *
+   * Writes to BOTH sides of each bridge (bridge_out on the origin and
+   * bridge_in on the destination) so every consumer finds it.
+   */
+  private async recomputeBridgesAround(args: {
+    newScheduledId: string;
+    newLat: number;
+    newLng: number;
+    prev: Activity | null;
+    next: Activity | null;
+  }): Promise<void> {
+    const { newScheduledId, newLat, newLng, prev, next } = args;
+
+    const inheritedTransport: BridgeData["transport"] =
+      (prev?.bridge_out_json?.transport as BridgeData["transport"] | undefined) ??
+      (next?.bridge_in_json?.transport as BridgeData["transport"] | undefined) ??
+      "walk";
+
+    const newPatch: { bridge_in_json?: BridgeData; bridge_out_json?: BridgeData } = {};
+
+    if (prev?.location_lat != null && prev.location_lng != null) {
+      const bridge = await this.computeBridge(
+        { lat: prev.location_lat, lng: prev.location_lng },
+        { lat: newLat, lng: newLng },
+        inheritedTransport,
+      );
+      if (bridge) {
+        newPatch.bridge_in_json = bridge;
+        await this.dal.trips.updateSchedule(prev.id, { bridge_out_json: bridge });
+      }
+    }
+
+    if (next?.location_lat != null && next.location_lng != null) {
+      const bridge = await this.computeBridge(
+        { lat: newLat, lng: newLng },
+        { lat: next.location_lat, lng: next.location_lng },
+        inheritedTransport,
+      );
+      if (bridge) {
+        newPatch.bridge_out_json = bridge;
+        await this.dal.trips.updateSchedule(next.id, { bridge_in_json: bridge });
+      }
+    }
+
+    if (Object.keys(newPatch).length > 0) {
+      await this.dal.trips.updateSchedule(newScheduledId, newPatch as Record<string, unknown>);
+    }
+  }
+
+  /**
+   * Build a BridgeData payload from a single Google Routes call. Returns
+   * null if the points coincide, Routes fails, or the response is missing
+   * `duration`. `line`/`stops`/`note` stay null — those are transit-only
+   * details surfaced via /api/routes/transit, not by computeRoutes.
+   */
+  private async computeBridge(
+    origin: { lat: number; lng: number },
+    destination: { lat: number; lng: number },
+    transport: BridgeData["transport"],
+  ): Promise<BridgeData | null> {
+    if (origin.lat === destination.lat && origin.lng === destination.lng) return null;
+
+    const travelMode = TRANSPORT_TO_GOOGLE_TRAVEL_MODE[transport] ?? "WALK";
+    const body = {
+      origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+      destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
+      travelMode,
+      polylineEncoding: "ENCODED_POLYLINE",
+    };
+
+    const res = await computeRoutes(body, "routes.duration");
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as { routes?: Array<{ duration?: string }> } | null;
+    const rawDuration = data?.routes?.[0]?.duration;
+    if (typeof rawDuration !== "string") return null;
+    const seconds = Number(rawDuration.replace(/s$/, ""));
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return {
+      transport,
+      duration_min: Math.max(1, Math.round(seconds / 60)),
+      line: null,
+      stops: null,
+      note: null,
+    };
   }
 
   /**

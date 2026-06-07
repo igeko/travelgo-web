@@ -22,7 +22,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
 import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
 import {
   IconBed,
@@ -77,6 +77,13 @@ type Props = {
    * on collapse: the model is "last opened wins", not single-selection.
    */
   onSelectDay?: (dayId: string) => void;
+  /**
+   * Fired whenever the in-row "open" activity changes (click on a stop
+   * expands it inline). Hosts consume the id to feed selection-aware
+   * downstream features — e.g. the Add-to-Trip algorithm uses it as
+   * `selectedActivityId`. `null` when no row is open.
+   */
+  onSelectActivity?: (activityId: string | null) => void;
   className?: string;
 };
 
@@ -199,9 +206,16 @@ function buildItems(
 
 /* ── Timeline ───────────────────────────────────────────────────── */
 
-export function Timeline({ days, injectSampleTransfers = false, onSelectDay, className }: Props) {
+export function Timeline({ days, injectSampleTransfers = false, onSelectDay, onSelectActivity, className }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+
+  // Bubble the "open activity" up so hosts can use it as `selectedActivityId`
+  // for downstream features (e.g. Add-to-Trip). The state itself stays local
+  // so the row open/close interaction is unaffected.
+  useEffect(() => {
+    onSelectActivity?.(openId);
+  }, [openId, onSelectActivity]);
 
   const toggleDay = (id: string) =>
     setExpandedDays((prev) => {
