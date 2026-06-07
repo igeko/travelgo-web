@@ -15,6 +15,53 @@ import {
   applyOptStayActions,
   type OptStayAction,
 } from "@/features/explore/optStayActions";
+import type { PlaceResult } from "@/components/ui/AddressField";
+
+/**
+ * Apply optimistic address edits onto a TimelineDayData[] projection. The
+ * map is keyed by activity entity id; each entry overwrites location/
+ * place_id/lat/lng on every scheduled occurrence AND on every accommodation
+ * pointing to that entity, so the change is visible everywhere at once
+ * before the server snapshot lands.
+ */
+function applyAddressEdits(
+  days: TimelineDayData[],
+  edits: Map<string, PlaceResult | null>,
+): TimelineDayData[] {
+  return days.map((day) => {
+    let activities = day.activities;
+    let mutated = false;
+    activities = activities.map((act) => {
+      const entityId = act.activity_id ?? act.entity_id ?? null;
+      if (!entityId || !edits.has(entityId)) return act;
+      mutated = true;
+      const p = edits.get(entityId) ?? null;
+      return {
+        ...act,
+        location: p?.formatted ?? null,
+        location_place_id: p?.placeId ?? null,
+        location_lat: p?.lat ?? null,
+        location_lng: p?.lng ?? null,
+      };
+    });
+    const acc = day.accommodation;
+    if (acc?.activity_id && edits.has(acc.activity_id)) {
+      const p = edits.get(acc.activity_id) ?? null;
+      return {
+        ...day,
+        activities: mutated ? activities : day.activities,
+        accommodation: {
+          ...acc,
+          address: p?.formatted ?? null,
+          place_id: p?.placeId ?? null,
+          lat: p?.lat ?? null,
+          lng: p?.lng ?? null,
+        },
+      };
+    }
+    return mutated ? { ...day, activities } : day;
+  });
+}
 
 /** Opacità della polyline percorso: piena per il giorno in focus (o quando
  *  nessun giorno è focused), ridotta per gli altri quando un giorno è focused. */
@@ -129,17 +176,27 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // props change", https://react.dev/reference/react/useState#storing-information-from-previous-renders).
   const [optStayActions, setOptStayActions] = useState<OptStayAction[]>([]);
   const [openOverride, setOpenOverride] = useState<string | null | undefined>(undefined);
+  // Optimistic address edits keyed by activity entity id. An entity edit
+  // propagates to every scheduled occurrence and every accommodation that
+  // points to it, so we apply the map on a second projection pass.
+  const [optAddressEdits, setOptAddressEdits] = useState<Map<string, PlaceResult | null>>(
+    () => new Map(),
+  );
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
     if (optStayActions.length > 0) setOptStayActions([]);
     if (openOverride !== undefined) setOpenOverride(undefined);
+    if (optAddressEdits.size > 0) setOptAddressEdits(new Map());
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
-    if (optStayActions.length === 0) return visibleDays;
-    return applyOptStayActions(visibleDays, optStayActions);
-  }, [visibleDays, optStayActions]);
+    const afterStays = optStayActions.length === 0
+      ? visibleDays
+      : applyOptStayActions(visibleDays, optStayActions);
+    if (optAddressEdits.size === 0) return afterStays;
+    return applyAddressEdits(afterStays, optAddressEdits);
+  }, [visibleDays, optStayActions, optAddressEdits]);
 
   // Marker itinerario — spec /design/roadmap-pins.
   //   - dayFocused=false (avvio o reset)            → tutti i pin "default"
@@ -365,6 +422,38 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [fireStayOp],
   );
 
+  const handleAddressChange = useCallback(
+    async (activityId: string, place: PlaceResult | null) => {
+      // Optimistic: apply locally first so the AddressField shows the new
+      // pick instantly and every occurrence (scheduled rows + lodging) reflects
+      // it. On success the server snapshot replaces the overlay via the
+      // useEffect on `days`. On failure we drop the entry and show the pill.
+      setOptAddressEdits((prev) => {
+        const next = new Map(prev);
+        next.set(activityId, place);
+        return next;
+      });
+      try {
+        await api.activities.updateEntity(activityId, {
+          location: place?.formatted ?? null,
+          location_place_id: place?.placeId ?? null,
+          location_lat: place?.lat ?? null,
+          location_lng: place?.lng ?? null,
+        });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateAddress failed:", err);
+        setOptAddressEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(activityId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleReduceStay = useCallback(
     (stayId: string) => {
       // If reducing from a single-night stay, the lodging row disappears
@@ -423,6 +512,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onConvertToStop={handleConvertToStop}
             onExtendStay={handleExtendStay}
             onReduceStay={handleReduceStay}
+            onAddressChange={handleAddressChange}
             openOverride={openOverride}
           />
         </div>

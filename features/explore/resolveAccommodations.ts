@@ -39,6 +39,10 @@ export type AccommodationDisplay = {
    * columns (those will be deprecated once all writes migrate).
    */
   stay_id?: string;
+  /** Property activity id — needed to mutate Property-level fields (the
+   *  address, the title, etc.) on the same entity backing the stay. Only
+   *  set by the canonical resolver — the legacy fallback has no entity. */
+  activity_id?: string;
 };
 
 // ── Canonical resolver: from nights ───────────────────────────────
@@ -82,6 +86,7 @@ export function accommodationsFromNights<D extends { id: string }>(
         night_index: n.night_index,
         nights_total: totalByStay.get(n.stay_id) ?? 1,
         stay_id: n.stay_id,
+        activity_id: a.id,
       },
     };
   });
