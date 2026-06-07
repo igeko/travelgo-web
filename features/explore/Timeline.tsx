@@ -395,17 +395,36 @@ export function Timeline({
         const items = buildItems(day.activities, expanded, injectSampleTransfers);
         const lodging = buildLodging(day.accommodation, day.id);
         const showNotes = expanded && !!day.notes;
-        // Row layout:
-        //   1                                  → day badge
-        //   2 .. items.length + 1              → stops (activities + transfers)
-        //   notesRow (only if showNotes)       → today notes
-        //   lastRow (only if lodging present)  → accommodation, pinned at bottom
-        // The accommodation is intentionally rendered AFTER notes, so it stays
-        // the literal last element of the day in both collapsed and expanded
-        // states (the "in fondo sempre" constraint).
-        const notesRow = showNotes ? items.length + 2 : null;
-        const lastRow = 1 + items.length + (showNotes ? 1 : 0) + (lodging ? 1 : 0);
-        const lodgingRow = lodging ? lastRow : null;
+
+        // Row 1 col 2 ("slot accanto al DayBadge") must NEVER be empty when
+        // the day has content: hosts the first stop if any, otherwise the
+        // lodging. Pinning rules:
+        //   - First stop (when present) → row 1, accanto al badge.
+        //   - Lodging → row 1 if there are no stops, else last row (sotto le
+        //     note quando espanse). Mai duplicato.
+        //   - Today notes → row immediately before the bottom lodging (or last
+        //     row if no bottom lodging), only when expanded.
+        const firstSlotIsItem = items.length > 0;
+        const firstSlotIsLodging = !firstSlotIsItem && lodging !== null;
+        const firstSlotPresent = firstSlotIsItem || firstSlotIsLodging;
+        const firstSlotId = firstSlotIsItem
+          ? items[0].kind === "transfer"
+            ? items[0].id
+            : items[0].activity.id
+          : firstSlotIsLodging && lodging
+            ? lodging.id
+            : null;
+        const firstSlotOpen = firstSlotId !== null && openId === firstSlotId;
+        const stopsBelowCount = firstSlotIsItem ? items.length - 1 : 0;
+        const renderLodgingBottom = lodging !== null && firstSlotIsItem;
+        const notesRow = showNotes ? 2 + stopsBelowCount : null;
+        const lodgingRow = firstSlotIsLodging
+          ? 1
+          : renderLodgingBottom
+            ? 2 + stopsBelowCount + (showNotes ? 1 : 0)
+            : null;
+        const lastRow =
+          1 + stopsBelowCount + (showNotes ? 1 : 0) + (renderLodgingBottom ? 1 : 0);
 
         return (
           <div
@@ -414,29 +433,46 @@ export function Timeline({
             style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
           >
             {/* Day rail — the rounded grey segment BELOW the badge, detached by
-                a 3px gap above (mt) and below (the container's row gap), so the
-                day badge floats clear of the rail as in the Figma. Holds the
-                aligned time ticks. */}
+                a 3px gap above (mt) and below (the container's row gap). Holds
+                the aligned time ticks. When the first-slot row 1 item is OPEN
+                the rail extends up into row 1 too, so the dark column covers
+                the full height of the opened card.
+                When a closed first-slot item shares row 1 with the badge, the
+                badge (43px intrinsic + 6px mt = 49) overflows the row sized by
+                the stop (~36px) by 13px into row 2, so the rail's top margin
+                is 13 + 3 = 16 to keep the visible gap below the badge at the
+                intended 3px. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               aria-hidden
               tabIndex={-1}
-              style={{ gridColumn: 1, gridRow: `2 / ${lastRow + 1}` }}
+              style={{
+                gridColumn: 1,
+                gridRow: `${firstSlotOpen ? 1 : 2} / ${lastRow + 1}`,
+              }}
               className={cn(
-                "w-full cursor-pointer self-stretch rounded-xs transition-colors mt-[3px] mb-[3px]",
+                "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
                 expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
+                firstSlotPresent && !firstSlotOpen ? "mt-[16px]" : "mt-[3px]",
               )}
             />
 
-            {/* Day badge — sits on top of the rail (col 1, row 1). */}
+            {/* Day badge — sits on top of the rail (col 1, row 1). When a
+                first-slot item shares row 1 with it, the badge spans row 1+2
+                with `mt-1.5` so the top stripe lines up with the slot icon and
+                row 1's height is driven by the slot item, not by the badge's
+                natural 43px. */}
             <button
               type="button"
               onClick={() => toggleDay(day.id)}
               aria-expanded={expanded}
               aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-              style={{ gridColumn: 1, gridRow: 1 }}
-              className="cursor-pointer self-start"
+              style={{
+                gridColumn: 1,
+                gridRow: firstSlotPresent ? "1 / span 2" : 1,
+              }}
+              className={cn("cursor-pointer self-start", firstSlotPresent && "mt-1.5")}
             >
               <DayBadge
                 weekday={weekday}
@@ -475,11 +511,12 @@ export function Timeline({
             ) : null}
 
             {/* Stops: time on the rail (col 1) + stop/transfer (col 2), same row.
-                Row 1 is the DayBadge; stops occupy rows 2..items.length+1.
-                Accommodation and Today notes are rendered AFTER this loop, so
-                the accommodation stays the literal last element. */}
+                items[0] is pinned to row 1 (accanto al DayBadge); subsequent
+                items fall to rows 2..items.length. Today notes and the bottom
+                accommodation slot (when applicable) are rendered AFTER this
+                loop. */}
             {items.map((item, i) => {
-              const row = i + 2;
+              const row = i + 1;
               if (item.kind === "transfer") {
                 const open = openId === item.id;
                 return (
@@ -582,10 +619,12 @@ export function Timeline({
               </div>
             ) : null}
 
-            {/* ACCOMMODATION — last visible element of the day, always. Rendered
-                here (not inside the items map) so it sits below Today notes
-                when the day is expanded — chronologically you reach the hotel
-                at the end of the day. */}
+            {/* ACCOMMODATION — placed at `lodgingRow`, computed above:
+                  - row 1 (accanto al DayBadge) when there are no stops, so the
+                    slot next to the badge is never empty;
+                  - last row (below Today notes) when there is at least one
+                    stop — chronologically you reach the hotel at the end of
+                    the day. */}
             {lodging && lodgingRow !== null ? (() => {
               const open = openId === lodging.id;
               const stayId = lodging.stayId;
