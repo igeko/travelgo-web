@@ -30,6 +30,7 @@ export {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconBed,
+  IconMoon,
   IconBookmark,
   IconBug,
   IconBulb,
