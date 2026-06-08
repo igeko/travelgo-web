@@ -367,7 +367,7 @@ export function Timeline({
   });
 
   return (
-    <div className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}>
+    <div className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
       {segments.map((seg) => {
         if (seg.kind === "empty") {
           return (
@@ -407,15 +407,6 @@ export function Timeline({
         //     row if no bottom lodging), only when expanded.
         const firstSlotIsItem = items.length > 0;
         const firstSlotIsLodging = !firstSlotIsItem && lodging !== null;
-        const firstSlotPresent = firstSlotIsItem || firstSlotIsLodging;
-        const firstSlotId = firstSlotIsItem
-          ? items[0].kind === "transfer"
-            ? items[0].id
-            : items[0].activity.id
-          : firstSlotIsLodging && lodging
-            ? lodging.id
-            : null;
-        const firstSlotOpen = firstSlotId !== null && openId === firstSlotId;
         const stopsBelowCount = firstSlotIsItem ? items.length - 1 : 0;
         const renderLodgingBottom = lodging !== null && firstSlotIsItem;
         const notesRow = showNotes ? 2 + stopsBelowCount : null;
@@ -433,67 +424,64 @@ export function Timeline({
             className="grid items-start gap-x-2"
             style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
           >
-            {/* Day rail — the rounded grey segment BELOW the badge, detached by
-                a 3px gap above (mt) and below (the container's row gap). Holds
-                the aligned time ticks. When the first-slot row 1 item is OPEN
-                the rail extends up into row 1 too, so the dark column covers
-                the full height of the opened card.
-                When a closed first-slot item shares row 1 with the badge, the
-                badge (43px intrinsic + 6px mt-1.5 = 49) overflows the row sized
-                by the stop (~36px) by 13px into row 2, so the rail's top margin
-                is 13 + 3 = 16 to keep the visible gap below the badge at the
-                intended 3px. The isFirst badge carries an extra 6px on top
-                (the ink/15 bar + spacer), so its overflow is 13 + 6 = 19 and
-                the rail margin becomes 19 + 3 = 22. */}
-            {/* Rail row span: from row 2 (or 1 if the first slot is open) to
-                lastRow inclusive. If start === end the grid span is empty,
-                so we render nothing — drawing the button would still claim
-                its mt-* as visible margin and push the next day down. */}
-            {(firstSlotOpen ? 1 : 2) <= lastRow ? (
+            {/* Column 1 — the day's "spine": DayBadge stacked above the rail
+                with a fixed 3px gap, then (if last) the bottom terminator.
+                Wrapping them in a single flex column keeps the 3px constraint
+                between badge and rail independent of row heights or whether
+                a first-slot is open. */}
+            <div
+              style={{ gridColumn: 1, gridRow: `1 / ${lastRow + 1}` }}
+              className="flex flex-col self-stretch"
+            >
+              <button
+                type="button"
+                onClick={() => selectDay(day.id)}
+                aria-expanded={expanded}
+                aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
+                className="cursor-pointer self-start"
+              >
+                <DayBadge
+                  weekday={weekday}
+                  date={dateLabel}
+                  fillPct={dayLoad.fillPct}
+                  overflow={dayLoad.overflow}
+                  selected={expanded}
+                  isFirst={isFirst}
+                />
+              </button>
+
+              {/* Rail — 3px below the badge, fills the remaining height. The X
+                  close affordance is absolutely positioned inside it when the
+                  day is expanded. */}
               <button
                 type="button"
                 onClick={() => selectDay(day.id)}
                 aria-hidden
                 tabIndex={-1}
-                style={{
-                  gridColumn: 1,
-                  gridRow: `${firstSlotOpen ? 1 : 2} / ${lastRow + 1}`,
-                }}
                 className={cn(
-                  "w-full cursor-pointer self-stretch rounded-xs transition-colors",
+                  "relative mt-[3px] w-full flex-1 cursor-pointer rounded-xs transition-colors",
                   expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
-                  firstSlotPresent && !firstSlotOpen
-                    ? isFirst ? "mt-[22px]" : "mt-[16px]"
-                    : "mt-[3px]",
                 )}
-              />
-            ) : null}
+              >
+                {expanded && lastRow >= 2 ? (
+                  <IconX
+                    size={16}
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 bottom-2 -translate-x-1/2 text-white"
+                  />
+                ) : null}
+              </button>
 
-            {/* Day badge — sits on top of the rail (col 1, row 1). When a
-                first-slot item shares row 1 with it, the badge spans row 1+2
-                with `mt-1.5` so the top stripe lines up with the slot icon and
-                row 1's height is driven by the slot item, not by the badge's
-                natural 43px. */}
-            <button
-              type="button"
-              onClick={() => selectDay(day.id)}
-              aria-expanded={expanded}
-              aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-              style={{
-                gridColumn: 1,
-                gridRow: firstSlotPresent ? "1 / span 2" : 1,
-              }}
-              className={cn("cursor-pointer self-start", firstSlotPresent && "mt-1")}
-            >
-              <DayBadge
-                weekday={weekday}
-                date={dateLabel}
-                fillPct={dayLoad.fillPct}
-                overflow={dayLoad.overflow}
-                selected={expanded}
-                isFirst={isFirst}
-              />
-            </button>
+              {isLast ? (
+                <div
+                  aria-hidden
+                  className="flex w-9 flex-col items-center"
+                >
+                  <div className="h-0.5" />
+                  <div className="h-1 w-full bg-ink/15" />
+                </div>
+              ) : null}
+            </div>
 
             {/* Expanded day — faint city/landscape backdrop behind the stops.
                 Rendered before the content cells so they paint on top (all are
@@ -506,22 +494,7 @@ export function Timeline({
               />
             ) : null}
 
-            {/* Close affordance for the expanded day — an X sits inside the
-                rail's bottom, 8px above its visible bottom edge. Click handling
-                stays on the rail button below (pointer-events-none here), so
-                the icon is purely a visual cue.
-                Rail has `mb-[3px]`, so its visible bottom is at `cell_bottom -
-                3`; `mb-[11px]` puts the icon's bottom edge 8px above that. */}
-            {expanded && lastRow >= 2 ? (
-              <IconX
-                size={16}
-                style={{ gridColumn: 1, gridRow: lastRow }}
-                className="pointer-events-none z-10 mb-[11px] self-end justify-self-center text-white"
-                aria-hidden
-              />
-            ) : null}
-
-            {/* Stops: time on the rail (col 1) + stop/transfer (col 2), same row.
+{/* Stops: time on the rail (col 1) + stop/transfer (col 2), same row.
                 items[0] is pinned to row 1 (accanto al DayBadge); subsequent
                 items fall to rows 2..items.length. Today notes and the bottom
                 accommodation slot (when applicable) are rendered AFTER this
@@ -681,18 +654,6 @@ export function Timeline({
               );
             })() : null}
 
-            {/* Terminatore inferiore — doppia barretta ink/15 sotto il rail
-                dell'ultimo giorno. Speculare alla barretta isFirst del DayBadge. */}
-            {isLast ? (
-              <div
-                aria-hidden
-                style={{ gridColumn: 1, gridRow: lastRow + 1 }}
-                className="flex w-9 flex-col items-center"
-              >
-                <div className="h-0.5" />
-                <div className="h-1 w-full bg-ink/15" />
-              </div>
-            ) : null}
           </div>
         );
       })}
