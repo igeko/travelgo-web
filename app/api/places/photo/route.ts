@@ -15,7 +15,11 @@ import { mapsConfigured, placePhoto, placePhotoV1 } from "@/lib/maps/provider";
  * Entrambi gli endpoint Google rispondono con un 302 redirect alla CDN;
  * seguiamo il redirect e stream-iamo il binary indietro al client.
  */
-const V1_RE = /^places\/[A-Za-z0-9_-]{1,200}\/photos\/[A-Za-z0-9_-]{1,400}$/;
+// placeId: limite ufficiale Google ~256 char. photoId v1: nessun limite
+// documentato; in produzione si vedono ref >400 char (es. 478), quindi
+// teniamo un cap largo (1024) per non rigettare ref validi che renderebbero
+// la card senza immagine — come è successo dopo la migrazione a v1.
+const V1_RE = /^places\/[A-Za-z0-9_-]{1,256}\/photos\/[A-Za-z0-9_-]{1,1024}$/;
 const LEGACY_RE = /^[A-Za-z0-9_-]{1,500}$/;
 
 export async function GET(req: NextRequest) {
