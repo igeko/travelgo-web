@@ -118,8 +118,14 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // dopo, i pin del giorno selezionato restano default e gli altri diventano
   // dimmed. Il default-id all'avvio (primo giorno cronologico) NON conta come
   // focus esplicito — è solo il preselect logico per la Timeline.
+  // Su deselezione (id === null), torniamo allo stato "tutto in evidenza":
+  // dayFocused=false rispegne il dimming su pin e path.
   const [dayFocused, setDayFocused] = useState(false);
-  const handleSelectDay = useCallback((id: string) => {
+  const handleSelectDay = useCallback((id: string | null) => {
+    if (id === null) {
+      setDayFocused(false);
+      return;
+    }
     setSelectedDayId(id);
     setDayFocused(true);
   }, []);

@@ -72,12 +72,14 @@ type Props = {
    *  stops so the connector can be seen in context. */
   injectSampleTransfers?: boolean;
   /**
-   * Fired when the user opens a day (expands its DayBadge/rail). Hosts use
-   * it to drive surfaces tied to the day in focus — e.g. ExploreNextShell
-   * filtering the map's itinerary markers to that day's stops. Not called
-   * on collapse: the model is "last opened wins", not single-selection.
+   * Fired su ogni cambio della selezione del giorno (single-selection).
+   * Passa l'id del nuovo giorno selezionato, oppure `null` quando l'utente
+   * deseleziona (click sullo stesso giorno aperto). Hosts usano sia il caso
+   * positivo (focus su un giorno) sia il null (ritorno allo stato "nessun
+   * focus") — es. ExploreNextShell spegne il dimming roadmap-pin/path quando
+   * arriva null.
    */
-  onSelectDay?: (dayId: string) => void;
+  onSelectDay?: (dayId: string | null) => void;
   /**
    * Fired whenever the in-row "open" activity changes (click on a stop
    * expands it inline). Hosts consume the id to feed selection-aware
@@ -326,12 +328,14 @@ export function Timeline({
   // Single-selection toggle. Click on the currently selected day → deselect
   // (badge un-marks, active day collapses). Click on any other day → switch
   // selection to it. Empty days share the same handler so they get the same
-  // visual feedback as active ones. onSelectDay fires on selection only (not
-  // on deselect), matching the previous "last opened wins" host contract.
+  // visual feedback as active ones. onSelectDay fires SEMPRE — con `id` su
+  // selezione, `null` su deselezione — così l'host può spegnere il day-focus
+  // mode quando l'utente torna allo stato "tutto in evidenza".
   const selectDay = (id: string) => {
     const isCurrent = selectedDayId === id;
-    setSelectedDayId(isCurrent ? null : id);
-    if (!isCurrent) onSelectDay?.(id);
+    const next = isCurrent ? null : id;
+    setSelectedDayId(next);
+    onSelectDay?.(next);
   };
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
