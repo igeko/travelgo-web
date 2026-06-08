@@ -172,19 +172,19 @@ const ROADMAP_SHAPES: Record<RoadmapPinState, RoadmapShape> = {
 
 type RoadmapPalette = { fill: string; stroke: string; strokeW: number; icon: string };
 
-/** Palette per kind × state. Activity = blu, accommodation = arancione (icona
- *  bianca su entrambi). overflow resta rosso indipendentemente dal kind: è un
- *  segnale di rischio e deve restare riconoscibile. */
+/** Palette per kind × state — colori dei token del design system, senza
+ *  bordo. Activity = ink (#0d2c3d), accommodation = primary (#f47b3a). overflow
+ *  resta rosso indipendentemente dal kind (segnale di rischio). */
 const ROADMAP_COLORS: Record<RoadmapPinKind, Record<RoadmapPinState, RoadmapPalette>> = {
   activity: {
-    default:  { fill: "#1e8fd6", stroke: "#0d5a8a",              strokeW: 1.5, icon: "#ffffff" },
-    dimmed:   { fill: "#bcdcee", stroke: "rgba(30,143,214,0.35)", strokeW: 1.2, icon: "#ffffff" },
-    overflow: { fill: "#fcebeb", stroke: "#9a3015",              strokeW: 1.5, icon: "#9a3015" },
+    default:  { fill: "#0d2c3d",              stroke: "#0d2c3d",              strokeW: 0, icon: "#ffffff" },
+    dimmed:   { fill: "rgba(13,44,61,0.35)",   stroke: "rgba(13,44,61,0.35)",   strokeW: 0, icon: "#ffffff" },
+    overflow: { fill: "#9a3015",              stroke: "#9a3015",              strokeW: 0, icon: "#ffffff" },
   },
   accommodation: {
-    default:  { fill: "#f47b3a", stroke: "#a84818",              strokeW: 1.5, icon: "#ffffff" },
-    dimmed:   { fill: "#f9d4b6", stroke: "rgba(244,123,58,0.35)", strokeW: 1.2, icon: "#ffffff" },
-    overflow: { fill: "#fcebeb", stroke: "#9a3015",              strokeW: 1.5, icon: "#9a3015" },
+    default:  { fill: "#f47b3a",              stroke: "#f47b3a",              strokeW: 0, icon: "#ffffff" },
+    dimmed:   { fill: "rgba(244,123,58,0.35)", stroke: "rgba(244,123,58,0.35)", strokeW: 0, icon: "#ffffff" },
+    overflow: { fill: "#9a3015",              stroke: "#9a3015",              strokeW: 0, icon: "#ffffff" },
   },
 };
 
