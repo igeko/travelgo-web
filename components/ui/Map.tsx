@@ -26,12 +26,12 @@ import {
 } from "./mapPins";
 import { SLOT_COLORS, type SlotKey as RouteSlot } from "@/features/activity/types";
 import { decodePolyline } from "./mapRoute";
-import type { LatLng, RouteSpec, TravelMode, TransportMode } from "./mapTypes";
+import type { LatLng, RoutePoint, RouteSpec, TravelMode, TransportMode } from "./mapTypes";
 
 // Re-exported for consumer convenience — Map is the canonical surface for
 // these types, even if the definitions live in `./mapTypes` (pure types, no
 // runtime imports).
-export type { LatLng, RouteSpec, TravelMode, TransportMode };
+export type { LatLng, RoutePoint, RouteSpec, TravelMode, TransportMode };
 
 /* ─────────────────────────────────────────────────────────────────
    Map · Google Maps JS SDK wrapper.
@@ -94,6 +94,14 @@ export type MapMarker = {
    * snaps back on the next reconcile.
    */
   draggable?: boolean;
+  /**
+   * Google Place ID dell'entità rappresentata dal pin, quando disponibile.
+   * Carry-only: la Map non ci fa nulla oggi, ma consumer downstream (click
+   * → enriched card, cache server-side per pair, dedup semantico) possono
+   * leggerlo dal marker senza ri-geocodificare dai latlng. Null per i pin
+   * derivati da coords pure (es. ad-hoc click).
+   */
+  placeId?: string | null;
 };
 
 /**

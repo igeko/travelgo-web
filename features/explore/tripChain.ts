@@ -28,7 +28,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
+import type { MapMarker, RoutePoint, RouteSpec } from "@/components/ui/Map";
 import { iconGlyph } from "@/components/ui/mapPins";
 import { IconBed } from "@/components/ui/icons";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
@@ -47,6 +47,15 @@ export type TripStop = {
   lat: number;
   lng: number;
   title: string;
+  /**
+   * Google Place ID dell'entità sottostante quando disponibile (activity →
+   * `location_place_id`, accommodation → `place_id` via accommodation_stays).
+   * Carry-through: oggi nessuno lo consuma per il routing, ma è propagato
+   * fino a `MapMarker.placeId` e `RoutePoint.placeId` così click-handler,
+   * cache server-side futura e dedup semantico possono usarlo senza
+   * ri-derivare dai lat/lng.
+   */
+  placeId: string | null;
   /** Glyph come stringa SVG già pronta per `MapMarker.glyph`. */
   glyph: string;
 };
@@ -78,6 +87,7 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
         lat: a.location_lat,
         lng: a.location_lng,
         title: a.title,
+        placeId: a.location_place_id ?? null,
         glyph: resolveGlyph({ iconKey: a.icon ?? null, type: (a.type ?? null) as BlockType | null }),
       });
     }
@@ -97,6 +107,7 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
           lat: acc.lat,
           lng: acc.lng,
           title: acc.name,
+          placeId: acc.place_id ?? null,
           glyph: iconGlyph("acc:bed", IconBed),
         });
         lastStayKey = stayKey;
@@ -122,6 +133,7 @@ export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapM
     lat: s.lat,
     lng: s.lng,
     title: s.title,
+    placeId: s.placeId,
     glyph: s.glyph,
     variant: "roadmap" as const,
     roadmapState: stateOf(s),
@@ -130,7 +142,7 @@ export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapM
 
 /** Stesso `sameCoord` usato in passato — confronto numerico esatto (i
  *  punti vengono dalle stesse fonti, quindi no float drift). */
-function sameCoord(a: LatLng | null, b: LatLng | null): boolean {
+function sameCoord(a: { lat: number; lng: number } | null, b: { lat: number; lng: number } | null): boolean {
   return !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 }
 
@@ -158,19 +170,25 @@ export function chainToRouteSpecs(
 
   // Walk the chain, raggruppando per dayId della destinazione.
   // groups: { [dayId]: { firstIdx, points } }
-  type Group = { firstIdx: number; points: LatLng[]; dayId: string };
+  // `RoutePoint` porta opzionalmente il placeId — propagato dal TripStop
+  // di provenienza così downstream (cache server-side, switch a Google
+  // Routes con `{placeId}`) può consumarlo senza ri-derivare dai latlng.
+  type Group = { firstIdx: number; points: RoutePoint[]; dayId: string };
   const groups = new Map<string, Group>();
-  // Iterazione: ogni dest entry inizia o estende il gruppo del suo dayId.
   for (let i = 1; i < chain.length; i++) {
     const prev = chain[i - 1];
     const curr = chain[i];
     const dayId = curr.dayId;
     let g = groups.get(dayId);
     if (!g) {
-      g = { firstIdx: i, dayId, points: [{ lat: prev.lat, lng: prev.lng }] };
+      g = {
+        firstIdx: i,
+        dayId,
+        points: [{ lat: prev.lat, lng: prev.lng, placeId: prev.placeId }],
+      };
       groups.set(dayId, g);
     }
-    g.points.push({ lat: curr.lat, lng: curr.lng });
+    g.points.push({ lat: curr.lat, lng: curr.lng, placeId: curr.placeId });
   }
 
   // Costruisci RouteSpec, scartando quelli degeneri (es. zero-length).

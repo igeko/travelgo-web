@@ -41,12 +41,21 @@ export type TransportMode = BridgeData["transport"];
  *  - Multi-stop TRANSIT is always per-leg — Google's Routes API rejects
  *    intermediates in TRANSIT mode.
  */
+/**
+ * Singolo waypoint di una `RouteSpec`. Lat/lng sono obbligatori; il
+ * `placeId` opzionale è solo carry-through (la geometria oggi viene
+ * calcolata dai latlng). Quando arriverà un cache server-side per
+ * coppie placeId o quando passeremo a Routes API con `{placeId}`, il
+ * campo è già presente sulla pipeline.
+ */
+export type RoutePoint = LatLng & { placeId?: string | null };
+
 export type RouteSpec = {
   /** Stable id — used to keep polyline instances across rerenders. */
   id: string;
 
   /** Ordered waypoints. <2 points → the spec is a no-op (no polyline drawn). */
-  points: LatLng[];
+  points: RoutePoint[];
 
   /** Default travel mode for legs without an explicit `perLegTransport[i]`. */
   travelMode?: TravelMode;

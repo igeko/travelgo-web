@@ -117,7 +117,7 @@ export default async function TripDebugPage({
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b border-border bg-surface-soft text-left">
-              <Th>#</Th><Th>kind</Th><Th>dayId</Th><Th>title</Th><Th>lat</Th><Th>lng</Th>
+              <Th>#</Th><Th>kind</Th><Th>dayId</Th><Th>title</Th><Th>placeId</Th><Th>lat</Th><Th>lng</Th>
             </tr>
           </thead>
           <tbody>
@@ -127,6 +127,9 @@ export default async function TripDebugPage({
                 <Td>{s.kind}</Td>
                 <Td className="font-mono text-ink-faint">{s.dayId.slice(0, 8)}…</Td>
                 <Td>{s.title}</Td>
+                <Td className="font-mono text-[10px]">
+                  {s.placeId ? <span className="text-ink-faint">{s.placeId.slice(0, 22)}…</span> : <span className="text-red-600">null</span>}
+                </Td>
                 <Td>{String(s.lat)} <Type v={s.lat} /></Td>
                 <Td>{String(s.lng)} <Type v={s.lng} /></Td>
               </tr>
@@ -145,6 +148,7 @@ export default async function TripDebugPage({
               {r.points.map((p, i) => (
                 <li key={i} className="font-mono">
                   {String(p.lat)} <Type v={p.lat} />, {String(p.lng)} <Type v={p.lng} />
+                  {p.placeId && <span className="text-ink-faint text-[10px]"> · pid={p.placeId.slice(0, 18)}…</span>}
                 </li>
               ))}
             </ol>
