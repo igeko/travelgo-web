@@ -207,9 +207,26 @@ type TransferVM = {
   destination?: TransferDestination;
 };
 
+/** Formatta i minuti in `Ng Nh Nm`, droppando le componenti zero.
+ *  Esempi: 8 → "8m"; 160 → "2h 40m"; 1500 → "1g 1h"; 1440 → "1g". */
+function formatDurationMin(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return "0m";
+  const total = Math.round(min);
+  const days = Math.floor(total / (60 * 24));
+  const hours = Math.floor((total % (60 * 24)) / 60);
+  const mins = total % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}g`);
+  if (hours > 0) parts.push(`${hours}h`);
+  // Mostra i minuti quando: non c'è nessun pezzo più grande, OPPURE sono > 0
+  // (così "1g 0h 0m" diventa "1g", "2h 40m" resta "2h 40m", "8m" resta "8m").
+  if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
+  return parts.join(" ");
+}
+
 function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
-  const duration = `${b.duration_min} min`;
+  const duration = formatDurationMin(b.duration_min);
   if (carLike) return { mode: "car", duration, legs: [], steps: [], destination };
   return {
     mode: "transit",
@@ -610,6 +627,7 @@ export function Timeline({
                       duration={item.transfer.duration}
                       legs={item.transfer.legs}
                       steps={item.transfer.steps}
+                      destination={item.transfer.destination}
                       onOpen={() => setOpenId(item.id)}
                       onClose={() => setOpenId(null)}
                     />
