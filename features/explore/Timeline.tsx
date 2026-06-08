@@ -438,7 +438,7 @@ export function Timeline({
                 onClick={() => selectDay(day.id)}
                 aria-expanded={expanded}
                 aria-label={`${weekday} ${dateLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-                className="cursor-pointer self-start"
+                className="w-full cursor-pointer"
               >
                 <DayBadge
                   weekday={weekday}
