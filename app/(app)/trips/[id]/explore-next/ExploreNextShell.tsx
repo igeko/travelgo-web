@@ -8,6 +8,7 @@ import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { INK } from "@/components/ui/mapPins";
 import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
+import { useChainBridges, legKey } from "@/features/explore/useChainBridges";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { Activity } from "@/lib/dal/domain";
@@ -239,6 +240,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     () => chainToRouteSpecs(chain, opacityOf, INK),
     [chain, opacityOf],
   );
+
+  // Bridge calcolati lazy per i leg del chain: per ogni coppia consecutiva
+  // senza `bridge_out_json` salvato chiama Google Routes (mode DRIVING,
+  // cache localStorage 30gg condivisa con la mappa) e popola la map.
+  // savedLegKeys = leg già coperti dal snapshot, saltati dal compute.
+  // La Timeline usa il fallback computed quando il bridge salvato è null.
+  const savedLegKeys = useMemo(() => {
+    const out = new Set<string>();
+    for (let i = 1; i < chain.length; i++) {
+      const prev = chain[i - 1];
+      const curr = chain[i];
+      // Recupera il bridge_out_json del prev cercando nella sua day. Solo
+      // activity hanno scheduled.id → bridge_*_json persisted; per le
+      // accommodation niente persistenza disponibile oggi.
+      if (prev.kind !== "activity") continue;
+      const day = effectiveDays.find((d) => d.id === prev.dayId);
+      const act = day?.activities.find((a) => a.id === prev.id);
+      if (act?.bridge_out_json) out.add(legKey(prev.id, curr.id));
+    }
+    return out;
+  }, [chain, effectiveDays]);
+  const computedBridges = useChainBridges(chain, savedLegKeys);
 
   // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
   // rapida sequenza al click ma React non ha ancora unmountato la card).
@@ -481,6 +504,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         <div className="min-h-0 flex-1 overflow-y-auto">
           <Timeline
             days={effectiveDays}
+            computedBridges={computedBridges}
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}

@@ -25,7 +25,11 @@ const KEY = "tg:routeCache:v1";
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — Google ToS ceiling for lat/lng
 const MAX_ENTRIES = 300; // bound localStorage footprint; oldest evicted first
 
-type Entry = { p: string; t: number };
+/** `p` = encoded polyline (richiesto), `d` = durationSec dal Routes API
+ *  (opzionale, popolato dalla v2 dell'endpoint). Entries scritti dalla v1
+ *  hanno solo `p` — getCachedDurationSec ritorna null in quel caso, il
+ *  consumer ri-fetcha. */
+type Entry = { p: string; d?: number; t: number };
 type Store = Record<string, Entry>;
 
 function hasStorage(): boolean {
@@ -67,6 +71,17 @@ export function routeCacheKey(points: LatLng[], travelMode: string): string {
 
 /** Cached encoded polyline for this key, or null if absent/expired. */
 export function getCachedPolyline(key: string): string | null {
+  const e = readEntry(key);
+  return e?.p ?? null;
+}
+
+/** Cached duration in seconds for this key, or null if absent/expired/old. */
+export function getCachedDurationSec(key: string): number | null {
+  const e = readEntry(key);
+  return e?.d ?? null;
+}
+
+function readEntry(key: string): Entry | null {
   if (!hasStorage()) return null;
   const store = readStore();
   const entry = store[key];
@@ -76,11 +91,11 @@ export function getCachedPolyline(key: string): string | null {
     writeStore(store);
     return null;
   }
-  return entry.p;
+  return entry;
 }
 
-/** Store an encoded polyline, pruning expired entries and capping the size. */
-export function setCachedPolyline(key: string, polyline: string): void {
+/** Store polyline + optional duration, pruning expired entries and capping size. */
+export function setCachedPolyline(key: string, polyline: string, durationSec?: number): void {
   if (!hasStorage() || !polyline) return;
   const store = readStore();
   const now = Date.now();
@@ -90,7 +105,7 @@ export function setCachedPolyline(key: string, polyline: string): void {
     if (now - store[k].t > TTL_MS) delete store[k];
   }
 
-  store[key] = { p: polyline, t: now };
+  store[key] = { p: polyline, d: durationSec, t: now };
 
   // Cap: evict oldest until within budget.
   const keys = Object.keys(store);

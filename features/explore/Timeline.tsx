@@ -68,6 +68,15 @@ function accommodationIcon(type: string | null): IconCmp {
 
 type Props = {
   days: TimelineDayData[];
+  /**
+   * Bridge calcolati lazy lato client (mode DRIVING default) per i leg
+   * activity→activity senza `bridge_out_json` persistito. Chiave =
+   * `${prevActivityId}|${nextActivityId}`. Quando presente, la Timeline
+   * popola un Transfer per quel leg in fallback al bridge salvato.
+   * (Activity↔accommodation Transfer arriveranno in uno step successivo
+   * — richiedono cambio layout grid.)
+   */
+  computedBridges?: Map<string, BridgeData>;
   /** Japan & co. carry no bridge data — inject a sample Transfer between
    *  stops so the connector can be seen in context. */
   injectSampleTransfers?: boolean;
@@ -236,6 +245,10 @@ function buildItems(
   acts: Activity[],
   expanded: boolean,
   injectSample: boolean,
+  /** Fallback: bridge calcolato lazy per i leg senza bridge_out_json
+   *  salvato. Chiave `${prevId}|${currId}`. Quando presente sostituisce
+   *  l'iniezione del sample-transfer (che era solo onboarding). */
+  computedBridges?: Map<string, BridgeData>,
 ): Item[] {
   const items: Item[] = [];
 
@@ -246,9 +259,17 @@ function buildItems(
   visible.forEach((activity, i) => {
     items.push({ kind: "activity", activity });
     const last = i === visible.length - 1;
-    if (activity.bridge_out_json) {
-      items.push({ kind: "transfer", id: `${activity.id}-br`, transfer: bridgeTransfer(activity.bridge_out_json) });
-    } else if (injectSample && !last) {
+    if (last) return;
+
+    const next = visible[i + 1];
+    // Priority: bridge salvato sul DB > computed lazy lato client >
+    // sample (solo se `injectSample` attivo, fallback di onboarding).
+    const saved = activity.bridge_out_json;
+    const computed = computedBridges?.get(`${activity.id}|${next.id}`);
+    const bridge = saved ?? computed ?? null;
+    if (bridge) {
+      items.push({ kind: "transfer", id: `${activity.id}-br`, transfer: bridgeTransfer(bridge) });
+    } else if (injectSample) {
       items.push({
         kind: "transfer",
         id: `${activity.id}-sample`,
@@ -286,6 +307,7 @@ function buildLodging(
 
 export function Timeline({
   days,
+  computedBridges,
   injectSampleTransfers = false,
   onSelectDay,
   onSelectActivity,
@@ -393,7 +415,7 @@ export function Timeline({
         const dayLoad = computeDayLoad(day.activities);
 
         const expanded = selectedDayId === day.id;
-        const items = buildItems(day.activities, expanded, injectSampleTransfers);
+        const items = buildItems(day.activities, expanded, injectSampleTransfers, computedBridges);
         const lodging = buildLodging(day.accommodation, day.id);
         const showNotes = expanded && !!day.notes;
 

@@ -2,7 +2,7 @@
  * lib/client/routes.ts — frontend client for the Google Routes proxy.
  */
 import { requestRaw } from "./http";
-import { routeCacheKey, getCachedPolyline, setCachedPolyline } from "./routeCache";
+import { routeCacheKey, getCachedPolyline, getCachedDurationSec, setCachedPolyline } from "./routeCache";
 import type { TransitOption } from "@/app/api/routes/transit/normalize";
 
 export type LatLng = { lat: number; lng: number };
@@ -13,20 +13,27 @@ export type {
   RideSegment,
 } from "@/app/api/routes/transit/normalize";
 
+export type RouteComputeResult = { polyline?: string; durationSec?: number };
+
 export const routes = {
   /**
-   * POST /api/routes → { polyline }.
-   * Client-cached (localStorage, ≤30d) so returning to a day's map doesn't
-   * re-hit Google. Cache key is a fingerprint of the points + travelMode, so
-   * any stop/order/mode change misses the cache and refetches. See routeCache.
+   * POST /api/routes → { polyline, durationSec? }.
+   * Client-cached (localStorage, ≤30d). Cache key = fingerprint(points + mode).
+   * Cache hit ritorna polyline + durationSec quando presente (entries scritte
+   * dalla v2 dell'endpoint); entries v1-only ritornano solo polyline e
+   * forzano un re-fetch quando il consumer chiede la duration.
    */
-  compute: async (points: LatLng[], travelMode: string): Promise<{ polyline?: string }> => {
+  compute: async (points: LatLng[], travelMode: string): Promise<RouteComputeResult> => {
     const key = routeCacheKey(points, travelMode);
-    const cached = getCachedPolyline(key);
-    if (cached) return { polyline: cached };
+    const cachedPolyline = getCachedPolyline(key);
+    const cachedDuration = getCachedDurationSec(key);
+    // Cache hit "completo" (polyline + duration) → niente network.
+    if (cachedPolyline && cachedDuration != null) {
+      return { polyline: cachedPolyline, durationSec: cachedDuration };
+    }
 
-    const res = await requestRaw<{ polyline?: string }>("POST", "/api/routes", { points, travelMode });
-    if (res.polyline) setCachedPolyline(key, res.polyline);
+    const res = await requestRaw<RouteComputeResult>("POST", "/api/routes", { points, travelMode });
+    if (res.polyline) setCachedPolyline(key, res.polyline, res.durationSec);
     return res;
   },
 

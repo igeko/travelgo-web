@@ -70,8 +70,9 @@ export async function POST(req: NextRequest) {
     polylineEncoding: "ENCODED_POLYLINE",
   };
 
-  // Only request the polyline field — minimizes billing.
-  const res = await computeRoutes(requestBody, "routes.polyline.encodedPolyline");
+  // Polyline + duration — duration è additiva (un solo campo extra nel
+  // fieldMask), consumer che ignorano `durationSec` non se ne accorgono.
+  const res = await computeRoutes(requestBody, "routes.polyline.encodedPolyline,routes.duration");
 
   if (!res.ok) {
     // Avoid logging the raw Google response (may include query params / key fragments)
@@ -90,5 +91,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No route found" }, { status: 404 });
   }
 
-  return NextResponse.json({ polyline: encodedPolyline });
+  // Google Routes restituisce duration come stringa "540s". Parse a secondi
+  // numerici per il client; null se assente o non interpretabile.
+  const rawDuration = data?.routes?.[0]?.duration;
+  const durationSec =
+    typeof rawDuration === "string"
+      ? Number(rawDuration.replace(/s$/, "")) || null
+      : null;
+
+  return NextResponse.json({ polyline: encodedPolyline, durationSec });
 }
