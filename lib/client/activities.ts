@@ -23,6 +23,10 @@ export const activities = {
   /** DELETE /api/scheduled-activities/[id] — unschedule (entity kept). */
   removeFromDay: (scheduledId: string) => del<null>(`/api/scheduled-activities/${scheduledId}`),
 
+  /** POST /api/scheduled-activities/[id]/move — one slot up/down (intra- o cross-day on border). */
+  move: (scheduledId: string, direction: "up" | "down") =>
+    post<null>(`/api/scheduled-activities/${scheduledId}/move`, { direction }),
+
   /** PATCH /api/scheduled-activities/[id]/bridge — set a transport bridge. */
   setBridge: (scheduledId: string, direction: "in" | "out", bridge: Record<string, unknown> | null) =>
     patch<null>(`/api/scheduled-activities/${scheduledId}/bridge`, { direction, bridge }),

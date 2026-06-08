@@ -15,7 +15,7 @@
  */
 
 import type { ComponentType, ReactNode } from "react";
-import { IconX, IconUnlink } from "@/components/ui/icons";
+import { IconX, IconUnlink, IconArrowUp, IconArrowDown } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -27,6 +27,10 @@ export function StopEditorCard({
   onClose,
   onRemove,
   removeLabel = "Remove",
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = true,
+  canMoveDown = true,
   children,
   className,
 }: {
@@ -35,6 +39,14 @@ export function StopEditorCard({
   onClose?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
+  /** Move the stop one slot up (intra- or cross-day on border). Hidden when not set. */
+  onMoveUp?: () => void;
+  /** Move the stop one slot down (intra- or cross-day on border). Hidden when not set. */
+  onMoveDown?: () => void;
+  /** Whether the Move Up button is enabled (false → grey-out, no-op on click). */
+  canMoveUp?: boolean;
+  /** Whether the Move Down button is enabled. */
+  canMoveDown?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -65,17 +77,52 @@ export function StopEditorCard({
 
       {children}
 
-      {onRemove ? (
-        <div className="flex w-full items-center justify-center py-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onRemove}
-            className="border-primary-border text-primary-deep hover:border-primary hover:bg-primary hover:text-white"
-          >
-            <IconUnlink />
-            {removeLabel}
-          </Button>
+      {(onRemove || onMoveUp || onMoveDown) ? (
+        <div className="flex w-full items-center justify-between gap-2 py-2">
+          {/* Left: destructive action (Remove). Spacer when not present so
+              the move buttons stay anchored to the right. */}
+          <div className="flex items-center">
+            {onRemove ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRemove}
+                className="border-primary-border text-primary-deep hover:border-primary hover:bg-primary hover:text-white"
+              >
+                <IconUnlink />
+                {removeLabel}
+              </Button>
+            ) : null}
+          </div>
+          {/* Right: reorder actions. Hidden as a pair when neither is wired. */}
+          {(onMoveUp || onMoveDown) ? (
+            <div className="flex items-center gap-1">
+              {onMoveUp ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  iconOnly
+                  disabled={!canMoveUp}
+                  onClick={onMoveUp}
+                  aria-label="Move up"
+                >
+                  <IconArrowUp />
+                </Button>
+              ) : null}
+              {onMoveDown ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  iconOnly
+                  disabled={!canMoveDown}
+                  onClick={onMoveDown}
+                  aria-label="Move down"
+                >
+                  <IconArrowDown />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

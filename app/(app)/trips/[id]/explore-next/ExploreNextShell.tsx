@@ -98,6 +98,70 @@ function applyCoordEdits(
   });
 }
 
+/**
+ * Optimistic Move actions. Each one moves a scheduled activity one slot up
+ * or down (intra-day swap, or cross-day jump at day borders). Applied as a
+ * left-fold on the visibleDays so we can stack multiple moves before the
+ * server snapshot lands. position/day_id are mutated in place; bridges stay
+ * stale until router.refresh() reconciles.
+ */
+type OptMoveAction = { id: string; scheduledId: string; direction: "up" | "down" };
+
+function applyMoveActions(
+  days: TimelineDayData[],
+  actions: readonly OptMoveAction[],
+): TimelineDayData[] {
+  let out = days;
+  for (const action of actions) out = applyOneMove(out, action);
+  return out;
+}
+
+function applyOneMove(
+  days: TimelineDayData[],
+  action: OptMoveAction,
+): TimelineDayData[] {
+  const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
+  // Find which day owns the scheduled
+  const dayIdx = sortedDays.findIndex((d) =>
+    d.activities.some((x) => x.id === action.scheduledId),
+  );
+  if (dayIdx === -1) return days;
+  const day = sortedDays[dayIdx];
+  const acts = [...day.activities].sort((a, b) => a.position - b.position);
+  const idx = acts.findIndex((x) => x.id === action.scheduledId);
+  if (idx === -1) return days;
+  const target = acts[idx];
+
+  // Intra-day swap
+  const swapIdx = action.direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx >= 0 && swapIdx < acts.length) {
+    const other = acts[swapIdx];
+    const newActs = acts.map((a) => {
+      if (a.id === target.id) return { ...a, position: other.position };
+      if (a.id === other.id)  return { ...a, position: target.position };
+      return a;
+    });
+    return sortedDays.map((d) => (d.id === day.id ? { ...d, activities: newActs } : d));
+  }
+
+  // Cross-day boundary
+  const destDayIdx = action.direction === "up" ? dayIdx - 1 : dayIdx + 1;
+  if (destDayIdx < 0 || destDayIdx >= sortedDays.length) return days;
+  const destDay = sortedDays[destDayIdx];
+  const sourceActs = acts.filter((a) => a.id !== target.id);
+  const destActs = [...destDay.activities].sort((a, b) => a.position - b.position);
+  const moved = { ...target, day_id: destDay.id };
+  const newDest =
+    action.direction === "up"
+      ? [...destActs, moved].map((a, i) => ({ ...a, position: i + 1 }))
+      : [moved, ...destActs].map((a, i) => ({ ...a, position: i + 1 }));
+  return sortedDays.map((d) => {
+    if (d.id === day.id) return { ...d, activities: sourceActs };
+    if (d.id === destDay.id) return { ...d, activities: newDest };
+    return d;
+  });
+}
+
 /** Opacità della polyline percorso: piena per il giorno in focus (o quando
  *  nessun giorno è focused), ridotta per gli altri quando un giorno è focused. */
 const PATH_OPACITY_DEFAULT = 0.8;
@@ -228,6 +292,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [optCoordEdits, setOptCoordEdits] = useState<Map<string, { lat: number; lng: number }>>(
     () => new Map(),
   );
+  // Optimistic move actions (intra-day swap or cross-day jump). Stacked in
+  // order so multiple rapid clicks compose correctly.
+  const [optMoveActions, setOptMoveActions] = useState<OptMoveAction[]>([]);
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
@@ -235,6 +302,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (openOverride !== undefined) setOpenOverride(undefined);
     if (optAddressEdits.size > 0) setOptAddressEdits(new Map());
     if (optCoordEdits.size > 0) setOptCoordEdits(new Map());
+    if (optMoveActions.length > 0) setOptMoveActions([]);
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
@@ -243,8 +311,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       : applyOptStayActions(visibleDays, optStayActions);
     if (optAddressEdits.size > 0) out = applyAddressEdits(out, optAddressEdits);
     if (optCoordEdits.size > 0) out = applyCoordEdits(out, optCoordEdits);
+    if (optMoveActions.length > 0) out = applyMoveActions(out, optMoveActions);
     return out;
-  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits]);
+  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions]);
 
   // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
   // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
@@ -477,6 +546,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
+  /**
+   * Move up/down nel dettaglio attività. Coda di azioni ottimistiche:
+   * la UI mostra subito il nuovo ordine, poi la POST viene replicata
+   * lato server (intra-day swap o jump cross-day; ricalcolo bridges
+   * dei vicini). Su errore: pop dell'azione + pill di errore.
+   */
+  const handleMoveActivity = useCallback(
+    async (scheduledId: string, direction: "up" | "down") => {
+      const actionId = newActionId();
+      setOptMoveActions((prev) => [...prev, { id: actionId, scheduledId, direction }]);
+      try {
+        await api.activities.move(scheduledId, direction);
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] move failed:", err);
+        setOptMoveActions((prev) => prev.filter((a) => a.id !== actionId));
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleReduceStay = useCallback(
     (stayId: string) => {
       // If reducing from a single-night stay, the lodging row disappears
@@ -596,6 +687,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
+            onMoveActivity={handleMoveActivity}
             onConvertToSleep={handleConvertToSleep}
             onConvertToStop={handleConvertToStop}
             onExtendStay={handleExtendStay}

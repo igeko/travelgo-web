@@ -72,6 +72,10 @@ export function ActivityStop({
   onOpen,
   onClose,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = true,
+  canMoveDown = true,
   onNightsChange,
   className,
 }: {
@@ -115,6 +119,17 @@ export function ActivityStop({
   onOpen?: () => void;
   onClose?: () => void;
   onRemove?: () => void;
+  /** Move the stop one slot up. When omitted, the up button is hidden
+   *  (used to suppress reorder controls on lodging rows). */
+  onMoveUp?: () => void;
+  /** Move the stop one slot down. When omitted, the down button is hidden. */
+  onMoveDown?: () => void;
+  /** Whether Move Up is allowed. Defaults to true; pass false on the very
+   *  first stop of the trip to grey-out the button. */
+  canMoveUp?: boolean;
+  /** Whether Move Down is allowed. Defaults to true; pass false on the very
+   *  last stop of the trip. */
+  canMoveDown?: boolean;
   onNightsChange?: (next: number) => void;
   className?: string;
 }) {
@@ -228,7 +243,16 @@ export function ActivityStop({
         <span className="truncate text-[14px] text-white">{title}</span>
       </div>
 
-      <StopEditorCard icon={icon} title={title} onClose={onClose} onRemove={onRemove}>
+      <StopEditorCard
+        icon={icon}
+        title={title}
+        onClose={onClose}
+        onRemove={onRemove}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+      >
         {/* Sleep/Stop toggle + its dependent content (the Figma "Switch") */}
         <div className="flex w-full flex-col gap-4">
           <SegmentToggle

@@ -112,6 +112,14 @@ type Props = {
    */
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   /**
+   * Move a stop one slot up or down. Intra-day swap, or cross-day jump when
+   * the stop is at the day boundary (first→last of previous day, last→first
+   * of next day). Lodging rows are not routed here (they're pinned at the
+   * bottom by design). The host typically returns immediately after firing
+   * an optimistic update + background PATCH.
+   */
+  onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
+  /**
    * Stop → Sleep conversion. Receives the scheduled_activity.id; the
    * host deletes the scheduled row and creates a 1-night stay starting
    * on its day. Triggered when the user flips the Sleep/Stop toggle of
@@ -375,6 +383,7 @@ export function Timeline({
   onSelectDay,
   onSelectActivity,
   onRemoveActivity,
+  onMoveActivity,
   onConvertToSleep,
   onConvertToStop,
   onExtendStay,
@@ -424,6 +433,18 @@ export function Timeline({
   };
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
+
+  // Flat list of every scheduled activity id across the trip, in chrono
+  // order. Used to grey-out the Move Up button on the trip's very first
+  // stop and Move Down on the last (no neighbour to swap with). Lodging
+  // rows are not eligible to move, so we ignore them here.
+  const tripScheduledIds: string[] = [];
+  for (const d of sortedDays) {
+    const acts = [...d.activities].sort((a, b) => a.position - b.position);
+    for (const a of acts) tripScheduledIds.push(a.id);
+  }
+  const firstScheduledId = tripScheduledIds[0] ?? null;
+  const lastScheduledId = tripScheduledIds[tripScheduledIds.length - 1] ?? null;
 
   // Per ogni dayId, l'id del chain-stop IMMEDIATAMENTE precedente alla
   // sua prima activity (in ordine di chain). Usato per disegnare il
@@ -689,6 +710,10 @@ export function Timeline({
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
                       onRemove={handleRemove}
+                      onMoveUp={onMoveActivity ? () => onMoveActivity(a.id, "up") : undefined}
+                      onMoveDown={onMoveActivity ? () => onMoveActivity(a.id, "down") : undefined}
+                      canMoveUp={a.id !== firstScheduledId}
+                      canMoveDown={a.id !== lastScheduledId}
                       onModeChange={(next) => {
                         // stop → sleep: cross-table conversion. The scheduled
                         // row is replaced by a 1-night stay starting on its day.

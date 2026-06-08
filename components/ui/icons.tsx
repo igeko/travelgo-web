@@ -10,6 +10,7 @@ export {
   IconAlertCircle,
   IconAlertTriangle,
   IconAmbulance,
+  IconArrowDown,
   IconArrowRight,
   IconArrowRightCircle,
   IconArrowUp,

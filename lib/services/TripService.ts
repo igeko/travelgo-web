@@ -519,6 +519,105 @@ export class TripService {
     return this.scheduler.reorder(dayId, items);
   }
 
+  /**
+   * Move a scheduled occurrence one slot up/down. Intra-day = swap with the
+   * adjacent activity. Cross-day on border = jump to the end (up→last of
+   * previous day) or to the start (down→first of next day). No-op when there
+   * is no neighbour in the requested direction (first item of first day with
+   * direction=up, or last item of last day with direction=down).
+   *
+   * After the move, bridges_in/out are recomputed for the affected legs so
+   * the polyline durations stay in sync (Google Routes round-trip).
+   */
+  async moveOneSlot(scheduledId: string, direction: "up" | "down"): Promise<void> {
+    const fromDayId = await this.dal.trips.dayIdForScheduled(scheduledId);
+    if (!fromDayId) throw notFound("Scheduled activity not found");
+
+    const acts = (await this.scheduler.listForDay(fromDayId)).sort(
+      (a, b) => a.position - b.position,
+    );
+    const idx = acts.findIndex((a) => a.id === scheduledId);
+    if (idx === -1) throw notFound("Scheduled activity not found in day");
+
+    const target = acts[idx];
+
+    // ── Intra-day swap ────────────────────────────────────────────
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx >= 0 && swapIdx < acts.length) {
+      const other = acts[swapIdx];
+      await this.scheduler.reorder(fromDayId, [
+        { id: target.id, position: other.position },
+        { id: other.id,  position: target.position },
+      ]);
+
+      // Recompute bridges around the moved activity in its new position.
+      // Reload the day so prev/next reflect post-swap order.
+      const post = (await this.scheduler.listForDay(fromDayId)).sort(
+        (a, b) => a.position - b.position,
+      );
+      const newIdx = post.findIndex((a) => a.id === target.id);
+      const prev = newIdx > 0 ? post[newIdx - 1] : null;
+      const next = newIdx < post.length - 1 ? post[newIdx + 1] : null;
+      if (target.location_lat != null && target.location_lng != null) {
+        await this.recomputeBridgesAround({
+          newScheduledId: target.id,
+          newLat: target.location_lat,
+          newLng: target.location_lng,
+          prev,
+          next,
+        });
+      }
+      return;
+    }
+
+    // ── Cross-day on border ──────────────────────────────────────
+    const tripId = await this.dal.trips.tripIdForDay(fromDayId);
+    if (!tripId) throw notFound("Trip not found for day");
+    const daysRes = await this.dal.trips.listDays(tripId);
+    const allDays = (daysRes.data ?? []).sort((a, b) => a.day_number - b.day_number);
+    const dayIdx = allDays.findIndex((d) => d.id === fromDayId);
+    const targetDayIdx = direction === "up" ? dayIdx - 1 : dayIdx + 1;
+    if (targetDayIdx < 0 || targetDayIdx >= allDays.length) {
+      // No-op: already at the very start (or end) of the trip.
+      return;
+    }
+    const toDayId = allDays[targetDayIdx].id;
+
+    // Move to the new day first; the Scheduler keeps slot/time/type via
+    // moveToDay(default instance copy). Then set its position to last
+    // (direction=up) or first (direction=down) and renumber.
+    await this.scheduler.moveToDay(scheduledId, toDayId, {});
+
+    const destActs = (await this.scheduler.listForDay(toDayId)).sort(
+      (a, b) => a.position - b.position,
+    );
+    const moved = destActs.find((a) => a.id === scheduledId);
+    if (!moved) return;
+    const others = destActs.filter((a) => a.id !== scheduledId);
+    const items =
+      direction === "up"
+        ? [...others, moved].map((a, i) => ({ id: a.id, position: i + 1 }))
+        : [moved, ...others].map((a, i) => ({ id: a.id, position: i + 1 }));
+    await this.scheduler.reorder(toDayId, items);
+
+    // Bridges: ricalcola sul nuovo giorno (around the moved activity).
+    const post = (await this.scheduler.listForDay(toDayId)).sort(
+      (a, b) => a.position - b.position,
+    );
+    const newIdx = post.findIndex((a) => a.id === moved.id);
+    const prev = newIdx > 0 ? post[newIdx - 1] : null;
+    const next = newIdx < post.length - 1 ? post[newIdx + 1] : null;
+    if (moved.location_lat != null && moved.location_lng != null) {
+      await this.recomputeBridgesAround({
+        newScheduledId: moved.id,
+        newLat: moved.location_lat,
+        newLng: moved.location_lng,
+        prev,
+        next,
+      });
+    }
+  }
+
   /** Copy a scheduled occurrence onto another day (original kept). */
   async copyActivity(scheduledId: string, toDayId: string): Promise<Activity> {
     const fromDayId = await this.dal.trips.dayIdForScheduled(scheduledId);
