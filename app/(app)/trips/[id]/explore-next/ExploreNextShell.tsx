@@ -6,9 +6,8 @@ import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap
 import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
-import { resolveGlyph } from "@/features/activity/resolveGlyph";
-import { iconGlyph, INK } from "@/components/ui/mapPins";
-import { IconBed } from "@/components/ui/icons";
+import { INK } from "@/components/ui/mapPins";
+import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
 import type { Activity } from "@/lib/dal/domain";
@@ -199,127 +198,41 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return applyAddressEdits(afterStays, optAddressEdits);
   }, [visibleDays, optStayActions, optAddressEdits]);
 
-  // Marker itinerario — spec /design/roadmap-pins.
-  //   - dayFocused=false (avvio o reset)            → tutti i pin "default"
-  //   - dayFocused=true e attività nel giorno       → "default"
-  //   - dayFocused=true e attività in altro giorno  → "dimmed"
-  // Lo stato "overflow" è un hook tipato pronto, non ancora cablato (arriverà
-  // quando avremo la sorgente per timing/geo). Lo stato "selected" della spec
-  // non viene mai applicato qui — la selezione del marker resta sul halo
-  // overlay esistente, così il pin selezionato non cambia di forma.
-  //
-  // Sorgente: `visibleDays` (non `sortedDays`) — così le adds/removes
-  // ottimistiche si riflettono anche sui pin a mappa, non solo sulla Timeline.
-  const itineraryMarkers = useMemo<MapMarker[]>(() => {
-    const out: MapMarker[] = [];
-    for (const day of effectiveDays) {
-      const isFocusDay = dayFocused && day.id === selectedDayId;
-      const state = !dayFocused || isFocusDay ? "default" : "dimmed";
-      for (const stop of day.activities) {
-        if (stop.location_lat == null || stop.location_lng == null) continue;
-        out.push({
-          id: stop.id,
-          lat: stop.location_lat,
-          lng: stop.location_lng,
-          title: stop.title,
-          glyph: resolveGlyph({ iconKey: stop.icon, type: stop.type ?? null }),
-          variant: "roadmap" as const,
-          roadmapState: state,
-        });
-      }
-      // Accommodation pin — quando un'attività viene convertita in "sleep"
-      // (Stop→Sleep), migra da `day.activities` a `day.accommodation`. Senza
-      // questa branch il pin scomparirebbe completamente dalla mappa. Glyph
-      // bed, stesso state di dimming del giorno. Su multi-night la stessa
-      // accommodation appare con id distinto per ogni giorno: i marker
-      // overlappano ma il reconcile gestisce le entry separate senza drift.
-      const acc = day.accommodation;
-      if (acc?.lat != null && acc?.lng != null) {
-        out.push({
-          id: `acc-${day.id}`,
-          lat: acc.lat,
-          lng: acc.lng,
-          title: acc.name,
-          glyph: iconGlyph("acc:bed", IconBed),
-          variant: "roadmap" as const,
-          roadmapState: state,
-        });
-      }
-    }
-    return out;
-  }, [effectiveDays, dayFocused, selectedDayId]);
+  // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
+  // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
+  // ripetuto sui notti successive). Da qui derivano marker e route in
+  // due trasformazioni triviali; la mappa NON conosce più la logica
+  // accommodation/stays/use_previous. Vedi `features/explore/tripChain.ts`.
+  const chain = useMemo(() => buildTripChain(effectiveDays), [effectiveDays]);
 
-  // Percorso reale tra tappe consecutive — una RouteSpec per giorno.
-  //
-  // Modello: la "catena" del giorno è [act1, act2, ..., accommodation].
-  // Per gestire le TRANSIZIONI tra giorni (es. ultima notte hotel → nuovo
-  // alloggio in altra città), prependiamo il "tail" del giorno precedente
-  // (l'ultimo punto raggiunto: accommodation se esiste, altrimenti
-  // l'ultima activity) quando DIFFERISCE dal primo punto del giorno
-  // corrente. Senza questo, un giorno di solo accommodation (1 punto)
-  // verrebbe scartato dal filtro `< 2 punti` e la transizione hotel→
-  // campeggio non sarebbe mai disegnata.
-  //
-  // Per giorni di solo accommodation che NON cambia (stessa stay
-  // multi-night), il prepend non scatta (firstPt == prevTail) e il
-  // giorno resta scartato — giusto: nessun movimento reale da disegnare.
-  //
-  // Geometria via Google Routes (`api.routes.compute`, cache localStorage
-  // 30gg). Travel mode DRIVING uniforme, niente `perLegTransport`
-  // (legStyle("walk") sarebbe dotted ecc. — visivamente rumoroso).
-  //
-  // Quando `dayFocused`, il giorno in focus mantiene piena opacità, gli
-  // altri vanno in dimmed, coerente con i roadmap-pin.
-  const dayPathRoutes = useMemo<RouteSpec[]>(() => {
-    const out: RouteSpec[] = [];
-    const sameCoord = (a: LatLng | null, b: LatLng | null) =>
-      !!a && !!b && a.lat === b.lat && a.lng === b.lng;
-    let prevTail: LatLng | null = null;
+  // Stato di dimming per stop — regola identica al passato:
+  //   - nessun giorno focused → tutto "default"
+  //   - un giorno focused → stop di QUEL giorno "default", gli altri "dimmed"
+  const stateOf = useCallback(
+    (stop: { dayId: string }): "default" | "dimmed" =>
+      !dayFocused || stop.dayId === selectedDayId ? "default" : "dimmed",
+    [dayFocused, selectedDayId],
+  );
+  const opacityOf = useCallback(
+    (dayId: string) =>
+      !dayFocused || dayId === selectedDayId ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED,
+    [dayFocused, selectedDayId],
+  );
 
-    for (const day of effectiveDays) {
-      const stops = [...day.activities]
-        .sort((a, b) => a.position - b.position)
-        .filter((s): s is typeof s & { location_lat: number; location_lng: number } =>
-          s.location_lat != null && s.location_lng != null,
-        );
-      const acc = day.accommodation;
-      const accPoint: LatLng | null =
-        acc?.lat != null && acc?.lng != null ? { lat: acc.lat, lng: acc.lng } : null;
+  const itineraryMarkers = useMemo<MapMarker[]>(
+    () => chainToMarkers(chain, stateOf),
+    [chain, stateOf],
+  );
 
-      // Catena grezza del giorno: activities + accommodation (se esiste e
-      // diversa dall'ultima activity per evitare zero-length leg).
-      const ownPoints: LatLng[] = stops.map((s) => ({ lat: s.location_lat, lng: s.location_lng }));
-      if (accPoint && !sameCoord(ownPoints[ownPoints.length - 1] ?? null, accPoint)) {
-        ownPoints.push(accPoint);
-      }
-
-      // Prepend del tail giorno precedente se differisce dal primo punto.
-      // Così le transizioni cross-day (cambio alloggio) diventano un leg
-      // visibile sul giorno di destinazione.
-      const points: LatLng[] = [...ownPoints];
-      const firstPt = points[0] ?? null;
-      if (prevTail && firstPt && !sameCoord(prevTail, firstPt)) {
-        points.unshift(prevTail);
-      }
-
-      // Aggiorna tail per il prossimo giorno: l'ultimo punto effettivamente
-      // raggiunto oggi (accommodation > ultima activity > tail precedente).
-      prevTail = accPoint ?? (ownPoints[ownPoints.length - 1] ?? prevTail);
-
-      if (points.length < 2) continue;
-
-      const isFocusDay = dayFocused && day.id === selectedDayId;
-      const opacity = !dayFocused || isFocusDay ? PATH_OPACITY_DEFAULT : PATH_OPACITY_DIMMED;
-
-      out.push({
-        id: `day-${day.id}`,
-        points,
-        travelMode: "DRIVING",
-        style: { color: INK, weight: 3, opacity },
-      });
-    }
-    return out;
-  }, [effectiveDays, dayFocused, selectedDayId]);
+  // Percorso reale lungo il chain — RouteSpec per giorno, leg "di
+  // pertinenza" della tappa di destinazione (per il dimming). Geometria
+  // via Google Routes (`api.routes.compute`, cache localStorage 30gg).
+  // Travel mode DRIVING uniforme, niente `perLegTransport` — la linea
+  // resta continua e leggibile (legStyle("walk") sarebbe dotted, ecc.).
+  const dayPathRoutes = useMemo<RouteSpec[]>(
+    () => chainToRouteSpecs(chain, opacityOf, INK),
+    [chain, opacityOf],
+  );
 
   // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
   // rapida sequenza al click ma React non ha ancora unmountato la card).

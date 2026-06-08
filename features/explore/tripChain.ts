@@ -1,0 +1,193 @@
+/**
+ * features/explore/tripChain.ts
+ * ─────────────────────────────────────────────────────────────────
+ * Una SOLA pipeline che traduce i `TimelineDayData[]` (snapshot del
+ * trip + accommodation resolved per-day) in una lista lineare di
+ * tappe (`TripStop[]`) deduplicata e ordinata, da cui la mappa deriva
+ * sia pin che percorsi tramite trasformazioni triviali.
+ *
+ * La logica "dinamica" (multi-night dedup, transizioni cross-day,
+ * activity→accommodation in posizione corretta) vive QUI E SOLO QUI.
+ * Il consumer (mappa) non sa nulla di `accommodation_stays`,
+ * `use_previous`, `night_index`. Riceve una lista canonica e basta.
+ *
+ * Regole di composizione (per giorno, in ordine di `day_number`):
+ *   1. Append delle activity del giorno sortate per `position` (con
+ *      coordinate valide).
+ *   2. Append dell'accommodation del giorno SE differente dalla stay
+ *      registrata l'ultima volta — dedup per `stay_id` (o per
+ *      `dayId-legacy-{...}` come fallback per i record senza stay).
+ *   3. Skip silenzioso quando coords mancano: l'algoritmo non
+ *      sintetizza punti.
+ *
+ * Conseguenza diretta: per Hotel 5-notti compare UN solo `TripStop`
+ * (alla check-in date); per il successivo cambio alloggio compare un
+ * nuovo `TripStop`, e la sequenza `[Hotel, Camping]` produce
+ * naturalmente il percorso di transizione cross-day senza logiche
+ * speciali a valle.
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
+import { iconGlyph } from "@/components/ui/mapPins";
+import { IconBed } from "@/components/ui/icons";
+import { resolveGlyph } from "@/features/activity/resolveGlyph";
+import type { TimelineDayData } from "@/features/explore/Timeline";
+import type { BlockType } from "@/lib/dal/domain";
+
+/** Tappa canonica del trip — atom di tutto il rendering mappa. */
+export type TripStop = {
+  /** Stable id. activity scheduled.id, oppure `acc:{stay_id|legacy-{dayId}}`. */
+  id: string;
+  kind: "activity" | "accommodation";
+  /** Day a cui la tappa appartiene logicamente — guida dimming e gruppi. */
+  dayId: string;
+  /** Posizione 0-based nel chain del trip. */
+  chainIndex: number;
+  lat: number;
+  lng: number;
+  title: string;
+  /** Glyph come stringa SVG già pronta per `MapMarker.glyph`. */
+  glyph: string;
+};
+
+/**
+ * Costruisce il chain canonico del trip. Pura, deterministica, no I/O.
+ *
+ * Dedup multi-night: traccia l'ultima `stayKey` aggiunta. Quando il
+ * giorno corrente ha la stessa stay, l'accommodation NON viene ri-
+ * appesa al chain — la sua identità (e quindi posizione spaziale) è
+ * già nel chain dal giorno di check-in. Quando cambia, viene aggiunta
+ * di nuovo e diventa il next-stop spaziale.
+ */
+export function buildTripChain(days: TimelineDayData[]): TripStop[] {
+  const chain: TripStop[] = [];
+  const ordered = [...days].sort((a, b) => a.day_number - b.day_number);
+  let lastStayKey: string | null = null;
+
+  for (const day of ordered) {
+    // 1) Activities ordinate, con coords valide.
+    const acts = [...day.activities].sort((a, b) => a.position - b.position);
+    for (const a of acts) {
+      if (a.location_lat == null || a.location_lng == null) continue;
+      chain.push({
+        id: a.id,
+        kind: "activity",
+        dayId: day.id,
+        chainIndex: chain.length,
+        lat: a.location_lat,
+        lng: a.location_lng,
+        title: a.title,
+        glyph: resolveGlyph({ iconKey: a.icon ?? null, type: (a.type ?? null) as BlockType | null }),
+      });
+    }
+
+    // 2) Accommodation, dedup per stay.
+    const acc = day.accommodation;
+    if (acc?.lat != null && acc?.lng != null) {
+      // stay_id quando disponibile (canonical resolver), altrimenti un
+      // fallback per-day per il legacy resolver (che non ha stay).
+      const stayKey = acc.stay_id ?? `legacy:${day.id}`;
+      if (stayKey !== lastStayKey) {
+        chain.push({
+          id: `acc:${stayKey}`,
+          kind: "accommodation",
+          dayId: day.id,
+          chainIndex: chain.length,
+          lat: acc.lat,
+          lng: acc.lng,
+          title: acc.name,
+          glyph: iconGlyph("acc:bed", IconBed),
+        });
+        lastStayKey = stayKey;
+      }
+    }
+  }
+
+  return chain;
+}
+
+/**
+ * Stato visivo per i roadmap pin — ricalcola dimming guardando solo il
+ * giorno di appartenenza della tappa. Identica regola che usavamo prima
+ * con `itineraryMarkers`, ma derivata in un solo punto.
+ */
+export type ChainStopState = (stop: TripStop) => "default" | "dimmed";
+
+/** Trasforma il chain in `MapMarker[]` (un pin per tappa, accommodation
+ *  inclusa, niente duplicati multi-night). */
+export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapMarker[] {
+  return chain.map((s) => ({
+    id: s.id,
+    lat: s.lat,
+    lng: s.lng,
+    title: s.title,
+    glyph: s.glyph,
+    variant: "roadmap" as const,
+    roadmapState: stateOf(s),
+  }));
+}
+
+/** Stesso `sameCoord` usato in passato — confronto numerico esatto (i
+ *  punti vengono dalle stesse fonti, quindi no float drift). */
+function sameCoord(a: LatLng | null, b: LatLng | null): boolean {
+  return !!a && !!b && a.lat === b.lat && a.lng === b.lng;
+}
+
+/**
+ * Trasforma il chain in `RouteSpec[]` per la mappa.
+ *
+ * Modello: ogni leg `chain[i] → chain[i+1]` è "di pertinenza" del
+ * `dayId` della tappa di destinazione (chain[i+1]). Così quando
+ * l'utente focalizza un giorno, le polyline che ARRIVANO nelle sue
+ * tappe restano piene, le altre dimmed — coerente con i pin.
+ *
+ * Output: una `RouteSpec` per ogni giorno che ha almeno una tappa nel
+ * chain, con `points = [stop_di_partenza_dal_giorno_prima, ...tappe_di_oggi]`.
+ * Lo stop di partenza è il chain entry IMMEDIATAMENTE precedente al
+ * primo del giorno (di solito l'accommodation del giorno prima, o
+ * l'ultima activity di quel giorno se senza alloggio). Saltato quando
+ * coincide col primo del giorno (zero-length leg).
+ */
+export function chainToRouteSpecs(
+  chain: TripStop[],
+  opacityFor: (dayId: string) => number,
+  defaultColor: string,
+): RouteSpec[] {
+  if (chain.length < 2) return [];
+
+  // Walk the chain, raggruppando per dayId della destinazione.
+  // groups: { [dayId]: { firstIdx, points } }
+  type Group = { firstIdx: number; points: LatLng[]; dayId: string };
+  const groups = new Map<string, Group>();
+  // Iterazione: ogni dest entry inizia o estende il gruppo del suo dayId.
+  for (let i = 1; i < chain.length; i++) {
+    const prev = chain[i - 1];
+    const curr = chain[i];
+    const dayId = curr.dayId;
+    let g = groups.get(dayId);
+    if (!g) {
+      g = { firstIdx: i, dayId, points: [{ lat: prev.lat, lng: prev.lng }] };
+      groups.set(dayId, g);
+    }
+    g.points.push({ lat: curr.lat, lng: curr.lng });
+  }
+
+  // Costruisci RouteSpec, scartando quelli degeneri (es. zero-length).
+  const out: RouteSpec[] = [];
+  for (const g of groups.values()) {
+    // Dedup zero-length leg in apertura: se prev (head) == primo punto
+    // del giorno, skippa la head.
+    const head = g.points[0];
+    const firstReal = g.points[1] ?? null;
+    const trimmed = sameCoord(head, firstReal) ? g.points.slice(1) : g.points;
+    if (trimmed.length < 2) continue;
+    out.push({
+      id: `day-${g.dayId}`,
+      points: trimmed,
+      travelMode: "DRIVING",
+      style: { color: defaultColor, weight: 3, opacity: opacityFor(g.dayId) },
+    });
+  }
+  return out;
+}
