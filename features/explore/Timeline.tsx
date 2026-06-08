@@ -445,23 +445,29 @@ export function Timeline({
                 intended 3px. The isFirst badge carries an extra 6px on top
                 (the ink/15 bar + spacer), so its overflow is 13 + 6 = 19 and
                 the rail margin becomes 19 + 3 = 22. */}
-            <button
-              type="button"
-              onClick={() => selectDay(day.id)}
-              aria-hidden
-              tabIndex={-1}
-              style={{
-                gridColumn: 1,
-                gridRow: `${firstSlotOpen ? 1 : 2} / ${lastRow + 1}`,
-              }}
-              className={cn(
-                "w-full cursor-pointer self-stretch rounded-xs transition-colors",
-                expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
-                firstSlotPresent && !firstSlotOpen
-                  ? isFirst ? "mt-[22px]" : "mt-[16px]"
-                  : "mt-[3px]",
-              )}
-            />
+            {/* Rail row span: from row 2 (or 1 if the first slot is open) to
+                lastRow inclusive. If start === end the grid span is empty,
+                so we render nothing — drawing the button would still claim
+                its mt-* as visible margin and push the next day down. */}
+            {(firstSlotOpen ? 1 : 2) <= lastRow ? (
+              <button
+                type="button"
+                onClick={() => selectDay(day.id)}
+                aria-hidden
+                tabIndex={-1}
+                style={{
+                  gridColumn: 1,
+                  gridRow: `${firstSlotOpen ? 1 : 2} / ${lastRow + 1}`,
+                }}
+                className={cn(
+                  "w-full cursor-pointer self-stretch rounded-xs transition-colors",
+                  expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
+                  firstSlotPresent && !firstSlotOpen
+                    ? isFirst ? "mt-[22px]" : "mt-[16px]"
+                    : "mt-[3px]",
+                )}
+              />
+            ) : null}
 
             {/* Day badge — sits on top of the rail (col 1, row 1). When a
                 first-slot item shares row 1 with it, the badge spans row 1+2
