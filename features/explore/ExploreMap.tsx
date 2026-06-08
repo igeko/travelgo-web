@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Map, type LatLng, type MapHandle, type MapMarker, type RouteSpec } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
@@ -68,19 +68,7 @@ function placeFromMarker(m: MapMarker, id: string, fallbackTitle: string): GoPla
  *  - toolbar → map: selecting a category runs a Google search within the visible
  *    area (debounced) and drops the result pins.
  */
-export function ExploreMap({
-  tripId,
-  center: tripCenter,
-  zoom: tripZoom,
-  nightRoute,
-  extraMarkers = [],
-  viewportInset,
-  onExtraMarkerDragEnd,
-  onAddToTripRequest,
-  enableNightRoute = true,
-  extraRoutes = [],
-  fitAllOnMount = false,
-}: {
+export const ExploreMap = forwardRef<MapHandle, {
   tripId: string;
   center: LatLng;
   zoom: number;
@@ -130,7 +118,36 @@ export function ExploreMap({
    * `false`. Vedi `Map.fitAllOnMount` per le note complete.
    */
   fitAllOnMount?: boolean;
-}) {
+  /**
+   * Id della tappa dell'itinerario attualmente selezionata dal host
+   * (es. ExploreNextShell tiene la sync col row aperto in Timeline).
+   * Quando questo id matcha un `extraMarkers.id`, il pin riceve lo
+   * stato selected (bordo bianco + scala hover). Vince sui pin Google /
+   * search / night per il `selectedMarkerId` finale.
+   */
+  selectedItineraryId?: string | null;
+  /**
+   * Fired quando l'utente clicca un pin appartenente a `extraMarkers`
+   * (cioè dell'itinerario). L'host può sincronizzare la Timeline. Per i
+   * pin Google / search / night usa i propri canali esistenti — questa
+   * callback NON spara per quelli.
+   */
+  onItineraryPinClick?: (id: string) => void;
+}>(({
+  tripId,
+  center: tripCenter,
+  zoom: tripZoom,
+  nightRoute,
+  extraMarkers = [],
+  viewportInset,
+  onExtraMarkerDragEnd,
+  onAddToTripRequest,
+  enableNightRoute = true,
+  extraRoutes = [],
+  fitAllOnMount = false,
+  selectedItineraryId = null,
+  onItineraryPinClick,
+}, ref) => {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
   const categories = useExploreCategories();
@@ -178,6 +195,27 @@ export function ExploreMap({
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewportRef = useRef<{ center: LatLng; radiusMeters: number } | null>(null);
   goFocusRef.current = goFocus;
+  // Mapping degli id dei marker extra (itinerario) per il forwarding click.
+  // Set di stringhe ricavato da `extraMarkers` — sincronizzato sotto.
+  const extraMarkerIdsRef = useRef<Set<string>>(new Set());
+  extraMarkerIdsRef.current = useMemo(
+    () => new Set(extraMarkers.map((m) => m.id ?? `${m.lat},${m.lng}`)),
+    [extraMarkers],
+  );
+
+  // Ref al Map sottostante per esporre i suoi imperativi (panToMarker /
+  // fitMarkers / fitAll) all'host attraverso ExploreMap come proxy.
+  const mapRef = useRef<MapHandle | null>(null);
+  useImperativeHandle(ref, () => ({
+    getMap: () => mapRef.current?.getMap() ?? null,
+    fitBounds: (b, p) => mapRef.current?.fitBounds(b, p),
+    focusCoord: (lat, lng, opts) => mapRef.current?.focusCoord(lat, lng, opts),
+    clearAdHoc: () => mapRef.current?.clearAdHoc(),
+    hasAdHocFocus: () => mapRef.current?.hasAdHocFocus() ?? false,
+    fitAll: (opts) => mapRef.current?.fitAll(opts),
+    panToMarker: (id) => mapRef.current?.panToMarker(id),
+    fitMarkers: (ids, opts) => mapRef.current?.fitMarkers(ids, opts),
+  }), []);
 
   // Night-route pins as regular markers with the dedicated "night" variant: this
   // gives them the SAME behaviour as every other pin (click → detail card, focus
@@ -508,6 +546,14 @@ export function ExploreMap({
   // Re-clicking the manual (ad-hoc) pin removes it; normal pins are never deleted.
   const handleMarkerClick = (id: string) => {
     interactedRef.current = true;
+    // Itinerario: se l'id appartiene a `extraMarkers` lo segnaliamo subito al
+    // host e usciamo. Niente goFocus, niente card Google — la sync con la
+    // Timeline è la sola conseguenza dell'interazione. Per riselezione (re-
+    // click sullo stesso) ci pensa l'host (toggle off settando null).
+    if (extraMarkerIdsRef.current.has(id)) {
+      onItineraryPinClick?.(id);
+      return;
+    }
     // Search-result pin (toolbar autocomplete): toggle off on re-click, never
     // opens Go — a search hit is a passive lookup, the hover card carries the
     // info and the only side-effect is "Add to trip" once the user opts in.
@@ -542,14 +588,21 @@ export function ExploreMap({
   return (
     <div className="relative h-full w-full">
       <Map
+        ref={mapRef}
         center={center}
         zoom={zoom}
         zoomControlPosition="RIGHT_BOTTOM"
         markers={allMarkers}
-        // Selection precedence: search hit > night pin > Go focus. Search wins
-        // because the user just explicitly picked it from the autocomplete.
+        // Selection precedence: search hit > night pin > Go focus > itinerary.
+        // Itinerary va per ultimo perché ha un diverso "look" (no halo overlay,
+        // bordo bianco + scala hover) — quando un pin è itinerario sopra agli
+        // altri canali, lo vediamo direttamente lui senza confondersi con il
+        // selected-standard.
         selectedMarkerId={
-          searchPlace?.placeId ?? nightSelId ?? (goFocus ? keyOfPlace(goFocus) : null)
+          searchPlace?.placeId
+            ?? nightSelId
+            ?? (goFocus ? keyOfPlace(goFocus) : null)
+            ?? selectedItineraryId
         }
         onMapClick={handleMapClick}
         onPoiClick={handlePoiClick}
@@ -716,4 +769,5 @@ export function ExploreMap({
       />
     </div>
   );
-}
+});
+ExploreMap.displayName = "ExploreMap";

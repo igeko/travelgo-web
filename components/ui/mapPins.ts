@@ -195,18 +195,27 @@ const ROADMAP_HOVER_SCALE = 1.25;
  *  from `iconGlyph(IconClockExclamation)` for overflow/timing, `iconGlyph(
  *  IconMapPinExclamation)` for overflow/geo, or the activity's icon).
  *  `isHovered` scales the rendered pin by 1.25× (kept proportional, the SVG
- *  internals stay identical — only the output Size/anchor are multiplied). */
+ *  internals stay identical — only the output Size/anchor are multiplied).
+ *  `isSelected` aggiunge un bordo bianco e applica la stessa scala hover —
+ *  così il pin selezionato non si confonde con il "selected standard" (halo
+ *  decorativo, riservato ai click fuori dai pin) ma resta evidente. */
 export function makeRoadmapPin(
   state: RoadmapPinState,
   glyph: string,
   isGhost = false,
   kind: RoadmapPinKind = "activity",
   isHovered = false,
+  isSelected = false,
 ): google.maps.Icon {
   const shape = ROADMAP_SHAPES[state];
   const c = ROADMAP_COLORS[kind][state];
+  // Quando selected, overrideo lo stroke col bianco per uno screen-ring ben
+  // visibile su qualsiasi background (water/road/parks). 2px è il limite oltre
+  // cui il bordo morde la teardrop e la deforma.
+  const strokeColor = isSelected ? "#ffffff" : c.stroke;
+  const strokeWidth = isSelected ? 2 : c.strokeW;
   const teardrop =
-    `<path d="${shape.d}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="${c.strokeW}" stroke-linejoin="round"/>`;
+    `<path d="${shape.d}" fill="${c.fill}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>`;
   // 24-box icon scaled into the head (centred at the circle's centre, with
   // a -1 vertical offset that matches the spec — keeps the icon optically
   // centred above the tip).
@@ -220,7 +229,9 @@ export function makeRoadmapPin(
   const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${shape.w}" height="${shape.h}" viewBox="0 0 ${shape.w} ${shape.h}">${defs}${wrap}</svg>`;
 
-  const s = (isGhost ? GHOST_SCALE : 1) * (isHovered ? ROADMAP_HOVER_SCALE : 1);
+  // Selected riusa la scala hover (stessa "1.25×") così l'utente non vede un
+  // salto di dimensione hover → selected; resta solo l'aggiunta del bordo.
+  const s = (isGhost ? GHOST_SCALE : 1) * (isHovered || isSelected ? ROADMAP_HOVER_SCALE : 1);
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
     scaledSize: new google.maps.Size(shape.w * s, shape.h * s),

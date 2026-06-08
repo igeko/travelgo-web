@@ -244,6 +244,20 @@ export type MapHandle = {
    * over-zoomed corner case when only one point is in the bounds.
    */
   fitAll: (opts?: { padding?: number | google.maps.Padding; maxZoom?: number }) => void;
+  /**
+   * Pan-only verso le coords di un marker già presente. Niente cambio di
+   * zoom — se il marker è già nel viewport è un no-op (il `panTo` interno di
+   * Google evita movimenti inutili). Usato dalla Timeline quando l'utente
+   * seleziona una row e vuole spostare la camera senza riframmare.
+   */
+  panToMarker: (id: string) => void;
+  /**
+   * Reframe della camera per inquadrare TUTTI i marker corrispondenti agli
+   * `ids` passati (utili per "focus su un giorno"). Usa `fitBounds` quindi
+   * cambia anche lo zoom — lecito quando l'utente ha esplicitamente chiesto
+   * il fit. No-op quando nessuno degli ids matcha un marker.
+   */
+  fitMarkers: (ids: string[], opts?: { padding?: number | google.maps.Padding; maxZoom?: number }) => void;
 };
 
 /** Hover dwell before a pin's card appears, and grace before it closes. */
@@ -264,15 +278,16 @@ function iconForMarker(
   isHovered = false,
 ): google.maps.Icon {
   if (m.variant === "roadmap") {
-    // Lo stato selected NON cambia l'icona: il pin selezionato resta nella
-    // sua variante di base e la selezione viene comunicata dal halo overlay
-    // (coerente con la regola dei pin stop/night).
+    // Stato selected → bordo bianco + scala hover (no halo overlay decorativo,
+    // riservato ai click su POI Google fuori dai pin dell'itinerario). Hover e
+    // selected condividono la stessa scala, così niente salto di dimensione.
     return makeRoadmapPin(
       m.roadmapState ?? "default",
       m.glyph ?? "",
       isGhost,
       m.roadmapKind ?? "activity",
       isHovered,
+      isSelected,
     );
   }
   if (m.variant === "stop") {
@@ -751,6 +766,38 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
           });
         }
       },
+      panToMarker: (id) => {
+        const map = mapRef.current;
+        if (!map) return;
+        const m = (markersRef.current ?? []).find((mk) => (mk.id ?? `${mk.lat},${mk.lng}`) === id);
+        if (!m) return;
+        // panTo è idempotente quando il target è già visibile, e Google ottimizza
+        // automaticamente il movimento minimo. Niente cambio di zoom — coerente
+        // con la richiesta "spostati verso il pin se non visibile, senza zoom".
+        map.panTo({ lat: m.lat, lng: m.lng });
+      },
+      fitMarkers: (ids, opts) => {
+        const map = mapRef.current;
+        if (!map || ids.length === 0) return;
+        const wanted = new Set(ids);
+        const bounds = new google.maps.LatLngBounds();
+        let any = false;
+        (markersRef.current ?? []).forEach((m) => {
+          const key = m.id ?? `${m.lat},${m.lng}`;
+          if (!wanted.has(key)) return;
+          bounds.extend({ lat: m.lat, lng: m.lng });
+          any = true;
+        });
+        if (!any) return;
+        map.fitBounds(bounds, opts?.padding ?? 64);
+        const maxZoom = opts?.maxZoom;
+        if (maxZoom != null) {
+          google.maps.event.addListenerOnce(map, "idle", () => {
+            const z = map.getZoom();
+            if (z != null && z > maxZoom) map.setZoom(maxZoom);
+          });
+        }
+      },
     }),
     [applyPendingCoord, removeAdHoc],
   );
@@ -1112,13 +1159,17 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   }, []);
 
   // Decorate the selected marker with the hero halo + name label overlay.
+  // I roadmap pin sono ESCLUSI: hanno la loro selezione "intrinseca" (bordo
+  // bianco + scala hover gestiti da makeRoadmapPin). L'halo overlay resta per
+  // i POI Google e i pin ad-hoc (click su mappa) — quello è il "selected
+  // standard" di cui parlava l'utente.
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     const map = mapRef.current;
     const sel = selectedMarkerId
       ? (markers ?? []).find((m) => (m.id ?? `${m.lat},${m.lng}`) === selectedMarkerId)
       : undefined;
-    if (!sel) {
+    if (!sel || sel.variant === "roadmap") {
       selectedOverlayRef.current?.setMap(null);
       return;
     }

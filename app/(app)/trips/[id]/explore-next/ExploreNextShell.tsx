@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap";
-import type { LatLng, MapMarker, RouteSpec } from "@/components/ui/Map";
+import type { LatLng, MapHandle, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { INK } from "@/components/ui/mapPins";
@@ -228,6 +228,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     setSelectedDayId(id);
     setDayFocused(true);
   }, []);
+
+  // Ref al ExploreMap → expone gli imperativi del Map sottostante per la
+  // sync row↔pin (panToMarker su row-click) e per il focus-day (fitMarkers).
+  // I due useEffect che la usano vivono più in basso, dopo `chain` e
+  // `selectedActivityId`, per evitare TDZ errors.
+  const mapRef = useRef<MapHandle | null>(null);
   // Driven by Timeline's "open activity" (a stop expanded inline by click).
   // Fed to the Add-to-Trip algorithm via ExploreMap so the CTA on a place
   // card knows where (after which stop) the new place should land. Null
@@ -359,6 +365,25 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // su un chain diverso), quindi non lo usiamo come dedup; piuttosto la
   // persistenza overwrite-sempre aggiorna il DB alla verità corrente.
   const computedBridges = useChainBridges(chain);
+
+  // Sync row→pin: quando l'utente seleziona una row in Timeline (o l'host
+  // setta selectedActivityId da altre vie, incluso il click su un pin), pan
+  // verso il marker corrispondente senza cambiare zoom. panTo è idempotente
+  // (no-op se già nel viewport).
+  useEffect(() => {
+    if (!selectedActivityId) return;
+    mapRef.current?.panToMarker(selectedActivityId);
+  }, [selectedActivityId]);
+
+  // Sync day-focus → fit dei pin di quel giorno (zoom incluso: l'utente ha
+  // esplicitamente chiesto il focus). Saltato quando il giorno non ha pin
+  // (es. nessuna activity geo-localizzata).
+  useEffect(() => {
+    if (!dayFocused || !selectedDayId) return;
+    const ids = chain.filter((s) => s.dayId === selectedDayId).map((s) => s.id);
+    if (ids.length === 0) return;
+    mapRef.current?.fitMarkers(ids, { padding: 80, maxZoom: 15 });
+  }, [dayFocused, selectedDayId, chain]);
 
   // Latch per evitare doppi-fire ravvicinati (es. il bottone risponde in
   // rapida sequenza al click ma React non ha ancora unmountato la card).
@@ -656,6 +681,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   return (
     <div className="relative h-full w-full">
       <ExploreMap
+        ref={mapRef}
         tripId={tripId}
         center={center}
         zoom={zoom}
@@ -665,6 +691,14 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         viewportInset={{ left: panelWidth }}
         onAddToTripRequest={handleAddToTripRequest}
         onExtraMarkerDragEnd={handlePinDragEnd}
+        // Sync row↔pin: lo stato selezionato del pin segue selectedActivityId,
+        // un click sul pin apre la row corrispondente (openOverride) E setta
+        // il selected (per il bordo bianco del pin).
+        selectedItineraryId={selectedActivityId}
+        onItineraryPinClick={(id) => {
+          setSelectedActivityId(id);
+          setOpenOverride(id);
+        }}
         // Night-route off: la Timeline a sinistra mostra già l'alloggio
         // giorno-per-giorno, l'overlay diventava solo rumore.
         enableNightRoute={false}
