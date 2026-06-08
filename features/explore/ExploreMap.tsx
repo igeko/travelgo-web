@@ -19,7 +19,7 @@ import {
   type GlyphCmp,
   type CategoryPinKind,
 } from "@/components/ui/mapPins";
-import { IconBed, IconCompass, IconMapPin, IconRoute, IconToolsKitchen2 } from "@/components/ui/icons";
+import { IconBed, IconMapPin, IconRoute } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
@@ -60,15 +60,20 @@ for (const macro of EXPLORE_CATEGORY_TREE) {
   }
 }
 
-/** Map a sub-category id to the macro pin palette + glyph used on the map.
- *  /design/category-pins drives the colours — eat / sleep / explore. */
-const MACRO_PIN: Record<string, { kind: CategoryPinKind; glyph: string }> = {
-  mangia:  { kind: "eat",     glyph: iconGlyph("cat-pin:eat",     IconToolsKitchen2) },
-  dormi:   { kind: "sleep",   glyph: iconGlyph("cat-pin:sleep",   IconBed) },
-  esplora: { kind: "explore", glyph: iconGlyph("cat-pin:explore", IconCompass) },
+/** Map a macro id to the pin colour kind per /design/category-pins. The
+ *  GLYPH on the pin comes from the sub-category (sub.icon), so the user
+ *  reads the specific kind of place at a glance — colour = macro, icon =
+ *  sub. Defaults to "explore" when the macro is unknown. */
+const MACRO_KIND: Record<string, CategoryPinKind> = {
+  mangia:  "eat",
+  dormi:   "sleep",
+  esplora: "explore",
 };
 function pinForSub(subId: string): { kind: CategoryPinKind; glyph: string } {
-  return MACRO_PIN[SUB_MACRO[subId]] ?? MACRO_PIN.esplora;
+  const kind = MACRO_KIND[SUB_MACRO[subId]] ?? "explore";
+  const SubIcon = SUB_ICON[subId];
+  const glyph = SubIcon ? iconGlyph(`cat-sub:${subId}`, SubIcon) : "";
+  return { kind, glyph };
 }
 
 /** Marker key for a place — placeId when known, else its coordinates. */
