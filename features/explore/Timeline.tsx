@@ -455,7 +455,7 @@ export function Timeline({
                 gridRow: `${firstSlotOpen ? 1 : 2} / ${lastRow + 1}`,
               }}
               className={cn(
-                "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
+                "w-full cursor-pointer self-stretch rounded-xs transition-colors",
                 expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
                 firstSlotPresent && !firstSlotOpen
                   ? isFirst ? "mt-[22px]" : "mt-[16px]"
