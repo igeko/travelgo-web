@@ -69,12 +69,19 @@ function accommodationIcon(type: string | null): IconCmp {
 type Props = {
   days: TimelineDayData[];
   /**
+   * Chain canonico del trip (`buildTripChain`). Quando presente, la
+   * Timeline può risalire al chain-stop precedente alla prima activity
+   * di ogni giorno e prepende un Transfer "incoming" cross-day (es.
+   * accommodation di ieri → prima activity di oggi, oppure ultima
+   * activity di un giorno precedente → prima activity di oggi quando
+   * giorni intermedi sono vuoti). Senza chain, niente Transfer incoming.
+   */
+  chain?: import("./tripChain").TripStop[];
+  /**
    * Bridge calcolati lazy lato client (mode DRIVING default) per i leg
-   * activity→activity senza `bridge_out_json` persistito. Chiave =
-   * `${prevActivityId}|${nextActivityId}`. Quando presente, la Timeline
-   * popola un Transfer per quel leg in fallback al bridge salvato.
-   * (Activity↔accommodation Transfer arriveranno in uno step successivo
-   * — richiedono cambio layout grid.)
+   * del chain. Chiave = `${prevId}|${currId}` con TripStop.id (scheduled.id
+   * per activity, `acc:...` per accommodation). Usato sia per Transfer
+   * activity↔activity intra-giorno sia per Transfer incoming cross-day.
    */
   computedBridges?: Map<string, BridgeData>;
   /** Japan & co. carry no bridge data — inject a sample Transfer between
@@ -246,15 +253,35 @@ function buildItems(
   expanded: boolean,
   injectSample: boolean,
   /** Fallback: bridge calcolato lazy per i leg senza bridge_out_json
-   *  salvato. Chiave `${prevId}|${currId}`. Quando presente sostituisce
-   *  l'iniezione del sample-transfer (che era solo onboarding). */
+   *  salvato. Chiave `${prevId}|${currId}` (TripStop.id). Quando presente
+   *  sostituisce l'iniezione del sample-transfer (che era solo onboarding). */
   computedBridges?: Map<string, BridgeData>,
+  /** Quando il host passa anche il chain del trip, possiamo prependere
+   *  un Transfer "incoming" prima della prima activity di un giorno —
+   *  sourceando dal chain-stop precedente (può essere l'accommodation
+   *  del giorno prima o l'ultima activity di un giorno precedente quando
+   *  il giorno intermedio è vuoto). */
+  incomingChainPrevId?: string | null,
 ): Item[] {
   const items: Item[] = [];
 
   const visible = [...acts]
     .sort((a, b) => a.position - b.position)
     .filter((a) => expanded || a.fuzzy !== true);
+
+  // Incoming Transfer: prima della prima activity, se c'è un chain-stop
+  // precedente E abbiamo un bridge per quel leg (bridge_in salvato OR
+  // computed). Saved bridge_in_json può essere stantio (lo stesso problema
+  // di bridge_out su prev), ma se siamo arrivati qui senza computed non
+  // abbiamo alternativa migliore.
+  if (incomingChainPrevId && visible.length > 0) {
+    const first = visible[0];
+    const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
+    const bridge = computedIn ?? first.bridge_in_json ?? null;
+    if (bridge) {
+      items.push({ kind: "transfer", id: `${first.id}-in`, transfer: bridgeTransfer(bridge) });
+    }
+  }
 
   visible.forEach((activity, i) => {
     items.push({ kind: "activity", activity });
@@ -307,6 +334,7 @@ function buildLodging(
 
 export function Timeline({
   days,
+  chain,
   computedBridges,
   injectSampleTransfers = false,
   onSelectDay,
@@ -362,6 +390,27 @@ export function Timeline({
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
+  // Per ogni dayId, l'id del chain-stop IMMEDIATAMENTE precedente alla
+  // sua prima activity (in ordine di chain). Usato per disegnare il
+  // Transfer incoming cross-day. Map vuota quando `chain` non è passato
+  // o quando il giorno è il primo con attività (niente prev).
+  const chainPrevByDay = new Map<string, string>();
+  if (chain && chain.length > 1) {
+    for (let i = 1; i < chain.length; i++) {
+      const prev = chain[i - 1];
+      const curr = chain[i];
+      // Solo activity (le accommodation vengono mostrate come lodging
+      // pinned-to-bottom, no incoming Transfer). E solo per la PRIMA
+      // entry di un dayId nuova (cioè quando curr.dayId !== prev.dayId
+      // OR curr è il primo activity del suo giorno nel chain).
+      if (curr.kind !== "activity") continue;
+      // Se il dayId è già mappato, lo abbiamo già; il primo hit vince
+      // (corrisponde alla prima activity del giorno nel chain order).
+      if (chainPrevByDay.has(curr.dayId)) continue;
+      chainPrevByDay.set(curr.dayId, prev.id);
+    }
+  }
+
   // L'onboarding hint ("Niente pianificato — aggiungi la prima attività")
   // ha senso solo finché il viaggio è completamente vuoto. Appena UNA
   // qualsiasi tappa esiste, il messaggio diventa rumore sui giorni che
@@ -415,7 +464,13 @@ export function Timeline({
         const dayLoad = computeDayLoad(day.activities);
 
         const expanded = selectedDayId === day.id;
-        const items = buildItems(day.activities, expanded, injectSampleTransfers, computedBridges);
+        const items = buildItems(
+          day.activities,
+          expanded,
+          injectSampleTransfers,
+          computedBridges,
+          chainPrevByDay.get(day.id) ?? null,
+        );
         const lodging = buildLodging(day.accommodation, day.id);
         const showNotes = expanded && !!day.notes;
 

@@ -42,13 +42,15 @@ export function legKey(prevId: string, currId: string): string {
  * `chain` deve essere stabile in identità per evitare re-fetch inutili —
  * passare l'output di `useMemo(buildTripChain(days), [days])`.
  *
- * `savedBridges` è un Set di legKey per i quali il bridge è GIÀ persistito
- * lato server (`prev.bridge_out_json != null`). Saltati nel compute.
+ * Tutti i leg vengono ricomputati ad ogni mount del chain: la cache
+ * localStorage (`api.routes.compute`) garantisce zero call Google quando
+ * i punti non sono cambiati. Niente filtro su "bridge già salvato": il
+ * dato persistito può essere stantio (un addPlace passato che puntava a
+ * un'altra destinazione), quindi non possiamo fidarci come dedup. La
+ * persistenza overwrite-sempre rimpiazza eventuali valori vecchi col
+ * vero leg corrente del chain.
  */
-export function useChainBridges(
-  chain: TripStop[],
-  savedLegKeys: Set<string>,
-): Map<string, BridgeData> {
+export function useChainBridges(chain: TripStop[]): Map<string, BridgeData> {
   const [computed, setComputed] = useState<Map<string, BridgeData>>(new Map());
 
   useEffect(() => {
@@ -56,19 +58,14 @@ export function useChainBridges(
     let cancelled = false;
 
     // Raccogli i leg da calcolare: consecutivi con entrambi gli endpoint
-    // geo-localizzati, esclusi quelli già salvati lato server (li legge
-    // la Timeline dal bridge_out_json del prev). Niente check vs il
-    // computed state corrente: re-fetch è cache-hit dalla localStorage
-    // e niente loop di dipendenze.
+    // geo-localizzati. La cache localStorage gestisce il dedup network.
     type Leg = { key: string; prev: TripStop; curr: TripStop };
     const todo: Leg[] = [];
     for (let i = 1; i < chain.length; i++) {
       const prev = chain[i - 1];
       const curr = chain[i];
-      const key = legKey(prev.id, curr.id);
-      if (savedLegKeys.has(key)) continue;
       if (prev.lat == null || prev.lng == null || curr.lat == null || curr.lng == null) continue;
-      todo.push({ key, prev, curr });
+      todo.push({ key: legKey(prev.id, curr.id), prev, curr });
     }
     if (todo.length === 0) return;
 
@@ -122,7 +119,7 @@ export function useChainBridges(
     return () => {
       cancelled = true;
     };
-  }, [chain, savedLegKeys]);
+  }, [chain]);
 
   return computed;
 }
