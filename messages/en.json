@@ -20,6 +20,7 @@
     "close": "Close",
     "pointLabel": "Point · {coords}",
     "placeFallback": "Place",
+    "searchNearHere": "Search {category} near here",
     "nightRoute": "Night route",
     "day": "Day {n}",
     "days": "Days {from}–{to}",

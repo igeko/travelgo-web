@@ -190,6 +190,21 @@ export type MapProps = {
    * Default `false`. Usata da Explore Next per dare un overview all'apertura.
    */
   fitAllOnMount?: boolean;
+  /**
+   * Action bubble anchored at a lat/lng — renders a small pill above the
+   * point with a label and a single CTA. Used by Explore for the
+   * "Search <category> near here" affordance: click on the map with a
+   * category selected → bubble appears; user clicks it → host runs the
+   * area search and clears the bubble. Pass `null` to hide. The bubble
+   * follows pan/zoom (powered by an OverlayView), so the host can leave
+   * it pinned until dismissed.
+   */
+  actionBubble?: {
+    lat: number;
+    lng: number;
+    label: string;
+    onClick: () => void;
+  } | null;
 };
 
 /**
@@ -529,6 +544,55 @@ function createSelectedPinOverlay(): SelectedPinOverlay {
   return overlay;
 }
 
+/**
+ * Action bubble overlay — a small pill above a lat/lng with a single CTA.
+ * Used for "Search <category> near here". Re-projects on every draw, so the
+ * bubble follows pan/zoom. The button has pointer-events so the click goes
+ * through to the host callback rather than being eaten by the map.
+ */
+type ActionBubbleOverlay = google.maps.OverlayView & {
+  setData: (lat: number, lng: number, label: string, onClick: () => void) => void;
+};
+
+function createActionBubbleOverlay(): ActionBubbleOverlay {
+  const overlay = new google.maps.OverlayView() as ActionBubbleOverlay;
+  let pos: google.maps.LatLng | null = null;
+  let handler: () => void = () => {};
+
+  const container = document.createElement("div");
+  container.style.cssText =
+    "position:absolute;transform:translate(-50%,-100%);z-index:1001;pointer-events:none;";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.style.cssText =
+    "pointer-events:auto;display:inline-flex;align-items:center;gap:6px;" +
+    "padding:6px 12px;border-radius:9999px;font-size:13px;font-weight:500;" +
+    "background:var(--color-ink,#0d2c3d);color:#fff;border:0;cursor:pointer;" +
+    "box-shadow:0 4px 14px rgba(13,44,61,0.28);white-space:nowrap;" +
+    "margin-bottom:8px;";
+  button.addEventListener("click", (e) => { e.stopPropagation(); handler(); });
+  container.append(button);
+
+  overlay.onAdd = function () { this.getPanes()?.floatPane.appendChild(container); };
+  overlay.draw = function () {
+    if (!pos) return;
+    const p = this.getProjection()?.fromLatLngToDivPixel(pos);
+    if (!p) return;
+    container.style.left = `${p.x}px`;
+    container.style.top = `${p.y}px`;
+  };
+  overlay.onRemove = function () { container.remove(); };
+  overlay.setData = (lat, lng, label, onClick) => {
+    pos = new google.maps.LatLng(lat, lng);
+    button.textContent = label;
+    handler = onClick;
+    overlay.draw();
+  };
+
+  return overlay;
+}
+
 export const Map = forwardRef<MapHandle, MapProps>(function Map(
   {
     center,
@@ -549,6 +613,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     routes,
     viewportInset,
     fitAllOnMount = false,
+    actionBubble = null,
   },
   ref,
 ) {
@@ -1091,6 +1156,29 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
 
   // Tear down the overlay on unmount.
   useEffect(() => () => { selectedOverlayRef.current?.setMap(null); }, []);
+
+  // Action bubble overlay — lazily created on first non-null `actionBubble`,
+  // re-positioned on every prop change, hidden when prop is null. Unmounted
+  // with the Map. The OverlayView itself handles the pan/zoom redraw via
+  // google.maps panes.
+  const actionBubbleRef = useRef<ActionBubbleOverlay | null>(null);
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+    if (!actionBubble) {
+      actionBubbleRef.current?.setMap(null);
+      actionBubbleRef.current = null;
+      return;
+    }
+    if (!actionBubbleRef.current) {
+      actionBubbleRef.current = createActionBubbleOverlay();
+      actionBubbleRef.current.setMap(mapRef.current);
+    }
+    actionBubbleRef.current.setData(
+      actionBubble.lat, actionBubble.lng, actionBubble.label, actionBubble.onClick,
+    );
+  }, [status, actionBubble]);
+
+  useEffect(() => () => { actionBubbleRef.current?.setMap(null); }, []);
 
   const pinCard = activeCardId && renderPinCard
     ? renderPinCard(activeCardId, () => {

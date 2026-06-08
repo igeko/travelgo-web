@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Map, type LatLng, type MapMarker, type RouteSpec } from "@/components/ui/Map";
+import { Map, type LatLng, type MapHandle, type MapMarker, type RouteSpec } from "@/components/ui/Map";
 import { useTripGo, type GoPlace } from "@/features/go/TripGoContext";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
@@ -152,9 +152,17 @@ export function ExploreMap({
   // `initialPlace` (no second Google round-trip).
   const [searchPlace, setSearchPlace] = useState<PlaceEnriched | null>(null);
 
+  // Imperative handle on the Map — used to programmatically fit-to-bounds
+  // the category area-search results so the user sees them all at once,
+  // and to read the projection for the "Search near here" action bubble.
+  const mapHandleRef = useRef<MapHandle | null>(null);
   const [goMarkers, setGoMarkers] = useState<MapMarker[]>([]);
   const [categoryMarkers, setCategoryMarkers] = useState<MapMarker[]>([]);
   const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
+  // "Search <category> near here" action bubble — appears when the user
+  // clicks an empty patch of the map with a category selected. Cleared on
+  // execute, on category deselection, or on a second empty-map click.
+  const [nearHerePrompt, setNearHerePrompt] = useState<{ lat: number; lng: number } | null>(null);
   const [center, setCenter] = useState<LatLng>(tripCenter);
   // Zoom è "set-once": l'inizializzazione viene dal trip, poi resta interamente
   // in mano all'utente (auto-zoom disabilitato — vedi note più sotto). Niente
@@ -351,6 +359,29 @@ export function ExploreMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubIds]);
 
+  // Quando arrivano i risultati di categoria, fitBounds sui pin così l'utente
+  // li vede tutti in un colpo. maxZoom limita lo zoom-in eccessivo quando i
+  // risultati sono concentrati in pochi metri. Non scattiamo nulla se l'array
+  // è vuoto (es. la categoria è stata deselezionata) o se il viewport
+  // contiene un solo pin (lo `fitBounds` su 1 punto azzera lo zoom).
+  useEffect(() => {
+    if (categoryMarkers.length === 0) return;
+    const handle = mapHandleRef.current;
+    if (!handle) return;
+    const bounds = new google.maps.LatLngBounds();
+    for (const m of categoryMarkers) bounds.extend({ lat: m.lat, lng: m.lng });
+    handle.fitBounds(bounds, 80);
+    // Cap dopo l'idle: evitiamo di chiudere lo zoom troppo da vicino quando
+    // i risultati sono molto vicini tra loro.
+    const map = handle.getMap();
+    if (map) {
+      google.maps.event.addListenerOnce(map, "idle", () => {
+        const z = map.getZoom();
+        if (z != null && z > 16) map.setZoom(16);
+      });
+    }
+  }, [categoryMarkers]);
+
   // Focus changed → pan to it. La mappa NON ricorda più l'ultimo pin
   // attivo tra una sessione e l'altra: all'apertura non c'è alcun pin
   // pre-selezionato. La selezione esiste solo a seguito di una vera
@@ -362,13 +393,61 @@ export function ExploreMap({
 
   // Map → Go: drop a pin on empty map → focus + open Go. We don't reverse-geocode
   // (Maps key not authorized for Geocoding), so the label is coordinate-based.
+  //
+  // Special case: if a category is selected in the toolbar, the click does NOT
+  // open Go — it primes the "Search <category> near here" action bubble at the
+  // click point. The user has to confirm by clicking the bubble; clicking again
+  // on the map dismisses it and resumes the Go path on the next click.
   const handleMapClick = (latlng: LatLng) => {
     interactedRef.current = true;
     setNightSelId(null);
     setSearchPlace(null);
+
+    if (selectedSubIds.length > 0) {
+      // Toggle: a second empty-map click dismisses an existing prompt.
+      if (nearHerePrompt) {
+        setNearHerePrompt(null);
+        return;
+      }
+      setNearHerePrompt({ lat: latlng.lat, lng: latlng.lng });
+      return;
+    }
+
     const coords = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
     setGoFocus({ title: t("pointLabel", { coords }), lat: latlng.lat, lng: latlng.lng });
     openGo();
+  };
+
+  // Clear the bubble whenever the category selection changes (deselect or pick
+  // a different category) — its label would be stale otherwise. Pattern:
+  // "adjusting state when props change" — compare against the previous render
+  // and reset in-render, avoiding a cascading effect.
+  const [lastSelectedSubIds, setLastSelectedSubIds] = useState(selectedSubIds);
+  if (selectedSubIds !== lastSelectedSubIds) {
+    setLastSelectedSubIds(selectedSubIds);
+    if (nearHerePrompt !== null) setNearHerePrompt(null);
+  }
+
+  // Execute the area search centred on the bubble's anchor and dismiss it.
+  // Mirrors the auto-search effect but with an explicit origin instead of the
+  // current viewport centre.
+  const runNearHereSearch = async () => {
+    const sel = selectedSubIds[0];
+    const pt = nearHerePrompt;
+    if (!sel || !pt) return;
+    const term = SUB_GOOGLE[sel];
+    if (!term) return;
+    const glyph = SUB_ICON[sel] ? iconGlyph(`cat:${sel}`, SUB_ICON[sel]) : undefined;
+    const radius = viewportRef.current?.radiusMeters ?? 5000;
+    setNearHerePrompt(null);
+    try {
+      const places = await api.places.areaSearch<AreaPlace>(term, pt.lat, pt.lng, radius);
+      setCategoryMarkers(places.map((p) => ({
+        id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph, clustered: true,
+      })));
+    } catch (err) {
+      console.error("[ExploreMap] near-here search failed:", err);
+    }
   };
 
   // Map → Go: click a Google POI → focus that real place (no ad-hoc pin).
@@ -552,6 +631,19 @@ export function ExploreMap({
         routes={routes}
         fitAllOnMount={fitAllOnMount}
         className="h-full w-full rounded-none"
+        ref={mapHandleRef}
+        actionBubble={
+          nearHerePrompt && selectedSubIds[0]
+            ? {
+                lat: nearHerePrompt.lat,
+                lng: nearHerePrompt.lng,
+                label: t("searchNearHere", {
+                  category: SUB_GOOGLE[selectedSubIds[0]] ?? selectedSubIds[0],
+                }),
+                onClick: runNearHereSearch,
+              }
+            : null
+        }
       />
 
       <ExploreToolbar
