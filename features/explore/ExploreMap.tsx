@@ -9,6 +9,7 @@ import { ExploreToolbar } from "@/features/explore/ExploreToolbar";
 import { YumejiPinnedColumn, useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { cn } from "@/lib/cn";
 import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHoverCard";
+import { AddedPill } from "@/features/explore/AddedPill";
 import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
@@ -195,6 +196,10 @@ export const ExploreMap = forwardRef<MapHandle, {
   // clicks an empty patch of the map with a category selected. Cleared on
   // execute, on category deselection, or on a second empty-map click.
   const [nearHerePrompt, setNearHerePrompt] = useState<{ lat: number; lng: number } | null>(null);
+  // Sub-category id currently in-flight (auto-search after a toolbar click,
+  // or explicit near-here search). Drives the "Cerco …" feedback pill so
+  // the user sees something happen between click and results arriving.
+  const [searchingFor, setSearchingFor] = useState<string | null>(null);
   const [center, setCenter] = useState<LatLng>(tripCenter);
   // Zoom è "set-once": l'inizializzazione viene dal trip, poi resta interamente
   // in mano all'utente (auto-zoom disabilitato — vedi note più sotto). Niente
@@ -218,18 +223,23 @@ export const ExploreMap = forwardRef<MapHandle, {
     [extraMarkers],
   );
 
-  // Esporta gli imperativi del Map sottostante (mapHandleRef già esistente)
+  // Ref locale sull'imperative handle del Map sottostante — usato sia per il
+  // forwarding (useImperativeHandle qui sotto) sia per chiamate locali
+  // (fitBounds sui risultati della category-search).
+  const mapRef = useRef<MapHandle | null>(null);
+
+  // Esporta gli imperativi del Map sottostante
   // attraverso ExploreMap come proxy → l'host (ExploreNextShell) può chiamare
   // panToMarker / fitMarkers / fitAll senza accoppiarsi al Map direttamente.
   useImperativeHandle(ref, () => ({
-    getMap: () => mapHandleRef.current?.getMap() ?? null,
-    fitBounds: (b, p) => mapHandleRef.current?.fitBounds(b, p),
-    focusCoord: (lat, lng, opts) => mapHandleRef.current?.focusCoord(lat, lng, opts),
-    clearAdHoc: () => mapHandleRef.current?.clearAdHoc(),
-    hasAdHocFocus: () => mapHandleRef.current?.hasAdHocFocus() ?? false,
-    fitAll: (opts) => mapHandleRef.current?.fitAll(opts),
-    panToMarker: (id) => mapHandleRef.current?.panToMarker(id),
-    fitMarkers: (ids, opts) => mapHandleRef.current?.fitMarkers(ids, opts),
+    getMap: () => mapRef.current?.getMap() ?? null,
+    fitBounds: (b, p) => mapRef.current?.fitBounds(b, p),
+    focusCoord: (lat, lng, opts) => mapRef.current?.focusCoord(lat, lng, opts),
+    clearAdHoc: () => mapRef.current?.clearAdHoc(),
+    hasAdHocFocus: () => mapRef.current?.hasAdHocFocus() ?? false,
+    fitAll: (opts) => mapRef.current?.fitAll(opts),
+    panToMarker: (id) => mapRef.current?.panToMarker(id),
+    fitMarkers: (ids, opts) => mapRef.current?.fitMarkers(ids, opts),
   }), []);
 
   // Night-route pins as regular markers with the dedicated "night" variant: this
@@ -392,6 +402,7 @@ export const ExploreMap = forwardRef<MapHandle, {
       if (!term) return;
       const vp = viewportRef.current ?? { center, radiusMeters: 5000 };
       const pin = pinForSub(subId);
+      setSearchingFor(subId);
       try {
         const places = await api.places.areaSearch<AreaPlace>(
           term, vp.center.lat, vp.center.lng, vp.radiusMeters,
@@ -406,6 +417,8 @@ export const ExploreMap = forwardRef<MapHandle, {
         })));
       } catch (err) {
         console.error("[ExploreMap] category area-search failed:", err);
+      } finally {
+        setSearchingFor(null);
       }
     }, SEARCH_DEBOUNCE);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
@@ -495,6 +508,7 @@ export const ExploreMap = forwardRef<MapHandle, {
     const pin = pinForSub(sel);
     const radius = viewportRef.current?.radiusMeters ?? 5000;
     setNearHerePrompt(null);
+    setSearchingFor(sel);
     try {
       const places = await api.places.areaSearch<AreaPlace>(term, pt.lat, pt.lng, radius);
       setCategoryMarkers(places.map((p) => ({
@@ -505,6 +519,8 @@ export const ExploreMap = forwardRef<MapHandle, {
       })));
     } catch (err) {
       console.error("[ExploreMap] near-here search failed:", err);
+    } finally {
+      setSearchingFor(null);
     }
   };
 
@@ -608,6 +624,7 @@ export const ExploreMap = forwardRef<MapHandle, {
   return (
     <div className="relative h-full w-full">
       <Map
+        ref={mapRef}
         center={center}
         zoom={zoom}
         zoomControlPosition="RIGHT_BOTTOM"
@@ -785,6 +802,16 @@ export const ExploreMap = forwardRef<MapHandle, {
         floating
         className="hidden md:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
       />
+
+      {/* "Cerco …" pill — feedback per il toolbar↔mappa: dal click sulla
+          categoria fino all'arrivo dei risultati. Si smonta da sola quando
+          searchingFor torna null. */}
+      {searchingFor ? (
+        <AddedPill
+          state={{ kind: "searching", label: searchingFor }}
+          onDismiss={() => setSearchingFor(null)}
+        />
+      ) : null}
     </div>
   );
 });
