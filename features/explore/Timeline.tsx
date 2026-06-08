@@ -434,18 +434,17 @@ export function Timeline({
             style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
           >
             {/* Day rail — the rounded grey segment BELOW the badge, detached by
-                a 3px gap above (mt) and below (mb-[3px]) so the day-to-day
-                spacing reads as 3px between the rail bottom and the next day's
-                fill bar. Holds the aligned time ticks. When the first-slot row
-                1 item is OPEN the rail extends up into row 1 too, so the dark
-                column covers the full height of the opened card.
+                a 3px gap above (mt) and below (the container's row gap). Holds
+                the aligned time ticks. When the first-slot row 1 item is OPEN
+                the rail extends up into row 1 too, so the dark column covers
+                the full height of the opened card.
                 When a closed first-slot item shares row 1 with the badge, the
-                badge (43px intrinsic) overflows the row sized by the stop
-                (~36px) by 7px into row 2, so the rail's top margin is 7 + 3
-                = 10 to keep the visible gap below the badge at the intended
-                3px. The isFirst badge carries an extra 6px on top (the
-                ink/15 bar + spacer), so its overflow is 7 + 6 = 13 and the
-                rail margin becomes 13 + 3 = 16. */}
+                badge (43px intrinsic + 6px mt-1.5 = 49) overflows the row sized
+                by the stop (~36px) by 13px into row 2, so the rail's top margin
+                is 13 + 3 = 16 to keep the visible gap below the badge at the
+                intended 3px. The isFirst badge carries an extra 6px on top
+                (the ink/15 bar + spacer), so its overflow is 13 + 6 = 19 and
+                the rail margin becomes 19 + 3 = 22. */}
             <button
               type="button"
               onClick={() => selectDay(day.id)}
@@ -459,18 +458,16 @@ export function Timeline({
                 "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
                 expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
                 firstSlotPresent && !firstSlotOpen
-                  ? isFirst ? "mt-[16px]" : "mt-[10px]"
+                  ? isFirst ? "mt-[22px]" : "mt-[16px]"
                   : "mt-[3px]",
               )}
             />
 
             {/* Day badge — sits on top of the rail (col 1, row 1). When a
-                first-slot item shares row 1, the badge spans row 1+2 so
-                row 1's height is driven by the slot item rather than by the
-                badge's natural 43px; the badge then overflows into row 2 and
-                the rail compensates with its top margin (see above). No mt
-                on the badge button itself: that would push the fill bar down
-                and break the 3px day-to-day spacing. */}
+                first-slot item shares row 1 with it, the badge spans row 1+2
+                with `mt-1.5` so the top stripe lines up with the slot icon and
+                row 1's height is driven by the slot item, not by the badge's
+                natural 43px. */}
             <button
               type="button"
               onClick={() => selectDay(day.id)}
@@ -480,7 +477,7 @@ export function Timeline({
                 gridColumn: 1,
                 gridRow: firstSlotPresent ? "1 / span 2" : 1,
               }}
-              className="cursor-pointer self-start"
+              className={cn("cursor-pointer self-start", firstSlotPresent && "mt-1.5")}
             >
               <DayBadge
                 weekday={weekday}
