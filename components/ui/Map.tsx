@@ -197,19 +197,29 @@ export type MapProps = {
    */
   fitAllOnMount?: boolean;
   /**
-   * Action bubble anchored at a lat/lng — renders a small pill above the
-   * point with a label and a single CTA. Used by Explore for the
-   * "Search <category> near here" affordance: click on the map with a
-   * category selected → bubble appears; user clicks it → host runs the
-   * area search and clears the bubble. Pass `null` to hide. The bubble
-   * follows pan/zoom (powered by an OverlayView), so the host can leave
-   * it pinned until dismissed.
+   * Action card anchored at a lat/lng — renders the Explore "search in this
+   * area" affordance: a coloured macro icon-box, two lines of text, a
+   * "Cerca" CTA and a dismiss X, with a small anchor dot at the click
+   * point. Pass `null` to hide. Follows pan/zoom via OverlayView so the
+   * host can leave it pinned until dismissed.
+   *
+   * Spec: /design/map-search-action.
    */
   actionBubble?: {
     lat: number;
     lng: number;
-    label: string;
-    onClick: () => void;
+    /** Macro palette ("eat" / "sleep" / "explore") — drives icon-box bg + dot. */
+    category: import("./mapPins").CategoryPinKind;
+    /** Inner SVG of the macro icon (from `iconGlyph`), drawn white on the box. */
+    glyph: string;
+    /** Bold first line, e.g. "Cerca ristoranti qui". */
+    title: string;
+    /** Faint second line, e.g. "Zona selezionata". Optional. */
+    subtitle?: string;
+    /** CTA label (defaults to "Cerca"). */
+    ctaLabel?: string;
+    onSearch: () => void;
+    onDismiss: () => void;
   } | null;
 };
 
@@ -571,48 +581,138 @@ function createSelectedPinOverlay(): SelectedPinOverlay {
 }
 
 /**
- * Action bubble overlay — a small pill above a lat/lng with a single CTA.
- * Used for "Search <category> near here". Re-projects on every draw, so the
- * bubble follows pan/zoom. The button has pointer-events so the click goes
- * through to the host callback rather than being eaten by the map.
+ * Action card overlay — implements /design/map-search-action. Anchored at a
+ * lat/lng, it draws:
+ *  - a small dot exactly on the click point (10px, white-bordered, macro colour);
+ *  - a floating card just above it with an icon box (macro colour), title +
+ *    optional subtitle, a "Cerca" CTA and a dismiss X.
+ * Re-projects on every draw → follows pan/zoom. Buttons get pointer-events
+ * so clicks reach the host callbacks rather than being eaten by the map.
  */
+const ACTION_COLORS: Record<import("./mapPins").CategoryPinKind, string> = {
+  eat: "#c0622a",
+  sleep: "#2d6a8f",
+  explore: "#3a7d44",
+};
+
+type ActionBubbleData = {
+  lat: number;
+  lng: number;
+  category: import("./mapPins").CategoryPinKind;
+  glyph: string;
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  onSearch: () => void;
+  onDismiss: () => void;
+};
+
 type ActionBubbleOverlay = google.maps.OverlayView & {
-  setData: (lat: number, lng: number, label: string, onClick: () => void) => void;
+  setData: (d: ActionBubbleData) => void;
 };
 
 function createActionBubbleOverlay(): ActionBubbleOverlay {
   const overlay = new google.maps.OverlayView() as ActionBubbleOverlay;
   let pos: google.maps.LatLng | null = null;
-  let handler: () => void = () => {};
+  let onSearch: () => void = () => {};
+  let onDismiss: () => void = () => {};
 
-  const container = document.createElement("div");
-  container.style.cssText =
-    "position:absolute;transform:translate(-50%,-100%);z-index:1001;pointer-events:none;";
+  // Root container: positioned absolutely; children are stacked manually.
+  const root = document.createElement("div");
+  root.style.cssText =
+    "position:absolute;z-index:1001;pointer-events:none;";
 
-  const button = document.createElement("button");
-  button.type = "button";
-  button.style.cssText =
-    "pointer-events:auto;display:inline-flex;align-items:center;gap:6px;" +
-    "padding:6px 12px;border-radius:9999px;font-size:13px;font-weight:500;" +
-    "background:var(--color-ink,#0d2c3d);color:#fff;border:0;cursor:pointer;" +
-    "box-shadow:0 4px 14px rgba(13,44,61,0.28);white-space:nowrap;" +
-    "margin-bottom:8px;";
-  button.addEventListener("click", (e) => { e.stopPropagation(); handler(); });
-  container.append(button);
+  // 1) Anchor dot, anchored exactly on the lat/lng.
+  const dot = document.createElement("div");
+  dot.style.cssText =
+    "position:absolute;left:0;top:0;width:10px;height:10px;border-radius:9999px;" +
+    "border:2px solid #ffffff;box-shadow:0 1px 4px rgba(13,44,61,0.30);" +
+    "transform:translate(-50%,-50%);";
 
-  overlay.onAdd = function () { this.getPanes()?.floatPane.appendChild(container); };
+  // 2) Card, anchored above the dot.
+  const card = document.createElement("div");
+  card.style.cssText =
+    "position:absolute;left:0;top:0;transform:translate(-50%,calc(-100% - 16px));" +
+    "display:inline-flex;align-items:center;gap:12px;padding:8px 10px;" +
+    "background:#ffffff;border:1px solid var(--color-border,#e6e3da);" +
+    "border-radius:12px;box-shadow:0 6px 20px rgba(13,44,61,0.18);" +
+    "white-space:nowrap;pointer-events:auto;";
+
+  // Macro icon box
+  const iconBox = document.createElement("span");
+  iconBox.style.cssText =
+    "flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;" +
+    "width:32px;height:32px;border-radius:8px;color:#ffffff;";
+  // SVG glyph slot — populated on setData.
+  const iconSvg = document.createElement("span");
+  iconSvg.style.cssText =
+    "display:inline-flex;width:15px;height:15px;align-items:center;justify-content:center;";
+  iconBox.append(iconSvg);
+
+  // Text block
+  const text = document.createElement("span");
+  text.style.cssText = "display:flex;flex-direction:column;min-width:0;";
+  const title = document.createElement("span");
+  title.style.cssText =
+    "font-size:13px;font-weight:500;line-height:1.2;color:var(--color-ink,#0d2c3d);";
+  const subtitle = document.createElement("span");
+  subtitle.style.cssText =
+    "font-size:11px;color:rgba(13,44,61,0.45);margin-top:2px;line-height:1.2;";
+  text.append(title, subtitle);
+
+  // CTA "Cerca"
+  const cta = document.createElement("button");
+  cta.type = "button";
+  cta.style.cssText =
+    "flex-shrink:0;display:inline-flex;align-items:center;gap:6px;" +
+    "padding:6px 12px;border-radius:8px;font-size:13px;font-weight:500;" +
+    "background:var(--color-ink,#0d2c3d);color:#ffffff;border:0;cursor:pointer;";
+  // Inline search icon glyph (Tabler IconSearch, simplified).
+  cta.innerHTML =
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+    `<circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg>` +
+    `<span></span>`;
+  const ctaLabel = cta.querySelector("span")!;
+  cta.addEventListener("click", (e) => { e.stopPropagation(); onSearch(); });
+
+  // Dismiss X
+  const dismiss = document.createElement("button");
+  dismiss.type = "button";
+  dismiss.setAttribute("aria-label", "Chiudi");
+  dismiss.style.cssText =
+    "flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;" +
+    "width:28px;height:28px;border-radius:8px;background:transparent;color:rgba(13,44,61,0.45);" +
+    "border:0;cursor:pointer;";
+  dismiss.innerHTML =
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+    `<path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`;
+  dismiss.addEventListener("click", (e) => { e.stopPropagation(); onDismiss(); });
+
+  card.append(iconBox, text, cta, dismiss);
+  root.append(dot, card);
+
+  overlay.onAdd = function () { this.getPanes()?.floatPane.appendChild(root); };
   overlay.draw = function () {
     if (!pos) return;
     const p = this.getProjection()?.fromLatLngToDivPixel(pos);
     if (!p) return;
-    container.style.left = `${p.x}px`;
-    container.style.top = `${p.y}px`;
+    root.style.left = `${p.x}px`;
+    root.style.top = `${p.y}px`;
   };
-  overlay.onRemove = function () { container.remove(); };
-  overlay.setData = (lat, lng, label, onClick) => {
-    pos = new google.maps.LatLng(lat, lng);
-    button.textContent = label;
-    handler = onClick;
+  overlay.onRemove = function () { root.remove(); };
+  overlay.setData = (d) => {
+    pos = new google.maps.LatLng(d.lat, d.lng);
+    onSearch = d.onSearch;
+    onDismiss = d.onDismiss;
+    const color = ACTION_COLORS[d.category];
+    iconBox.style.background = color;
+    dot.style.background = color;
+    iconSvg.innerHTML =
+      `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d.glyph}</svg>`;
+    title.textContent = d.title;
+    subtitle.textContent = d.subtitle ?? "";
+    subtitle.style.display = d.subtitle ? "block" : "none";
+    ctaLabel.textContent = d.ctaLabel ?? "Cerca";
     overlay.draw();
   };
 
@@ -1235,9 +1335,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       actionBubbleRef.current = createActionBubbleOverlay();
       actionBubbleRef.current.setMap(mapRef.current);
     }
-    actionBubbleRef.current.setData(
-      actionBubble.lat, actionBubble.lng, actionBubble.label, actionBubble.onClick,
-    );
+    actionBubbleRef.current.setData(actionBubble);
   }, [status, actionBubble]);
 
   useEffect(() => () => { actionBubbleRef.current?.setMap(null); }, []);

@@ -501,6 +501,17 @@ export const ExploreMap = forwardRef<MapHandle, {
     if (nearHerePrompt !== null) setNearHerePrompt(null);
   }
 
+  // Escape dismisses the action card. Listener only active while the card
+  // is up, so we don't interfere with other shortcuts.
+  useEffect(() => {
+    if (!nearHerePrompt) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNearHerePrompt(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [nearHerePrompt]);
+
   // Execute the area search centred on the bubble's anchor and dismiss it.
   // Mirrors the auto-search effect but with an explicit origin instead of the
   // current viewport centre.
@@ -727,14 +738,27 @@ export const ExploreMap = forwardRef<MapHandle, {
         className="h-full w-full rounded-none"
         actionBubble={
           nearHerePrompt && selectedSubIds[0]
-            ? {
-                lat: nearHerePrompt.lat,
-                lng: nearHerePrompt.lng,
-                label: t("searchNearHere", {
-                  category: SUB_GOOGLE[selectedSubIds[0]] ?? selectedSubIds[0],
-                }),
-                onClick: runNearHereSearch,
-              }
+            ? (() => {
+                const pin = pinForSub(selectedSubIds[0]);
+                return {
+                  lat: nearHerePrompt.lat,
+                  lng: nearHerePrompt.lng,
+                  category: pin.kind,
+                  glyph: pin.glyph,
+                  title: t("searchNearHere", {
+                    category: SUB_GOOGLE[selectedSubIds[0]] ?? selectedSubIds[0],
+                  }),
+                  subtitle: t("searchNearHereSubtitle"),
+                  ctaLabel: t("searchCta"),
+                  onSearch: runNearHereSearch,
+                  onDismiss: () => {
+                    // X = dismiss bubble + deseleziona la categoria nella
+                    // toolbar (richiesta esplicita: la X spegne tutto).
+                    setNearHerePrompt(null);
+                    setSelectedSubIds([]);
+                  },
+                };
+              })()
             : null
         }
       />
