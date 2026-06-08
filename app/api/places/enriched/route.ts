@@ -10,10 +10,11 @@ import type { PlaceEnriched } from "../photo-search/route";
  * Places web service is no longer authorized on the project (see the note in
  * `lib/maps/provider.ts`).
  *
- * Photos: v1 returns photo "names" (`places/{place_id}/photos/{photo_id}`) that
- * are NOT compatible with our legacy `/api/places/photo` proxy. Until that
- * proxy is migrated to v1's `/{name}/media`, we expose photos as empty here so
- * the card's no-image header takes over — supported by PlaceHoverCard.
+ * Photos: v1 ritorna `name` nel formato `places/{placeId}/photos/{photoId}`.
+ * Il proxy `/api/places/photo` ora supporta questo formato e lo gira a
+ * `placePhotoV1`, quindi esponiamo i primi 5 nomi come `photoRefs` come
+ * faceva il legacy. PlaceHoverCard li passa a `api.places.photoUrl(ref)`
+ * che costruisce `/api/places/photo?ref={name}` e riceve il binary.
  */
 
 type V1OpeningHours = {
@@ -36,6 +37,7 @@ type V1PlaceDetails = {
   websiteUri?: string;
   types?: string[];
   editorialSummary?: { text?: string };
+  photos?: Array<{ name?: string }>;
 };
 
 // Field mask owned by the route. Keep tight to reduce billing.
@@ -53,6 +55,7 @@ const FIELD_MASK = [
   "websiteUri",
   "types",
   "editorialSummary",
+  "photos.name",
 ].join(",");
 
 const PRICE_LEVEL_MAP: Record<string, number> = {
@@ -109,9 +112,13 @@ export async function GET(req: NextRequest) {
     website: r.websiteUri,
     types: r.types,
     editorialSummary: r.editorialSummary?.text,
-    // Photos: v1's photo names are not compatible with the legacy photo proxy.
-    // Empty array → PlaceHoverCard renders the compact no-image header.
-    photoRefs: [],
+    // Photos v1: i `name` arrivano come `places/{placeId}/photos/{photoId}`.
+    // Il proxy `/api/places/photo` accetta questo formato; capped a 5 per
+    // contenere il payload del card (ne usa solo il primo).
+    photoRefs: (r.photos ?? [])
+      .map((p) => p.name)
+      .filter((n): n is string => typeof n === "string" && n.length > 0)
+      .slice(0, 5),
   };
 
   return NextResponse.json({ place });

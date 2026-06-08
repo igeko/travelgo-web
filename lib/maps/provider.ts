@@ -148,6 +148,22 @@ export function placePhoto(params: PlacesParams): Promise<Response> {
   return placesRequest("photo", params, { redirect: "follow" });
 }
 
+/**
+ * GET v1 `{name}/media` — Places API (New) photo media endpoint.
+ *
+ * `name` è il path completo restituito dal Place Details v1 nella forma
+ * `places/{placeId}/photos/{photoId}`. La response è un redirect alla CDN
+ * Google con l'immagine; seguendo il redirect riceviamo direttamente il
+ * binary. Auth via query string `key` (richiesta dall'endpoint media v1 —
+ * gli header `X-Goog-Api-Key` non sono accettati qui).
+ */
+export function placePhotoV1(name: string, maxWidthPx: number): Promise<Response> {
+  const url = new URL(`${PLACES_V1_BASE}/${name}/media`);
+  url.searchParams.set("maxWidthPx", String(maxWidthPx));
+  url.searchParams.set("key", requireKey());
+  return fetch(url, { redirect: "follow", cache: "no-store" });
+}
+
 /** POST routes:computeRoutes with the given request body + field mask. */
 export function computeRoutes(body: unknown, fieldMask: string): Promise<Response> {
   return fetch(ROUTES_ENDPOINT, {
