@@ -137,6 +137,8 @@ export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapM
     glyph: s.glyph,
     variant: "roadmap" as const,
     roadmapState: stateOf(s),
+    // accommodation = arancione, activity = blu (icona bianca su entrambi).
+    roadmapKind: s.kind,
   }));
 }
 

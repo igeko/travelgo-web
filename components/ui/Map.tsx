@@ -73,6 +73,9 @@ export type MapMarker = {
    *  della spec NON è gestito qui — la selezione resta a carico del halo
    *  overlay (vedi `selectedMarkerId`). */
   roadmapState?: import("./mapPins").RoadmapPinState;
+  /** Roadmap pin semantic kind — drives the colour palette. Activity = blu,
+   *  accommodation = arancione (entrambi con icona bianca). Default "activity". */
+  roadmapKind?: import("./mapPins").RoadmapPinKind;
   /** Role in the day sequence — drives start/mid/end shape (variant "stop"). */
   stopRole?: StopRole;
   /** Time-of-day slot — drives the pin body colour (variant "stop"). */
@@ -244,7 +247,7 @@ function iconForMarker(m: MapMarker, isSelected: boolean, isGhost: boolean): goo
     // Lo stato selected NON cambia l'icona: il pin selezionato resta nella
     // sua variante di base e la selezione viene comunicata dal halo overlay
     // (coerente con la regola dei pin stop/night).
-    return makeRoadmapPin(m.roadmapState ?? "default", m.glyph ?? "", isGhost);
+    return makeRoadmapPin(m.roadmapState ?? "default", m.glyph ?? "", isGhost, m.roadmapKind ?? "activity");
   }
   if (m.variant === "stop") {
     const color = m.slot ? SLOT_COLORS[m.slot] : INK;

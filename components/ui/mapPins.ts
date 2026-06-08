@@ -160,6 +160,8 @@ export function makeNightPin(glyph: string, color: string = NIGHT, isGhost = fal
    Anchor sempre al bottom-center (tip).
 ───────────────────────────────────────────────────────────────── */
 export type RoadmapPinState = "default" | "dimmed" | "overflow";
+/** Semantic category — drives the palette. activity = blu, accommodation = arancione. */
+export type RoadmapPinKind = "activity" | "accommodation";
 
 type RoadmapShape = { w: number; h: number; d: string; cx: number; iconSize: number };
 const ROADMAP_SHAPES: Record<RoadmapPinState, RoadmapShape> = {
@@ -168,18 +170,35 @@ const ROADMAP_SHAPES: Record<RoadmapPinState, RoadmapShape> = {
   overflow: { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 13 },
 };
 
-const ROADMAP_COLORS: Record<RoadmapPinState, { fill: string; stroke: string; strokeW: number; icon: string }> = {
-  default:  { fill: "#ffffff", stroke: "#0d2c3d",            strokeW: 1.5, icon: "#0d2c3d" },
-  dimmed:   { fill: "#f5f3ee", stroke: "rgba(13,44,61,0.20)", strokeW: 1.2, icon: "rgba(13,44,61,0.30)" },
-  overflow: { fill: "#fcebeb", stroke: "#9a3015",            strokeW: 1.5, icon: "#9a3015" },
+type RoadmapPalette = { fill: string; stroke: string; strokeW: number; icon: string };
+
+/** Palette per kind × state. Activity = blu, accommodation = arancione (icona
+ *  bianca su entrambi). overflow resta rosso indipendentemente dal kind: è un
+ *  segnale di rischio e deve restare riconoscibile. */
+const ROADMAP_COLORS: Record<RoadmapPinKind, Record<RoadmapPinState, RoadmapPalette>> = {
+  activity: {
+    default:  { fill: "#1e8fd6", stroke: "#0d5a8a",              strokeW: 1.5, icon: "#ffffff" },
+    dimmed:   { fill: "#bcdcee", stroke: "rgba(30,143,214,0.35)", strokeW: 1.2, icon: "#ffffff" },
+    overflow: { fill: "#fcebeb", stroke: "#9a3015",              strokeW: 1.5, icon: "#9a3015" },
+  },
+  accommodation: {
+    default:  { fill: "#f47b3a", stroke: "#a84818",              strokeW: 1.5, icon: "#ffffff" },
+    dimmed:   { fill: "#f9d4b6", stroke: "rgba(244,123,58,0.35)", strokeW: 1.2, icon: "#ffffff" },
+    overflow: { fill: "#fcebeb", stroke: "#9a3015",              strokeW: 1.5, icon: "#9a3015" },
+  },
 };
 
 /** Build a roadmap pin marker. `glyph` is the inner 24-box SVG (typically
  *  from `iconGlyph(IconClockExclamation)` for overflow/timing, `iconGlyph(
  *  IconMapPinExclamation)` for overflow/geo, or the activity's icon). */
-export function makeRoadmapPin(state: RoadmapPinState, glyph: string, isGhost = false): google.maps.Icon {
+export function makeRoadmapPin(
+  state: RoadmapPinState,
+  glyph: string,
+  isGhost = false,
+  kind: RoadmapPinKind = "activity",
+): google.maps.Icon {
   const shape = ROADMAP_SHAPES[state];
-  const c = ROADMAP_COLORS[state];
+  const c = ROADMAP_COLORS[kind][state];
   const teardrop =
     `<path d="${shape.d}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="${c.strokeW}" stroke-linejoin="round"/>`;
   // 24-box icon scaled into the head (centred at the circle's centre, with
