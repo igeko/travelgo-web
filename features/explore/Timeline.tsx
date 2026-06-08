@@ -435,10 +435,12 @@ export function Timeline({
                 the rail extends up into row 1 too, so the dark column covers
                 the full height of the opened card.
                 When a closed first-slot item shares row 1 with the badge, the
-                badge (43px intrinsic + 6px mt = 49) overflows the row sized by
-                the stop (~36px) by 13px into row 2, so the rail's top margin
+                badge (43px intrinsic + 6px mt-1.5 = 49) overflows the row sized
+                by the stop (~36px) by 13px into row 2, so the rail's top margin
                 is 13 + 3 = 16 to keep the visible gap below the badge at the
-                intended 3px. */}
+                intended 3px. The isFirst badge carries an extra 6px on top
+                (the ink/15 bar + spacer), so its overflow is 13 + 6 = 19 and
+                the rail margin becomes 19 + 3 = 22. */}
             <button
               type="button"
               onClick={() => selectDay(day.id)}
@@ -451,7 +453,9 @@ export function Timeline({
               className={cn(
                 "w-full cursor-pointer self-stretch rounded-xs transition-colors mb-[3px]",
                 expanded ? "bg-ink hover:bg-ink-hover" : "bg-timeline-rail hover:bg-surface-soft",
-                firstSlotPresent && !firstSlotOpen ? "mt-[16px]" : "mt-[3px]",
+                firstSlotPresent && !firstSlotOpen
+                  ? isFirst ? "mt-[22px]" : "mt-[16px]"
+                  : "mt-[3px]",
               )}
             />
 
