@@ -40,6 +40,7 @@ export { Feedback }           from "./entities/Feedback";
 export { Airports }           from "./entities/Airports";
 export { Go }                 from "./entities/Go";
 export { CategoryDurations }  from "./entities/CategoryDurations";
+export { PlaceCache }         from "./entities/PlaceCache";
 
 export type {
   CreateTripInput, UpdateTripInput,
@@ -72,6 +73,7 @@ import { Feedback }           from "./entities/Feedback";
 import { Airports }           from "./entities/Airports";
 import { Go }                 from "./entities/Go";
 import { CategoryDurations }  from "./entities/CategoryDurations";
+import { PlaceCache }         from "./entities/PlaceCache";
 
 export type Dal = {
   trips:              Trips;
@@ -83,6 +85,7 @@ export type Dal = {
   airports:           Airports;
   go:                 Go;
   categoryDurations:  CategoryDurations;
+  placeCache:         PlaceCache;
 };
 
 function buildDal(client: SupabaseClient): Dal {
@@ -96,6 +99,7 @@ function buildDal(client: SupabaseClient): Dal {
     airports:           new Airports(client),
     go:                 new Go(client),
     categoryDurations:  new CategoryDurations(client),
+    placeCache:         new PlaceCache(client),
   };
 }
 

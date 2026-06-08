@@ -218,18 +218,18 @@ export const ExploreMap = forwardRef<MapHandle, {
     [extraMarkers],
   );
 
-  // Ref al Map sottostante per esporre i suoi imperativi (panToMarker /
-  // fitMarkers / fitAll) all'host attraverso ExploreMap come proxy.
-  const mapRef = useRef<MapHandle | null>(null);
+  // Esporta gli imperativi del Map sottostante (mapHandleRef già esistente)
+  // attraverso ExploreMap come proxy → l'host (ExploreNextShell) può chiamare
+  // panToMarker / fitMarkers / fitAll senza accoppiarsi al Map direttamente.
   useImperativeHandle(ref, () => ({
-    getMap: () => mapRef.current?.getMap() ?? null,
-    fitBounds: (b, p) => mapRef.current?.fitBounds(b, p),
-    focusCoord: (lat, lng, opts) => mapRef.current?.focusCoord(lat, lng, opts),
-    clearAdHoc: () => mapRef.current?.clearAdHoc(),
-    hasAdHocFocus: () => mapRef.current?.hasAdHocFocus() ?? false,
-    fitAll: (opts) => mapRef.current?.fitAll(opts),
-    panToMarker: (id) => mapRef.current?.panToMarker(id),
-    fitMarkers: (ids, opts) => mapRef.current?.fitMarkers(ids, opts),
+    getMap: () => mapHandleRef.current?.getMap() ?? null,
+    fitBounds: (b, p) => mapHandleRef.current?.fitBounds(b, p),
+    focusCoord: (lat, lng, opts) => mapHandleRef.current?.focusCoord(lat, lng, opts),
+    clearAdHoc: () => mapHandleRef.current?.clearAdHoc(),
+    hasAdHocFocus: () => mapHandleRef.current?.hasAdHocFocus() ?? false,
+    fitAll: (opts) => mapHandleRef.current?.fitAll(opts),
+    panToMarker: (id) => mapHandleRef.current?.panToMarker(id),
+    fitMarkers: (ids, opts) => mapHandleRef.current?.fitMarkers(ids, opts),
   }), []);
 
   // Night-route pins as regular markers with the dedicated "night" variant: this
@@ -608,7 +608,6 @@ export const ExploreMap = forwardRef<MapHandle, {
   return (
     <div className="relative h-full w-full">
       <Map
-        ref={mapRef}
         center={center}
         zoom={zoom}
         zoomControlPosition="RIGHT_BOTTOM"

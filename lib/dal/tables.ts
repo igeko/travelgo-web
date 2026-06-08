@@ -64,3 +64,9 @@ export enum PlanningTable {
   /** Default duration (minutes) per place category — feeds resolveDuration. */
   CategoryDurations = "category_durations",
 }
+
+/** Cache tables — payload Google Places & co. con TTL applicato dal DAL. */
+export enum CacheTable {
+  /** Cache server-side dei dettagli Place v1 (per placeId). TTL 30gg. */
+  Places = "place_cache",
+}

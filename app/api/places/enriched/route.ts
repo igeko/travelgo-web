@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mapsConfigured, placeDetailsV1 } from "@/lib/maps/provider";
+import { serviceDal } from "@/lib/dal";
 import type { PlaceEnriched } from "../photo-search/route";
 
 /**
@@ -71,6 +72,15 @@ export async function GET(req: NextRequest) {
   if (!placeId) return NextResponse.json({ error: "placeId is required" }, { status: 400 });
   if (!mapsConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
+  // Cache server-side: serviamo direttamente i dettagli già visti negli
+  // ultimi 30 giorni. Il TTL è applicato dal DAL — una entry scaduta
+  // restituisce `null` e ricade nella branch Google. service_role qui
+  // perché la tabella ha solo policy SELECT per `authenticated`; tutto
+  // il resto richiede il bypass RLS.
+  const dal = serviceDal();
+  const cached = await dal.placeCache.get<PlaceEnriched>(placeId);
+  if (cached) return NextResponse.json({ place: cached });
+
   const res = await placeDetailsV1(placeId, FIELD_MASK, {
     languageCode: "en",
     revalidate: 86400,
@@ -120,6 +130,13 @@ export async function GET(req: NextRequest) {
       .filter((n): n is string => typeof n === "string" && n.length > 0)
       .slice(0, 5),
   };
+
+  // Persist sulla cache. Fire-and-forget: la response al client non aspetta
+  // la scrittura. Se la scrittura fallisce (RLS / errore network al DB),
+  // logghiamo ma serviamo comunque il payload appena calcolato.
+  dal.placeCache.set(placeId, place).then((r) => {
+    if (r.error) console.warn("[places/enriched] cache write failed:", r.error.message);
+  });
 
   return NextResponse.json({ place });
 }
