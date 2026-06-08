@@ -79,6 +79,7 @@ export {
   IconMessage,
   IconMessageReport,
   IconNotes,
+  IconParking,
   IconPencil,
   IconPhotoDown,
   IconPhotoEdit,

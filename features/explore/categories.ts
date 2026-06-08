@@ -25,6 +25,7 @@ import {
   IconCompass,
   IconEye,
   IconHome,
+  IconParking,
   IconShoppingBag,
   IconSoup,
   IconTent,
@@ -80,6 +81,7 @@ export const EXPLORE_CATEGORY_TREE: ExploreMacroCategoryDef[] = [
       { id: "culto", icon: IconBuildingChurch, osm: '"historic"~"temple|shrine|cathedral|monastery"', google: "temple church place of worship" },
       { id: "parchi", icon: IconTree, osm: '"leisure"~"park|garden|nature_reserve"', google: "park" },
       { id: "viste", icon: IconEye, osm: '"tourism"="viewpoint"', google: "scenic viewpoint" },
+      { id: "parking", icon: IconParking, osm: '"amenity"="parking"', google: "parking" },
     ],
   },
 ];
