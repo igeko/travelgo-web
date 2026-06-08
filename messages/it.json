@@ -3,6 +3,7 @@
     "wishlist": "Yumeji",
     "addToTrip": "Aggiungi al viaggio",
     "adding": "Aggiungo al viaggio…",
+    "searching": "Cerco {category}…",
     "addToTripError": "Non sono riuscito ad aggiungere il luogo. Riprova.",
     "removeError": "Non sono riuscito a rimuovere la tappa. Riprova.",
     "added": {

@@ -42,7 +42,11 @@ export type AddedPillState =
       afterTitle: string | null;
       warnings: AddedWarning[];
     }
-  | { kind: "error"; action: "add" | "remove" };
+  | { kind: "error"; action: "add" | "remove" }
+  /** Category area-search in flight (toolbar click → results). Stays put
+   *  until the markers arrive (no auto-dismiss). `label` is the human name
+   *  of the sub-category, e.g. "ristoranti". */
+  | { kind: "searching"; label: string };
 
 const VISIBLE_MS = 3000;
 
@@ -55,11 +59,12 @@ export function AddedPill({
 }) {
   const t = useTranslations("Explore");
 
-  // Auto-dismiss only when the request has settled. Pending stays put until
-  // success/error arrives — otherwise the user would briefly see "Adding…",
-  // a blank, and then the success, which reads as a flicker.
+  // Auto-dismiss only when the request has settled. Pending/searching stay
+  // put until results arrive — otherwise the user would briefly see
+  // "Adding…"/"Searching…", a blank, and then the success, which reads as
+  // a flicker.
   useEffect(() => {
-    if (state.kind === "pending") return;
+    if (state.kind === "pending" || state.kind === "searching") return;
     const timer = setTimeout(onDismiss, VISIBLE_MS);
     return () => clearTimeout(timer);
   }, [state, onDismiss]);
@@ -79,6 +84,25 @@ export function AddedPill({
       >
         <IconLoader2 size={16} className="animate-spin" />
         <span>{t("adding")}</span>
+      </div>
+    );
+  }
+
+  if (state.kind === "searching") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "absolute left-1/2 top-4 z-[1200] -translate-x-1/2",
+          "flex items-center gap-2 rounded-pill border px-3.5 py-2 shadow-float",
+          "bg-surface text-ink-soft border-border-strong",
+          "text-mini font-medium",
+          "animate-in fade-in slide-in-from-top-2 duration-200",
+        )}
+      >
+        <IconLoader2 size={16} className="animate-spin" />
+        <span>{t("searching", { category: state.label })}</span>
       </div>
     );
   }
