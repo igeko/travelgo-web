@@ -483,7 +483,7 @@ export function Timeline({
                 gridColumn: 1,
                 gridRow: firstSlotPresent ? "1 / span 2" : 1,
               }}
-              className={cn("cursor-pointer self-start", firstSlotPresent && "mt-1.5")}
+              className={cn("cursor-pointer self-start", firstSlotPresent && "mt-1")}
             >
               <DayBadge
                 weekday={weekday}
