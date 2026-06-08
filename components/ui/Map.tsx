@@ -15,6 +15,7 @@ import { useGoogleMaps } from "@/lib/useGoogleMaps";
 import { api } from "@/lib/client";
 import {
   makeAdHocPin,
+  makeCategoryPin,
   makeNightPin,
   makePinIcon,
   makeRoadmapPin,
@@ -76,6 +77,11 @@ export type MapMarker = {
   /** Roadmap pin semantic kind — drives the colour palette. Activity = blu,
    *  accommodation = arancione (entrambi con icona bianca). Default "activity". */
   roadmapKind?: import("./mapPins").RoadmapPinKind;
+  /** Category pin macro — when set, the marker is rendered as a teardrop
+   *  with the muted palette (eat #c0622a / sleep #2d6a8f / explore #3a7d44)
+   *  and a white icon centred on the head. Used by area-search results from
+   *  the ExploreToolbar. Wins over `variant` so opting in is one prop. */
+  categoryKind?: import("./mapPins").CategoryPinKind;
   /** Role in the day sequence — drives start/mid/end shape (variant "stop"). */
   stopRole?: StopRole;
   /** Time-of-day slot — drives the pin body colour (variant "stop"). */
@@ -277,6 +283,11 @@ function iconForMarker(
   isGhost: boolean,
   isHovered = false,
 ): google.maps.Icon {
+  // Category pin wins over `variant`: marker carries an explicit
+  // categoryKind → render the muted teardrop and skip the legacy paths.
+  if (m.categoryKind) {
+    return makeCategoryPin(m.categoryKind, m.glyph ?? "", isGhost);
+  }
   if (m.variant === "roadmap") {
     // Stato selected → bordo bianco + scala hover (no halo overlay decorativo,
     // riservato ai click su POI Google fuori dai pin dell'itinerario). Hover e

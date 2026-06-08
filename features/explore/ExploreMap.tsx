@@ -12,8 +12,13 @@ import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHov
 import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
 import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
-import { iconGlyph, NIGHT, type GlyphCmp } from "@/components/ui/mapPins";
-import { IconBed, IconMapPin, IconRoute } from "@/components/ui/icons";
+import {
+  iconGlyph,
+  NIGHT,
+  type GlyphCmp,
+  type CategoryPinKind,
+} from "@/components/ui/mapPins";
+import { IconBed, IconCompass, IconMapPin, IconRoute, IconToolsKitchen2 } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
@@ -44,11 +49,25 @@ const SEARCH_DEBOUNCE = 500;
 /** sub-category id → Google Text Search term + icon component. */
 const SUB_GOOGLE: Record<string, string> = {};
 const SUB_ICON: Record<string, GlyphCmp> = {};
+/** sub-category id → macro id (dormi / mangia / esplora). */
+const SUB_MACRO: Record<string, string> = {};
 for (const macro of EXPLORE_CATEGORY_TREE) {
   for (const sub of macro.subs) {
     SUB_GOOGLE[sub.id] = sub.google;
     SUB_ICON[sub.id] = sub.icon;
+    SUB_MACRO[sub.id] = macro.id;
   }
+}
+
+/** Map a sub-category id to the macro pin palette + glyph used on the map.
+ *  /design/category-pins drives the colours — eat / sleep / explore. */
+const MACRO_PIN: Record<string, { kind: CategoryPinKind; glyph: string }> = {
+  mangia:  { kind: "eat",     glyph: iconGlyph("cat-pin:eat",     IconToolsKitchen2) },
+  dormi:   { kind: "sleep",   glyph: iconGlyph("cat-pin:sleep",   IconBed) },
+  esplora: { kind: "explore", glyph: iconGlyph("cat-pin:explore", IconCompass) },
+};
+function pinForSub(subId: string): { kind: CategoryPinKind; glyph: string } {
+  return MACRO_PIN[SUB_MACRO[subId]] ?? MACRO_PIN.esplora;
 }
 
 /** Marker key for a place — placeId when known, else its coordinates. */
@@ -169,10 +188,6 @@ export const ExploreMap = forwardRef<MapHandle, {
   // `initialPlace` (no second Google round-trip).
   const [searchPlace, setSearchPlace] = useState<PlaceEnriched | null>(null);
 
-  // Imperative handle on the Map — used to programmatically fit-to-bounds
-  // the category area-search results so the user sees them all at once,
-  // and to read the projection for the "Search near here" action bubble.
-  const mapHandleRef = useRef<MapHandle | null>(null);
   const [goMarkers, setGoMarkers] = useState<MapMarker[]>([]);
   const [categoryMarkers, setCategoryMarkers] = useState<MapMarker[]>([]);
   const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
@@ -376,7 +391,7 @@ export const ExploreMap = forwardRef<MapHandle, {
       const term = SUB_GOOGLE[subId];
       if (!term) return;
       const vp = viewportRef.current ?? { center, radiusMeters: 5000 };
-      const glyph = SUB_ICON[subId] ? iconGlyph(`cat:${subId}`, SUB_ICON[subId]) : undefined;
+      const pin = pinForSub(subId);
       try {
         const places = await api.places.areaSearch<AreaPlace>(
           term, vp.center.lat, vp.center.lng, vp.radiusMeters,
@@ -384,7 +399,9 @@ export const ExploreMap = forwardRef<MapHandle, {
         // Category area-search can return many dense pins → cluster them.
         // Go and night layers stay regular (low cardinality, semantic).
         setCategoryMarkers(places.map((p) => ({
-          id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph,
+          id: p.placeId, lat: p.lat, lng: p.lng, title: p.name,
+          glyph: pin.glyph,
+          categoryKind: pin.kind,
           clustered: true,
         })));
       } catch (err) {
@@ -404,7 +421,7 @@ export const ExploreMap = forwardRef<MapHandle, {
   // contiene un solo pin (lo `fitBounds` su 1 punto azzera lo zoom).
   useEffect(() => {
     if (categoryMarkers.length === 0) return;
-    const handle = mapHandleRef.current;
+    const handle = mapRef.current;
     if (!handle) return;
     const bounds = new google.maps.LatLngBounds();
     for (const m of categoryMarkers) bounds.extend({ lat: m.lat, lng: m.lng });
@@ -475,13 +492,16 @@ export const ExploreMap = forwardRef<MapHandle, {
     if (!sel || !pt) return;
     const term = SUB_GOOGLE[sel];
     if (!term) return;
-    const glyph = SUB_ICON[sel] ? iconGlyph(`cat:${sel}`, SUB_ICON[sel]) : undefined;
+    const pin = pinForSub(sel);
     const radius = viewportRef.current?.radiusMeters ?? 5000;
     setNearHerePrompt(null);
     try {
       const places = await api.places.areaSearch<AreaPlace>(term, pt.lat, pt.lng, radius);
       setCategoryMarkers(places.map((p) => ({
-        id: p.placeId, lat: p.lat, lng: p.lng, title: p.name, glyph, clustered: true,
+        id: p.placeId, lat: p.lat, lng: p.lng, title: p.name,
+        glyph: pin.glyph,
+        categoryKind: pin.kind,
+        clustered: true,
       })));
     } catch (err) {
       console.error("[ExploreMap] near-here search failed:", err);
@@ -684,7 +704,6 @@ export const ExploreMap = forwardRef<MapHandle, {
         routes={routes}
         fitAllOnMount={fitAllOnMount}
         className="h-full w-full rounded-none"
-        ref={mapHandleRef}
         actionBubble={
           nearHerePrompt && selectedSubIds[0]
             ? {

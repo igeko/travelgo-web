@@ -239,6 +239,57 @@ export function makeRoadmapPin(
   };
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   Category pin — teardrop 34×43 con palette muted naturale per le
+   macro-categorie di ricerca sulla mappa (spec /design/category-pins).
+   Anchor sempre bottom-center (17, 43). Niente stati: la category
+   identity si vede dal colore.
+───────────────────────────────────────────────────────────────── */
+export type CategoryPinKind = "eat" | "sleep" | "explore";
+
+const CATEGORY_PIN_PALETTE: Record<CategoryPinKind, string> = {
+  eat:     "#c0622a",
+  sleep:   "#2d6a8f",
+  explore: "#3a7d44",
+};
+
+const CATEGORY_PIN_TEARDROP =
+  "M17,1 C8.7,1 1,8.5 1,17 C1,27 17,42 17,42 C17,42 33,27 33,17 C33,8.5 25.3,1 17,1 Z";
+
+/** Build a category pin marker (per spec /design/category-pins). `glyph` is
+ *  the inner 24-box SVG (typically `iconGlyph(IconToolsKitchen2)` for eat,
+ *  `iconGlyph(IconBed)` for sleep, `iconGlyph(IconCompass)` for explore).
+ *  Glyph is rendered in white, scaled to ~15px and centred at the head's
+ *  centre (around y=17 in the 34×43 viewBox). */
+export function makeCategoryPin(
+  kind: CategoryPinKind,
+  glyph: string,
+  isGhost = false,
+): google.maps.Icon {
+  const fill = CATEGORY_PIN_PALETTE[kind];
+  const teardrop =
+    `<path d="${CATEGORY_PIN_TEARDROP}" fill="${fill}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>`;
+  // 15/24 icon scale, centred on the teardrop head (cx=17, optical centre y=17).
+  const iconSize = 15;
+  const iconScale = iconSize / 24;
+  const iconX = 17 - iconSize / 2;
+  const iconY = 17 - iconSize / 2;
+  const icon =
+    `<g transform="translate(${iconX} ${iconY}) scale(${iconScale})" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+
+  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
+  const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="43" viewBox="0 0 34 43">${defs}${wrap}</svg>`;
+
+  const s = isGhost ? GHOST_SCALE : 1;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(34 * s, 43 * s),
+    anchor: new google.maps.Point(17 * s, 43 * s),
+  };
+}
+
 export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string, isGhost = false): google.maps.Icon {
   // Either the category icon (knocked out white, centred in the head) or a dot.
   const center = glyph
