@@ -40,7 +40,7 @@ import { DayBadge } from "./DayBadge";
 import { ActivityStop } from "./ActivityStop";
 import type { PlaceResult } from "@/components/ui/AddressField";
 import { FuzzyStop } from "./FuzzyStop";
-import { Transfer, type TransferLeg, type TransferStep } from "./Transfer";
+import { Transfer, type TransferDestination, type TransferLeg, type TransferStep } from "./Transfer";
 import type { AccommodationDisplay } from "./resolveAccommodations";
 
 export type TimelineDayData = Day & {
@@ -203,18 +203,28 @@ type TransferVM = {
   duration: string;
   legs: TransferLeg[];
   steps: TransferStep[];
+  /** Destinazione del leg: usata dai deep-link Maps/Waze quando mode=car. */
+  destination?: TransferDestination;
 };
 
-function bridgeTransfer(b: BridgeData): TransferVM {
+function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
   const duration = `${b.duration_min} min`;
-  if (carLike) return { mode: "car", duration, legs: [], steps: [] };
+  if (carLike) return { mode: "car", duration, legs: [], steps: [], destination };
   return {
     mode: "transit",
     duration,
     legs: [{ kind: "bus", label: b.line ?? "—" }],
     steps: [{ kind: "bus", title: b.line ? `${b.line} ·` : "Transit", place: b.stops ?? undefined, subtitle: b.note ?? undefined }],
   };
+}
+
+/** La destinazione del leg = la tappa di ARRIVO (stop curr). I deep-link
+ *  Maps/Waze portano l'utente lì. Activity → usa location_*; lasciamo
+ *  null quando coords mancano (il Transfer cade nel branch placeholder). */
+function destinationFromActivity(a: Activity): TransferDestination | undefined {
+  if (a.location_lat == null || a.location_lng == null) return undefined;
+  return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, title: a.title };
 }
 
 /* ── Item model ─────────────────────────────────────────────────── */
@@ -279,7 +289,11 @@ function buildItems(
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
     const bridge = computedIn ?? first.bridge_in_json ?? null;
     if (bridge) {
-      items.push({ kind: "transfer", id: `${first.id}-in`, transfer: bridgeTransfer(bridge) });
+      items.push({
+        kind: "transfer",
+        id: `${first.id}-in`,
+        transfer: bridgeTransfer(bridge, destinationFromActivity(first)),
+      });
     }
   }
 
@@ -295,7 +309,11 @@ function buildItems(
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
     const bridge = saved ?? computed ?? null;
     if (bridge) {
-      items.push({ kind: "transfer", id: `${activity.id}-br`, transfer: bridgeTransfer(bridge) });
+      items.push({
+        kind: "transfer",
+        id: `${activity.id}-br`,
+        transfer: bridgeTransfer(bridge, destinationFromActivity(next)),
+      });
     } else if (injectSample) {
       items.push({
         kind: "transfer",

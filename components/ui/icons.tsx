@@ -17,6 +17,8 @@ export {
   IconBackpack,
   IconBeer,
   IconBike,
+  IconBrandGoogleMaps,
+  IconBrandWaze,
   IconBuildingChurch,
   IconBuildingCommunity,
   IconBuildingCottage,

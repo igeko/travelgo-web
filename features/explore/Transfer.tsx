@@ -22,6 +22,8 @@ import {
   IconCar,
   IconClock,
   IconChevronRight,
+  IconBrandGoogleMaps,
+  IconBrandWaze,
   IconX,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
@@ -41,7 +43,34 @@ export type TransferStep = {
   subtitle?: string;
 };
 
+/** Destinazione del leg, usata dal pannello aperto in modalità car per
+ *  costruire i deep-link a Google Maps e Waze. `placeId` (Google) è
+ *  opzionale: quando presente arricchisce il link Maps per una
+ *  destinazione più precisa (ingresso/entrata del POI vs centroide). */
+export type TransferDestination = {
+  lat: number;
+  lng: number;
+  placeId?: string | null;
+  /** Nome della destinazione, usato come label nel deep-link Maps. */
+  title?: string;
+};
+
 const LEG_ICON = { walk: IconWalk, bus: IconBus } as const;
+
+/** Costruisce l'URL deep-link a Google Maps Directions. L'origine è
+ *  lasciata libera così Maps usa la posizione corrente dell'utente —
+ *  comportamento atteso per "portami là". */
+function googleMapsUrl(d: TransferDestination): string {
+  const dest = encodeURIComponent(d.title ?? `${d.lat},${d.lng}`);
+  const placeQs = d.placeId ? `&destination_place_id=${encodeURIComponent(d.placeId)}` : "";
+  return `https://www.google.com/maps/dir/?api=1&destination=${dest}${placeQs}`;
+}
+
+/** Waze deep-link. Accetta solo coords (niente placeId), `navigate=yes`
+ *  fa partire la navigazione direttamente. */
+function wazeUrl(d: TransferDestination): string {
+  return `https://www.waze.com/ul?ll=${d.lat}%2C${d.lng}&navigate=yes`;
+}
 
 export function Transfer({
   mode = "transit",
@@ -49,7 +78,7 @@ export function Transfer({
   duration = "46 min",
   legs = [],
   steps = [],
-  carInfo = "<Informazioni sul tragitto>",
+  destination,
   onOpen,
   onClose,
   className,
@@ -61,7 +90,9 @@ export function Transfer({
   legs?: TransferLeg[];
   /** Open transit route detail. */
   steps?: TransferStep[];
-  carInfo?: string;
+  /** Quando il modo è "car" e questa è passata, il pannello aperto mostra
+   *  due bottoni Maps/Waze invece del testo placeholder. */
+  destination?: TransferDestination;
   onOpen?: () => void;
   onClose?: () => void;
   className?: string;
@@ -151,9 +182,45 @@ export function Transfer({
         </div>
 
         {mode === "car" ? (
-          <div className="flex items-center gap-2">
-            <IconCar size={20} className="shrink-0 text-ink-soft" />
-            <span className="text-micro text-ink-soft">{carInfo}</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <IconCar size={20} className="shrink-0 text-ink-soft" />
+              <span className="text-micro text-ink-soft">
+                {destination
+                  ? "Apri la navigazione"
+                  : "Aggiungi una destinazione per navigare"}
+              </span>
+            </div>
+            {destination && (
+              <div className="flex gap-2">
+                <a
+                  href={googleMapsUrl(destination)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm",
+                    "border border-border bg-surface px-3 py-1.5 text-micro font-medium text-ink",
+                    "transition-colors hover:bg-surface-soft",
+                  )}
+                >
+                  <IconBrandGoogleMaps size={14} className="shrink-0" />
+                  Google Maps
+                </a>
+                <a
+                  href={wazeUrl(destination)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm",
+                    "border border-border bg-surface px-3 py-1.5 text-micro font-medium text-ink",
+                    "transition-colors hover:bg-surface-soft",
+                  )}
+                >
+                  <IconBrandWaze size={14} className="shrink-0" />
+                  Waze
+                </a>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex w-full flex-col gap-2">
