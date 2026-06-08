@@ -47,7 +47,8 @@
     "monumenti": "Landmarks",
     "culto": "Places of worship",
     "parchi": "Parks & nature",
-    "viste": "Viewpoints"
+    "viste": "Viewpoints",
+    "parking": "Parking"
   },
   "GoChat": {
     "focusIntro": "Let's talk about this place",
