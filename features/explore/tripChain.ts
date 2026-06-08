@@ -139,6 +139,8 @@ export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapM
     roadmapState: stateOf(s),
     // accommodation = arancione, activity = blu (icona bianca su entrambi).
     roadmapKind: s.kind,
+    // Drag&drop: ExploreMap inoltra il dragend al host via onExtraMarkerDragEnd.
+    draggable: true,
   }));
 }
 

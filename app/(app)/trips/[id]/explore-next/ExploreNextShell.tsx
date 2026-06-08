@@ -64,6 +64,40 @@ function applyAddressEdits(
   });
 }
 
+/**
+ * Apply optimistic coordinate edits onto a TimelineDayData[] projection.
+ * Keyed by activity entity id. Overwrites only lat/lng on every scheduled
+ * occurrence AND on every accommodation pointing to that entity, leaving
+ * `location` text and `place_id` untouched (the user can fix those via the
+ * AddressField afterwards). Used after a pin drag&drop.
+ */
+function applyCoordEdits(
+  days: TimelineDayData[],
+  edits: Map<string, { lat: number; lng: number }>,
+): TimelineDayData[] {
+  return days.map((day) => {
+    let activities = day.activities;
+    let mutated = false;
+    activities = activities.map((act) => {
+      const entityId = act.activity_id ?? act.entity_id ?? null;
+      if (!entityId || !edits.has(entityId)) return act;
+      mutated = true;
+      const p = edits.get(entityId)!;
+      return { ...act, location_lat: p.lat, location_lng: p.lng };
+    });
+    const acc = day.accommodation;
+    if (acc?.activity_id && edits.has(acc.activity_id)) {
+      const p = edits.get(acc.activity_id)!;
+      return {
+        ...day,
+        activities: mutated ? activities : day.activities,
+        accommodation: { ...acc, lat: p.lat, lng: p.lng },
+      };
+    }
+    return mutated ? { ...day, activities } : day;
+  });
+}
+
 /** Opacità della polyline percorso: piena per il giorno in focus (o quando
  *  nessun giorno è focused), ridotta per gli altri quando un giorno è focused. */
 const PATH_OPACITY_DEFAULT = 0.8;
@@ -189,21 +223,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [optAddressEdits, setOptAddressEdits] = useState<Map<string, PlaceResult | null>>(
     () => new Map(),
   );
+  // Optimistic pin-drag coords (lat/lng only, by activity entity id). Cleared
+  // by the same snapshot-arrival check below.
+  const [optCoordEdits, setOptCoordEdits] = useState<Map<string, { lat: number; lng: number }>>(
+    () => new Map(),
+  );
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
     if (optStayActions.length > 0) setOptStayActions([]);
     if (openOverride !== undefined) setOpenOverride(undefined);
     if (optAddressEdits.size > 0) setOptAddressEdits(new Map());
+    if (optCoordEdits.size > 0) setOptCoordEdits(new Map());
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
-    const afterStays = optStayActions.length === 0
+    let out = optStayActions.length === 0
       ? visibleDays
       : applyOptStayActions(visibleDays, optStayActions);
-    if (optAddressEdits.size === 0) return afterStays;
-    return applyAddressEdits(afterStays, optAddressEdits);
-  }, [visibleDays, optStayActions, optAddressEdits]);
+    if (optAddressEdits.size > 0) out = applyAddressEdits(out, optAddressEdits);
+    if (optCoordEdits.size > 0) out = applyCoordEdits(out, optCoordEdits);
+    return out;
+  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits]);
 
   // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
   // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
@@ -466,6 +507,64 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [effectiveDays, fireStayOp],
   );
 
+  // Drag&drop su un pin dell'itinerario. ExploreMap inoltra l'id del marker
+  // (= TripStop.id) e la nuova posizione; risaliamo all'activity entity id
+  // (Property dietro l'occorrenza scheduled o dietro lo stay), applichiamo
+  // l'overlay ottimistico sulle coords e patchiamo l'entità sul server.
+  // location/place_id non vengono toccati — l'utente potrà correggerli via
+  // AddressField se necessario (o reverse-geocodare in un upgrade futuro).
+  const handlePinDragEnd = useCallback(
+    async (pinId: string, latlng: LatLng) => {
+      // Risoluzione activity entity id dal pin id.
+      let activityId: string | null = null;
+      if (pinId.startsWith("acc:")) {
+        // Accommodation: trova un day la cui accommodation.stay_id (o legacy
+        // key) corrisponde, e leggi accommodation.activity_id.
+        const stayKey = pinId.slice("acc:".length);
+        for (const d of effectiveDays) {
+          const acc = d.accommodation;
+          if (!acc?.activity_id) continue;
+          const k = acc.stay_id ?? `legacy:${d.id}`;
+          if (k === stayKey) { activityId = acc.activity_id; break; }
+        }
+      } else {
+        // Activity: pinId = scheduled_activity.id, l'entity id sta su .activity_id.
+        for (const d of effectiveDays) {
+          const a = d.activities.find((x) => x.id === pinId);
+          if (a) { activityId = a.activity_id ?? a.entity_id ?? null; break; }
+        }
+      }
+      if (!activityId) {
+        console.warn("[ExploreNextShell] pin drag: activity entity not resolved", pinId);
+        return;
+      }
+
+      // Optimistic
+      setOptCoordEdits((prev) => {
+        const next = new Map(prev);
+        next.set(activityId!, latlng);
+        return next;
+      });
+
+      try {
+        await api.activities.updateEntity(activityId, {
+          location_lat: latlng.lat,
+          location_lng: latlng.lng,
+        });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] pin drag persist failed:", err);
+        setOptCoordEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(activityId!);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [effectiveDays, router],
+  );
+
   // ResizeObserver per il pannello sinistro.
   useEffect(() => {
     if (!panelRef.current) return;
@@ -487,6 +586,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         extraRoutes={dayPathRoutes}
         viewportInset={{ left: panelWidth }}
         onAddToTripRequest={handleAddToTripRequest}
+        onExtraMarkerDragEnd={handlePinDragEnd}
         // Night-route off: la Timeline a sinistra mostra già l'alloggio
         // giorno-per-giorno, l'overlay diventava solo rumore.
         enableNightRoute={false}
