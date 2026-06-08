@@ -188,14 +188,20 @@ const ROADMAP_COLORS: Record<RoadmapPinKind, Record<RoadmapPinState, RoadmapPale
   },
 };
 
+/** Scale multiplier applied to the roadmap pin on hover (~+25% size). */
+const ROADMAP_HOVER_SCALE = 1.25;
+
 /** Build a roadmap pin marker. `glyph` is the inner 24-box SVG (typically
  *  from `iconGlyph(IconClockExclamation)` for overflow/timing, `iconGlyph(
- *  IconMapPinExclamation)` for overflow/geo, or the activity's icon). */
+ *  IconMapPinExclamation)` for overflow/geo, or the activity's icon).
+ *  `isHovered` scales the rendered pin by 1.25× (kept proportional, the SVG
+ *  internals stay identical — only the output Size/anchor are multiplied). */
 export function makeRoadmapPin(
   state: RoadmapPinState,
   glyph: string,
   isGhost = false,
   kind: RoadmapPinKind = "activity",
+  isHovered = false,
 ): google.maps.Icon {
   const shape = ROADMAP_SHAPES[state];
   const c = ROADMAP_COLORS[kind][state];
@@ -214,7 +220,7 @@ export function makeRoadmapPin(
   const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${shape.w}" height="${shape.h}" viewBox="0 0 ${shape.w} ${shape.h}">${defs}${wrap}</svg>`;
 
-  const s = isGhost ? GHOST_SCALE : 1;
+  const s = (isGhost ? GHOST_SCALE : 1) * (isHovered ? ROADMAP_HOVER_SCALE : 1);
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
     scaledSize: new google.maps.Size(shape.w * s, shape.h * s),

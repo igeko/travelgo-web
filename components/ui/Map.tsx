@@ -242,12 +242,23 @@ const PIN_CARD_GRACE = 180;
  * colour of ad-hoc pins; stop/night pins keep their semantic colour and rely
  * on the halo overlay to communicate selection.
  */
-function iconForMarker(m: MapMarker, isSelected: boolean, isGhost: boolean): google.maps.Icon {
+function iconForMarker(
+  m: MapMarker,
+  isSelected: boolean,
+  isGhost: boolean,
+  isHovered = false,
+): google.maps.Icon {
   if (m.variant === "roadmap") {
     // Lo stato selected NON cambia l'icona: il pin selezionato resta nella
     // sua variante di base e la selezione viene comunicata dal halo overlay
     // (coerente con la regola dei pin stop/night).
-    return makeRoadmapPin(m.roadmapState ?? "default", m.glyph ?? "", isGhost, m.roadmapKind ?? "activity");
+    return makeRoadmapPin(
+      m.roadmapState ?? "default",
+      m.glyph ?? "",
+      isGhost,
+      m.roadmapKind ?? "activity",
+      isHovered,
+    );
   }
   if (m.variant === "stop") {
     const color = m.slot ? SLOT_COLORS[m.slot] : INK;
@@ -866,8 +877,22 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         setDismissedCardId(null); // re-clicking any pin reopens its card
         onMarkerClickRef.current?.(key);
       });
-      marker.addListener("mouseover", () => hoverPin(key));
-      marker.addListener("mouseout", () => unhoverPin());
+      marker.addListener("mouseover", () => {
+        hoverPin(key);
+        // Itinerary pins grow 1.25× on hover. Other variants keep the size
+        // they have (their hover feedback is the card popping up).
+        const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
+        if (desc?.variant === "roadmap") {
+          marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false, true));
+        }
+      });
+      marker.addListener("mouseout", () => {
+        unhoverPin();
+        const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
+        if (desc?.variant === "roadmap") {
+          marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false, false));
+        }
+      });
       // Drag listeners. The handlers close over `key` only — every other piece
       // of state (current descriptor, selection, callback) is read from a ref
       // so re-binding on prop changes isn't necessary.
