@@ -731,7 +731,7 @@ function EmptyDaysBlock({
     <div className="grid gap-x-2" style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}>
       <div
         style={{ gridColumn: 1, gridRow: 1 }}
-        className="flex flex-col gap-2 self-start py-0.5"
+        className="flex flex-col gap-[3px] self-start"
       >
         {days.map((day, i) => {
           const { weekday, dateLabel } = day.date
