@@ -79,20 +79,31 @@ const GHOST_SHADOW =
  * Soft drop-shadow per lo stato "a riposo" di ogni pin sulla mappa: dà ai
  * marker quel leggero "lift" che già aveva il pin selected-standard (ad-hoc)
  * — così tutti i pin sembrano oggetti appoggiati sulla mappa e non glifi
- * appiccicati. dy=1.2, stdDeviation=1.1 → ombra di ~3px sotto e ~1.5 ai
- * lati. Per evitare clipping ogni factory che adotta questo filtro estende
- * il viewBox di un piccolo padding (vedi SOFT_SHADOW_PAD_*).
+ * appiccicati.
+ *
+ * Per evitare che hover/selected (es. roadmap pin con stroke bianco aggiunto)
+ * cambi il bbox del SourceGraphic e l'ombra "saltelli" o sparisca, il filter
+ * è dichiarato `filterUnits="userSpaceOnUse"` con region uguale all'intero
+ * viewBox dell'SVG ospite. Le dimensioni vengono passate dal caller in modo
+ * che ogni factory generi il proprio `<defs>` su misura, indipendente dal
+ * contenuto del gruppo a cui è applicato.
+ *
+ * dy=1.2, stdDeviation=1.1, alpha 0.35 — stessa "ombretta" già usata da
+ * makeAdHocPin / makeNightPin.
  */
-const SOFT_SHADOW =
-  `<filter id="ss" x="-30%" y="-10%" width="160%" height="140%">` +
-  `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter>`;
+function softShadowDefs(w: number, h: number): string {
+  return (
+    `<filter id="ss" filterUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">` +
+    `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter>`
+  );
+}
 
 /** Padding aggiunto al viewBox per far stare il SOFT_SHADOW senza clipping.
  *  Il pin resta nella sua geometria originale, solo l'SVG cresce e il tip
  *  (anchor) viene spostato del pad orizzontale per restare nello stesso
  *  punto geografico. Vert. = solo sotto (l'ombra cade verso il basso). */
-const SOFT_SHADOW_PAD_X = 2;
-const SOFT_SHADOW_PAD_Y = 4;
+const SOFT_SHADOW_PAD_X = 3;
+const SOFT_SHADOW_PAD_Y = 6;
 
 /**
  * Build a teardrop pin marker (40×40): a coloured rounded body with a pointer
@@ -122,7 +133,7 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK, 
   // SOTTO il tip, dentro il padding bottom).
   const w = 40 + 2 * SOFT_SHADOW_PAD_X;
   const h = 40 + SOFT_SHADOW_PAD_Y;
-  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filter = isGhost ? GHOST_SHADOW : softShadowDefs(w, h);
   const filterId = isGhost ? "g" : "ss";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -258,7 +269,7 @@ export function makeRoadmapPin(
   // coordinate viewBox, e l'anchor lo riflette in pixel-space.
   const w = shape.w + 2 * SOFT_SHADOW_PAD_X;
   const h = shape.h + SOFT_SHADOW_PAD_Y;
-  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filter = isGhost ? GHOST_SHADOW : softShadowDefs(w, h);
   const filterId = isGhost ? "g" : "ss";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -317,7 +328,7 @@ export function makeCategoryPin(
   // su SOFT_SHADOW_PAD_*). Tip ancorato in basso a (17 + PADX, 43).
   const w = 34 + 2 * SOFT_SHADOW_PAD_X;
   const h = 43 + SOFT_SHADOW_PAD_Y;
-  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filter = isGhost ? GHOST_SHADOW : softShadowDefs(w, h);
   const filterId = isGhost ? "g" : "ss";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
