@@ -217,16 +217,38 @@ export function ActivityStop({
     if (state !== "open") setOpenPicker(null);
   }
 
-  const useChips = !!arrivalHM && !!departureHM;
-  const arrivalChipData: TimeChipData | null = useChips
-    ? { field: "arrival", hour: arrivalHM!.hour, minute: arrivalHM!.minute, date: arrivalDateLabel }
-    : null;
-  const departureChipData: TimeChipData | null = useChips
-    ? { field: "departure", hour: departureHM!.hour, minute: departureHM!.minute, date: departureDateLabel }
-    : null;
+  // Le chip sono sempre presenti sull'activity (mode="stop"): se l'utente
+  // non ha ancora impostato un'ora vediamo "—:—" e la chip resta
+  // cliccabile per aprire il picker. Sul lodging (mode="sleep") in questa
+  // iterazione il display arriva solo se il parent passa esplicitamente
+  // arrivalHM/departureHM (le accommodation_stays vengono cablate in un
+  // passaggio successivo); altrimenti fallback al legacy ArrivalDeparture.
+  const hasSleepChips = mode === "sleep" && !!arrivalHM && !!departureHM;
+  const arrivalChipData: TimeChipData = {
+    field: "arrival",
+    hour: arrivalHM?.hour ?? null,
+    minute: arrivalHM?.minute ?? null,
+    date: arrivalDateLabel,
+  };
+  const departureChipData: TimeChipData = {
+    field: "departure",
+    hour: departureHM?.hour ?? null,
+    minute: departureHM?.minute ?? null,
+    date: departureDateLabel,
+  };
   const togglePicker = (next: OpenPicker) =>
     setOpenPicker((current) => (current === next ? null : next));
-  const handleChipClick = (f: TimeField) => togglePicker(f);
+  const handleChipClick = (f: TimeField) => {
+    // Caso degenere: l'utente clicca Partenza prima di aver settato
+    // l'Arrivo. La politica "Partenza ricalcola durata, Arrivo fisso"
+    // richiede un Arrivo definito; redirigiamo silenziosamente sul
+    // picker Arrivo, che è il primo step naturale.
+    if (f === "departure" && arrivalChipData.hour == null) {
+      togglePicker("arrival");
+      return;
+    }
+    togglePicker(f);
+  };
 
   // Activities created via Add-to-Trip / Go agent often save only
   // place_id + lat/lng on the entity, leaving the human-readable
@@ -390,12 +412,12 @@ export function ActivityStop({
                 onIncrement={() => onNightsChange?.(nights + 1)}
               />
             </div>
-          ) : useChips && arrivalChipData && departureChipData ? (
-            // Nuovo modello: chip arrivo→partenza + riga Durata + picker
-            // inline. Entrambe le chip sono editabili per le activity; il
-            // parent traduce la conferma di "Partenza" in nuovo `duration_min`
-            // (arrivo fermo). Il Duration picker compare solo se la durata
-            // è disponibile.
+          ) : (
+            // Nuovo modello (sempre presente per mode="stop"): chip
+            // arrivo→partenza + riga Durata + picker inline. Le chip sono
+            // cliccabili anche senza ora impostata (placeholder "—:—"), e
+            // il picker parte da default 09:00 / durata 60' quando i valori
+            // non sono ancora salvati.
             <ActivityTimeStopBlock
               arrival={arrivalChipData}
               departure={departureChipData}
@@ -407,8 +429,6 @@ export function ActivityStop({
               onDepartureConfirm={(hm) => { onDepartureChange?.(hm); setOpenPicker(null); }}
               onDurationConfirm={(d) => { onDurationChange?.(d); setOpenPicker(null); }}
             />
-          ) : (
-            <StoppingFor duration={duration} timeRange={timeRange} />
           )}
         </div>
 
@@ -430,7 +450,7 @@ export function ActivityStop({
             HH:mm (mode="sleep" + arrivalHM/departureHM) usiamo le nuove
             chip read-only per coerenza visiva con le activity; il legacy
             ArrivalDeparture resta come fallback. */}
-        {mode === "sleep" && useChips && arrivalChipData && departureChipData ? (
+        {mode === "sleep" && hasSleepChips ? (
           <div className="w-full px-2">
             <ActivityTimeChips arrival={arrivalChipData} departure={departureChipData} />
           </div>
@@ -506,16 +526,21 @@ function ActivityTimeStopBlock({
       {openPicker === "arrival" ? (
         <ActivityTimePicker
           field="arrival"
-          hour={arrival.hour}
-          minute={arrival.minute}
+          // Default 09:00 quando l'utente apre il picker su una chip senza
+          // ora ancora impostata: è un orario "neutro" di inizio giornata.
+          hour={arrival.hour ?? 9}
+          minute={arrival.minute ?? 0}
           onConfirm={(h, m) => onArrivalConfirm({ hour: h, minute: m })}
         />
       ) : null}
       {openPicker === "departure" ? (
         <ActivityTimePicker
           field="departure"
-          hour={departure.hour}
-          minute={departure.minute}
+          // Default 10:00 (arrivo 09:00 + durata 60'); coerente con la
+          // logica che la partenza dell'activity è derivata da arrivo +
+          // durata e con `DEFAULT_ACTIVITY_DURATION_MIN` lato Timeline.
+          hour={departure.hour ?? 10}
+          minute={departure.minute ?? 0}
           onConfirm={(h, m) => onDepartureConfirm({ hour: h, minute: m })}
         />
       ) : null}

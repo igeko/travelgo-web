@@ -23,10 +23,10 @@ export type TimeField = "arrival" | "departure";
 
 export type TimeChipData = {
   field: TimeField;
-  /** 0–23. */
-  hour: number;
-  /** 0 | 15 | 30 | 45 — coerente con il picker. */
-  minute: number;
+  /** 0–23. Null = ora non impostata → placeholder "—:—" cliccabile. */
+  hour: number | null;
+  /** 0 | 15 | 30 | 45 — coerente con il picker. Null = vedi `hour`. */
+  minute: number | null;
   /** Label data compatta, es. "Thu 04 Aug". Vuota → non renderizzata. */
   date?: string;
 };
@@ -51,7 +51,10 @@ function TimeChip({
 }) {
   const Icon = data.field === "arrival" ? IconLogin2 : IconLogout2;
   const label = data.field === "arrival" ? "Arrivo" : "Partenza";
-  const timeStr = `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`;
+  const hasTime = data.hour != null && data.minute != null;
+  const timeStr = hasTime
+    ? `${String(data.hour).padStart(2, "0")}:${String(data.minute).padStart(2, "0")}`
+    : "—:—";
   const interactive = !!onClick;
 
   return (
@@ -80,7 +83,7 @@ function TimeChip({
         <span
           className={cn(
             "text-[15px] font-semibold leading-none",
-            active ? "text-primary" : "text-ink",
+            active ? "text-primary" : hasTime ? "text-ink" : "text-ink-faint",
           )}
         >
           {timeStr}
