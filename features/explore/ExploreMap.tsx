@@ -158,6 +158,13 @@ export const ExploreMap = forwardRef<MapHandle, {
    * callback NON spara per quelli.
    */
   onItineraryPinClick?: (id: string) => void;
+  /**
+   * Hover su un pin dell'itinerario. Emette l'id su mouseover e `null`
+   * su mouseout. L'host (Explore Timeline) lo usa per evidenziare la row
+   * corrispondente in lista senza aprirla. Filtrato agli `extraMarkers`
+   * — pin Google / search / night non lo triggerano.
+   */
+  onItineraryPinHover?: (id: string | null) => void;
 }>(({
   tripId,
   center: tripCenter,
@@ -172,6 +179,7 @@ export const ExploreMap = forwardRef<MapHandle, {
   fitAllOnMount = false,
   selectedItineraryId = null,
   onItineraryPinClick,
+  onItineraryPinHover,
 }, ref) => {
   const { subscribe, openGo, goFocus, setGoFocus } = useTripGo();
   const t = useTranslations("Explore");
@@ -646,6 +654,16 @@ export const ExploreMap = forwardRef<MapHandle, {
     openGo();
   };
 
+  // Hover filtrato agli itinerary pin: il Map spara su ogni mouseover/out,
+  // ma solo gli `extraMarkers` interessano l'host (la Timeline a sinistra).
+  // Su out (`id === null`) propaghiamo sempre per chiudere l'highlight, anche
+  // se l'hover-in precedente era su un pin non-itinerario (l'host valuta il
+  // proprio stato e ignora il `null` se non aveva un hover attivo).
+  const handleMarkerHover = (id: string | null) => {
+    if (id !== null && !extraMarkerIdsRef.current.has(id)) return;
+    onItineraryPinHover?.(id);
+  };
+
   return (
     <div className="relative h-full w-full">
       <Map
@@ -668,6 +686,7 @@ export const ExploreMap = forwardRef<MapHandle, {
         onMapClick={handleMapClick}
         onPoiClick={handlePoiClick}
         onMarkerClick={handleMarkerClick}
+        onMarkerHover={handleMarkerHover}
         onMarkerDragEnd={handleMarkerDragEnd}
         onViewportChange={(vp) => { viewportRef.current = vp; }}
         viewportInset={viewportInset}

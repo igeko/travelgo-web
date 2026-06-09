@@ -323,6 +323,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // when no row is open — the algorithm falls back to selectedDayId, then
   // to "end of last populated day".
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  // Row Timeline evidenziata come "selezionata ma non aperta" durante
+  // l'hover sul pin corrispondente. Per activity è lo scheduled.id; per
+  // accommodation traduciamo `acc:${stayKey}` in `lodging-${dayId}` (la
+  // Timeline non sa nulla del formato pin → mantiene il proprio id).
+  // Convivenza con l'open: la Timeline ignora l'hover sulla row già aperta.
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
   // Stato ottimistico:
   //  - pendingAdds: activity restituite dall'addPlace, già visibili in Timeline
@@ -827,6 +833,30 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [effectiveDays, router],
   );
 
+  // Hover su un pin dell'itinerario → evidenzia la row corrispondente in
+  // Timeline come "selezionata" (no apertura). Traduce il formato pin
+  // (`acc:${stayKey}` per accommodation) nell'id row usato dalla Timeline
+  // (`lodging-${dayId}` per il lodging). Activity: pinId = scheduled.id,
+  // coincide direttamente con l'id row. Su out (`null`) reset.
+  const handleItineraryPinHover = useCallback(
+    (pinId: string | null) => {
+      if (pinId === null) { setHoveredRowId(null); return; }
+      if (pinId.startsWith("acc:")) {
+        const stayKey = pinId.slice("acc:".length);
+        for (const d of effectiveDays) {
+          const acc = d.accommodation;
+          if (!acc) continue;
+          const k = acc.stay_id ?? `legacy:${d.id}`;
+          if (k === stayKey) { setHoveredRowId(`lodging-${d.id}`); return; }
+        }
+        setHoveredRowId(null);
+        return;
+      }
+      setHoveredRowId(pinId);
+    },
+    [effectiveDays],
+  );
+
   // ResizeObserver per il pannello sinistro.
   useEffect(() => {
     if (!panelRef.current) return;
@@ -857,7 +887,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         onItineraryPinClick={(id) => {
           setSelectedActivityId(id);
           setOpenOverride(id);
+          // Il click apre la row → l'highlight di hover (riga in stato
+          // "selected ma non aperta") non serve più; la card aperta
+          // prende il sopravvento visivo.
+          setHoveredRowId(null);
         }}
+        onItineraryPinHover={handleItineraryPinHover}
         // Night-route off: la Timeline a sinistra mostra già l'alloggio
         // giorno-per-giorno, l'overlay diventava solo rumore.
         enableNightRoute={false}
@@ -889,6 +924,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onAddressChange={handleAddressChange}
             onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
+            hoveredRowId={hoveredRowId}
           />
         </div>
       </aside>

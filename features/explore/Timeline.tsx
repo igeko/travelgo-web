@@ -197,6 +197,14 @@ type Props = {
    * ↔ lodging-{dayId}). Setting to null forces closed.
    */
   openOverride?: string | null;
+  /**
+   * Row da evidenziare come "selected ma non aperta" — usato da Explore
+   * per riflettere l'hover sul pin in mappa. Activity → scheduled.id;
+   * accommodation → `lodging-${dayId}`. Quando l'id matcha una row e
+   * quella row NON è aperta, viene renderizzata con `state="selected"`
+   * (bg ink, testo bianco, icona arancio). L'open vince sempre sull'hover.
+   */
+  hoveredRowId?: string | null;
   className?: string;
 };
 
@@ -617,6 +625,7 @@ export function Timeline({
   onAddressChange,
   onUpdateActivityInstance,
   openOverride,
+  hoveredRowId,
   className,
 }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -1142,6 +1151,7 @@ export function Timeline({
 
               const a = item.activity;
               const open = openId === a.id;
+              const hovered = !open && hoveredRowId === a.id;
               const fuzzy = a.fuzzy === true;
               const Icon = getStopIcon(a.icon) ?? IconMapPin;
               // Per-row time label: hidden by default, revealed only when the
@@ -1166,7 +1176,7 @@ export function Timeline({
                     <FuzzyStop
                       title={a.title}
                       icon={Icon}
-                      state={open ? "open" : "default"}
+                      state={open ? "open" : hovered ? "selected" : "default"}
                       description={a.short_desc ?? undefined}
                       onOpen={() => setOpenId(a.id)}
                       onClose={() => setOpenId(null)}
@@ -1211,7 +1221,7 @@ export function Timeline({
                       isDragging={isDragging}
                       title={a.title}
                       icon={Icon}
-                      state={open ? "open" : "default"}
+                      state={open ? "open" : hovered ? "selected" : "default"}
                       mode="stop"
                       timeRange={a.time ?? "—"}
                       time={rowTime}
@@ -1293,6 +1303,7 @@ export function Timeline({
                     the day. */}
             {lodging && lodgingRow !== null ? (() => {
               const open = openId === lodging.id;
+              const hovered = !open && hoveredRowId === lodging.id;
               const stayId = lodging.stayId;
               const activityId = lodging.activityId;
               const currentNights = lodging.nightsTotal;
@@ -1305,7 +1316,7 @@ export function Timeline({
                     title={lodging.title}
                     icon={lodging.icon}
                     accent="primary"
-                    state={open ? "open" : "default"}
+                    state={open ? "open" : hovered ? "selected" : "default"}
                     mode="sleep"
                     nights={lodging.nightsTotal}
                     nightIndex={lodging.nightIndex}
