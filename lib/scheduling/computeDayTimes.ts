@@ -30,9 +30,11 @@
  * gli stop a monte non si toccano (l'utente vedrà gap/overlap come
  * segnale visivo, sarà la fase successiva a evidenziarlo).
  *
- * Target di arrivo all'accommodation di pernottamento (22:00 di default)
- * NON è enforced qui: questo modulo calcola tempi, non scheduling
- * proposals. Il superamento di quel target diventerà overflow lato UI.
+ * Accommodation di pernottamento — vedi `computeAccommodationCheckInMin`:
+ * il check-in è DERIVATO dal cursor finale del giorno + transito verso
+ * l'accomm. Il default 22:00 (`DEFAULT_EMPTY_DAY_CHECKIN_MIN`) si
+ * applica SOLO ai giorni senza activity (niente cascade da cui ricavare
+ * l'orario reale).
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -40,9 +42,11 @@
  *  check_out_time. */
 export const DEFAULT_DAY_START_MIN = 9 * 60;
 
-/** 22:00 — target di arrivo all'accommodation di pernottamento. Esposto
- *  qui per consumarlo nei layer di overflow/warning, non usato dal solver. */
-export const DEFAULT_DAY_END_MIN = 22 * 60;
+/** 22:00 — check-in di default dell'accommodation di pernottamento USATO
+ *  SOLO quando il giorno non ha activity (niente cascade da cui derivare).
+ *  Quando ci sono activity, il check-in è `cursorFinale + transito` via
+ *  `computeAccommodationCheckInMin`. */
+export const DEFAULT_EMPTY_DAY_CHECKIN_MIN = 22 * 60;
 
 /** 60' — durata minima/default di un'attività finché non leggeremo da
  *  Google Place o da `category_durations`. */
@@ -171,6 +175,32 @@ export function computeDayTimes(input: ComputeDayInput): ComputeDayOutput {
   }
 
   return { byId: out, cursorMin: cursor };
+}
+
+/**
+ * Check-in dell'accommodation di pernottamento — DERIVATO, non default:
+ *
+ *  - Giorno SENZA activity → `DEFAULT_EMPTY_DAY_CHECKIN_MIN` (22:00). Non
+ *    c'è cascade da cui ricavare un orario; lasciamo il default ragionevole.
+ *  - Giorno CON activity → `cursorFinale + bridgeInAccommMin`. Il cursor è
+ *    il `departureMin` dell'ultima attività (output di `computeDayTimes`),
+ *    il transito è il bridge dall'ultima activity all'accomm (di solito
+ *    `bridge_out_json` dell'ultima activity o il bridge della chain).
+ *
+ * Pure utility: il chiamante decide come tradurre `cursorMin` in HH:mm e
+ * gestire eventuale overflow oltre la mezzanotte (lo standard è
+ * `Math.floor(min / (24*60))` per `dayOffset`).
+ */
+export function computeAccommodationCheckInMin(input: {
+  /** `ComputeDayOutput.cursorMin` — quando il giorno ha activity. */
+  cursorMin: number;
+  /** Bridge dall'ultima activity all'accomm. 0 se non disponibile. */
+  bridgeInAccommMin?: number;
+  /** Discriminante: cambia regola fra "default 22:00" e "derivato". */
+  hasActivities: boolean;
+}): number {
+  if (!input.hasActivities) return DEFAULT_EMPTY_DAY_CHECKIN_MIN;
+  return input.cursorMin + (input.bridgeInAccommMin ?? 0);
 }
 
 /** Helper di formato — minuti dall'inizio del giorno → "HH:mm" (24h),
