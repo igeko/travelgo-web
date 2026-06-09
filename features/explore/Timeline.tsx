@@ -65,6 +65,7 @@ import type { PlaceResult } from "@/components/ui/AddressField";
 import { FuzzyStop } from "./FuzzyStop";
 import { Transfer, type TransferDestination, type TransferLeg, type TransferStep } from "./Transfer";
 import type { AccommodationDisplay } from "./resolveAccommodations";
+import { computeDayTimes, DEFAULT_ACTIVITY_DURATION_MIN } from "@/lib/scheduling/computeDayTimes";
 
 export type TimelineDayData = Day & {
   activities: Activity[];
@@ -206,49 +207,14 @@ function localDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-/** Durata di default quando l'istanza non ha `duration_min`. 60' = 1h è il
- *  valore "neutro" più riconoscibile in UI; tradurrà in default per category
- *  quando cableremo `category_durations` come fonte di fallback. */
-const DEFAULT_ACTIVITY_DURATION_MIN = 60;
-
-/** Snap di minuti alla griglia dei picker (15'). I picker espongono solo
- *  :00 :15 :30 :45 quindi il display deve mostrare lo stesso allineamento;
- *  i valori legacy "06:23" arrotondano al multiplo di 15 più vicino. */
-function snap15(min: number): number {
-  return Math.round(min / 15) * 15;
-}
-
-/** Parse "HH:MM" o "HH:MM:SS" → { hour, minute }, con snap a 15'. Null per
- *  stringhe non valide o assenti (l'UI userà allora un fallback "—"). */
-function parseHM(time: string | null | undefined): { hour: number; minute: number } | null {
-  if (!time) return null;
-  const m = /^(\d{1,2}):(\d{1,2})/.exec(time);
-  if (!m) return null;
-  const hour = Math.max(0, Math.min(23, Number(m[1])));
-  const minuteRaw = Math.max(0, Math.min(59, Number(m[2])));
-  const minute = snap15(minuteRaw) % 60;
-  // L'arrotondamento può portare ad esempio 23:53 → 24:00; in quel caso
-  // restiamo a 23:45 anziché tracimare sul giorno dopo (preservare un
-  // valore ben definito per il display delle chip).
-  if (hour === 23 && Math.round(minuteRaw / 15) === 4) return { hour: 23, minute: 45 };
-  return { hour, minute };
-}
+// DEFAULT_ACTIVITY_DURATION_MIN ora è esportato da
+// `lib/scheduling/computeDayTimes`, single source of truth per i default
+// del scheduler client. La costante locale qui sopra è stata rimossa: il
+// fallback applicato dal solver basta a tutta la timeline.
 
 /** { hour, minute } → "HH:MM:00" pronto per Postgres `time`. */
 function formatHMForDb(hm: { hour: number; minute: number }): string {
   return `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}:00`;
-}
-
-/** Somma minuti a un orario, ritornando { hm, dayOffset } dove `dayOffset`
- *  conta i giorni di overflow (+1 se l'attività finisce dopo mezzanotte). */
-function addMinutesHM(
-  hm: { hour: number; minute: number },
-  minutesToAdd: number,
-): { hm: { hour: number; minute: number }; dayOffset: number } {
-  const total = hm.hour * 60 + hm.minute + minutesToAdd;
-  const dayOffset = Math.floor(total / (24 * 60));
-  const rest = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
-  return { hm: { hour: Math.floor(rest / 60), minute: rest % 60 }, dayOffset };
 }
 
 /** Differenza in minuti fra due HH:mm dello stesso giorno (departure - arrival).
@@ -1133,6 +1099,21 @@ export function Timeline({
               // drop atterra sull'item over con `data.dayId` del day giusto.
               const dayIds = sortableIdsByDay.get(day.id) ?? [];
               const sortableIndexOf = sortableIndexByDay.get(day.id) ?? new Map<string, number>();
+              // Solver FE: arrivo/partenza per ogni activity del giorno.
+              // Le fuzzy sono fuori dalla cascade (non hanno tempi di
+              // visita né bridges); le altre sono ordinate per position
+              // dal solver stesso non importa che la `items` sequence
+              // intercale Transfer e activity — il solver legge solo le
+              // activity. Si aggancia al chain-stop precedente per il
+              // leg di apertura giornata (incoming Transfer).
+              const dayActsOrdered = [...day.activities]
+                .filter((x) => x.fuzzy !== true)
+                .sort((x, y) => x.position - y.position);
+              const dayTimes = computeDayTimes({
+                activities: dayActsOrdered,
+                bridges: computedBridges,
+                prevChainId: chainPrevByDay.get(day.id) ?? null,
+              }).byId;
               return (
                 <SortableContext items={dayIds} strategy={verticalListSortingStrategy}>
                   {items.map((item, i) => {
@@ -1203,16 +1184,26 @@ export function Timeline({
                   row={row}
                 >
                   {({ dragHandleProps, isDragging }) => {
-                    const arrivalHM = parseHM(a.time);
-                    const durationMin = a.duration_min ?? DEFAULT_ACTIVITY_DURATION_MIN;
-                    const departureCalc = arrivalHM
-                      ? addMinutesHM(arrivalHM, durationMin)
+                    // Tempi calcolati dal solver FE: cursor in cascade dal
+                    // dayStart (09:00 default), bridges + duration_min +
+                    // override `time`. Niente fallback al parser locale
+                    // di `a.time` — questo è il single source of truth per
+                    // le chip Arrivo/Partenza.
+                    const t = dayTimes.get(a.id);
+                    const arrivalHM = t
+                      ? { hour: Math.floor(t.arrivalMin / 60), minute: t.arrivalMin % 60 }
                       : null;
+                    const departureHM = t
+                      ? { hour: Math.floor(t.departureMin / 60), minute: t.departureMin % 60 }
+                      : null;
+                    const durationMin = a.duration_min ?? DEFAULT_ACTIVITY_DURATION_MIN;
                     // day.date può essere null nei mock storici — in quel
                     // caso saltiamo la label e mostriamo solo HH:mm.
-                    const arrivalDateLabel = arrivalHM && day.date ? formatChipDate(day.date) : undefined;
-                    const departureDateLabel = departureCalc && day.date
-                      ? formatChipDate(day.date, departureCalc.dayOffset)
+                    const arrivalDateLabel = arrivalHM && day.date
+                      ? formatChipDate(day.date, t?.arrivalDayOffset ?? 0)
+                      : undefined;
+                    const departureDateLabel = departureHM && day.date
+                      ? formatChipDate(day.date, t?.departureDayOffset ?? 0)
                       : undefined;
                     return (
                     <ActivityStop
@@ -1226,7 +1217,7 @@ export function Timeline({
                       time={rowTime}
                       description={a.short_desc ?? undefined}
                       arrivalHM={arrivalHM ?? undefined}
-                      departureHM={departureCalc?.hm}
+                      departureHM={departureHM ?? undefined}
                       arrivalDateLabel={arrivalDateLabel}
                       departureDateLabel={departureDateLabel}
                       durationMin={durationMin}
