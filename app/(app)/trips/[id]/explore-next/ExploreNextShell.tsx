@@ -65,6 +65,36 @@ function applyAddressEdits(
 }
 
 /**
+ * Apply optimistic time/duration edits onto a TimelineDayData[] projection.
+ * Keyed by scheduled_activities.id (l'istanza, non l'entity): time e
+ * duration_min sono campi dell'istanza pianificata, quindi una stessa
+ * activity entity può avere orari diversi su giorni diversi senza
+ * collisioni. Le entry undefined nei campi NON azzerano il valore (es. un
+ * patch solo `time` lascia `duration_min` invariato).
+ */
+type ScheduledTimePatch = { time?: string | null; duration_min?: number | null };
+function applyTimeEdits(
+  days: TimelineDayData[],
+  edits: Map<string, ScheduledTimePatch>,
+): TimelineDayData[] {
+  if (edits.size === 0) return days;
+  return days.map((day) => {
+    let mutated = false;
+    const activities = day.activities.map((act) => {
+      const patch = edits.get(act.id);
+      if (!patch) return act;
+      mutated = true;
+      return {
+        ...act,
+        time: patch.time !== undefined ? patch.time : act.time,
+        duration_min: patch.duration_min !== undefined ? patch.duration_min : act.duration_min,
+      };
+    });
+    return mutated ? { ...day, activities } : day;
+  });
+}
+
+/**
  * Apply optimistic coordinate edits onto a TimelineDayData[] projection.
  * Keyed by activity entity id. Overwrites only lat/lng on every scheduled
  * occurrence AND on every accommodation pointing to that entity, leaving
@@ -355,6 +385,13 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // Optimistic move actions (intra-day swap or cross-day jump). Stacked in
   // order so multiple rapid clicks compose correctly.
   const [optMoveActions, setOptMoveActions] = useState<OptMoveAction[]>([]);
+  // Optimistic time/duration edits keyed by scheduled_activities.id. Le
+  // chip Arrivo/Partenza + Duration picker scrivono prima qui (UI
+  // istantanea), poi la PATCH va in background; al refresh del snapshot
+  // l'edit viene scartato dal check su `days` qui sotto.
+  const [optTimeEdits, setOptTimeEdits] = useState<Map<string, ScheduledTimePatch>>(
+    () => new Map(),
+  );
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
@@ -363,6 +400,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optAddressEdits.size > 0) setOptAddressEdits(new Map());
     if (optCoordEdits.size > 0) setOptCoordEdits(new Map());
     if (optMoveActions.length > 0) setOptMoveActions([]);
+    if (optTimeEdits.size > 0) setOptTimeEdits(new Map());
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
@@ -372,8 +410,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optAddressEdits.size > 0) out = applyAddressEdits(out, optAddressEdits);
     if (optCoordEdits.size > 0) out = applyCoordEdits(out, optCoordEdits);
     if (optMoveActions.length > 0) out = applyMoveActions(out, optMoveActions);
+    if (optTimeEdits.size > 0) out = applyTimeEdits(out, optTimeEdits);
     return out;
-  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions]);
+  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions, optTimeEdits]);
 
   // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
   // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
@@ -594,21 +633,42 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   );
 
   /**
-   * Patch del record scheduled_activities — chiamata dalle chip e dal
-   * Duration picker nel pannello Activity. Niente overlay ottimistico
-   * (le chip mostrano già la conferma chiudendosi); su refresh la
-   * Timeline ri-deriva arrivo/partenza dalla nuova `time`/`duration_min`.
+   * Patch del record scheduled_activities — chiamata dalle chip Arrivo/
+   * Partenza e dal Duration picker nel pannello Activity.
+   *
+   * Optimistic: applica subito sull'overlay locale (`optTimeEdits`), poi
+   * PATCH in background e router.refresh. Il check su `days` qui sopra
+   * scarta l'overlay al rientro del snapshot fresco. In caso di errore
+   * rolliamo back rimuovendo l'entry e mostriamo l'error pill.
    */
   const handleUpdateActivityInstance = useCallback(
     async (
       scheduledId: string,
       patch: { time?: string | null; duration_min?: number | null },
     ) => {
+      // Optimistic apply: l'utente vede l'orario/durata nuovi in chip
+      // istantaneamente. Merge col patch precedente (se chiamiamo prima
+      // time e poi duration_min stessa istanza), così entrambe le
+      // modifiche rimangono visibili finché il snapshot non arriva.
+      setOptTimeEdits((prev) => {
+        const next = new Map(prev);
+        const merged = { ...(next.get(scheduledId) ?? {}), ...patch };
+        next.set(scheduledId, merged);
+        return next;
+      });
       try {
         await api.activities.updateInstance(scheduledId, patch);
         router.refresh();
       } catch (err) {
         console.error("[ExploreNextShell] updateActivityInstance failed:", err);
+        // Rollback: drop dell'entry intera. Se l'utente aveva due
+        // modifiche pendenti sulla stessa istanza, scartiamo entrambe
+        // (più semplice e prevedibile del rollback parziale).
+        setOptTimeEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(scheduledId);
+          return next;
+        });
         setPillState({ kind: "error", action: "remove" });
       }
     },

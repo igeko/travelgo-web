@@ -21,7 +21,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 
 const MINUTE_STEPS = [0, 15, 30, 45] as const;
-const HOURS = Array.from({ length: 19 }, (_, i) => i); // 0–18
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0–23
 
 function formatDuration(hours: number, minutes: number): string {
   if (hours === 0) return `${minutes}m`;

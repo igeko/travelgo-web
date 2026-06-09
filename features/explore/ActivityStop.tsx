@@ -16,7 +16,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/client";
 import {
@@ -490,8 +490,29 @@ function ActivityTimeStopBlock({
   onDepartureConfirm: (hm: ClockHM) => void;
   onDurationConfirm: (durationMin: number) => void;
 }) {
+  // Click-outside per chiudere il picker aperto: l'unico modo "intuitivo"
+  // di dismiss quando il popover floating sta sopra altri elementi. Il
+  // ref include sia le chip sia la riga durata (i trigger) sia il popover
+  // — un click che esce dall'intero blocco chiude. La conferma del picker
+  // chiude già da sé tramite il parent.
+  const blockRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!openPicker) return;
+    function onPointerDown(e: PointerEvent) {
+      const node = blockRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      // Convention del toggle interno: passare lo stesso field rifa il
+      // toggle → null. Per "duration" usiamo il toggle dedicato; per
+      // arrival/departure simuliamo il click sulla chip attualmente attiva.
+      if (openPicker === "duration") onClockToggle();
+      else if (openPicker === "arrival" || openPicker === "departure") onChipClick(openPicker);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [openPicker, onChipClick, onClockToggle]);
+
   return (
-    <div className="flex w-full flex-col gap-2 px-2">
+    <div ref={blockRef} className="relative flex w-full flex-col gap-2">
       <ActivityTimeChips
         arrival={arrival}
         departure={departure}
@@ -499,9 +520,9 @@ function ActivityTimeStopBlock({
         onChipClick={onChipClick}
       />
 
-      {/* Riga Durata — visibile solo quando il parent passa duration.
-          Cliccabile come una chip ma più compatta, allineata a sinistra
-          (il chip "principale" sono arrivo/partenza). */}
+      {/* Riga Durata — sempre visibile quando il parent passa duration
+          (default 60' anche se l'utente non l'ha ancora salvata).
+          Cliccabile come una chip ma più compatta, allineata a sinistra. */}
       {typeof durationMin === "number" ? (
         <button
           type="button"
@@ -519,33 +540,46 @@ function ActivityTimeStopBlock({
         </button>
       ) : null}
 
-      {/* Picker inline — uno alla volta. Il parent gestisce la chiusura
-          alla conferma; click su Esc / fuori richiederebbero un hook
-          dedicato, lasciato fuori scope (la chiusura via click sulla
-          stessa chip è già sufficiente). */}
-      {openPicker === "arrival" ? (
-        <ActivityTimePicker
-          field="arrival"
-          // Default 09:00 quando l'utente apre il picker su una chip senza
-          // ora ancora impostata: è un orario "neutro" di inizio giornata.
-          hour={arrival.hour ?? 9}
-          minute={arrival.minute ?? 0}
-          onConfirm={(h, m) => onArrivalConfirm({ hour: h, minute: m })}
-        />
-      ) : null}
-      {openPicker === "departure" ? (
-        <ActivityTimePicker
-          field="departure"
-          // Default 10:00 (arrivo 09:00 + durata 60'); coerente con la
-          // logica che la partenza dell'activity è derivata da arrivo +
-          // durata e con `DEFAULT_ACTIVITY_DURATION_MIN` lato Timeline.
-          hour={departure.hour ?? 10}
-          minute={departure.minute ?? 0}
-          onConfirm={(h, m) => onDepartureConfirm({ hour: h, minute: m })}
-        />
-      ) : null}
-      {openPicker === "duration" && typeof durationMin === "number" ? (
-        <ActivityDurationPicker durationMin={durationMin} onConfirm={onDurationConfirm} />
+      {/* Popover floating — assoluto rispetto al blocco. Allineato a
+          sinistra per arrival/duration, a destra per departure (lo
+          posiziona sotto la rispettiva chip). z-dropdown per stare sopra
+          il resto del pannello senza scavalcare modali. */}
+      {openPicker ? (
+        <div
+          className={cn(
+            "absolute top-full z-dropdown mt-2",
+            openPicker === "departure" ? "right-0" : "left-0",
+          )}
+        >
+          {openPicker === "arrival" ? (
+            <ActivityTimePicker
+              field="arrival"
+              // Default 09:00 quando l'utente apre il picker su una chip
+              // senza ora ancora impostata: è un orario "neutro" di
+              // inizio giornata.
+              hour={arrival.hour ?? 9}
+              minute={arrival.minute ?? 0}
+              onConfirm={(h, m) => onArrivalConfirm({ hour: h, minute: m })}
+            />
+          ) : null}
+          {openPicker === "departure" ? (
+            <ActivityTimePicker
+              field="departure"
+              // Default 10:00 (arrivo 09:00 + durata 60'); coerente con la
+              // logica che la partenza dell'activity è derivata da arrivo
+              // + durata e con DEFAULT_ACTIVITY_DURATION_MIN lato Timeline.
+              hour={departure.hour ?? 10}
+              minute={departure.minute ?? 0}
+              onConfirm={(h, m) => onDepartureConfirm({ hour: h, minute: m })}
+            />
+          ) : null}
+          {openPicker === "duration" && typeof durationMin === "number" ? (
+            <ActivityDurationPicker
+              durationMin={durationMin}
+              onConfirm={onDurationConfirm}
+            />
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
