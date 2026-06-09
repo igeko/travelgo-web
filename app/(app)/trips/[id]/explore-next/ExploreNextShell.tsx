@@ -593,6 +593,28 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [fireStayOp],
   );
 
+  /**
+   * Patch del record scheduled_activities — chiamata dalle chip e dal
+   * Duration picker nel pannello Activity. Niente overlay ottimistico
+   * (le chip mostrano già la conferma chiudendosi); su refresh la
+   * Timeline ri-deriva arrivo/partenza dalla nuova `time`/`duration_min`.
+   */
+  const handleUpdateActivityInstance = useCallback(
+    async (
+      scheduledId: string,
+      patch: { time?: string | null; duration_min?: number | null },
+    ) => {
+      try {
+        await api.activities.updateInstance(scheduledId, patch);
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateActivityInstance failed:", err);
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleAddressChange = useCallback(
     async (activityId: string, place: PlaceResult | null) => {
       // Optimistic: apply locally first so the AddressField shows the new
@@ -806,6 +828,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onExtendStay={handleExtendStay}
             onReduceStay={handleReduceStay}
             onAddressChange={handleAddressChange}
+            onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
           />
         </div>

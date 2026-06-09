@@ -144,6 +144,8 @@ export type DbScheduledActivity = {
   slot: ActivitySlot | null;
   position: number;
   time: string | null;
+  /** Durata in minuti — null → fallback su default per category. */
+  duration_min: number | null;
   // Instance-level timeline fields (per-day placement metadata)
   type: BlockType | null;
   fuzzy: boolean;

@@ -177,6 +177,16 @@ type Props = {
     place: PlaceResult | null,
   ) => void | Promise<void>;
   /**
+   * Patch al record `scheduled_activities` di un'istanza — usato dal
+   * pannello Activity per scrivere `time` (chip Arrivo) o
+   * `duration_min` (Duration picker / chip Partenza derivata). Lo
+   * host fa PATCH /api/scheduled-activities/[id] e poi router.refresh.
+   */
+  onUpdateActivityInstance?: (
+    scheduledId: string,
+    patch: { time?: string | null; duration_min?: number | null },
+  ) => void | Promise<void>;
+  /**
    * When set, force-open that item id (overrides the local open state).
    * Hosts use it after a cross-table conversion so the inline popover
    * stays open on the new row even though the id changes (scheduled.id
@@ -191,6 +201,72 @@ type Props = {
 function localDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+/** Durata di default quando l'istanza non ha `duration_min`. 60' = 1h è il
+ *  valore "neutro" più riconoscibile in UI; tradurrà in default per category
+ *  quando cableremo `category_durations` come fonte di fallback. */
+const DEFAULT_ACTIVITY_DURATION_MIN = 60;
+
+/** Snap di minuti alla griglia dei picker (15'). I picker espongono solo
+ *  :00 :15 :30 :45 quindi il display deve mostrare lo stesso allineamento;
+ *  i valori legacy "06:23" arrotondano al multiplo di 15 più vicino. */
+function snap15(min: number): number {
+  return Math.round(min / 15) * 15;
+}
+
+/** Parse "HH:MM" o "HH:MM:SS" → { hour, minute }, con snap a 15'. Null per
+ *  stringhe non valide o assenti (l'UI userà allora un fallback "—"). */
+function parseHM(time: string | null | undefined): { hour: number; minute: number } | null {
+  if (!time) return null;
+  const m = /^(\d{1,2}):(\d{1,2})/.exec(time);
+  if (!m) return null;
+  const hour = Math.max(0, Math.min(23, Number(m[1])));
+  const minuteRaw = Math.max(0, Math.min(59, Number(m[2])));
+  const minute = snap15(minuteRaw) % 60;
+  // L'arrotondamento può portare ad esempio 23:53 → 24:00; in quel caso
+  // restiamo a 23:45 anziché tracimare sul giorno dopo (preservare un
+  // valore ben definito per il display delle chip).
+  if (hour === 23 && Math.round(minuteRaw / 15) === 4) return { hour: 23, minute: 45 };
+  return { hour, minute };
+}
+
+/** { hour, minute } → "HH:MM:00" pronto per Postgres `time`. */
+function formatHMForDb(hm: { hour: number; minute: number }): string {
+  return `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}:00`;
+}
+
+/** Somma minuti a un orario, ritornando { hm, dayOffset } dove `dayOffset`
+ *  conta i giorni di overflow (+1 se l'attività finisce dopo mezzanotte). */
+function addMinutesHM(
+  hm: { hour: number; minute: number },
+  minutesToAdd: number,
+): { hm: { hour: number; minute: number }; dayOffset: number } {
+  const total = hm.hour * 60 + hm.minute + minutesToAdd;
+  const dayOffset = Math.floor(total / (24 * 60));
+  const rest = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+  return { hm: { hour: Math.floor(rest / 60), minute: rest % 60 }, dayOffset };
+}
+
+/** Differenza in minuti fra due HH:mm dello stesso giorno (departure - arrival).
+ *  Wrap mezzanotte: se la partenza è "prima" dell'arrivo si presume +1 giorno. */
+function diffMinutesHM(
+  arrival: { hour: number; minute: number },
+  departure: { hour: number; minute: number },
+): number {
+  const a = arrival.hour * 60 + arrival.minute;
+  const d = departure.hour * 60 + departure.minute;
+  return d >= a ? d - a : 24 * 60 - a + d;
+}
+
+/** "Thu 04 Aug" — label compatta per le chip arrivo/partenza, locale en-US
+ *  per uniformare l'aspetto fra giorni (i giorni nella spina sono già nel
+ *  formato corto en). `dayOffset` somma N giorni al base ISO per la
+ *  partenza che cade il giorno dopo (overflow mezzanotte). */
+function formatChipDate(iso: string, dayOffset = 0): string {
+  const d = localDate(iso);
+  d.setDate(d.getDate() + dayOffset);
+  return d.toLocaleDateString("en-US", { weekday: "short", day: "2-digit", month: "short" });
 }
 
 /** "WED" (en weekday) + "5 Ago" (it month) — matches the Figma sample. */
@@ -538,6 +614,7 @@ export function Timeline({
   onExtendStay,
   onReduceStay,
   onAddressChange,
+  onUpdateActivityInstance,
   openOverride,
   className,
 }: Props) {
@@ -1025,7 +1102,19 @@ export function Timeline({
                   index={sortableIndexOf.get(a.id) ?? 0}
                   row={row}
                 >
-                  {({ dragHandleProps, isDragging }) => (
+                  {({ dragHandleProps, isDragging }) => {
+                    const arrivalHM = parseHM(a.time);
+                    const durationMin = a.duration_min ?? DEFAULT_ACTIVITY_DURATION_MIN;
+                    const departureCalc = arrivalHM
+                      ? addMinutesHM(arrivalHM, durationMin)
+                      : null;
+                    // day.date può essere null nei mock storici — in quel
+                    // caso saltiamo la label e mostriamo solo HH:mm.
+                    const arrivalDateLabel = arrivalHM && day.date ? formatChipDate(day.date) : undefined;
+                    const departureDateLabel = departureCalc && day.date
+                      ? formatChipDate(day.date, departureCalc.dayOffset)
+                      : undefined;
+                    return (
                     <ActivityStop
                       dragHandleProps={dragHandleProps}
                       isDragging={isDragging}
@@ -1036,6 +1125,26 @@ export function Timeline({
                       timeRange={a.time ?? "—"}
                       time={rowTime}
                       description={a.short_desc ?? undefined}
+                      arrivalHM={arrivalHM ?? undefined}
+                      departureHM={departureCalc?.hm}
+                      arrivalDateLabel={arrivalDateLabel}
+                      departureDateLabel={departureDateLabel}
+                      durationMin={durationMin}
+                      onArrivalChange={(hm) => {
+                        // Sposta l'arrivo, durata invariata: la partenza
+                        // segue da sé tramite arrivo + duration_min.
+                        void onUpdateActivityInstance?.(a.id, { time: formatHMForDb(hm) });
+                      }}
+                      onDepartureChange={(hm) => {
+                        // Cambiare la partenza riscrive la durata,
+                        // arrivo fisso (politica scelta in design).
+                        if (!arrivalHM) return;
+                        const newDur = diffMinutesHM(arrivalHM, hm);
+                        void onUpdateActivityInstance?.(a.id, { duration_min: newDur });
+                      }}
+                      onDurationChange={(min) => {
+                        void onUpdateActivityInstance?.(a.id, { duration_min: min });
+                      }}
                       addressLocation={a.location}
                       addressPlaceId={a.location_place_id}
                       addressLat={a.location_lat}
@@ -1062,7 +1171,8 @@ export function Timeline({
                         }
                       }}
                     />
-                  )}
+                  );
+                  }}
                 </SortableActivityRow>
               );
             })}

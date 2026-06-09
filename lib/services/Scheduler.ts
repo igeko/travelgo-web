@@ -20,7 +20,7 @@ import { unwrap } from "./util";
 import type { YumeService } from "./YumeService";
 
 const INSTANCE_FIELDS = [
-  "slot", "time", "position",
+  "slot", "time", "position", "duration_min",
   "type", "fuzzy", "instance_note", "booking_status",
   "bridge_in_json", "bridge_out_json",
 ] as const;

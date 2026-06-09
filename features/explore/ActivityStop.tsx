@@ -34,6 +34,29 @@ import { StopEditorCard } from "./StopEditorCard";
 import { SegmentToggle } from "./SegmentToggle";
 import { StoppingFor } from "./StoppingFor";
 import { ArrivalDeparture, type ActivityTime } from "./ArrivalDeparture";
+import {
+  ActivityTimeChips,
+  type TimeChipData,
+  type TimeField,
+} from "@/features/activity/ActivityTimeChips";
+import { ActivityTimePicker } from "@/features/activity/ActivityTimePicker";
+import { ActivityDurationPicker } from "@/features/activity/ActivityDurationPicker";
+import { IconClock } from "@/components/ui/icons";
+
+/** HH:mm in numerico — coerente con i picker (minuti su step di 15). */
+export type ClockHM = { hour: number; minute: number };
+
+/** Quale picker è aperto, se aperto. */
+type OpenPicker = "arrival" | "departure" | "duration" | null;
+
+/** "1h 30m" / "45m" / "2h" — riusato dalla riga Durata. */
+function formatDuration(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
 
@@ -69,6 +92,14 @@ export function ActivityStop({
   onAddressChange,
   arrival,
   departure,
+  arrivalHM,
+  departureHM,
+  arrivalDateLabel,
+  departureDateLabel,
+  durationMin,
+  onArrivalChange,
+  onDepartureChange,
+  onDurationChange,
   onOpen,
   onClose,
   onRemove,
@@ -118,6 +149,31 @@ export function ActivityStop({
   onAddressChange?: (place: PlaceResult | null) => void;
   arrival?: ActivityTime;
   departure?: ActivityTime;
+  /**
+   * Coppia HH:mm di arrivo/partenza per il nuovo ActivityTimeChips.
+   * Quando presenti, le chip nuove sostituiscono il display legacy
+   * (StoppingFor per mode="stop", ArrivalDeparture per mode="sleep").
+   * Si attivano in coppia: se manca uno dei due, fallback al legacy.
+   */
+  arrivalHM?: ClockHM;
+  departureHM?: ClockHM;
+  /** Label data compatta (es. "Thu 04 Aug") accanto alle chip. */
+  arrivalDateLabel?: string;
+  departureDateLabel?: string;
+  /** Durata in minuti — solo mode="stop"; abilita la riga Durata + il picker. */
+  durationMin?: number;
+  /** Click su chip Arrivo → conferma del picker: sposta `time`. */
+  onArrivalChange?: (hm: ClockHM) => void;
+  /**
+   * Click su chip Partenza → conferma del picker. Per le activity
+   * (mode="stop") il parent traduce in nuovo `duration_min` (arrivo
+   * resta fermo). Per le accommodation (mode="sleep") in questa
+   * iterazione la chip è read-only — questa callback non viene
+   * passata.
+   */
+  onDepartureChange?: (hm: ClockHM) => void;
+  /** Conferma del Duration picker (solo mode="stop"). */
+  onDurationChange?: (durationMin: number) => void;
   onOpen?: () => void;
   onClose?: () => void;
   onRemove?: () => void;
@@ -146,6 +202,31 @@ export function ActivityStop({
   className?: string;
 }) {
   const t = useTranslations("Explore");
+
+  // Picker aperto: arrival/departure/duration esclusivi fra loro.
+  // Il toggle (click sulla stessa chip due volte) chiude il picker.
+  const [openPicker, setOpenPicker] = useState<OpenPicker>(null);
+  // Reset del picker quando il pannello si chiude (state ≠ "open"). Usiamo
+  // il pattern "derive state from props" suggerito dai docs React (reset
+  // in fase di render, evitando useEffect+setState che fa cascading
+  // renders). Non è side-effect: setState in render viene catturato e
+  // riapplicato nello stesso giro.
+  const [lastState, setLastState] = useState(state);
+  if (lastState !== state) {
+    setLastState(state);
+    if (state !== "open") setOpenPicker(null);
+  }
+
+  const useChips = !!arrivalHM && !!departureHM;
+  const arrivalChipData: TimeChipData | null = useChips
+    ? { field: "arrival", hour: arrivalHM!.hour, minute: arrivalHM!.minute, date: arrivalDateLabel }
+    : null;
+  const departureChipData: TimeChipData | null = useChips
+    ? { field: "departure", hour: departureHM!.hour, minute: departureHM!.minute, date: departureDateLabel }
+    : null;
+  const togglePicker = (next: OpenPicker) =>
+    setOpenPicker((current) => (current === next ? null : next));
+  const handleChipClick = (f: TimeField) => togglePicker(f);
 
   // Activities created via Add-to-Trip / Go agent often save only
   // place_id + lat/lng on the entity, leaving the human-readable
@@ -309,6 +390,23 @@ export function ActivityStop({
                 onIncrement={() => onNightsChange?.(nights + 1)}
               />
             </div>
+          ) : useChips && arrivalChipData && departureChipData ? (
+            // Nuovo modello: chip arrivo→partenza + riga Durata + picker
+            // inline. Entrambe le chip sono editabili per le activity; il
+            // parent traduce la conferma di "Partenza" in nuovo `duration_min`
+            // (arrivo fermo). Il Duration picker compare solo se la durata
+            // è disponibile.
+            <ActivityTimeStopBlock
+              arrival={arrivalChipData}
+              departure={departureChipData}
+              durationMin={durationMin}
+              openPicker={openPicker}
+              onChipClick={handleChipClick}
+              onClockToggle={() => togglePicker("duration")}
+              onArrivalConfirm={(hm) => { onArrivalChange?.(hm); setOpenPicker(null); }}
+              onDepartureConfirm={(hm) => { onDepartureChange?.(hm); setOpenPicker(null); }}
+              onDurationConfirm={(d) => { onDurationChange?.(d); setOpenPicker(null); }}
+            />
           ) : (
             <StoppingFor duration={duration} timeRange={timeRange} />
           )}
@@ -328,14 +426,105 @@ export function ActivityStop({
           className="border-b border-ink"
         />
 
-        {/* Arrival / Departure — lodging (Sleep) only */}
-        {mode === "sleep" && <ArrivalDeparture arrival={arrival} departure={departure} />}
+        {/* Arrival / Departure — lodging (Sleep). Quando il parent passa le
+            HH:mm (mode="sleep" + arrivalHM/departureHM) usiamo le nuove
+            chip read-only per coerenza visiva con le activity; il legacy
+            ArrivalDeparture resta come fallback. */}
+        {mode === "sleep" && useChips && arrivalChipData && departureChipData ? (
+          <div className="w-full px-2">
+            <ActivityTimeChips arrival={arrivalChipData} departure={departureChipData} />
+          </div>
+        ) : mode === "sleep" ? (
+          <ArrivalDeparture arrival={arrival} departure={departure} />
+        ) : null}
       </StopEditorCard>
     </div>
   );
 }
 
 /* ── Sub-parts ──────────────────────────────────────────────────── */
+
+/**
+ * Blocco "tempo" per le activity in stato open: chip arrivo→partenza,
+ * riga durata (cliccabile) e popover (time/duration) inline sotto le
+ * chip. Estratto qui per non far esplodere il render principale.
+ */
+function ActivityTimeStopBlock({
+  arrival,
+  departure,
+  durationMin,
+  openPicker,
+  onChipClick,
+  onClockToggle,
+  onArrivalConfirm,
+  onDepartureConfirm,
+  onDurationConfirm,
+}: {
+  arrival: TimeChipData;
+  departure: TimeChipData;
+  durationMin?: number;
+  openPicker: OpenPicker;
+  onChipClick: (f: TimeField) => void;
+  onClockToggle: () => void;
+  onArrivalConfirm: (hm: ClockHM) => void;
+  onDepartureConfirm: (hm: ClockHM) => void;
+  onDurationConfirm: (durationMin: number) => void;
+}) {
+  return (
+    <div className="flex w-full flex-col gap-2 px-2">
+      <ActivityTimeChips
+        arrival={arrival}
+        departure={departure}
+        activeField={openPicker === "arrival" || openPicker === "departure" ? openPicker : null}
+        onChipClick={onChipClick}
+      />
+
+      {/* Riga Durata — visibile solo quando il parent passa duration.
+          Cliccabile come una chip ma più compatta, allineata a sinistra
+          (il chip "principale" sono arrivo/partenza). */}
+      {typeof durationMin === "number" ? (
+        <button
+          type="button"
+          onClick={onClockToggle}
+          className={cn(
+            "flex w-fit items-center gap-1.5 rounded-md border px-2 py-1 text-mini transition-colors",
+            openPicker === "duration"
+              ? "border-primary bg-primary-soft text-primary"
+              : "border-transparent bg-surface-soft text-ink-soft hover:border-primary/40",
+          )}
+        >
+          <IconClock size={12} aria-hidden />
+          <span className="tracking-eyebrow uppercase text-micro text-ink-faint">Durata</span>
+          <span className="font-semibold text-ink">{formatDuration(durationMin)}</span>
+        </button>
+      ) : null}
+
+      {/* Picker inline — uno alla volta. Il parent gestisce la chiusura
+          alla conferma; click su Esc / fuori richiederebbero un hook
+          dedicato, lasciato fuori scope (la chiusura via click sulla
+          stessa chip è già sufficiente). */}
+      {openPicker === "arrival" ? (
+        <ActivityTimePicker
+          field="arrival"
+          hour={arrival.hour}
+          minute={arrival.minute}
+          onConfirm={(h, m) => onArrivalConfirm({ hour: h, minute: m })}
+        />
+      ) : null}
+      {openPicker === "departure" ? (
+        <ActivityTimePicker
+          field="departure"
+          hour={departure.hour}
+          minute={departure.minute}
+          onConfirm={(h, m) => onDepartureConfirm({ hour: h, minute: m })}
+        />
+      ) : null}
+      {openPicker === "duration" && typeof durationMin === "number" ? (
+        <ActivityDurationPicker durationMin={durationMin} onConfirm={onDurationConfirm} />
+      ) : null}
+    </div>
+  );
+}
 
 function Stepper({
   onDecrement,

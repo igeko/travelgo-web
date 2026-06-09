@@ -67,6 +67,11 @@ export type Activity = {
   slot: "morning" | "afternoon" | "evening" | "night" | null;
   position: number;
   time: string | null;
+  /** Durata in minuti dell'istanza schedulata. Optional/null = fallback su
+   *  default per category. Opzionale per retro-compatibilità con i mock dei
+   *  dev sandbox (vedi app/(dev)/dev/(components)) che pre-esistono alla
+   *  migrazione 20260609. */
+  duration_min?: number | null;
   title: string;
   short_desc: string | null;
   location: string | null;

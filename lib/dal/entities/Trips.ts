@@ -125,7 +125,7 @@ const TRIP_UI_SELECT = "id, title, subtitle, destination, start_date, end_date, 
 const DAY_UI_SELECT =
   "id, trip_id, day_number, date, city, label, day_type, accommodation_name, accommodation_address, accommodation_url, accommodation_type, accommodation_place_id, accommodation_lat, accommodation_lng, use_previous_accommodation, show_map, notes, summary, image_url, narrative";
 const SCHEDULED_SELECT =
-  "id, activity_id, day_id, slot, position, time, type, fuzzy, instance_note, booking_status, bridge_in_json, bridge_out_json, created_at, updated_at";
+  "id, activity_id, day_id, slot, position, time, duration_min, type, fuzzy, instance_note, booking_status, bridge_in_json, bridge_out_json, created_at, updated_at";
 const SCHEDULED_ACTIVITY_JOIN_SELECT =
   "id, title, short_desc, details, location, location_place_id, location_lat, location_lng, icon, hero_image, url, booking, budget_amount, budget_currency, budget_paid, budget_category, notes";
 
@@ -137,6 +137,7 @@ type ScheduledRow = {
   slot: string | null;
   position: number | null;
   time: string | null;
+  duration_min?: number | null;
   type?: string | null;
   fuzzy?: boolean | null;
   instance_note?: string | null;
@@ -573,6 +574,7 @@ function mergeScheduled(
     slot: sa.slot as Activity["slot"],
     position: sa.position ?? 0,
     time: sa.time,
+    duration_min: sa.duration_min ?? null,
     title: act?.title ?? "",
     short_desc: act?.short_desc ?? null,
     location: act?.location ?? null,
