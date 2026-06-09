@@ -216,10 +216,10 @@ export function chainToRouteSpecs(
       points: trimmed,
       travelMode: "DRIVING",
       style: {
-        color: ORANGE,
+        color: INK,
         weight: DAY_PATH_LINE_WEIGHT,
         opacity: opacityFor(g.dayId),
-        casing: { color: INK, weight: DAY_PATH_CASING_WEIGHT },
+        casing: { color: ORANGE, weight: DAY_PATH_CASING_WEIGHT },
       },
     });
   }
