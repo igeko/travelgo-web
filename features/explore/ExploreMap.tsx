@@ -602,7 +602,16 @@ export const ExploreMap = forwardRef<MapHandle, {
     // host e usciamo. Niente goFocus, niente card Google — la sync con la
     // Timeline è la sola conseguenza dell'interazione. Per riselezione (re-
     // click sullo stesso) ci pensa l'host (toggle off settando null).
+    //
+    // Spegniamo i tre canali "selected standard" (search hit, night pin,
+    // Go focus / manual pin): nella precedenza più sotto vincono su
+    // `selectedItineraryId`, quindi se uno di loro è attivo cliccare uno
+    // stop pin non lo evidenziava. Reset locale → l'itinerary id resta
+    // l'unico canale in gioco e il pin diventa effettivamente selezionato.
     if (extraMarkerIdsRef.current.has(id)) {
+      setSearchPlace(null);
+      setNightSelId(null);
+      setGoFocus(null);
       onItineraryPinClick?.(id);
       return;
     }

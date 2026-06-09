@@ -76,6 +76,25 @@ const GHOST_SHADOW =
   `<feDropShadow dx="0" dy="3" stdDeviation="2.8" flood-color="rgba(13,44,61,0.5)"/></filter>`;
 
 /**
+ * Soft drop-shadow per lo stato "a riposo" di ogni pin sulla mappa: dà ai
+ * marker quel leggero "lift" che già aveva il pin selected-standard (ad-hoc)
+ * — così tutti i pin sembrano oggetti appoggiati sulla mappa e non glifi
+ * appiccicati. dy=1.2, stdDeviation=1.1 → ombra di ~3px sotto e ~1.5 ai
+ * lati. Per evitare clipping ogni factory che adotta questo filtro estende
+ * il viewBox di un piccolo padding (vedi SOFT_SHADOW_PAD_*).
+ */
+const SOFT_SHADOW =
+  `<filter id="ss" x="-30%" y="-10%" width="160%" height="140%">` +
+  `<feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="rgba(13,44,61,0.35)"/></filter>`;
+
+/** Padding aggiunto al viewBox per far stare il SOFT_SHADOW senza clipping.
+ *  Il pin resta nella sua geometria originale, solo l'SVG cresce e il tip
+ *  (anchor) viene spostato del pad orizzontale per restare nello stesso
+ *  punto geografico. Vert. = solo sotto (l'ombra cade verso il basso). */
+const SOFT_SHADOW_PAD_X = 2;
+const SOFT_SHADOW_PAD_Y = 4;
+
+/**
  * Build a teardrop pin marker (40×40): a coloured rounded body with a pointer
  * tail, white outline for map contrast, and the stop's icon knocked out in
  * white inside the head. The "end" role uses a flag. The body colour defaults
@@ -97,15 +116,24 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK, 
   const icon =
     `<g transform="translate(11 7) scale(0.75)" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
 
-  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
-  const wrap = isGhost ? `<g filter="url(#g)">${body}${icon}</g>` : `${body}${icon}`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">${defs}${wrap}</svg>`;
+  // viewBox esteso per ospitare il SOFT_SHADOW senza clipping: +PADX ai
+  // lati, +PADY sotto. Il contenuto è traslato di +PADX in x in modo da
+  // restare visivamente centrato; il tip resta a y=38 (ombra disegnata
+  // SOTTO il tip, dentro il padding bottom).
+  const w = 40 + 2 * SOFT_SHADOW_PAD_X;
+  const h = 40 + SOFT_SHADOW_PAD_Y;
+  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filterId = isGhost ? "g" : "ss";
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})" transform="translate(${SOFT_SHADOW_PAD_X} 0)">${body}${icon}</g></svg>`;
 
   const s = isGhost ? GHOST_SCALE : 1;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(40 * s, 40 * s),
-    anchor: new google.maps.Point(20 * s, 38 * s),
+    scaledSize: new google.maps.Size(w * s, h * s),
+    anchor: new google.maps.Point((20 + SOFT_SHADOW_PAD_X) * s, 38 * s),
   };
 }
 
@@ -225,17 +253,25 @@ export function makeRoadmapPin(
   const icon =
     `<g transform="translate(${iconX} ${iconY}) scale(${iconScale})" fill="none" stroke="${c.icon}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
 
-  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
-  const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${shape.w}" height="${shape.h}" viewBox="0 0 ${shape.w} ${shape.h}">${defs}${wrap}</svg>`;
+  // viewBox esteso per ospitare il SOFT_SHADOW senza clipping (vedi nota
+  // su SOFT_SHADOW_PAD_*). Il tip resta a (shape.cx + PADX, shape.h) in
+  // coordinate viewBox, e l'anchor lo riflette in pixel-space.
+  const w = shape.w + 2 * SOFT_SHADOW_PAD_X;
+  const h = shape.h + SOFT_SHADOW_PAD_Y;
+  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filterId = isGhost ? "g" : "ss";
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})" transform="translate(${SOFT_SHADOW_PAD_X} 0)">${teardrop}${icon}</g></svg>`;
 
   // Selected riusa la scala hover (stessa "1.25×") così l'utente non vede un
   // salto di dimensione hover → selected; resta solo l'aggiunta del bordo.
   const s = (isGhost ? GHOST_SCALE : 1) * (isHovered || isSelected ? ROADMAP_HOVER_SCALE : 1);
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(shape.w * s, shape.h * s),
-    anchor: new google.maps.Point((shape.w * s) / 2, shape.h * s),
+    scaledSize: new google.maps.Size(w * s, h * s),
+    anchor: new google.maps.Point((shape.cx + SOFT_SHADOW_PAD_X) * s, shape.h * s),
   };
 }
 
@@ -277,16 +313,22 @@ export function makeCategoryPin(
   const icon =
     `<g transform="translate(${iconX} ${iconY}) scale(${iconScale})" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
 
-  const defs = isGhost ? `<defs>${GHOST_SHADOW}</defs>` : "";
-  const wrap = isGhost ? `<g filter="url(#g)">${teardrop}${icon}</g>` : `${teardrop}${icon}`;
+  // viewBox esteso per ospitare il SOFT_SHADOW senza clipping (vedi nota
+  // su SOFT_SHADOW_PAD_*). Tip ancorato in basso a (17 + PADX, 43).
+  const w = 34 + 2 * SOFT_SHADOW_PAD_X;
+  const h = 43 + SOFT_SHADOW_PAD_Y;
+  const filter = isGhost ? GHOST_SHADOW : SOFT_SHADOW;
+  const filterId = isGhost ? "g" : "ss";
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="43" viewBox="0 0 34 43">${defs}${wrap}</svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})" transform="translate(${SOFT_SHADOW_PAD_X} 0)">${teardrop}${icon}</g></svg>`;
 
   const s = isGhost ? GHOST_SCALE : 1;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(34 * s, 43 * s),
-    anchor: new google.maps.Point(17 * s, 43 * s),
+    scaledSize: new google.maps.Size(w * s, h * s),
+    anchor: new google.maps.Point((17 + SOFT_SHADOW_PAD_X) * s, 43 * s),
   };
 }
 
