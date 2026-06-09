@@ -11,6 +11,7 @@
 import type { ComponentType } from "react";
 
 export const INK = "#0d2c3d"; // brand blue — markers + route line
+export const INK_LIGHT = "#3d6580"; // lighter blue (same hue as INK) — day-path casing
 export const ORANGE = "#f47b3a"; // brand orange — ad-hoc pin (Go places / "show on map")
 export const NEUTRAL = "#5b6b78"; // muted slate — unselected Go places (ink-soft)
 export const NIGHT = "#4338ca"; // indigo — Explore night-route layer (--color-night)

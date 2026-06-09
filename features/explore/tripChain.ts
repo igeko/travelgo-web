@@ -29,7 +29,7 @@
  */
 
 import type { MapMarker, RoutePoint, RouteSpec } from "@/components/ui/Map";
-import { iconGlyph, INK, NEUTRAL } from "@/components/ui/mapPins";
+import { iconGlyph, INK, INK_LIGHT } from "@/components/ui/mapPins";
 import { IconBed } from "@/components/ui/icons";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { TimelineDayData } from "@/features/explore/Timeline";
@@ -219,7 +219,7 @@ export function chainToRouteSpecs(
         color: INK,
         weight: DAY_PATH_LINE_WEIGHT,
         opacity: opacityFor(g.dayId),
-        casing: { color: NEUTRAL, weight: DAY_PATH_CASING_WEIGHT },
+        casing: { color: INK_LIGHT, weight: DAY_PATH_CASING_WEIGHT },
       },
     });
   }
