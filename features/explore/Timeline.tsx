@@ -22,7 +22,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -635,12 +635,28 @@ export function Timeline({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Locazione ORIGINALE di ciascuna scheduled activity (pre-preview), per
+  // identificare dayId/index target in modo STABILE durante il drag — l'index
+  // calcolato da useSortable in `over.data.current.index` riflette invece
+  // `previewDays` e drifta quando il dragPreview muove l'item nel target.
+  // Calcolato sui `days` originali (props), non sui sortedDays/previewDays.
+  const originalLocation = new Map<string, { dayId: string; index: number }>();
+  for (const d of days) {
+    const acts = [...d.activities]
+      .sort((a, b) => a.position - b.position)
+      .filter((a) => a.fuzzy !== true);
+    acts.forEach((a, i) => originalLocation.set(a.id, { dayId: d.id, index: i }));
+  }
+
   // Risolutore drop: dato l'evento end di @dnd-kit, ricava (dayId, index)
   // del target. Restituisce null quando non c'è un over significativo.
   type DropTarget = { dayId: string; index: number };
   const resolveDropTarget = (event: DragEndEvent): DropTarget | null => {
     const { over } = event;
     if (!over) return null;
+    const orig = originalLocation.get(String(over.id));
+    if (orig) return { dayId: orig.dayId, index: orig.index };
+    // Fallback: leggi data.current (es. droppable separato per day vuoti).
     const d = over.data.current as
       | { type?: "row" | "day-empty"; dayId?: string; index?: number }
       | undefined;
@@ -666,23 +682,23 @@ export function Timeline({
    */
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    // Compute the desired preview (or null) and only commit it when it
-    // actually changes — onDragOver fires very frequently and re-applying
-    // an identical object would create a new reference each time, kicking
-    // off an infinite render → over → render loop.
+    // Calcoliamo il preview desiderato (o null). Lookup dei dayId/index
+    // sui `days` ORIGINALI tramite `originalLocation`: l'index di
+    // `over.data.current` cambierebbe ad ogni re-render (perché previewDays
+    // sposta l'item) e farebbe drift il preview → loop infinito.
     let next: typeof dragPreview = null;
     if (over) {
-      const overData = over.data.current as
-        | { type?: string; dayId?: string; index?: number }
-        | undefined;
-      const activeData = active.data.current as
-        | { dayId?: string; index?: number }
-        | undefined;
-      if (overData?.dayId && activeData?.dayId !== overData.dayId) {
+      const activeOrig = originalLocation.get(String(active.id));
+      const overOrig = originalLocation.get(String(over.id));
+      if (
+        activeOrig &&
+        overOrig &&
+        activeOrig.dayId !== overOrig.dayId
+      ) {
         next = {
           scheduledId: String(active.id),
-          targetDayId: overData.dayId,
-          targetIndex: overData.index ?? 0,
+          targetDayId: overOrig.dayId,
+          targetIndex: overOrig.index,
         };
       }
     }
@@ -767,10 +783,7 @@ export function Timeline({
     targetDayId: string;
     targetIndex: number;
   } | null>(null);
-  const previewDays = useMemo(
-    () => (dragPreview ? applyDragPreview(days, dragPreview) : days),
-    [days, dragPreview],
-  );
+  const previewDays = dragPreview ? applyDragPreview(days, dragPreview) : days;
   const sortedDays = [...previewDays].sort((a, b) => a.day_number - b.day_number);
 
   // IDs sortabili PER DAY: ogni day ha il proprio SortableContext, così la
