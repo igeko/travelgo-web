@@ -682,6 +682,13 @@ export function Timeline({
    */
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
+    // Cursor sopra l'item active stesso: succede tipicamente quando il
+    // preview ha appena spostato l'item visualmente sotto il cursore
+    // (cross-day) o durante il sortable anticipato (same-day). Mantieni il
+    // preview corrente — toglierlo provocherebbe il classico loop
+    // "preview on (item segue cursore) → preview off (item torna)".
+    if (over && over.id === active.id) return;
+
     // Calcoliamo il preview desiderato (o null). Lookup dei dayId/index
     // sui `days` ORIGINALI tramite `originalLocation`: l'index di
     // `over.data.current` cambierebbe ad ogni re-render (perché previewDays
