@@ -726,7 +726,17 @@ export function Timeline({
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveDragId(null);
+    // Capture the preview BEFORE clearing it — un drop cross-day spesso
+    // arriva con `over.id === active.id` (item dragged sotto il cursore
+    // grazie al preview), e resolveDropTarget restituirebbe la posizione
+    // originale (no-op). Se c'è un preview attivo, è la verità di dove
+    // l'utente vuole l'item.
+    const preview = dragPreview;
     setDragPreview(null);
+    if (preview) {
+      void onDragMove?.(preview.scheduledId, preview.targetDayId, preview.targetIndex);
+      return;
+    }
     const target = resolveDropTarget(event);
     if (!target) return;
     const scheduledId = String(event.active.id);
