@@ -22,12 +22,13 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 import {
   closestCenter,
   DndContext,
   DragOverlay,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
   PointerSensor,
   TouchSensor,
@@ -471,6 +472,55 @@ function SortableActivityRow({
   );
 }
 
+/* ── Drag preview projection ──────────────────────────────────────── */
+
+/**
+ * Anticipated cross-day move: copia di TimelineDayData[] con l'activity
+ * trascinata rimossa dal day di partenza e inserita nel day target alla
+ * posizione `targetIndex`. Usato dal Timeline durante onDragOver per dare
+ * a @dnd-kit/sortable un input coerente — così la preview anticipata
+ * (verticalListSortingStrategy) agisce anche cross-day. La proiezione è
+ * locale e visiva: lo state reale viene aggiornato dal host solo al
+ * dragEnd via `onDragMove`.
+ */
+function applyDragPreview(
+  days: TimelineDayData[],
+  preview: { scheduledId: string; targetDayId: string; targetIndex: number },
+): TimelineDayData[] {
+  const sorted = [...days].sort((a, b) => a.day_number - b.day_number);
+  const fromIdx = sorted.findIndex((d) =>
+    d.activities.some((x) => x.id === preview.scheduledId),
+  );
+  if (fromIdx === -1) return days;
+  const fromDay = sorted[fromIdx];
+  const target = fromDay.activities.find((x) => x.id === preview.scheduledId);
+  if (!target) return days;
+  const toIdx = sorted.findIndex((d) => d.id === preview.targetDayId);
+  if (toIdx === -1) return days;
+  const toDay = sorted[toIdx];
+
+  const sourceActs = fromDay.activities.filter((a) => a.id !== target.id);
+  const destBase =
+    fromDay.id === toDay.id
+      ? sourceActs
+      : [...toDay.activities].sort((a, b) => a.position - b.position);
+  const moved = { ...target, day_id: toDay.id };
+  const idx = Math.max(0, Math.min(preview.targetIndex, destBase.length));
+  const newDest = [
+    ...destBase.slice(0, idx),
+    moved,
+    ...destBase.slice(idx),
+  ].map((a, i) => ({ ...a, position: i + 1 }));
+
+  return sorted.map((d) => {
+    if (d.id === toDay.id) return { ...d, activities: newDest };
+    if (d.id === fromDay.id && fromDay.id !== toDay.id) {
+      return { ...d, activities: sourceActs.map((a, i) => ({ ...a, position: i + 1 })) };
+    }
+    return d;
+  });
+}
+
 /* ── Timeline ───────────────────────────────────────────────────── */
 
 export function Timeline({
@@ -526,10 +576,39 @@ export function Timeline({
     // their dragged state — also avoids the editor floating mid-drag.
     setOpenId(null);
     setActiveDragId(String(e.active.id));
+    setDragPreview(null);
+  };
+
+  /**
+   * Cross-day preview: quando l'utente passa sopra un day diverso da quello
+   * di partenza, applichiamo un dragPreview che muove l'attività dal
+   * SortableContext di origine a quello di destinazione. Così @dnd-kit
+   * vede l'item nel context target e mostra la preview anticipata
+   * (spostamento degli altri item per fare spazio). Same-day reorder è
+   * già gestito nativamente dal SortableContext del day stesso.
+   */
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) { setDragPreview(null); return; }
+    const overData = over.data.current as
+      | { type?: string; dayId?: string; index?: number }
+      | undefined;
+    if (!overData?.dayId) { setDragPreview(null); return; }
+    const activeData = active.data.current as
+      | { dayId?: string; index?: number }
+      | undefined;
+    // Same-day = nessuna preview cross-day, lascia agire il SortableContext locale.
+    if (activeData?.dayId === overData.dayId) { setDragPreview(null); return; }
+    setDragPreview({
+      scheduledId: String(active.id),
+      targetDayId: overData.dayId,
+      targetIndex: overData.index ?? 0,
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveDragId(null);
+    setDragPreview(null);
     const target = resolveDropTarget(event);
     if (!target) return;
     const scheduledId = String(event.active.id);
@@ -546,6 +625,7 @@ export function Timeline({
 
   const handleDragCancel = () => {
     setActiveDragId(null);
+    setDragPreview(null);
   };
 
   // Bubble the "open activity" up so hosts can use it as `selectedActivityId`
@@ -582,7 +662,21 @@ export function Timeline({
     onSelectDay?.(next);
   };
 
-  const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
+  // Drag preview: durante `onDragOver` il host può "muovere" l'attività
+  // trascinata in un day diverso (visivamente). Applichiamo la proiezione
+  // ai `days` prima di derivare sortedDays/sortableIds, così il
+  // SortableContext del day target vede l'item nel suo array e
+  // verticalListSortingStrategy mostra la preview anticipata.
+  const [dragPreview, setDragPreview] = useState<{
+    scheduledId: string;
+    targetDayId: string;
+    targetIndex: number;
+  } | null>(null);
+  const previewDays = useMemo(
+    () => (dragPreview ? applyDragPreview(days, dragPreview) : days),
+    [days, dragPreview],
+  );
+  const sortedDays = [...previewDays].sort((a, b) => a.day_number - b.day_number);
 
   // IDs sortabili PER DAY: ogni day ha il proprio SortableContext, così la
   // preview di reorder anticipato di @dnd-kit (verticalListSortingStrategy)
@@ -694,6 +788,7 @@ export function Timeline({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
