@@ -22,7 +22,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 import {
   closestCenter,
   type CollisionDetection,
@@ -519,7 +519,7 @@ function SortableActivityRow({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="py-0.5">
+    <div ref={setNodeRef} style={style} className="py-0.5" data-row-id={scheduledId}>
       {children(handle)}
     </div>
   );
@@ -633,6 +633,26 @@ export function Timeline({
   // selected active day is expanded (full content + ink badge); a selected
   // empty day just gets its badge marked (no content to expand).
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  // Root della Timeline — punto di partenza della querySelector per il
+  // scroll-into-view della row attualmente hover-ata (vedi useEffect più
+  // sotto). Tenerla scoped al root evita di colpire altre Timeline
+  // eventualmente montate nella stessa pagina (es. sandbox /dev).
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Scorre la lista per portare la row in hover in cima al suo container
+  // scrollabile (`block: "start"`). Il `scrollIntoView` cammina la catena
+  // dei parent fino a trovare il primo overflow:auto/scroll — nella Explore
+  // è l'`aside` di sinistra in ExploreNextShell. `block: "start"` è
+  // self-clamping: quando la row è già abbastanza in fondo, la lista
+  // scorre al massimo possibile e basta. Niente scroll su `null` (mouse-out).
+  useEffect(() => {
+    if (!hoveredRowId) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const el = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [hoveredRowId]);
 
 
   // ── Drag&drop sensors ──────────────────────────────────────────
@@ -960,7 +980,7 @@ export function Timeline({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-    <div className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
+    <div ref={rootRef} className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
       {segments.map((seg) => {
         if (seg.kind === "empty") {
           return (
@@ -1172,7 +1192,7 @@ export function Timeline({
               // Fuzzy stops: not sortable. Wrap as before.
               if (fuzzy) {
                 return (
-                  <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
+                  <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5" data-row-id={a.id}>
                     <FuzzyStop
                       title={a.title}
                       icon={Icon}
@@ -1311,6 +1331,7 @@ export function Timeline({
                 <div
                   style={{ gridColumn: 2, gridRow: lodgingRow }}
                   className="py-0.5"
+                  data-row-id={lodging.id}
                 >
                   <ActivityStop
                     title={lodging.title}
