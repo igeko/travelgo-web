@@ -156,6 +156,13 @@ export type MapProps = {
   /** Fired when the user clicks an existing marker (by its key). */
   onMarkerClick?: (id: string) => void;
   /**
+   * Fired when the pointer enters / leaves a marker. Emits the marker id on
+   * mouseover and `null` on mouseout — fires immediately, with no dwell (the
+   * dwell only gates the detail card; hosts that drive hover-based highlights
+   * want raw enter/leave). Touch devices never fire it.
+   */
+  onMarkerHover?: (id: string | null) => void;
+  /**
    * Fired when a draggable marker is released at a new position. The Map does
    * NOT mutate the marker's coords on its own — the host has to fold the new
    * latlng into the marker's source state, otherwise the next reconcile snaps
@@ -759,6 +766,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     onMapClick,
     onPoiClick,
     onMarkerClick,
+    onMarkerHover,
     onMarkerDragEnd,
     onViewportChange,
     renderPinCard,
@@ -810,6 +818,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   const onMapClickRef = useRef(onMapClick);
   const onPoiClickRef = useRef(onPoiClick);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onMarkerHoverRef = useRef(onMarkerHover);
   const onMarkerDragEndRef = useRef(onMarkerDragEnd);
   const onViewportChangeRef = useRef(onViewportChange);
   // viewportInset lives in a ref too — the `idle` listener reads it on every
@@ -818,6 +827,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   onMapClickRef.current = onMapClick;
   onPoiClickRef.current = onPoiClick;
   onMarkerClickRef.current = onMarkerClick;
+  onMarkerHoverRef.current = onMarkerHover;
   onMarkerDragEndRef.current = onMarkerDragEnd;
   onViewportChangeRef.current = onViewportChange;
   viewportInsetRef.current = viewportInset;
@@ -1129,6 +1139,10 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       });
       marker.addListener("mouseover", () => {
         hoverPin(key);
+        // Raw hover signal for hosts that want to react immediately (e.g. the
+        // Explore Timeline highlights the row matching the pin under the
+        // cursor). Separate from the dwell-gated card lifecycle above.
+        onMarkerHoverRef.current?.(key);
         // Itinerary pins grow 1.25× on hover. Other variants keep the size
         // they have (their hover feedback is the card popping up).
         const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
@@ -1138,6 +1152,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
       });
       marker.addListener("mouseout", () => {
         unhoverPin();
+        onMarkerHoverRef.current?.(null);
         const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
         if (desc?.variant === "roadmap") {
           marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false, false));
