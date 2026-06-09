@@ -434,17 +434,32 @@ export function Timeline({
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
-  // Flat list of every scheduled activity id across the trip, in chrono
-  // order. Used to grey-out the Move Up button on the trip's very first
-  // stop and Move Down on the last (no neighbour to swap with). Lodging
-  // rows are not eligible to move, so we ignore them here.
-  const tripScheduledIds: string[] = [];
+  // Move guards: we grey-out Move Up only on the ABSOLUTE first stop of
+  // the trip (first day, first activity) and Move Down only on the
+  // ABSOLUTE last (last day, last activity). The key insight is that the
+  // backend supports cross-day jumps at the day border — so an activity
+  // that is the last of its day is still movable as long as there are
+  // more days after it (even empty ones), where it will land as the first.
+  // The previous, simpler check (`a.id === lastScheduledId`) wrongly
+  // disabled Move Down on the last populated activity even when empty
+  // tail days remained.
+  const firstDayId = sortedDays[0]?.id ?? null;
+  const lastDayId = sortedDays[sortedDays.length - 1]?.id ?? null;
+  const firstActivityIdByDay = new Map<string, string>();
+  const lastActivityIdByDay = new Map<string, string>();
   for (const d of sortedDays) {
     const acts = [...d.activities].sort((a, b) => a.position - b.position);
-    for (const a of acts) tripScheduledIds.push(a.id);
+    if (acts.length > 0) {
+      firstActivityIdByDay.set(d.id, acts[0].id);
+      lastActivityIdByDay.set(d.id, acts[acts.length - 1].id);
+    }
   }
-  const firstScheduledId = tripScheduledIds[0] ?? null;
-  const lastScheduledId = tripScheduledIds[tripScheduledIds.length - 1] ?? null;
+  /** True only for the very first scheduled activity of the trip. */
+  const isFirstOfTrip = (dayId: string, activityId: string): boolean =>
+    dayId === firstDayId && firstActivityIdByDay.get(dayId) === activityId;
+  /** True only for the very last scheduled activity of the trip. */
+  const isLastOfTrip = (dayId: string, activityId: string): boolean =>
+    dayId === lastDayId && lastActivityIdByDay.get(dayId) === activityId;
 
   // Per ogni dayId, l'id del chain-stop IMMEDIATAMENTE precedente alla
   // sua prima activity (in ordine di chain). Usato per disegnare il
@@ -712,8 +727,8 @@ export function Timeline({
                       onRemove={handleRemove}
                       onMoveUp={onMoveActivity ? () => onMoveActivity(a.id, "up") : undefined}
                       onMoveDown={onMoveActivity ? () => onMoveActivity(a.id, "down") : undefined}
-                      canMoveUp={a.id !== firstScheduledId}
-                      canMoveDown={a.id !== lastScheduledId}
+                      canMoveUp={!isFirstOfTrip(day.id, a.id)}
+                      canMoveDown={!isLastOfTrip(day.id, a.id)}
                       onModeChange={(next) => {
                         // stop → sleep: cross-table conversion. The scheduled
                         // row is replaced by a 1-night stay starting on its day.
