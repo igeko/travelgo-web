@@ -584,21 +584,24 @@ export function Timeline({
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
 
-  // Tutti gli IDs sortabili del trip, in ordine cronologico. Un SOLO
-  // SortableContext globale gestisce il cross-day drag senza che gli item
-  // "scompaiano" passando dal context di un day a quello di un altro
-  // (pattern multi-container di @dnd-kit/sortable). I dati per identificare
-  // (dayId, index) li passa ciascun SortableActivityRow via `data`.
-  const allSortableIds: string[] = [];
+  // IDs sortabili PER DAY: ogni day ha il proprio SortableContext, così la
+  // preview di reorder anticipato di @dnd-kit (verticalListSortingStrategy)
+  // agisce SOLO entro il day di partenza — niente swap globale lineare che
+  // farebbe sparire la prima attività del day target in cross-day drag.
+  // Per il cross-day il visual feedback arriva dal DragOverlay (ghost che
+  // segue il cursore) e dal `data.dayId` sull'item over.
+  const sortableIdsByDay = new Map<string, string[]>();
   const sortableIndexByDay = new Map<string, Map<string, number>>();
   for (const d of sortedDays) {
+    const ids: string[] = [];
     const dayMap = new Map<string, number>();
     const acts = [...d.activities].sort((a, b) => a.position - b.position);
     for (const a of acts) {
       if (a.fuzzy === true) continue;
-      dayMap.set(a.id, dayMap.size);
-      allSortableIds.push(a.id);
+      dayMap.set(a.id, ids.length);
+      ids.push(a.id);
     }
+    sortableIdsByDay.set(d.id, ids);
     sortableIndexByDay.set(d.id, dayMap);
   }
 
@@ -694,7 +697,6 @@ export function Timeline({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-    <SortableContext items={allSortableIds} strategy={verticalListSortingStrategy}>
     <div className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
       {segments.map((seg) => {
         if (seg.kind === "empty") {
@@ -834,13 +836,15 @@ export function Timeline({
                 accommodation slot (when applicable) are rendered AFTER this
                 loop. */}
             {(() => {
-              // Mappa locale activity.id → indice fra le sortable di QUESTO
-              // day, condivisa col SortableContext globale via data.dayId
-              // sul SortableActivityRow. L'indice cross-day si rileva al
-              // drop dal `data.dayId` dell'item over.
+              // Un SortableContext PER day: la preview di reorder anticipato
+              // di @dnd-kit agisce SOLO entro questo day (verticalListSortingStrategy).
+              // Cross-day, l'item attivo non muove visivamente gli items del day
+              // target — è il DragOverlay (ghost) a seguire il cursore, e il
+              // drop atterra sull'item over con `data.dayId` del day giusto.
+              const dayIds = sortableIdsByDay.get(day.id) ?? [];
               const sortableIndexOf = sortableIndexByDay.get(day.id) ?? new Map<string, number>();
               return (
-                <>
+                <SortableContext items={dayIds} strategy={verticalListSortingStrategy}>
                   {items.map((item, i) => {
               const row = i + 1;
               if (item.kind === "transfer") {
@@ -949,7 +953,7 @@ export function Timeline({
                 </SortableActivityRow>
               );
             })}
-                </>
+                </SortableContext>
               );
             })()}
 
@@ -1022,7 +1026,6 @@ export function Timeline({
         );
       })}
     </div>
-    </SortableContext>
 
     {/* DragOverlay: rende un "fantasma" dell'attività trascinata fuori dal
         grid layout, così l'item segue il cursore anche oltre i confini del
