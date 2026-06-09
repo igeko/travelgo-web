@@ -24,7 +24,7 @@
 
 import { type ComponentType, useEffect, useState } from "react";
 import {
-  closestCenter,
+  closestCorners,
   DndContext,
   DragOverlay,
   type DragEndEvent,
@@ -33,6 +33,7 @@ import {
   PointerSensor,
   TouchSensor,
   KeyboardSensor,
+  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -548,6 +549,38 @@ function SortableActivityRow({
   );
 }
 
+/**
+ * Day grid wrapper droppable: il droppable copre l'intero day, così quando
+ * l'utente trascina cross-day e il cursore atterra "sotto" l'ultimo item
+ * (fuori dalle hit areas dei SortableActivityRow) il drop viene attribuito
+ * al day e posizionato alla fine via `data.index = endIndex`. Senza, il
+ * drop dopo l'ultimo item non veniva intercettato.
+ */
+function DayDropContainer({
+  dayId,
+  endIndex,
+  style,
+  className,
+  children,
+}: {
+  dayId: string;
+  /** 0-based: numero di sortable activity del day (= "drop alla fine"). */
+  endIndex: number;
+  style?: import("react").CSSProperties;
+  className?: string;
+  children: import("react").ReactNode;
+}) {
+  const { setNodeRef } = useDroppable({
+    id: `day-end-${dayId}`,
+    data: { type: "day-end" as const, dayId, index: endIndex },
+  });
+  return (
+    <div ref={setNodeRef} style={style} className={className}>
+      {children}
+    </div>
+  );
+}
+
 /* ── Drag preview projection ──────────────────────────────────────── */
 
 /**
@@ -697,15 +730,29 @@ export function Timeline({
     if (over) {
       const activeOrig = originalLocation.get(String(active.id));
       const overOrig = originalLocation.get(String(over.id));
-      if (
-        activeOrig &&
-        overOrig &&
-        activeOrig.dayId !== overOrig.dayId
-      ) {
+      const overData = over.data.current as
+        | { type?: string; dayId?: string; index?: number }
+        | undefined;
+      // Caso 1: over è un altro SortableActivityRow di un day diverso.
+      if (activeOrig && overOrig && activeOrig.dayId !== overOrig.dayId) {
         next = {
           scheduledId: String(active.id),
           targetDayId: overOrig.dayId,
           targetIndex: overOrig.index,
+        };
+      }
+      // Caso 2: over è il DayDropContainer di un day diverso (drop "alla fine"
+      // o cursore in un'area "vuota" del day target).
+      else if (
+        activeOrig &&
+        overData?.type === "day-end" &&
+        overData.dayId &&
+        overData.dayId !== activeOrig.dayId
+      ) {
+        next = {
+          scheduledId: String(active.id),
+          targetDayId: overData.dayId,
+          targetIndex: overData.index ?? 0,
         };
       }
     }
@@ -911,7 +958,7 @@ export function Timeline({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -975,8 +1022,10 @@ export function Timeline({
           1 + stopsBelowCount + (showNotes ? 1 : 0) + (renderLodgingBottom ? 1 : 0);
 
         return (
-          <div
+          <DayDropContainer
             key={day.id}
+            dayId={day.id}
+            endIndex={(sortableIdsByDay.get(day.id) ?? []).length}
             className="grid items-start gap-x-2"
             style={{ gridTemplateColumns: "36px minmax(0, 1fr)" }}
           >
@@ -1275,7 +1324,7 @@ export function Timeline({
               );
             })() : null}
 
-          </div>
+          </DayDropContainer>
         );
       })}
     </div>
