@@ -27,6 +27,11 @@ export const activities = {
   move: (scheduledId: string, direction: "up" | "down") =>
     post<null>(`/api/scheduled-activities/${scheduledId}/move`, { direction }),
 
+  /** POST /api/scheduled-activities/[id]/move-to — drag&drop su posizione
+   *  arbitraria (anche cross-day). `position` 0-based, clampato server-side. */
+  moveTo: (scheduledId: string, dayId: string, position: number) =>
+    post<null>(`/api/scheduled-activities/${scheduledId}/move-to`, { dayId, position }),
+
   /** PATCH /api/scheduled-activities/[id]/bridge — set a transport bridge. */
   setBridge: (scheduledId: string, direction: "in" | "out", bridge: Record<string, unknown> | null) =>
     patch<null>(`/api/scheduled-activities/${scheduledId}/bridge`, { direction, bridge }),

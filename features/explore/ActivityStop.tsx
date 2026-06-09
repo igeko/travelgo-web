@@ -77,6 +77,8 @@ export function ActivityStop({
   canMoveUp = true,
   canMoveDown = true,
   onNightsChange,
+  dragHandleProps,
+  isDragging = false,
   className,
 }: {
   title: string;
@@ -131,6 +133,16 @@ export function ActivityStop({
    *  last stop of the trip. */
   canMoveDown?: boolean;
   onNightsChange?: (next: number) => void;
+  /**
+   * Drag handle props from @dnd-kit/sortable (listeners + attributes), to be
+   * spread on the grip icon so the row stays clickable for opening the
+   * detail and only the grip activates the drag.
+   */
+  dragHandleProps?: import("react").HTMLAttributes<HTMLSpanElement> & {
+    ref?: import("react").Ref<HTMLSpanElement>;
+  };
+  /** Visual state from @dnd-kit's useSortable — half-opacity placeholder. */
+  isDragging?: boolean;
   className?: string;
 }) {
   const t = useTranslations("Explore");
@@ -201,6 +213,7 @@ export function ActivityStop({
           state === "hover" && "bg-surface-soft",
           interactive && "hover:bg-surface-soft focus-visible:bg-surface-soft",
           selected && "bg-ink",
+          isDragging && "opacity-40",
           className,
         )}
       >
@@ -221,15 +234,27 @@ export function ActivityStop({
           </span>
         ) : null}
         {!selected ? (
-          <IconGripVertical
-            size={16}
+          <span
+            {...(dragHandleProps ?? {})}
+            // Le listener del grip vivono qui — il click sul resto della
+            // row apre il detail, il drag parte solo dall'icona stessa.
+            onClick={(e) => {
+              // Senza stopPropagation, il click sul grip aprirebbe il detail.
+              e.stopPropagation();
+              dragHandleProps?.onClick?.(e);
+            }}
             className={cn(
-              "shrink-0 text-ink-faint transition-opacity",
+              "inline-flex shrink-0 text-ink-faint transition-opacity",
+              dragHandleProps ? "cursor-grab active:cursor-grabbing touch-none" : "",
               state === "hover"
                 ? "opacity-100"
                 : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
             )}
-          />
+            aria-label={dragHandleProps ? "Trascina per riordinare" : undefined}
+            role={dragHandleProps ? "button" : undefined}
+          >
+            <IconGripVertical size={16} />
+          </span>
         ) : null}
       </Wrapper>
     );

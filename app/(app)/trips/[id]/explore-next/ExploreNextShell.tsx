@@ -99,13 +99,17 @@ function applyCoordEdits(
 }
 
 /**
- * Optimistic Move actions. Each one moves a scheduled activity one slot up
- * or down (intra-day swap, or cross-day jump at day borders). Applied as a
- * left-fold on the visibleDays so we can stack multiple moves before the
- * server snapshot lands. position/day_id are mutated in place; bridges stay
- * stale until router.refresh() reconciles.
+ * Optimistic Move actions. Two variants:
+ *  - `direction: "up"|"down"` — used by the ↑↓ buttons in the detail footer;
+ *    intra-day swap or cross-day jump on border.
+ *  - `targetDayId + targetIndex` — used by the timeline drag&drop; the
+ *    activity lands at the exact requested 0-based index on the target day.
+ * Applied as a left-fold on visibleDays so multiple moves can stack before
+ * the server snapshot lands.
  */
-type OptMoveAction = { id: string; scheduledId: string; direction: "up" | "down" };
+type OptMoveAction =
+  | { id: string; scheduledId: string; direction: "up" | "down" }
+  | { id: string; scheduledId: string; targetDayId: string; targetIndex: number };
 
 function applyMoveActions(
   days: TimelineDayData[],
@@ -120,8 +124,58 @@ function applyOneMove(
   days: TimelineDayData[],
   action: OptMoveAction,
 ): TimelineDayData[] {
+  if ("targetDayId" in action) return applyMoveToPosition(days, action);
+  return applyMoveDirection(days, action);
+}
+
+/** Drag&drop projection: place the activity at the explicit (dayId, index). */
+function applyMoveToPosition(
+  days: TimelineDayData[],
+  action: { scheduledId: string; targetDayId: string; targetIndex: number },
+): TimelineDayData[] {
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
-  // Find which day owns the scheduled
+  // Locate source
+  const fromIdx = sortedDays.findIndex((d) =>
+    d.activities.some((x) => x.id === action.scheduledId),
+  );
+  if (fromIdx === -1) return days;
+  const fromDay = sortedDays[fromIdx];
+  const target = fromDay.activities.find((x) => x.id === action.scheduledId);
+  if (!target) return days;
+
+  // Locate destination (clamp index against destination size)
+  const toIdx = sortedDays.findIndex((d) => d.id === action.targetDayId);
+  if (toIdx === -1) return days;
+  const toDay = sortedDays[toIdx];
+
+  const sourceActs = fromDay.activities.filter((a) => a.id !== target.id);
+  const destBase =
+    fromDay.id === toDay.id
+      ? sourceActs
+      : [...toDay.activities].sort((a, b) => a.position - b.position);
+  const moved = { ...target, day_id: toDay.id };
+  const idx = Math.max(0, Math.min(action.targetIndex, destBase.length));
+  const newDest = [
+    ...destBase.slice(0, idx),
+    moved,
+    ...destBase.slice(idx),
+  ].map((a, i) => ({ ...a, position: i + 1 }));
+
+  return sortedDays.map((d) => {
+    if (d.id === toDay.id) return { ...d, activities: newDest };
+    if (d.id === fromDay.id && fromDay.id !== toDay.id) {
+      return { ...d, activities: sourceActs.map((a, i) => ({ ...a, position: i + 1 })) };
+    }
+    return d;
+  });
+}
+
+/** Footer ↑↓ projection (original behaviour). */
+function applyMoveDirection(
+  days: TimelineDayData[],
+  action: { scheduledId: string; direction: "up" | "down" },
+): TimelineDayData[] {
+  const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
   const dayIdx = sortedDays.findIndex((d) =>
     d.activities.some((x) => x.id === action.scheduledId),
   );
@@ -593,6 +647,30 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
+  /**
+   * Drag&drop: l'utente trascina un'attività e la rilascia su un day/index
+   * specifici (anche cross-day). Stesso pattern di handleMoveActivity:
+   * azione optimistic accodata, POST in background, rollback su errore.
+   */
+  const handleDragMove = useCallback(
+    async (scheduledId: string, targetDayId: string, targetIndex: number) => {
+      const actionId = newActionId();
+      setOptMoveActions((prev) => [
+        ...prev,
+        { id: actionId, scheduledId, targetDayId, targetIndex },
+      ]);
+      try {
+        await api.activities.moveTo(scheduledId, targetDayId, targetIndex);
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] drag move failed:", err);
+        setOptMoveActions((prev) => prev.filter((a) => a.id !== actionId));
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleReduceStay = useCallback(
     (stayId: string) => {
       // If reducing from a single-night stay, the lodging row disappears
@@ -722,6 +800,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onSelectActivity={setSelectedActivityId}
             onRemoveActivity={handleRemoveActivity}
             onMoveActivity={handleMoveActivity}
+            onDragMove={handleDragMove}
             onConvertToSleep={handleConvertToSleep}
             onConvertToStop={handleConvertToStop}
             onExtendStay={handleExtendStay}

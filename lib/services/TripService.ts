@@ -642,6 +642,64 @@ export class TripService {
     return this.scheduler.removeFromDay(scheduledId);
   }
 
+  /**
+   * Drag&drop move: place a scheduled occurrence at an explicit position on
+   * a (possibly different) day. `targetIndex` is 0-based and refers to the
+   * desired final index **after** the move, computed against the destination
+   * day's existing items (with the moved one already excluded if it was on
+   * the same day).
+   *
+   * Intra-day = pure reorder. Cross-day = moveToDay + reorder. In either
+   * case bridges are recomputed around the moved activity (prev/next legs).
+   */
+  async moveToPosition(
+    scheduledId: string,
+    targetDayId: string,
+    targetIndex: number,
+  ): Promise<void> {
+    const fromDayId = await this.dal.trips.dayIdForScheduled(scheduledId);
+    if (!fromDayId) throw notFound("Scheduled activity not found");
+
+    // Cross-day: move first, so listForDay(targetDayId) sees the activity
+    // in its new home before we renumber positions.
+    if (fromDayId !== targetDayId) {
+      await this.scheduler.moveToDay(scheduledId, targetDayId, {});
+    }
+
+    const destActs = (await this.scheduler.listForDay(targetDayId)).sort(
+      (a, b) => a.position - b.position,
+    );
+    const moved = destActs.find((a) => a.id === scheduledId);
+    if (!moved) throw notFound("Scheduled activity disappeared during move");
+
+    const others = destActs.filter((a) => a.id !== scheduledId);
+    const clampedIndex = Math.max(0, Math.min(targetIndex, others.length));
+    const ordered = [
+      ...others.slice(0, clampedIndex),
+      moved,
+      ...others.slice(clampedIndex),
+    ];
+    const items = ordered.map((a, i) => ({ id: a.id, position: i + 1 }));
+    await this.scheduler.reorder(targetDayId, items);
+
+    // Bridges: ricalcola attorno alla posizione nuova.
+    const post = (await this.scheduler.listForDay(targetDayId)).sort(
+      (a, b) => a.position - b.position,
+    );
+    const newIdx = post.findIndex((a) => a.id === scheduledId);
+    const prev = newIdx > 0 ? post[newIdx - 1] : null;
+    const next = newIdx < post.length - 1 ? post[newIdx + 1] : null;
+    if (moved.location_lat != null && moved.location_lng != null) {
+      await this.recomputeBridgesAround({
+        newScheduledId: moved.id,
+        newLat: moved.location_lat,
+        newLng: moved.location_lng,
+        prev,
+        next,
+      });
+    }
+  }
+
   /** AI reorder of a day: decides the order, then applies it via reorderDay. */
   organize(dayId: string): Promise<Activity[]> {
     return this.scheduler.organize(dayId);

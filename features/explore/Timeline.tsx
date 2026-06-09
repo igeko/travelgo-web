@@ -23,6 +23,23 @@
  */
 
 import { type ComponentType, useEffect, useState } from "react";
+import {
+  DndContext,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Activity, BridgeData, Day } from "@/lib/dal/domain";
 import {
   IconBed,
@@ -119,6 +136,16 @@ type Props = {
    * an optimistic update + background PATCH.
    */
   onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
+  /**
+   * Drag&drop: ricevuto quando l'utente rilascia un'attività su una
+   * posizione specifica (target day + 0-based index, eventualmente cross-day).
+   * Lo host applica un overlay ottimistico e fa POST /move-to.
+   */
+  onDragMove?: (
+    scheduledId: string,
+    targetDayId: string,
+    targetIndex: number,
+  ) => void | Promise<void>;
   /**
    * Stop → Sleep conversion. Receives the scheduled_activity.id; the
    * host deletes the scheduled row and creates a 1-night stay starting
@@ -373,6 +400,75 @@ function buildLodging(
   };
 }
 
+/* ── Sortable row ───────────────────────────────────────────────── */
+
+/**
+ * Wrapper di un'attività che la rende sortable via @dnd-kit. Applica
+ * setNodeRef + transform sul `<div>` esterno (grid cell) e passa i listener
+ * del drag come `dragHandleProps` al child via render-prop — così solo
+ * l'icona grip dentro ActivityStop attiva il drag, mentre il click su
+ * tutto il resto della row continua ad aprire il detail.
+ */
+function SortableActivityRow({
+  scheduledId,
+  dayId,
+  index,
+  row,
+  children,
+}: {
+  scheduledId: string;
+  dayId: string;
+  /** 0-based index dell'activity tra quelle SORTABILI dello stesso day. */
+  index: number;
+  /** CSS grid-row sulla cella esterna (1..lastRow). */
+  row: number;
+  children: (handle: {
+    dragHandleProps: import("react").HTMLAttributes<HTMLSpanElement> & {
+      ref?: import("react").Ref<HTMLSpanElement>;
+    };
+    isDragging: boolean;
+  }) => import("react").ReactNode;
+}) {
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    listeners,
+    attributes,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: scheduledId,
+    data: { type: "row" as const, dayId, index },
+  });
+
+  const style: import("react").CSSProperties = {
+    gridColumn: 2,
+    gridRow: row,
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  // Memoize handle to keep it stable per dragging state. dragHandleProps
+  // is spread into the grip <span> inside ActivityStop.
+  const handle = {
+    dragHandleProps: {
+      ref: setActivatorNodeRef,
+      ...listeners,
+      ...attributes,
+    } as import("react").HTMLAttributes<HTMLSpanElement> & {
+      ref?: import("react").Ref<HTMLSpanElement>;
+    },
+    isDragging,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="py-0.5">
+      {children(handle)}
+    </div>
+  );
+}
+
 /* ── Timeline ───────────────────────────────────────────────────── */
 
 export function Timeline({
@@ -384,6 +480,7 @@ export function Timeline({
   onSelectActivity,
   onRemoveActivity,
   onMoveActivity,
+  onDragMove,
   onConvertToSleep,
   onConvertToStop,
   onExtendStay,
@@ -397,6 +494,53 @@ export function Timeline({
   // selected active day is expanded (full content + ink badge); a selected
   // empty day just gets its badge marked (no content to expand).
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+
+  // ── Drag&drop sensors ──────────────────────────────────────────
+  // Activation distance: 6px — distinguishes a tap/click (apre il detail)
+  // da un drag (entra in modalità sortable). Senza, ogni mouseDown sul grip
+  // farebbe partire un drag spurio.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Risolutore drop: dato l'evento end di @dnd-kit, ricava (dayId, index)
+  // del target. Restituisce null quando non c'è un over significativo.
+  type DropTarget = { dayId: string; index: number };
+  const resolveDropTarget = (event: DragEndEvent): DropTarget | null => {
+    const { over } = event;
+    if (!over) return null;
+    const d = over.data.current as
+      | { type?: "row" | "day-empty"; dayId?: string; index?: number }
+      | undefined;
+    if (!d?.dayId) return null;
+    return { dayId: d.dayId, index: d.index ?? 0 };
+  };
+
+  const handleDragStart = (_e: DragStartEvent) => {
+    // Close the inline popover at drag start so the cards visually match
+    // their dragged state — also avoids the editor floating mid-drag.
+    setOpenId(null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const target = resolveDropTarget(event);
+    if (!target) return;
+    const scheduledId = String(event.active.id);
+    const source = event.active.data.current as
+      | { dayId?: string; index?: number }
+      | undefined;
+    // Skip no-ops: same day + same index (or index right after itself).
+    if (
+      source?.dayId === target.dayId &&
+      (source?.index === target.index || source?.index === target.index - 1)
+    ) return;
+    // When moving down within the same day, the over-index is shifted by 1
+    // because the source is removed first. @dnd-kit/sortable's `arrayMove`
+    // would compensate; we use the index as-is and let the server clamp.
+    void onDragMove?.(scheduledId, target.dayId, target.index);
+  };
 
   // Bubble the "open activity" up so hosts can use it as `selectedActivityId`
   // for downstream features (e.g. Add-to-Trip). The state itself stays local
@@ -509,6 +653,11 @@ export function Timeline({
   });
 
   return (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
     <div className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
       {segments.map((seg) => {
         if (seg.kind === "empty") {
@@ -647,7 +796,22 @@ export function Timeline({
                 items fall to rows 2..items.length. Today notes and the bottom
                 accommodation slot (when applicable) are rendered AFTER this
                 loop. */}
-            {items.map((item, i) => {
+            {(() => {
+              // Sortable IDs per @dnd-kit: solo le activity NON fuzzy del day
+              // sono draggable. Il loro indice è "fra i sortable", non fra gli
+              // items: così il drop su index=0 significa "primo sortable",
+              // indipendente da transfer/fuzzy mescolati.
+              const sortableIds: string[] = [];
+              const sortableIndexOf = new Map<string, number>();
+              for (const it of items) {
+                if (it.kind === "activity" && it.activity.fuzzy !== true) {
+                  sortableIndexOf.set(it.activity.id, sortableIds.length);
+                  sortableIds.push(it.activity.id);
+                }
+              }
+              return (
+                <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                  {items.map((item, i) => {
               const row = i + 1;
               if (item.kind === "transfer") {
                 const open = openId === item.id;
@@ -690,9 +854,10 @@ export function Timeline({
                 onRemoveActivity?.(a.id);
               };
 
-              return (
-                <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
-                  {fuzzy ? (
+              // Fuzzy stops: not sortable. Wrap as before.
+              if (fuzzy) {
+                return (
+                  <div key={a.id} style={{ gridColumn: 2, gridRow: row }} className="py-0.5">
                     <FuzzyStop
                       title={a.title}
                       icon={Icon}
@@ -702,8 +867,21 @@ export function Timeline({
                       onClose={() => setOpenId(null)}
                       onRemove={handleRemove}
                     />
-                  ) : (
+                  </div>
+                );
+              }
+              return (
+                <SortableActivityRow
+                  key={a.id}
+                  scheduledId={a.id}
+                  dayId={day.id}
+                  index={sortableIndexOf.get(a.id) ?? 0}
+                  row={row}
+                >
+                  {({ dragHandleProps, isDragging }) => (
                     <ActivityStop
+                      dragHandleProps={dragHandleProps}
+                      isDragging={isDragging}
                       title={a.title}
                       icon={Icon}
                       state={open ? "open" : "default"}
@@ -738,9 +916,12 @@ export function Timeline({
                       }}
                     />
                   )}
-                </div>
+                </SortableActivityRow>
               );
             })}
+                </SortableContext>
+              );
+            })()}
 
             {/* TODAY NOTES — only when the day is expanded. Sits BELOW the
                 stops and ABOVE the accommodation (which is pinned to the
@@ -811,6 +992,7 @@ export function Timeline({
         );
       })}
     </div>
+    </DndContext>
   );
 }
 
