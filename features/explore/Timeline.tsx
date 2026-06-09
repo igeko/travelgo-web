@@ -24,13 +24,15 @@
 
 import { type ComponentType, useEffect, useState } from "react";
 import {
-  closestCorners,
+  closestCenter,
+  type CollisionDetection,
   DndContext,
   DragOverlay,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
   PointerSensor,
+  pointerWithin,
   TouchSensor,
   KeyboardSensor,
   useDroppable,
@@ -659,6 +661,25 @@ export function Timeline({
 
 
   // ── Drag&drop sensors ──────────────────────────────────────────
+  // Collision strategy custom:
+  //  1) pointerWithin sui SortableActivityRow (`data.type==="row"`) — vince
+  //     un item solo se il puntatore è ESATTAMENTE dentro la sua rect.
+  //  2) closestCenter sui DayDropContainer (`data.type==="day-end"`) come
+  //     fallback — quando il puntatore esce dagli item (es. sotto l'ultimo
+  //     stop), il day container "prende il drop" e l'item finisce in fondo.
+  const collisionDetection: CollisionDetection = (args) => {
+    const containers = args.droppableContainers;
+    const rowContainers = containers.filter(
+      (c) => (c.data.current as { type?: string } | undefined)?.type === "row",
+    );
+    const onRow = pointerWithin({ ...args, droppableContainers: rowContainers });
+    if (onRow.length > 0) return onRow;
+    const dayContainers = containers.filter(
+      (c) => (c.data.current as { type?: string } | undefined)?.type === "day-end",
+    );
+    return closestCenter({ ...args, droppableContainers: dayContainers });
+  };
+
   // Activation distance: 6px — distinguishes a tap/click (apre il detail)
   // da un drag (entra in modalità sortable). Senza, ogni mouseDown sul grip
   // farebbe partire un drag spurio.
@@ -958,7 +979,7 @@ export function Timeline({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
