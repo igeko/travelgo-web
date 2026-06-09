@@ -589,20 +589,38 @@ export function Timeline({
    */
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    if (!over) { setDragPreview(null); return; }
-    const overData = over.data.current as
-      | { type?: string; dayId?: string; index?: number }
-      | undefined;
-    if (!overData?.dayId) { setDragPreview(null); return; }
-    const activeData = active.data.current as
-      | { dayId?: string; index?: number }
-      | undefined;
-    // Same-day = nessuna preview cross-day, lascia agire il SortableContext locale.
-    if (activeData?.dayId === overData.dayId) { setDragPreview(null); return; }
-    setDragPreview({
-      scheduledId: String(active.id),
-      targetDayId: overData.dayId,
-      targetIndex: overData.index ?? 0,
+    // Compute the desired preview (or null) and only commit it when it
+    // actually changes — onDragOver fires very frequently and re-applying
+    // an identical object would create a new reference each time, kicking
+    // off an infinite render → over → render loop.
+    let next: typeof dragPreview = null;
+    if (over) {
+      const overData = over.data.current as
+        | { type?: string; dayId?: string; index?: number }
+        | undefined;
+      const activeData = active.data.current as
+        | { dayId?: string; index?: number }
+        | undefined;
+      if (overData?.dayId && activeData?.dayId !== overData.dayId) {
+        next = {
+          scheduledId: String(active.id),
+          targetDayId: overData.dayId,
+          targetIndex: overData.index ?? 0,
+        };
+      }
+    }
+    setDragPreview((prev) => {
+      if (prev === null && next === null) return prev;
+      if (
+        prev &&
+        next &&
+        prev.scheduledId === next.scheduledId &&
+        prev.targetDayId === next.targetDayId &&
+        prev.targetIndex === next.targetIndex
+      ) {
+        return prev;
+      }
+      return next;
     });
   };
 
