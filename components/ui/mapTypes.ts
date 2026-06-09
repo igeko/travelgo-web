@@ -84,6 +84,18 @@ export type RouteSpec = {
     color?: string;
     weight?: number;
     opacity?: number;
+    /**
+     * Casing: polyline più scura e spessa disegnata SOTTO la linea principale
+     * lungo lo stesso path. Crea l'effetto "bordo" tipico dei percorsi brand
+     * (es. day-path di Explore Next: linea arancione 2.5px su casing ink 5px).
+     * Applicato solo alle polyline solide — sui pattern dotted/dashed verrebbe
+     * coperto dai marker icona e non avrebbe senso. L'opacity viene ereditata
+     * da `opacity` (così il casing dim segue il dim della linea).
+     */
+    casing?: {
+      color?: string;
+      weight?: number;
+    };
   };
 
   /**

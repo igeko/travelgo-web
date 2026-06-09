@@ -431,18 +431,40 @@ function drawRouteSpec(
   const sharedOpacity = spec.style?.opacity ?? 0.9;
   const defaultMode: TravelMode = spec.travelMode ?? "WALKING";
 
+  // Brand casing: linea più spessa e scura sotto il path principale (style:
+  // /design/route-casing). Disegnato solo per le linee SOLIDE (straight +
+  // singleCall senza pattern dotted/dashed); l'opacity segue la linea così
+  // il dim per giorno non focused rimane coerente.
+  const casing = spec.style?.casing;
+  const pushCasing = (path: google.maps.LatLng[] | google.maps.LatLngLiteral[]) => {
+    if (!casing) return;
+    sink.push(
+      new google.maps.Polyline({
+        path,
+        map,
+        strokeColor: casing.color ?? INK,
+        strokeWeight: casing.weight ?? sharedWeight + 2,
+        strokeOpacity: sharedOpacity,
+        zIndex: 1,
+      }),
+    );
+  };
+
   // `straight: true` → polyline lineare diretta sui `points`, niente call
   // a Google Routes. Usata quando il bridge è già persistito (durata + mode)
   // ma la geometria non serve essere precisa: vogliamo solo segnare che i
   // due stop sono collegati. Skippa anche la cache localStorage.
   if (spec.straight) {
+    const straightPath = points.map((p) => ({ lat: p.lat, lng: p.lng }));
+    pushCasing(straightPath);
     sink.push(
       new google.maps.Polyline({
-        path: points.map((p) => ({ lat: p.lat, lng: p.lng })),
+        path: straightPath,
         map,
         strokeColor: sharedColor,
         strokeWeight: sharedWeight,
         strokeOpacity: sharedOpacity,
+        zIndex: 2,
       }),
     );
     if (spec.fitOnLoad) {
@@ -470,7 +492,12 @@ function drawRouteSpec(
 
   const draw = (encoded: string, options: google.maps.PolylineOptions) => {
     if (isCancelled()) return;
-    sink.push(new google.maps.Polyline({ path: decodePolyline(encoded), map, ...options }));
+    const path = decodePolyline(encoded);
+    // Casing solo sotto le linee solide. legStyle per walk/bike/bus mette
+    // `strokeOpacity: 0` e affida il rendering alle icone: aggiungere un
+    // casing pieno sotto romperebbe l'effetto dotted/dashed.
+    if (options.strokeOpacity && options.strokeOpacity > 0) pushCasing(path);
+    sink.push(new google.maps.Polyline({ path, map, zIndex: 2, ...options }));
   };
 
   const maybeFit = (encodedList: string[]) => {

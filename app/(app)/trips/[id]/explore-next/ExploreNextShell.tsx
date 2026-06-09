@@ -6,7 +6,6 @@ import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap
 import type { LatLng, MapHandle, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
-import { INK } from "@/components/ui/mapPins";
 import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
 import { useChainBridges } from "@/features/explore/useChainBridges";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
@@ -446,7 +445,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // Travel mode DRIVING uniforme, niente `perLegTransport` — la linea
   // resta continua e leggibile (legStyle("walk") sarebbe dotted, ecc.).
   const dayPathRoutes = useMemo<RouteSpec[]>(
-    () => chainToRouteSpecs(chain, opacityOf, INK),
+    () => chainToRouteSpecs(chain, opacityOf),
     [chain, opacityOf],
   );
 

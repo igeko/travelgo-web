@@ -46,7 +46,7 @@ export default async function TripDebugPage({
   const nights = nightsResult.data ?? [];
   const daysWithLodging = accommodationsFromNights(nights, snapshot.days);
   const chain = buildTripChain(daysWithLodging);
-  const routes = chainToRouteSpecs(chain, () => 0.8, "#0d2c3d");
+  const routes = chainToRouteSpecs(chain, () => 0.8);
 
   return (
     <DebugShell>

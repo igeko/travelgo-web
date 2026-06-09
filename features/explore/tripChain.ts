@@ -29,7 +29,7 @@
  */
 
 import type { MapMarker, RoutePoint, RouteSpec } from "@/components/ui/Map";
-import { iconGlyph } from "@/components/ui/mapPins";
+import { iconGlyph, INK, ORANGE } from "@/components/ui/mapPins";
 import { IconBed } from "@/components/ui/icons";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import type { TimelineDayData } from "@/features/explore/Timeline";
@@ -165,10 +165,17 @@ function sameCoord(a: { lat: number; lng: number } | null, b: { lat: number; lng
  * l'ultima activity di quel giorno se senza alloggio). Saltato quando
  * coincide col primo del giorno (zero-length leg).
  */
+/**
+ * Stile brand del day-path: linea ORANGE 2.5px su casing INK 5px (spec
+ * /design/route-casing). Esposto come costante così il dev debug e
+ * ExploreNextShell restano in sync senza tramandare colori per parametro.
+ */
+const DAY_PATH_LINE_WEIGHT = 2.5;
+const DAY_PATH_CASING_WEIGHT = 5;
+
 export function chainToRouteSpecs(
   chain: TripStop[],
   opacityFor: (dayId: string) => number,
-  defaultColor: string,
 ): RouteSpec[] {
   if (chain.length < 2) return [];
 
@@ -208,7 +215,12 @@ export function chainToRouteSpecs(
       id: `day-${g.dayId}`,
       points: trimmed,
       travelMode: "DRIVING",
-      style: { color: defaultColor, weight: 3, opacity: opacityFor(g.dayId) },
+      style: {
+        color: ORANGE,
+        weight: DAY_PATH_LINE_WEIGHT,
+        opacity: opacityFor(g.dayId),
+        casing: { color: INK, weight: DAY_PATH_CASING_WEIGHT },
+      },
     });
   }
   return out;
