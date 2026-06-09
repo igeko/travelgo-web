@@ -24,7 +24,9 @@
 
 import { type ComponentType, useEffect, useState } from "react";
 import {
+  closestCenter,
   DndContext,
+  DragOverlay,
   type DragEndEvent,
   type DragStartEvent,
   PointerSensor,
@@ -495,6 +497,7 @@ export function Timeline({
   // empty day just gets its badge marked (no content to expand).
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
 
+
   // ── Drag&drop sensors ──────────────────────────────────────────
   // Activation distance: 6px — distinguishes a tap/click (apre il detail)
   // da un drag (entra in modalità sortable). Senza, ogni mouseDown sul grip
@@ -518,13 +521,15 @@ export function Timeline({
     return { dayId: d.dayId, index: d.index ?? 0 };
   };
 
-  const handleDragStart = (_e: DragStartEvent) => {
+  const handleDragStart = (e: DragStartEvent) => {
     // Close the inline popover at drag start so the cards visually match
     // their dragged state — also avoids the editor floating mid-drag.
     setOpenId(null);
+    setActiveDragId(String(e.active.id));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     const target = resolveDropTarget(event);
     if (!target) return;
     const scheduledId = String(event.active.id);
@@ -536,10 +541,11 @@ export function Timeline({
       source?.dayId === target.dayId &&
       (source?.index === target.index || source?.index === target.index - 1)
     ) return;
-    // When moving down within the same day, the over-index is shifted by 1
-    // because the source is removed first. @dnd-kit/sortable's `arrayMove`
-    // would compensate; we use the index as-is and let the server clamp.
     void onDragMove?.(scheduledId, target.dayId, target.index);
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
   };
 
   // Bubble the "open activity" up so hosts can use it as `selectedActivityId`
@@ -577,6 +583,34 @@ export function Timeline({
   };
 
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
+
+  // Tutti gli IDs sortabili del trip, in ordine cronologico. Un SOLO
+  // SortableContext globale gestisce il cross-day drag senza che gli item
+  // "scompaiano" passando dal context di un day a quello di un altro
+  // (pattern multi-container di @dnd-kit/sortable). I dati per identificare
+  // (dayId, index) li passa ciascun SortableActivityRow via `data`.
+  const allSortableIds: string[] = [];
+  const sortableIndexByDay = new Map<string, Map<string, number>>();
+  for (const d of sortedDays) {
+    const dayMap = new Map<string, number>();
+    const acts = [...d.activities].sort((a, b) => a.position - b.position);
+    for (const a of acts) {
+      if (a.fuzzy === true) continue;
+      dayMap.set(a.id, dayMap.size);
+      allSortableIds.push(a.id);
+    }
+    sortableIndexByDay.set(d.id, dayMap);
+  }
+
+  // Activity oggi in trascinamento — per renderizzare il preview nel
+  // DragOverlay (ghost che segue il cursore, indipendente dal grid layout).
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const activeDragActivity =
+    activeDragId
+      ? sortedDays
+          .flatMap((d) => d.activities)
+          .find((a) => a.id === activeDragId) ?? null
+      : null;
 
   // Move guards: we grey-out Move Up only on the ABSOLUTE first stop of
   // the trip (first day, first activity) and Move Down only on the
@@ -655,9 +689,12 @@ export function Timeline({
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
+    <SortableContext items={allSortableIds} strategy={verticalListSortingStrategy}>
     <div className={cn("flex w-full flex-col gap-y-[3px] rounded-lg bg-surface p-2", className)}>
       {segments.map((seg) => {
         if (seg.kind === "empty") {
@@ -797,20 +834,13 @@ export function Timeline({
                 accommodation slot (when applicable) are rendered AFTER this
                 loop. */}
             {(() => {
-              // Sortable IDs per @dnd-kit: solo le activity NON fuzzy del day
-              // sono draggable. Il loro indice è "fra i sortable", non fra gli
-              // items: così il drop su index=0 significa "primo sortable",
-              // indipendente da transfer/fuzzy mescolati.
-              const sortableIds: string[] = [];
-              const sortableIndexOf = new Map<string, number>();
-              for (const it of items) {
-                if (it.kind === "activity" && it.activity.fuzzy !== true) {
-                  sortableIndexOf.set(it.activity.id, sortableIds.length);
-                  sortableIds.push(it.activity.id);
-                }
-              }
+              // Mappa locale activity.id → indice fra le sortable di QUESTO
+              // day, condivisa col SortableContext globale via data.dayId
+              // sul SortableActivityRow. L'indice cross-day si rileva al
+              // drop dal `data.dayId` dell'item over.
+              const sortableIndexOf = sortableIndexByDay.get(day.id) ?? new Map<string, number>();
               return (
-                <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                <>
                   {items.map((item, i) => {
               const row = i + 1;
               if (item.kind === "transfer") {
@@ -919,7 +949,7 @@ export function Timeline({
                 </SortableActivityRow>
               );
             })}
-                </SortableContext>
+                </>
               );
             })()}
 
@@ -992,6 +1022,24 @@ export function Timeline({
         );
       })}
     </div>
+    </SortableContext>
+
+    {/* DragOverlay: rende un "fantasma" dell'attività trascinata fuori dal
+        grid layout, così l'item segue il cursore anche oltre i confini del
+        day di partenza (senza, l'item con opacity 40 sembra "scomparire"
+        nell'apparente vuoto del SortableContext, soprattutto cross-day). */}
+    <DragOverlay dropAnimation={null}>
+      {activeDragActivity ? (
+        <ActivityStop
+          title={activeDragActivity.title}
+          icon={getStopIcon(activeDragActivity.icon) ?? IconMapPin}
+          mode="stop"
+          state="default"
+          time={activeDragActivity.time ?? undefined}
+          className="bg-surface shadow-float opacity-95 rounded-sm"
+        />
+      ) : null}
+    </DragOverlay>
     </DndContext>
   );
 }
