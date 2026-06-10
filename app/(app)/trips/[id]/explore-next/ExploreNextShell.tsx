@@ -6,6 +6,7 @@ import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap
 import type { LatLng, MapHandle, MapMarker, RouteSpec } from "@/components/ui/Map";
 import { type TimelineDayData } from "@/features/explore/Timeline";
 import { TimelineV2 } from "@/features/explore/TimelineV2";
+import { TimelineV2Mobile } from "@/features/explore/TimelineV2Mobile";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
 import { useChainBridges } from "@/features/explore/useChainBridges";
@@ -388,7 +389,14 @@ type Props = {
 export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Props) {
   const router = useRouter();
   const panelRef = useRef<HTMLElement>(null);
+  const mobileSheetRef = useRef<HTMLElement>(null);
   const [panelWidth, setPanelWidth] = useState(376);
+  // Altezza del bottom sheet mobile: contribuisce al `viewportInset.bottom`
+  // della mappa (così la ricerca per categoria si centra sull'area
+  // effettivamente visibile, esattamente come per il pannello sinistro
+  // desktop). Quando il sheet è `display: none` (breakpoint ≥ lg),
+  // offsetHeight è 0 → la mappa torna full-canvas senza inset bottom.
+  const [mobileSheetHeight, setMobileSheetHeight] = useState(0);
 
   // Giorno selezionato nella Timeline (last opened wins).
   const sortedDays = useMemo(
@@ -1119,6 +1127,17 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return () => ro.disconnect();
   }, []);
 
+  // ResizeObserver per il bottom sheet mobile. Sotto `lg` il sheet è
+  // visibile, sopra `lg` è `display: none` (offsetHeight = 0).
+  useEffect(() => {
+    if (!mobileSheetRef.current) return;
+    const ro = new ResizeObserver(() =>
+      setMobileSheetHeight(mobileSheetRef.current?.offsetHeight ?? 0),
+    );
+    ro.observe(mobileSheetRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="relative h-full w-full">
       <ExploreMap
@@ -1129,7 +1148,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         nightRoute={nightRoute}
         extraMarkers={itineraryMarkers}
         extraRoutes={dayPathRoutes}
-        viewportInset={{ left: panelWidth }}
+        viewportInset={{ left: panelWidth, bottom: mobileSheetHeight }}
         onAddToTripRequest={handleAddToTripRequest}
         onExtraMarkerDragEnd={handlePinDragEnd}
         // Sync row↔pin: lo stato selezionato del pin segue selectedActivityId,
@@ -1154,10 +1173,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         fitAllOnMount
       />
 
-      {/* Panel sinistro — card arrotondata che contiene la Timeline. */}
+      {/* Panel sinistro — card arrotondata desktop (≥ lg). */}
       <aside
         ref={panelRef}
-        className="absolute left-2 top-2 z-20 flex max-h-[calc(100%-1rem)] w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
+        className="absolute left-2 top-2 z-20 hidden max-h-[calc(100%-1rem)] w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float lg:flex"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TimelineV2
@@ -1178,6 +1197,39 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onTitleChange={handleTitleChange}
             onShortDescChange={handleShortDescChange}
             onDayNotesChange={handleDayNotesChange}
+            onUpdateActivityInstance={handleUpdateActivityInstance}
+            openOverride={openOverride}
+            hoveredRowId={hoveredRowId}
+          />
+        </div>
+      </aside>
+
+      {/* Bottom sheet mobile (< lg) — pattern semplificato: ancorato in
+          basso, altezza fino a 75dvh, scroll interno. Niente drag handle
+          funzionale in questa iterazione: solo affordance visiva. La
+          Timeline mobile vive qui dentro. */}
+      <aside
+        ref={mobileSheetRef}
+        className="absolute inset-x-0 bottom-0 z-20 flex max-h-[75dvh] flex-col overflow-hidden rounded-t-lg border-t border-border-strong bg-surface shadow-float lg:hidden"
+      >
+        <div aria-hidden className="flex justify-center pb-1 pt-2">
+          <span className="h-1 w-9 rounded-pill bg-ink/15" />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <TimelineV2Mobile
+            days={effectiveDays}
+            chain={chain}
+            computedBridges={computedBridges}
+            onSelectDay={handleSelectDay}
+            onSelectActivity={setSelectedActivityId}
+            onRemoveActivity={handleRemoveActivity}
+            onMoveActivity={handleMoveActivity}
+            onDragMove={handleDragMove}
+            onConvertToSleep={handleConvertToSleep}
+            onConvertToStop={handleConvertToStop}
+            onExtendStay={handleExtendStay}
+            onReduceStay={handleReduceStay}
+            onAddressChange={handleAddressChange}
             onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
             hoveredRowId={hoveredRowId}
