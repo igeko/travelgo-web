@@ -3,6 +3,19 @@
 /**
  * features/explore/Timeline.tsx
  * ─────────────────────────────────────────────────────────────────
+ * @deprecated Use `TimelineV2` (features/explore/TimelineV2.tsx) instead.
+ *
+ * Prima implementazione della Explore Timeline (Figma originale: DayBadge
+ * 36px nella colonna sinistra + spina warm-rail). La versione attiva su
+ * `/trips/[id]/explore-next` è ora `TimelineV2`, ispirata al prototipo
+ * `/design/timeline-readability` V1 (Route Rail + Night Divider, iter.9 —
+ * card pernottamento su superficie stay soft).
+ *
+ * Mantenuta come riferimento storico, non rimossa per non rompere la
+ * sandbox /dev/explore-timeline e link esterni. Per integrare la timeline
+ * in pagine nuove importa `TimelineV2` da `./TimelineV2`.
+ * ─────────────────────────────────────────────────────────────────
+ *
  * Figma "Timeline" — the Explore day-by-day organism. Each day pairs a
  * coloured spine (DayBadge + a continuous warm rail) with the column of
  * its stops; Transfers sit between them.
@@ -608,6 +621,7 @@ function applyDragPreview(
 
 /* ── Timeline ───────────────────────────────────────────────────── */
 
+/** @deprecated Use `TimelineV2` from `./TimelineV2` instead. See file header. */
 export function Timeline({
   days,
   chain,

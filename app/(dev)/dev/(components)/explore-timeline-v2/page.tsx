@@ -1,31 +1,32 @@
 "use client";
 
 /**
- * Sandbox · Explore Timeline (DEPRECATED — kept as reference)
- * URL: /dev/explore-timeline
+ * Sandbox · Explore Timeline V2 (real trip data)
+ * URL: /dev/explore-timeline-v2
  *
- * @deprecated La Timeline attiva su `/trips/[id]/explore-next` è la V2.
- * Vedi `/dev/explore-timeline-v2` per la sandbox aggiornata.
+ * Versione attiva su `/trips/[id]/explore-next`. Layout: Route Rail +
+ * Night Divider (porting dal prototipo `/design/timeline-readability` V1,
+ * iterazione 9 — card pernottamento su superficie stay soft).
  *
- * Loads a trip snapshot (api.trips.get) and renders the Explore Timeline
- * organism from its real scheduled activities. Default trip: "Japan 2026!".
+ * Default trip: "Japan 2026!". Source toggle "real" (snapshot via API) /
+ * "mock" (riusa il MOCK_DAYS della sandbox v1 — stesso shape).
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import type { TripSnapshot } from "@/lib/dal";
-import { Timeline } from "@/features/explore/Timeline";
+import { TimelineV2 } from "@/features/explore/TimelineV2";
 import { resolveAccommodations } from "@/features/explore/resolveAccommodations";
 import { StatePicker } from "../_components/StatePicker";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { MOCK_DAYS } from "./mock";
+import { MOCK_DAYS } from "../explore-timeline/mock";
 
 const JAPAN_2026 = "47c851d1-ee78-4a85-99d0-431fb7c0bf8a";
 
 type Source = "real" | "mock";
 
-export default function ExploreTimelineSandboxPage() {
+export default function ExploreTimelineV2SandboxPage() {
   const [source, setSource] = useState<Source>("real");
   const [tripId, setTripId] = useState(JAPAN_2026);
   const [snapshot, setSnapshot] = useState<TripSnapshot | null>(null);
@@ -46,8 +47,6 @@ export default function ExploreTimelineSandboxPage() {
     }
   }, []);
 
-  // Auto-load the default trip once on mount. The mock toggle only swaps
-  // what's rendered — it never refetches — so `source` stays out of deps.
   useEffect(() => {
     load(JAPAN_2026);
   }, [load]);
@@ -60,24 +59,26 @@ export default function ExploreTimelineSandboxPage() {
   return (
     <div className="min-h-screen bg-bg p-8">
       <main className="mx-auto max-w-2xl">
-        <div className="mb-4 flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg p-3 text-mini text-warning-fg">
-          <span className="rounded-pill bg-warning-fg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-eyebrow text-warning-bg">
-            Deprecated
+        <div className="mb-4 flex items-start gap-3 rounded-md border border-success-border bg-success-bg p-3 text-mini text-success-fg">
+          <span className="rounded-pill bg-success-fg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-eyebrow text-success-bg">
+            Active
           </span>
           <p>
-            Questa è la <strong>v1</strong> della Explore Timeline, mantenuta come
-            riferimento. La versione attiva su <code>/trips/[id]/explore-next</code> è la{" "}
-            <strong>v2</strong>: vedi{" "}
-            <a href="/dev/explore-timeline-v2" className="underline">
-              /dev/explore-timeline-v2
+            Versione attiva su <code>/trips/[id]/explore-next</code>. La{" "}
+            <strong>v1</strong> resta visibile come riferimento in{" "}
+            <a href="/dev/explore-timeline" className="underline">
+              /dev/explore-timeline
             </a>
             .
           </p>
         </div>
-        <h1 className="mb-2 text-3xl font-bold text-ink">Timeline (v1)</h1>
+        <h1 className="mb-2 text-3xl font-bold text-ink">Timeline (v2)</h1>
         <p className="mb-6 text-sm text-ink-soft">
-          Figma <strong>Timeline</strong> · organismo Explore alimentato dalle attività
-          programmate reali del viaggio. Gli orari sulla spina sono allineati alle attività.
+          Route Rail + Night Divider — porting di{" "}
+          <code>/design/timeline-readability</code> V1. Rail 44px continuo,
+          targa data 44px nell'header, banda notte come card stay soft a 3 righe
+          fra i giorni. Editor inline (open) e drag&amp;drop invariati rispetto
+          alla v1: stessi `ActivityStop` / `Transfer` reali.
         </p>
 
         {/* ── Control zone ─────────────────────────────────────── */}
@@ -140,9 +141,9 @@ export default function ExploreTimelineSandboxPage() {
           </p>
         </section>
 
-        {/* ── Timeline ─────────────────────────────────────────── */}
+        {/* ── Timeline V2 ──────────────────────────────────────── */}
         {source === "mock" ? (
-          <Timeline days={days} injectSampleTransfers={injectTransfers} />
+          <TimelineV2 days={days} injectSampleTransfers={injectTransfers} />
         ) : error ? (
           <div className="rounded-lg border border-danger-border bg-danger-bg p-6 text-mini text-danger-fg">
             {error}
@@ -160,7 +161,7 @@ export default function ExploreTimelineSandboxPage() {
             Nessun giorno per questo viaggio.
           </div>
         ) : (
-          <Timeline days={days} injectSampleTransfers={injectTransfers} />
+          <TimelineV2 days={days} injectSampleTransfers={injectTransfers} />
         )}
       </main>
     </div>

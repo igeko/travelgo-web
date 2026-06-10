@@ -161,11 +161,18 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Figma Transfer · connettore tra soste, modi transit/car, stati default/hover/open",
   },
   {
-    slug: "explore-timeline",
-    title: "Timeline",
+    slug: "explore-timeline-v2",
+    title: "Timeline (v2)",
     group: "Features",
     subgroup: "Explore",
-    description: "Figma Timeline · organismo Explore da dati reali del viaggio · orari allineati alle attività · control trip id (default Japan 2026)",
+    description: "Route Rail + Night Divider · porting di /design/timeline-readability V1 · attiva su /trips/[id]/explore-next · stessi ActivityStop/Transfer reali della v1",
+  },
+  {
+    slug: "explore-timeline",
+    title: "Timeline (v1, deprecated)",
+    group: "Features",
+    subgroup: "Explore",
+    description: "DEPRECATED — riferimento storico. La versione attiva è la v2 (DayBadge 36px nella colonna sinistra + spina warm-rail). Sostituita su /explore-next dalla v2.",
   },
   {
     slug: "place-hover",
