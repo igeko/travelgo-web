@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExploreMap, type AddToTripRequest } from "@/features/explore/ExploreMap";
 import type { LatLng, MapHandle, MapMarker, RouteSpec } from "@/components/ui/Map";
-import { Timeline, type TimelineDayData } from "@/features/explore/Timeline";
+import { type TimelineDayData } from "@/features/explore/Timeline";
+import { TimelineV2 } from "@/features/explore/TimelineV2";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
 import { useChainBridges } from "@/features/explore/useChainBridges";
@@ -908,7 +909,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <Timeline
+          <TimelineV2
             days={effectiveDays}
             chain={chain}
             computedBridges={computedBridges}
