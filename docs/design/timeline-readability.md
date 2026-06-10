@@ -160,6 +160,17 @@ itera sulla V1. Tre feedback:
    lo stesso linguaggio delle lodging row dell'app. Anche nell'header
    dell'editor e nel pin mappa (quadrato arancio con glifo letto).
 
+## Iterazione 6 (2026-06-10) — colore pernottamento
+
+Valutate 4 proposte (in chat, mock con token reali): 1 bianco come le
+activity · 2 surface-warm (it.5) · 3 primary-soft · 4 primary pieno.
+
+**Scelta la 1 — bianco.** La card notte usa `bg-surface` +
+`border-border` (hover `border-border-strong`), identica alle stop card.
+A distinguerla: struttura a 3 righe (check-in / nome / check-out),
+badge quadrato arancio col tipo struttura, "Notte N di M" in ink-soft.
+Pin mappa resta quadrato arancio.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

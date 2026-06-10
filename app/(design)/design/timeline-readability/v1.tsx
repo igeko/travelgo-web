@@ -207,9 +207,11 @@ function TransferRow({
   );
 }
 
-/** Banda notte — it.5: NIENTE bg ink (in tutta l'app il blu è la
- *  selezione). Palette lodging: surface-warm + primary-border + badge
- *  arancio con la SOLA icona del tipo pernottamento (niente luna). */
+/** Banda notte — it.6: BIANCA come le activity (proposta 1). Stessa
+ *  superficie e bordo delle stop card (surface + border, hover
+ *  border-strong); a distinguerla restano la struttura a 3 righe
+ *  (check-in / nome / check-out) e il badge arancio col SOLO tipo
+ *  pernottamento (niente luna). Il blu ink resta alla selezione. */
 function NightDivider({ night }: { night: NightData }) {
   if (night.open) {
     return (
@@ -220,7 +222,7 @@ function NightDivider({ night }: { night: NightData }) {
   }
   return (
     <div className="group my-1.5 cursor-pointer">
-      <div className="flex flex-col rounded-md border border-primary-border bg-surface-warm px-3.5 py-2 transition-colors hover:border-primary">
+      <div className="flex flex-col rounded-md border border-border bg-surface px-3.5 py-2 transition-colors hover:border-border-strong">
         {/* check-in — appartiene al giorno sopra */}
         <div className="flex items-center justify-between text-[11px] text-ink-soft">
           <span className="tabular-nums">
@@ -234,12 +236,12 @@ function NightDivider({ night }: { night: NightData }) {
           <span className="min-w-0 flex-1 truncate text-meta font-semibold text-ink">
             {night.name}
           </span>
-          <span className="shrink-0 text-[11px] text-primary-deep">
+          <span className="shrink-0 text-[11px] text-ink-soft">
             Notte {night.nightIndex} di {night.nightsTotal}
           </span>
         </div>
         {/* check-out — sempre dalla parte del giorno dopo */}
-        <div className="flex items-center justify-between border-t border-primary-border/70 pt-1.5 text-[11px] text-ink-soft">
+        <div className="flex items-center justify-between border-t border-border pt-1.5 text-[11px] text-ink-soft">
           <span className="tabular-nums">
             <span className="font-semibold text-ink">{night.checkOut}</span> · check-out
           </span>
