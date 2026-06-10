@@ -229,7 +229,7 @@ function MTransfer({
 
 function MNight({ night }: { night: NightData }) {
   return (
-    <div className="my-1 flex min-h-[36px] items-center gap-1.5 rounded-md border border-stay-border px-2 py-1">
+    <div className="my-1 flex min-h-[36px] items-center gap-1.5 rounded-md border border-border-strong px-2 py-1">
       <StopIcon icon={night.icon} accent="primary" size="sm" />
       <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
         {night.name}

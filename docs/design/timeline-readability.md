@@ -357,11 +357,13 @@ Esplorazioni intermedie (in chat, scartate o parcheggiate):
 delle activity card (icona 36px, stessi padding) ma resta a **tutta
 larghezza**, tra un giorno e il successivo — attraversa anche la
 colonna del rail: è il separatore-notte, e lo span sui due giorni è
-raccontato proprio da questo. **Solo bordo, niente bg**:
+raccontato proprio da questo. **Solo bordo, niente bg, stesso colore
+delle targhe giorno** (it.15c):
 
-- token nuovo `--color-stay-border: #a9c9df`;
-- card: `rounded-md border border-stay-border bg-transparent`, hover
-  `border-stay-text/60`;
+- card: `rounded-md border border-border-strong bg-transparent`, hover
+  `border-ink/40` (identico alla targa data) — notte e giorni parlano
+  la stessa lingua di contorno; niente token `stay-border` (valutato e
+  rimosso);
 - badge arancio tipo struttura, nome ink, "Notte N di M" stay-text;
 - posizione invariata (in fondo al giorno, dopo il transfer di rientro)
   → il leg ultima tappa → alloggio resta sempre rappresentabile.

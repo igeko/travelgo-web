@@ -217,9 +217,10 @@ function DevNotes() {
             It.15b — <strong>altezza e anatomia delle activity card</strong>{" "}
             (icona 36px, stessi padding) ma a <strong>TUTTA LARGHEZZA</strong>,
             tra un giorno e il successivo (attraversa anche la colonna del
-            rail: è il separatore-notte). SOLO BORDO e niente bg:{" "}
-            <code>border-stay-border</code> (#a9c9df, token nuovo; hover{" "}
-            <code>border-stay-text/60</code>),
+            rail: è il separatore-notte). SOLO BORDO e niente bg, nello
+            stesso colore delle targhe giorno:{" "}
+            <code>border-border-strong</code> (hover <code>border-ink/40</code>,
+            come la targa),
             riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
             struttura (niente luna), nome{" "}
             <code>text-meta font-medium text-ink</code>, &quot;Notte N di

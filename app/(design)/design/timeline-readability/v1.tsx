@@ -249,7 +249,10 @@ function NightDivider({ night }: { night: NightData }) {
   }
   return (
     <div className="group my-1 cursor-pointer">
-      <div className="flex items-center gap-2.5 rounded-md border border-stay-border bg-transparent px-2.5 py-1.5 transition-colors hover:border-stay-text/60">
+      {/* Bordo = stesso colore delle targhe giorno (border-strong),
+          hover ink/40 come la targa: notte e giorni parlano la stessa
+          lingua di contorno. */}
+      <div className="flex items-center gap-2.5 rounded-md border border-border-strong bg-transparent px-2.5 py-1.5 transition-colors group-hover:border-ink/40">
         <StopIcon icon={night.icon} accent="primary" />
         <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
           {night.name}
