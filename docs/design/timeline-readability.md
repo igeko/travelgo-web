@@ -73,9 +73,99 @@ nuovo da introdurre nel design system (token `night` già esiste).
 - `Transfer` open-state (dettaglio percorso + Maps/Waze) resta invariato:
   cambia solo la resa collapsed.
 
+## Iterazione 2 (2026-06-10)
+
+**Scelta la Variante B.** Aggiornamenti:
+
+- **Niente indigo**: la banda notte passa da `--color-night` a `ink` +
+  luna/icona struttura in `primary-tint` — gli stessi toni del day badge
+  selected dell'Explore. Il token `night` resta inutilizzato qui.
+- **Demo over-map**: lo sketch ora replica il layout reale di
+  ExploreNextShell (aside `absolute left-4 top-4 w-[360px] shadow-float`)
+  sopra una mock-map SVG (pattern di /design/day-layout). Pin numerati
+  arancio per le tappe; pin quadrato ink con luna per i pernottamenti
+  (coerente con la banda notte nella lista).
+- Variante A archiviata in fondo alla pagina per riferimento.
+
+## Iterazione 3 (2026-06-10) — feedback Enrico
+
+1. **Niente nodi sul rail** — solo linea continua: i pallini creavano
+   problemi di allineamento/implementazione. Il rail resta il filo
+   conduttore, le tappe sono card accostate.
+2. **Selezione giorno più marcata** — rail ink scuro lungo TUTTO il
+   giorno (header → ultima row) + `bg-surface-soft` pieno (non /40) +
+   `ring-1 ring-ink/10` sul blocco contenuti.
+3. **Stati open/editor** — aggiunti gli editor inline (mock statici del
+   componente Figma "Activity"): header ink con icona+titolo+X, card
+   bianca con toggle Sleep/Stop, durata sosta, descrizione, address,
+   coppia orari grandi (arrivo/partenza o check-in/check-out), stepper
+   notti per il pernottamento, Rimuovi. Aperti nello sketch: "Spesa
+   Beisia" (stop) e "Notte 1 Hotel Tavinos" (sleep).
+4. **Banda notte cronologica verticale** — check-in in alto (appartiene
+   al giorno sopra, data a destra), nome+notte N di M al centro,
+   check-out in basso separato da hairline `white/15`: "→ Gio 6" sta
+   sempre dalla parte del secondo giorno.
+5. **Transfer completi** — aggiunti i leg mancanti: ultima attività →
+   pernottamento (`transferOut` dell'ultima stop) e check-out → prima
+   attività del giorno dopo (`incomingTransfer` del giorno, = il
+   Transfer incoming cross-day già supportato da Timeline.tsx).
+
+Variante A rimossa dallo sketch (resta documentata qui sopra).
+
+## Iterazione 4 (2026-06-10) — V2 DayList-inspired
+
+V1 (Route Rail + Night Divider, it.3) **congelata** come riferimento —
+piace anche perché riusa molti componenti. Si lavora a una **V2** ispirata
+a colori/forme della DayList (`/dev/day-list`, `features/day/DayItem.tsx`):
+
+- **Righe flat** su griglia `[50px | 1fr | 14px]` (la griglia di DayItem),
+  niente card bordate: separatori a **tratteggio** (`border-dashed
+  border-border`) come tra le row della DayList.
+- **Header giorno = DayItem**: colonna data 50px (DOW micro uppercase +
+  numero `text-lg font-semibold`), **eyebrow zona arancio** micro
+  uppercase ("Tokyo → Chiba"), label estesa + conteggio tappe, chevron ›.
+- **Selezione giorno** = il linguaggio selected di DayItem: riga ink
+  arrotondata, eyebrow → `primary-tint`, chevron ruotato, e **barretta
+  arancio laterale** (`-left-[3px] w-1.5 bg-orange rounded-[3px]`)
+  estesa a tutto il blocco del giorno espanso; contenuti su
+  `bg-surface-soft/60`.
+- **Transfer dentro i separatori**: la riga tratteggiata tra due tappe
+  ospita la label (trattino corto · label · tratteggio che riempie).
+- **Orari in zoom giorno**: la colonna data 50px delle row tappe ospita
+  l'orario (allineato sotto il numero del giorno).
+- **Notte**: riga ink stile "DayItem selected" con moon nella colonna
+  data, eyebrow "Notte N di M" in primary-tint, layout cronologico
+  invariato (check-in sopra / check-out sotto col giorno dopo).
+
+File: `shared.tsx` (dati + atomi + editor + mock map), `v1.tsx`
+(congelata), `v2.tsx` (attiva), `page.tsx` (entrambe over-map).
+
+## Iterazione 5 (2026-06-10) — V2 cancellata, feedback su V1
+
+La V2 DayList-inspired è stata **cancellata** (file v2.tsx rimosso); si
+itera sulla V1. Tre feedback:
+
+1. **Affordance espansione giorno** — prima non si capiva che il giorno
+   fosse selezionabile/espandibile. Ora: chevron-down SEMPRE visibile a
+   destra dell'header (ruota 180° da aperto), hover bg-surface-soft
+   sulla riga, bordo della targa data che si scurisce in hover. Niente
+   affordance hover-only (regola touch).
+2. **Niente bg ink sulla notte** — in tutta l'app il blu ink è il
+   linguaggio della SELEZIONE. La banda notte passa a `surface-warm` +
+   `border-primary-border` (hover → border-primary), testi ink/ink-soft,
+   "Notte N di M" in `primary-deep`. L'editor open resta con header ink
+   (lì ink = stato open/selected, coerente con ActivityStop).
+3. **Una sola icona** — via la luna: resta solo il tipo pernottamento
+   (letto/tenda…) in badge quadrato arancio (`StopIcon accent=primary`),
+   lo stesso linguaggio delle lodging row dell'app. Anche nell'header
+   dell'editor e nel pin mappa (quadrato arancio con glifo letto).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
-- [ ] Scelta variante (o ibrido)
+- [x] Scelta variante → **B** (Route Rail + Night Divider)
+- [x] Recolor banda notte su palette standard (ink + primary-tint)
+- [x] Demo nel pannello flottante sopra la mappa
 - [ ] Stati mancanti: hover/selected sync mappa, open editor, drag ghost
 - [ ] Empty days, multi-notte lunghi, notte senza struttura (overnight flight)
+- [ ] Porting su `features/explore/Timeline.tsx` + `DayBadge` + `Transfer`
