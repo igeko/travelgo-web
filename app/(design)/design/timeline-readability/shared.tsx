@@ -9,6 +9,7 @@ import {
   IconBed,
   IconBus,
   IconCar,
+  IconChevronDown,
   IconChevronRight,
   IconClock,
   IconCoffee,
@@ -439,17 +440,131 @@ function RemoveButton() {
   );
 }
 
+/* ─── Icon picker (mock statico) ────────────────────────────────── */
+
+/** Trigger: il badge icona nell'header dell'editor diventa un bottone
+ *  (chevron-down sempre visibile). Tap → popover con la griglia. */
+export function IconPickerTrigger({
+  icon: Icon,
+  dark = true,
+}: {
+  icon: IconCmp;
+  dark?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 cursor-pointer items-center gap-0.5 rounded-sm px-1 py-0.5",
+        dark ? "hover:bg-white/10" : "hover:bg-surface-soft",
+      )}
+      role="button"
+      aria-label="Cambia icona"
+    >
+      <Icon size={15} className="shrink-0" />
+      <IconChevronDown size={10} className={dark ? "text-white/50" : "text-ink-faint"} />
+    </span>
+  );
+}
+
+/** Popover: griglia del set fisso STOP_ICONS (24 chiavi — la chiave va
+ *  in activity.icon). Selezionata = bg-ink. Niente search: 24 icone
+ *  stanno in 4 righe. Label i18n come tooltip (Timeline.stopIcons.*). */
+export function IconPickerGrid({ selected }: { selected: IconCmp }) {
+  const icons: { key: string; Icon: IconCmp }[] = [
+    { key: "coffee", Icon: IconCoffee },
+    { key: "shop", Icon: IconShoppingBag },
+    { key: "market", Icon: IconBuildingStore },
+    { key: "view", Icon: IconMountain },
+    { key: "park", Icon: IconTree },
+    { key: "monument", Icon: IconTorii },
+    { key: "car", Icon: IconCar },
+    { key: "bus", Icon: IconBus },
+    { key: "walk", Icon: IconWalk },
+    { key: "rest", Icon: IconBed },
+    { key: "flight", Icon: IconPlane },
+    { key: "camp", Icon: IconTent },
+  ];
+  return (
+    <div className="rounded-md border border-border bg-surface p-2 shadow-float">
+      <p className="mb-1.5 px-1 text-[9px] font-medium uppercase tracking-wide text-ink-faint">
+        Icona della tappa
+      </p>
+      <div className="grid grid-cols-6 gap-1">
+        {icons.map(({ key, Icon }) => {
+          const isSel = Icon === selected;
+          return (
+            <span
+              key={key}
+              role="button"
+              title={key}
+              className={cn(
+                "flex size-8 cursor-pointer items-center justify-center rounded-md",
+                isSel
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:bg-surface-soft hover:text-ink",
+              )}
+            >
+              <Icon size={16} />
+            </span>
+          );
+        })}
+      </div>
+      <p className="mt-1.5 px-1 text-[9px] text-ink-faint">
+        +12 altre · set fisso STOP_ICONS
+      </p>
+    </div>
+  );
+}
+
+/** Per gli alloggi NON si sceglie un'icona libera: si sceglie il TIPO
+ *  struttura (accommodation.type) e l'icona segue (accommodationIcon). */
+export function StayTypePicker({ selected }: { selected: IconCmp }) {
+  const types: { key: string; label: string; Icon: IconCmp }[] = [
+    { key: "hotel", label: "Hotel", Icon: IconBed },
+    { key: "campground", label: "Campeggio", Icon: IconTent },
+    { key: "apartment", label: "Appartam.", Icon: IconBuildingStore },
+    { key: "ryokan", label: "Ryokan", Icon: IconTorii },
+  ];
+  return (
+    <div className="grid grid-cols-4 gap-1">
+      {types.map(({ key, label, Icon }) => {
+        const isSel = Icon === selected;
+        return (
+          <span
+            key={key}
+            role="button"
+            className={cn(
+              "flex cursor-pointer flex-col items-center gap-0.5 rounded-md border px-1 py-1.5",
+              isSel
+                ? "border-ink bg-ink text-white"
+                : "border-border text-ink-soft hover:bg-surface-soft",
+            )}
+          >
+            <Icon size={16} />
+            <span className="text-[9px] font-medium">{label}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Editor inline di un'attività (stato open del componente "Activity"). */
 export function StopEditor({ stop }: { stop: StopData }) {
   const Icon = stop.icon;
   return (
     <div className="flex flex-col gap-1 rounded-md bg-ink p-1">
       <div className="flex items-center gap-2 px-2 py-1.5 text-white">
-        <Icon size={15} className="shrink-0" />
+        <IconPickerTrigger icon={Icon} />
         <span className="flex-1 truncate text-meta font-semibold">
           {stop.title}
         </span>
         <IconX size={14} className="shrink-0 cursor-pointer text-white/60 hover:text-white" />
+      </div>
+      {/* Picker aperto (mock statico) — nella realtà è un popover
+          ancorato al trigger, z-dropdown, chiuso su selezione/Esc. */}
+      <div className="px-1">
+        <IconPickerGrid selected={Icon} />
       </div>
       <div className="flex flex-col gap-3 rounded-sm bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
@@ -497,6 +612,9 @@ export function NightEditor({ night }: { night: NightData }) {
       </div>
       <div className="flex flex-col gap-3 rounded-sm bg-surface p-3">
         <SleepStopToggle active="sleep" />
+        {/* Tipo struttura: l'icona dell'alloggio segue il type, niente
+            icon-picker libero (accommodationIcon resta la fonte). */}
+        <StayTypePicker selected={Icon} />
         <div className="flex items-center gap-3">
           <span className="text-mini text-ink">
             <span className="text-[18px] font-semibold tabular-nums">

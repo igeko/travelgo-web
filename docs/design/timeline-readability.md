@@ -237,6 +237,27 @@ distanza + legs); lo stato open del Transfer è raggiungibile solo da lì.
 
 Applicato anche al mobile (half = muto/solo lunghi, full = completo).
 
+## Iterazione 11 (2026-06-10) — icon-picker negli editor
+
+Cambiare icona dal dettaglio di activity/accommodation. Due binari:
+
+- **Activity**: il badge icona nell'header dell'editor diventa trigger
+  (icona + chevron-down sempre visibile, hover bg) → popover ancorato
+  (`z-dropdown`, shadow-float) con griglia 6 colonne del set fisso
+  `STOP_ICONS` (24 chiavi, `features/activity/Timeline/stopIcons.tsx`);
+  la chiave scelta va in `activity.icon` (entity-level →
+  `ActivityService.updateEntity`, come l'address). Selezionata =
+  `bg-ink`; tooltip = label i18n `Timeline.stopIcons.<key>`; chiusura
+  su selezione / Esc / click-out. Niente search (24 icone, 4 righe).
+- **Accommodation**: NIENTE icona libera — si sceglie il TIPO struttura
+  (`accommodation.type`: hotel/campground/apartment/ryokan) con una
+  riga di 4 chip icona+label nell'editor sleep; l'icona segue via
+  `accommodationIcon(type)`, che resta l'unica fonte.
+
+Mock statici in `shared.tsx`: `IconPickerTrigger`, `IconPickerGrid`
+(aperto nell'editor di Spesa Beisia), `StayTypePicker` (nell'editor
+della Notte 1).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
