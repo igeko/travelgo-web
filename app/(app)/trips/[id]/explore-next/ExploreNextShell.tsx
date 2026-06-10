@@ -670,6 +670,11 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         })
         .then((res) => {
           setPendingAdds((prev) => [...prev, res.scheduledActivity]);
+          // Apri + porta in vista la row appena aggiunta. TimelineV2 riusa
+          // lo stesso helper di scroll del pin hover, e l'effect su
+          // openId → onSelectActivity bubble fa selezionare automaticamente
+          // il pin corrispondente sulla mappa.
+          setOpenOverride(res.scheduledActivity.id);
           setPillState({
             kind: "success",
             dayNumber: res.position.dayNumber,
