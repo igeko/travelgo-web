@@ -40,7 +40,18 @@ function loadScript(apiKey: string) {
   script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker&v=weekly&loading=async`;
   script.async = true;
   script.defer = true;
-  script.onload = () => notify("ready");
+  script.onload = () => {
+    // Con `loading=async` l'evento onload espone solo `google.maps.importLibrary`:
+    // i costruttori (`Map`, `Marker`, `Polyline`, …) non sono ancora globali.
+    // Pre-importiamo qui le librerie usate dal codice, così quando notifichiamo
+    // "ready" tutti i `new google.maps.*` sincroni funzionano come col loader
+    // legacy senza dover toccare ogni call site.
+    google.maps
+      .importLibrary("maps")
+      .then(() => google.maps.importLibrary("marker"))
+      .then(() => notify("ready"))
+      .catch(() => notify("error"));
+  };
   script.onerror = () => notify("error");
   document.head.appendChild(script);
 }
