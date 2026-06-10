@@ -2,6 +2,11 @@
   "Explore": {
     "wishlist": "Yumeji",
     "addToTrip": "Add to trip",
+    "addToTripShort": "Add",
+    "addToTripMenuLabel": "More add-to-trip options",
+    "addAsStop": "Stop",
+    "addAsFlex": "Flexible",
+    "addAsFlexHint": "No fixed time",
     "adding": "Adding to your trip…",
     "searching": "Searching {category}…",
     "addToTripError": "Couldn't add the place. Try again.",

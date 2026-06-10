@@ -75,6 +75,13 @@ export type AddPlaceInput = {
   /** STOP_ICONS key da persistere sull'entity activity. Tipicamente
    *  l'icona della sub-category ExploreToolbar che ha generato il pin. */
   icon?: string | null;
+  /**
+   * Marca la scheduled activity come "flessibile" (senza orario). Usato dalla
+   * voce "Flessibile" dello split button "Aggiungi al viaggio" in
+   * PlaceHoverCard: stesso flusso e stessa destinazione del flusso normale,
+   * ma la riga viene persistita con `fuzzy: true` così la Timeline la mostra
+   * senza ora di arrivo. Default false. */
+  fuzzy?: boolean;
 };
 
 export type AddPlaceContext = {
@@ -788,6 +795,7 @@ export class TripService {
       position: built.position,
       type: built.type,
       ...(place.icon ? { icon: place.icon } : {}),
+      ...(place.fuzzy ? { fuzzy: true } : {}),
     });
 
     // Bridge recalc (Fase 2). Best-effort: if Google fails we surface in logs

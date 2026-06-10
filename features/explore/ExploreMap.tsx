@@ -39,6 +39,10 @@ export type AddToTripRequest = {
   /** STOP_ICONS key da salvare su `activities.icon` (es. "coffee", "museum").
    *  Valorizzato quando il pin proviene da una sub-category ExploreToolbar. */
   icon?: string;
+  /** Quando true, la scheduled activity viene creata senza orario
+   *  (`fuzzy: true`). Sceltabile dalla voce "Flessibile" dello split
+   *  button "Aggiungi al viaggio" in PlaceHoverCard. */
+  fuzzy?: boolean;
 };
 
 /** Default activity/day image — used by night cards when the stop has none. */
@@ -717,7 +721,7 @@ export const ExploreMap = forwardRef<MapHandle, {
                 initialPlace={searchPlace}
                 fallbackName={searchPlace.name}
                 onClose={close}
-                onAddToTrip={(place) => {
+                onAddToTrip={(place, opts) => {
                   // Close FIRST, then forward upward. The host (ExploreNextShell)
                   // shows the pending pill and runs the network call; the card
                   // going away is the user-facing acknowledgement.
@@ -728,6 +732,7 @@ export const ExploreMap = forwardRef<MapHandle, {
                     lat: place?.lat ?? searchPlace.lat,
                     lng: place?.lng ?? searchPlace.lng,
                     categories: place?.types ?? searchPlace.types,
+                    fuzzy: opts?.fuzzy,
                   });
                 }}
               />
@@ -753,7 +758,7 @@ export const ExploreMap = forwardRef<MapHandle, {
               onAddToTrip={
                 isItineraryPin
                   ? undefined
-                  : (place) => {
+                  : (place, opts) => {
                       close();
                       const subId = categorySubByMarkerId.current[id];
                       const subIcon = subId ? EXPLORE_SUB_TO_ICON_KEY[subId] : undefined;
@@ -764,6 +769,7 @@ export const ExploreMap = forwardRef<MapHandle, {
                         lng: place?.lng ?? m.lng,
                         categories: place?.types,
                         icon: subIcon,
+                        fuzzy: opts?.fuzzy,
                       });
                     }
               }
