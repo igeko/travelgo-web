@@ -15,9 +15,19 @@
  * compact text header (name + rating/day) takes its place.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconStar, IconX, IconHeart, IconClock, IconExternalLink, IconCalendarPlus } from "@/components/ui/icons";
+import {
+  IconStar,
+  IconX,
+  IconHeart,
+  IconClock,
+  IconExternalLink,
+  IconCalendarPlus,
+  IconChevronDown,
+  IconMapPin,
+  IconCircleDashed,
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/cn";
@@ -59,6 +69,7 @@ export function PlaceHoverCard({
   onClose,
   onFavorite,
   onAddToTrip,
+  compact = false,
 }: {
   /** Google place id — required unless `saved` is given. */
   placeId?: string;
@@ -71,10 +82,20 @@ export function PlaceHoverCard({
   onFavorite?: () => void;
   /**
    * Add this place to the current trip (Google mode only). The current
-   * enriched Place is forwarded when available, so callers don't need a
-   * second Google round-trip just to read the categories / coordinates.
+   * enriched Place is forwarded when available; `opts.fuzzy=true` quando
+   * l'utente sceglie "Flessibile" dallo split menu — il caller la propaga
+   * a `AddToTripRequest.fuzzy` per persistere la riga senza orario.
    */
-  onAddToTrip?: (place: PlaceEnriched | null) => void;
+  onAddToTrip?: (
+    place: PlaceEnriched | null,
+    opts?: { fuzzy?: boolean },
+  ) => void;
+  /**
+   * Compact rendering for mobile sheet "place" state: label corta su
+   * "Aggiungi al viaggio" e bottone Yumeji icon-only. Sul desktop popover
+   * lasciare false (default) per labels piene.
+   */
+  compact?: boolean;
 }) {
   const t = useTranslations("Explore");
   const [place, setPlace] = useState<PlaceEnriched | null>(initialPlace ?? null);
@@ -127,11 +148,15 @@ export function PlaceHoverCard({
     !saved && (place?.openNow != null || price != null || place?.website != null);
 
   return (
-    <div className="place-card-in w-[270px] overflow-hidden rounded-md border border-border-strong bg-surface shadow-float">
-      {/* Photo + ink band — only when an image is available. */}
+    <div className="place-card-in relative w-[270px] rounded-md border border-border-strong bg-surface shadow-float">
+      {/* Photo + ink band — only when an image is available. Niente
+          overflow-hidden sul wrapper esterno: il popover dello split
+          button "Aggiungi al viaggio" deve poter uscire dal box. Le
+          immagini sono comunque clippate dal blocco foto sotto (ha
+          overflow-hidden + rounded-t-md per matchare i corner). */}
       {showImage ? (
         <div className="relative">
-          <div className="relative h-[130px] overflow-hidden bg-gradient-to-br from-primary-soft to-surface-warm">
+          <div className="relative h-[130px] overflow-hidden rounded-t-md bg-gradient-to-br from-primary-soft to-surface-warm">
             {photoUrl && !imgError && (
               <img
                 src={photoUrl}
@@ -248,28 +273,172 @@ export function PlaceHoverCard({
         {!saved && (
           <div className="flex items-center gap-2">
             {onAddToTrip && (
-              <Button
-                variant="solid"
-                tone="neutral"
-                size="sm"
-                onClick={() => onAddToTrip(place)}
-                className="flex-1 bg-primary border-primary text-white hover:bg-orange-deep hover:border-orange-deep hover:text-white"
-              >
-                <IconCalendarPlus /> {t("addToTrip")}
-              </Button>
+              <SplitAddToTripButton
+                compact={compact}
+                onAddStop={() => onAddToTrip(place)}
+                onAddFlex={() => onAddToTrip(place, { fuzzy: true })}
+              />
             )}
             <Button
               variant="outline"
               tone="neutral"
               size="sm"
+              iconOnly={onAddToTrip ? compact : false}
+              aria-label={onAddToTrip && compact ? t("wishlist") : undefined}
               onClick={onFavorite}
               className={onAddToTrip ? "shrink-0" : "flex-1"}
             >
-              <IconHeart /> {t("wishlist")}
+              <IconHeart /> {onAddToTrip && compact ? null : t("wishlist")}
             </Button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * SplitAddToTripButton — corpo "Aggiungi al viaggio" + segmento chevron 32px.
+ *
+ * - Tap sul corpo → flusso default (tappa normale, `fuzzy: false`).
+ * - Tap sul chevron → popover (`w-[180px]`, z-dropdown, ancorato al
+ *   bottone) con due voci:
+ *     · "Tappa"     → identico al corpo (fuzzy false).
+ *     · "Flessibile" → identico al corpo MA `fuzzy: true` (la scheduled
+ *       activity viene persistita senza orario; stesso giorno/posizione
+ *       decisi dall'algoritmo add-to-trip, nessun endpoint nuovo).
+ * - Chiusura: selezione voce, Esc, click-out, fuori-focus.
+ *
+ * Il caller (PlaceHoverCard) ha già rimosso l'`overflow-hidden` dal
+ * wrapper card, quindi il popover può estendersi oltre il body senza
+ * essere clippato.
+ */
+function SplitAddToTripButton({
+  compact,
+  onAddStop,
+  onAddFlex,
+}: {
+  compact: boolean;
+  onAddStop: () => void;
+  onAddFlex: () => void;
+}) {
+  const t = useTranslations("Explore");
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Click-out + Esc per chiudere. Stessa convention degli altri popover
+  // (ActivityStop, IconPicker): pointerdown su un nodo esterno → close.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      const node = rootRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const label = compact ? t("addToTripShort") : t("addToTrip");
+
+  return (
+    <div ref={rootRef} className="relative flex-1">
+      <div
+        role="group"
+        aria-label={t("addToTrip")}
+        className="inline-flex h-8 w-full overflow-hidden rounded-md"
+      >
+        {/* Corpo sinistro: same default flow del bottone vecchio. */}
+        <button
+          type="button"
+          onClick={onAddStop}
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-1.5 bg-primary px-2 text-[13px] font-medium text-white transition-colors hover:bg-orange-deep",
+          )}
+        >
+          <IconCalendarPlus size={14} />
+          {label}
+        </button>
+        {/* Segmento chevron — 32px. Stesso bg, separatore bianco/25. */}
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={t("addToTripMenuLabel")}
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "inline-flex h-full w-8 shrink-0 items-center justify-center border-l border-white/25 bg-primary text-white transition-colors hover:bg-orange-deep",
+            open && "bg-orange-deep",
+          )}
+        >
+          <IconChevronDown size={14} />
+        </button>
+      </div>
+
+      {/* Popover — w-[180px], z-dropdown, sotto al bottone con piccolo gap. */}
+      {open ? (
+        <div
+          role="menu"
+          aria-label={t("addToTripMenuLabel")}
+          className="absolute right-0 top-full z-dropdown mt-1 w-[180px] rounded-md border border-border-strong bg-surface p-1 shadow-float"
+        >
+          <MenuItem
+            icon={<IconMapPin size={16} />}
+            label={t("addAsStop")}
+            onClick={() => {
+              setOpen(false);
+              onAddStop();
+            }}
+          />
+          <MenuItem
+            icon={<IconCircleDashed size={16} />}
+            label={t("addAsFlex")}
+            hint={t("addAsFlexHint")}
+            onClick={() => {
+              setOpen(false);
+              onAddFlex();
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] text-ink transition-colors hover:bg-surface-soft focus-visible:bg-surface-soft focus-visible:outline-none"
+    >
+      <span className="inline-flex size-5 shrink-0 items-center justify-center text-ink-soft">
+        {icon}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium">{label}</span>
+        {hint ? (
+          <span className="truncate text-tiny text-ink-faint">{hint}</span>
+        ) : null}
+      </span>
+    </button>
   );
 }
