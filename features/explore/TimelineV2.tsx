@@ -420,7 +420,7 @@ function DayDropContainer({
     data: { type: "day-end" as const, dayId, index: endIndex },
   });
   return (
-    <div ref={setNodeRef} className={className} data-day-id={dayId}>
+    <div ref={setNodeRef} className={className}>
       {children}
     </div>
   );
@@ -1022,7 +1022,7 @@ export function TimelineV2({
           const tone = expanded ? ("selected" as const) : ("default" as const);
 
           return (
-            <div key={day.id} className="flex flex-col">
+            <div key={day.id} className="flex flex-col" data-day-id={day.id}>
               <DayHeaderV2
                 dateIso={day.date}
                 dayNumber={day.day_number}
