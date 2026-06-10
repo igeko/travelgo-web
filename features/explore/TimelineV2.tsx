@@ -65,6 +65,7 @@ import {
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
 import { ActivityStop } from "./ActivityStop";
+import { StopIconBadge } from "./StopIconBadge";
 import type { PlaceResult } from "@/components/ui/AddressField";
 import { FuzzyStop } from "./FuzzyStop";
 import { Transfer, type TransferDestination, type TransferLeg, type TransferStep } from "./Transfer";
@@ -682,17 +683,15 @@ function NightBandV2({
     >
       <div
         className={cn(
-          "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors",
-          hovered ? "bg-stay-hover" : "bg-stay hover:bg-stay-hover",
+          "flex items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-colors",
+          hovered ? "border-ink/50" : "border-border-strong hover:border-ink/50",
         )}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-white">
-          <lodging.icon size={18} />
-        </span>
+        <StopIconBadge icon={lodging.icon} tone="primary" />
         <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
           {lodging.title}
         </span>
-        <span className="shrink-0 text-[11px] text-stay-text">
+        <span className="shrink-0 text-[11px] text-ink-soft">
           Notte {lodging.nightIndex} di {lodging.nightsTotal}
         </span>
       </div>
