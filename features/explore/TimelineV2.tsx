@@ -420,7 +420,7 @@ function DayDropContainer({
     data: { type: "day-end" as const, dayId, index: endIndex },
   });
   return (
-    <div ref={setNodeRef} className={className}>
+    <div ref={setNodeRef} className={className} data-day-id={dayId}>
       {children}
     </div>
   );
@@ -763,14 +763,21 @@ export function TimelineV2({
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll-into-view per la row in hover (sync con i pin in mappa).
+  // Scroll-into-view per la row in hover (sync con i pin in mappa). Porta in
+  // cima il GIORNO che contiene la row (DayBadge come primo elemento
+  // visibile), non la row singola: la querySelector trova la row,
+  // closest('[data-day-id]') risale al DayDropContainer di quel giorno e
+  // `scrollIntoView({block:"start"})` lo allinea al top del container
+  // scrollabile. Self-clamping quando il giorno è già abbastanza in fondo.
+  // Fallback alla row stessa nel caso teorico in cui il day wrapper manchi.
   useEffect(() => {
     if (!hoveredRowId) return;
     const root = rootRef.current;
     if (!root) return;
-    const el = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
-    if (!el) return;
-    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    const row = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
+    if (!row) return;
+    const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [hoveredRowId]);
 
   // ── DnD: sensors + collision detection (copia dal Timeline v1) ───
