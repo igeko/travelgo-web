@@ -203,6 +203,10 @@ const SAMPLE_STEPS: TransferStep[] = [
 type TransferVM = {
   mode: "transit" | "car";
   duration: string;
+  /** Minuti grezzi del leg — usati dall'host per decidere `muted` (giorni
+   *  collapsed: i leg >= 60 min restano comunque visibili, /design
+   *  /timeline-readability it.10). */
+  durationMin: number;
   legs: TransferLeg[];
   steps: TransferStep[];
   destination?: TransferDestination;
@@ -224,10 +228,12 @@ function formatDurationMin(min: number): string {
 function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
   const duration = formatDurationMin(b.duration_min);
-  if (carLike) return { mode: "car", duration, legs: [], steps: [], destination };
+  const durationMin = Number.isFinite(b.duration_min) ? b.duration_min : 0;
+  if (carLike) return { mode: "car", duration, durationMin, legs: [], steps: [], destination };
   return {
     mode: "transit",
     duration,
+    durationMin,
     legs: [{ kind: "bus", label: b.line ?? "—" }],
     steps: [{ kind: "bus", title: b.line ? `${b.line} ·` : "Transit", place: b.stops ?? undefined, subtitle: b.note ?? undefined }],
   };
@@ -301,7 +307,7 @@ function buildItems(
       items.push({
         kind: "transfer",
         id: `${activity.id}-sample`,
-        transfer: { mode: "transit", duration: "46 min", legs: SAMPLE_LEGS, steps: SAMPLE_STEPS },
+        transfer: { mode: "transit", duration: "46 min", durationMin: 46, legs: SAMPLE_LEGS, steps: SAMPLE_STEPS },
       });
     }
   });
@@ -1014,6 +1020,13 @@ export function TimelineV2({
                   {items.map((item) => {
                     if (item.kind === "transfer") {
                       const open = openId === item.id;
+                      // Spec /design/timeline-readability it.10: i Transfer
+                      // appaiono in full SOLO a giorno selezionato; sui
+                      // giorni collapsed diventano spacer `muted` non
+                      // interattivi. Eccezione: leg ≥ 60 min restano
+                      // visibili anche collapsed (sono spostamenti lunghi
+                      // che cambiano il senso della giornata).
+                      const muted = !expanded && item.transfer.durationMin < 60;
                       return (
                         <div
                           key={item.id}
@@ -1025,6 +1038,7 @@ export function TimelineV2({
                             <Transfer
                               mode={item.transfer.mode}
                               state={open ? "open" : "default"}
+                              muted={muted}
                               duration={item.transfer.duration}
                               legs={item.transfer.legs}
                               steps={item.transfer.steps}
