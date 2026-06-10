@@ -551,7 +551,7 @@ function DayDropContainer({
     data: { type: "day-end" as const, dayId, index: endIndex },
   });
   return (
-    <div ref={setNodeRef} style={style} className={className}>
+    <div ref={setNodeRef} style={style} className={className} data-day-id={dayId}>
       {children}
     </div>
   );
@@ -639,19 +639,22 @@ export function Timeline({
   // eventualmente montate nella stessa pagina (es. sandbox /dev).
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Scorre la lista per portare la row in hover in cima al suo container
-  // scrollabile (`block: "start"`). Il `scrollIntoView` cammina la catena
-  // dei parent fino a trovare il primo overflow:auto/scroll — nella Explore
-  // è l'`aside` di sinistra in ExploreNextShell. `block: "start"` è
-  // self-clamping: quando la row è già abbastanza in fondo, la lista
-  // scorre al massimo possibile e basta. Niente scroll su `null` (mouse-out).
+  // Scorre la lista in modo che la sezione del GIORNO che contiene la row
+  // in hover diventi il primo elemento visibile (DayBadge in cima). La
+  // querySelector trova la row, `closest('[data-day-id]')` risale al
+  // DayDropContainer, e `scrollIntoView({block:"start"})` porta quello in
+  // cima al container scrollabile. Self-clamping quando il giorno è già
+  // abbastanza in fondo. Fallback alla row stessa quando il day wrapper
+  // non c'è (caso teorico — ogni row attivo vive dentro un day). Niente
+  // scroll su `null` (mouse-out).
   useEffect(() => {
     if (!hoveredRowId) return;
     const root = rootRef.current;
     if (!root) return;
-    const el = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
-    if (!el) return;
-    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    const row = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
+    if (!row) return;
+    const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [hoveredRowId]);
 
 
