@@ -6,7 +6,12 @@
  *  - Desktop → popover ancorato al pin (300px) con foto + banda ink + summary + 2 azioni
  *  - Mobile  → 4° stato del bottom sheet ("place"), accanto a peek/half/full
  *
- * Azioni: Chiedi a Go (primary orange) · Yumeji (ghost, heart icon).
+ * Azioni (aggiornate al prodotto): Add to trip (primary, SPLIT BUTTON —
+ * il chevron apre "Tappa del giorno / Flessibile": gestione fuzzy non
+ * invasiva, proposta A) · Yumeji (ghost, heart icon). "Flessibile" segue
+ * la stessa destinazione dell'Add to trip (giorno selezionato/suggerito),
+ * cambia solo il flag fuzzy sulla scheduled. Chiedi a Go: link ghost
+ * sotto le azioni (desktop) + input sticky contestuale (mobile).
  * L'input "Scrivi a Go" resta sticky in fondo allo sheet, contestualizzato
  * al posto selezionato — coerente con come `goFocus` viene aggiornato da
  * ExploreMap.tsx quando arriva un evento `place.opened`.
@@ -21,6 +26,10 @@ import {
   IconHeart,
   IconArrowUp,
   IconSearch,
+  IconCalendarPlus,
+  IconChevronDown,
+  IconCircleDashed,
+  IconMapPin,
 } from "@/components/ui/icons";
 
 const PLACE = {
@@ -47,8 +56,13 @@ export default function PlaceHoverPage() {
           <span className="font-medium text-ink">mobile</span> espande il bottom
           sheet a un nuovo stato &ldquo;place&rdquo;. Stessa identità visiva
           (foto, banda ink, summary), due azioni:{" "}
-          <span className="font-medium text-ink">Chiedi a Go</span> e{" "}
-          <span className="font-medium text-ink">Yumeji</span>.
+          <span className="font-medium text-ink">Add to trip</span> (split
+          button: il chevron apre{" "}
+          <span className="font-medium text-ink">Tappa del giorno / Flessibile</span>{" "}
+          — gestione fuzzy non invasiva) e{" "}
+          <span className="font-medium text-ink">Yumeji</span>. Go resta come
+          link ghost sotto le azioni (desktop) e nell&apos;input sticky
+          contestuale (mobile).
         </p>
       </header>
 
@@ -170,24 +184,70 @@ function CardPhotoBlock({ height = 130 }: { height?: number }) {
   );
 }
 
-function ActionButtons({ size = "md" }: { size?: "md" | "lg" }) {
+/** Azioni della card — aggiornate al prodotto: Add to trip (primary) +
+ *  Yumeji. L'Add è uno SPLIT BUTTON: il segmento col chevron apre il
+ *  menu Tappa/Flessibile (gestione fuzzy non invasiva — proposta A).
+ *  `menuOpen` mostra il menu (mock statico, nel reale: popover
+ *  z-dropdown, chiusura su selezione/Esc/click-out). */
+function ActionButtons({
+  size = "md",
+  menuOpen = false,
+}: {
+  size?: "md" | "lg";
+  menuOpen?: boolean;
+}) {
   const h = size === "lg" ? "h-10" : "h-9";
   return (
-    <div className="flex gap-2">
-      <button
-        type="button"
-        className={`flex-1 ${h} rounded-md bg-primary hover:bg-orange-deep text-white text-[13px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors`}
-      >
-        <IconSparkles className="w-4 h-4" />
-        Chiedi a Go
-      </button>
-      <button
-        type="button"
-        className={`flex-1 ${h} rounded-md border border-border bg-surface hover:bg-surface-soft text-ink text-[13px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors`}
-      >
-        <IconHeart className="w-4 h-4" />
-        Yumeji
-      </button>
+    <div className="relative">
+      <div className="flex gap-2">
+        <span className={`flex flex-1 ${h} overflow-hidden rounded-md`}>
+          <button
+            type="button"
+            className="flex-1 bg-primary hover:bg-orange-deep text-white text-[13px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <IconCalendarPlus className="w-4 h-4" />
+            Add to trip
+          </button>
+          <button
+            type="button"
+            aria-label="Opzioni di aggiunta"
+            aria-expanded={menuOpen}
+            className={`w-8 inline-flex items-center justify-center text-white transition-colors border-l border-white/25 ${
+              menuOpen ? "bg-orange-deep" : "bg-primary hover:bg-orange-deep"
+            }`}
+          >
+            <IconChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </span>
+        <button
+          type="button"
+          className={`flex-1 ${h} rounded-md border border-border bg-surface hover:bg-surface-soft text-ink text-[13px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors`}
+        >
+          <IconHeart className="w-4 h-4" />
+          Yumeji
+        </button>
+      </div>
+      {menuOpen ? (
+        <div className="absolute left-0 top-full z-dropdown mt-1 w-[200px] rounded-md border border-border-strong bg-surface p-1 shadow-float">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-mini text-ink hover:bg-surface-soft"
+          >
+            <IconMapPin className="h-3.5 w-3.5 shrink-0 text-ink-soft" />
+            Tappa del giorno
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-mini text-ink hover:bg-surface-soft"
+          >
+            <IconCircleDashed className="h-3.5 w-3.5 shrink-0 text-ink-soft" />
+            Flessibile
+            <span className="ml-auto text-[10px] text-ink-faint">
+              solo nel dettaglio
+            </span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -232,8 +292,10 @@ function DesktopMockup() {
 
       <SelectedPin x={50} y={62} />
 
-      <div className="absolute left-1/2 top-[10%] z-20 w-[300px] -translate-x-1/2 overflow-hidden rounded-md border border-border bg-surface shadow-float">
-        <div className="relative">
+      {/* niente overflow-hidden sul wrapper: il menu dello split button
+          deve poter sbordare sotto la card */}
+      <div className="absolute left-1/2 top-[6%] z-20 w-[300px] -translate-x-1/2 rounded-md border border-border bg-surface shadow-float">
+        <div className="relative overflow-hidden rounded-t-md">
           <CardPhotoBlock />
           <button
             type="button"
@@ -258,7 +320,14 @@ function DesktopMockup() {
             <span>¥¥</span>
           </div>
           <div className="border-t border-border pt-2">
-            <ActionButtons />
+            {/* Menu split aperto (mock): Tappa del giorno / Flessibile */}
+            <ActionButtons menuOpen />
+          </div>
+          <div className="flex items-center gap-1.5 pt-1 text-[11px] text-ink-faint">
+            <IconSparkles className="h-3 w-3 shrink-0" />
+            <span className="cursor-pointer underline-offset-2 hover:text-ink-soft hover:underline">
+              Chiedi a Go di {PLACE.name.split(" ")[0]}…
+            </span>
           </div>
         </div>
       </div>
