@@ -32,7 +32,12 @@ function loadScript(apiKey: string) {
   notify("loading");
 
   const script = document.createElement("script");
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker&v=weekly`;
+  // `loading=async` segnala esplicitamente al loader che lo script viene
+  // caricato in modo asincrono — Google lo richiede per evitare il warning
+  // "loaded directly without loading=async" in console (https://goo.gle
+  // /js-api-loading). `async`/`defer` sull'elemento restano comunque
+  // necessari per il browser.
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker&v=weekly&loading=async`;
   script.async = true;
   script.defer = true;
   script.onload = () => notify("ready");
