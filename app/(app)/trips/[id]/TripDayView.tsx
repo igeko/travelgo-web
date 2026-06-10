@@ -25,6 +25,7 @@ import { PAGE_GAP, PAGE_MAX, PAGE_PX, PAGE_PY } from "@/lib/layout";
 import { buildDescribeDayPrompt, estimateTokens } from "@/lib/ai/describe-day-prompt";
 import { api } from "@/lib/client";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
+import type { TripDayWithLodging } from "./TripShell";
 
 /* ─── helpers ─── */
 function localDate(iso: string) {
@@ -81,7 +82,7 @@ function ShortcutBar() {
 
 type Props = {
   trip: Trip;
-  days: Day[];
+  days: TripDayWithLodging[];
   initialActivities: Activity[];
   initialDayId: string;
   editMode?: boolean;
@@ -136,6 +137,199 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   function patchDay(id: string, fields: Partial<Day>) {
     setLocalDays((prev) => prev.map((d) => d.id === id ? { ...d, ...fields } : d));
   }
+
+  /** Optimistic patch dell'AccommodationDisplay del giorno. `null` rimuove
+   *  il lodging (delete). Usato da `onSaveLodging` e dallo stepper notti. */
+  function patchDayAccommodation(id: string, next: TripDayWithLodging["accommodation"]) {
+    setLocalDays((prev) =>
+      prev.map((d) => d.id === id ? { ...d, accommodation: next } : d),
+    );
+  }
+
+  /** Applica una proiezione su TUTTI i giorni coperti da una stay (multi-
+   *  notte): usato dallo stepper +/- per rinfrescare nights_total / e
+   *  nights_index su ogni notte della stay senza aspettare il refresh.
+   *  delta in {+1, -1, 0}. Quando delta < 0 e collassa, rimuove le notti. */
+  function patchStayAccommodation(stayId: string, delta: -1 | 0 | 1) {
+    setLocalDays((prev) => {
+      const next = [...prev].sort((a, b) => a.day_number - b.day_number);
+      // Map index → giorni della stay
+      const stayDays = next
+        .map((d, i) => ({ d, i }))
+        .filter(({ d }) => d.accommodation?.stay_id === stayId);
+      if (stayDays.length === 0) return prev;
+
+      const nights_total = Math.max(0, stayDays.length + delta);
+      if (delta < 0 && nights_total === 0) {
+        // collasso: rimuove la stay da TUTTI i giorni coperti
+        return next.map((d) =>
+          d.accommodation?.stay_id === stayId ? { ...d, accommodation: null } : d,
+        );
+      }
+      // extend: proietto una nuova notte sul giorno SUCCESSIVO all'ultimo
+      // (se esiste); reduce: tolgo l'ultima notte. In entrambi i casi
+      // rinfresco nights_total su tutte le notti rimaste.
+      let extendAt: number | null = null;
+      let stripAt: number | null = null;
+      if (delta === 1) {
+        const lastIdx = stayDays[stayDays.length - 1].i;
+        if (lastIdx + 1 < next.length) extendAt = lastIdx + 1;
+      } else if (delta === -1 && stayDays.length > 1) {
+        stripAt = stayDays[stayDays.length - 1].i;
+      }
+      return next.map((d, i) => {
+        if (i === stripAt) return { ...d, accommodation: null };
+        if (i === extendAt && stayDays[0]) {
+          const tpl = stayDays[0].d.accommodation!;
+          return {
+            ...d,
+            accommodation: {
+              ...tpl,
+              is_arrival: false,
+              is_departure: true,
+              night_index: nights_total - 1,
+              nights_total,
+            },
+          };
+        }
+        if (d.accommodation?.stay_id === stayId) {
+          return {
+            ...d,
+            accommodation: {
+              ...d.accommodation,
+              nights_total,
+              is_departure: d.accommodation.night_index === nights_total - 1,
+            },
+          };
+        }
+        return d;
+      });
+    });
+  }
+
+  /** Salva il lodging del giorno selezionato. Tre rami: create / update /
+   *  remove. Optimistic — vedi commenti inline. Usato da entrambe le
+   *  HeroBanner (full-edit e standard). */
+  const saveLodging = useCallback(async (
+    lodgingData: import("@/features/day/HeroBanner").HeroBannerSubBannerData | null,
+  ) => {
+    const day = localDays.find((d) => d.id === selectedDayId);
+    if (!day) return;
+    const currAcc = day.accommodation;
+    const currStayId = currAcc?.stay_id ?? null;
+
+    if (!lodgingData) {
+      if (!currStayId) return;
+      patchDayAccommodation(selectedDayId, null);
+      try {
+        await api.accommodations.remove(currStayId);
+        router.refresh();
+      } catch (err) {
+        console.error("[TripDayView] removeLodging failed:", err);
+        patchDayAccommodation(selectedDayId, currAcc ?? null);
+      }
+      return;
+    }
+
+    const type = lodgingData.type?.toLowerCase() ?? null;
+    const place = lodgingData.place ?? null;
+    const lat = place?.lat ?? null;
+    const lng = place?.lng ?? null;
+    const placeId = place?.placeId || null;
+    const address = lodgingData.detail ?? null;
+
+    const optimistic = {
+      name: lodgingData.name || currAcc?.name || "",
+      type,
+      address,
+      url: lodgingData.href ?? null,
+      place_id: placeId,
+      lat,
+      lng,
+      is_arrival: currAcc?.is_arrival ?? true,
+      is_departure: currAcc?.is_departure ?? true,
+      night_index: currAcc?.night_index ?? 0,
+      nights_total: currAcc?.nights_total ?? 1,
+      stay_id: currAcc?.stay_id,
+      activity_id: currAcc?.activity_id,
+      iconKey: currAcc?.iconKey ?? null,
+    } as NonNullable<TripDayWithLodging["accommodation"]>;
+    patchDayAccommodation(selectedDayId, optimistic);
+
+    try {
+      if (currStayId) {
+        await api.accommodations.update(currStayId, {
+          property: {
+            title: lodgingData.name || undefined,
+            location: address,
+            location_place_id: placeId,
+            location_lat: lat,
+            location_lng: lng,
+            url: lodgingData.href ?? null,
+          },
+          stay: {
+            total_cost_amount: lodgingData.budgetAmount ?? null,
+            total_cost_currency: lodgingData.budgetCurrency ?? null,
+          },
+        });
+      } else {
+        await api.accommodations.create({
+          tripId: trip.id,
+          dayId: selectedDayId,
+          name: lodgingData.name || "",
+          type,
+          address,
+          url: lodgingData.href ?? null,
+          placeId,
+          lat,
+          lng,
+          totalCostAmount: lodgingData.budgetAmount ?? null,
+          totalCostCurrency: lodgingData.budgetCurrency ?? null,
+        });
+      }
+      router.refresh();
+    } catch (err) {
+      console.error("[TripDayView] saveLodging failed:", err);
+      patchDayAccommodation(selectedDayId, currAcc ?? null);
+    }
+    // patchDayAccommodation / localDays sono ref stabili dentro lo
+    // useCallback grazie al setter funzionale di useState; lasciamo
+    // solo le dep "realmente" lette dal body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDayId, trip.id, router]);
+
+  /** +1 notte → POST /extend con optimistic. */
+  const extendLodging = useCallback(async () => {
+    const day = localDays.find((d) => d.id === selectedDayId);
+    const sid = day?.accommodation?.stay_id;
+    if (!sid) return;
+    patchStayAccommodation(sid, +1);
+    try {
+      await api.accommodations.extend(sid);
+      router.refresh();
+    } catch (err) {
+      console.error("[TripDayView] extend failed:", err);
+      patchStayAccommodation(sid, -1); // rollback
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDayId, router]);
+
+  /** −1 notte → POST /reduce con optimistic; se collassa, la stay
+   *  scompare via patchStayAccommodation (delta -1 con 1 notte residua). */
+  const reduceLodging = useCallback(async () => {
+    const day = localDays.find((d) => d.id === selectedDayId);
+    const sid = day?.accommodation?.stay_id;
+    if (!sid) return;
+    patchStayAccommodation(sid, -1);
+    try {
+      await api.accommodations.reduce(sid);
+      router.refresh();
+    } catch (err) {
+      console.error("[TripDayView] reduce failed:", err);
+      patchStayAccommodation(sid, +1); // rollback
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDayId, router]);
 
   const selectedDay = localDays.find((d) => d.id === selectedDayId) ?? localDays[0];
 
@@ -209,6 +403,11 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
   const heroMeta = `${heroDow} ${heroDate} · ${t("day.activityCount", { count: activities.length })}`;
 
   /* ─── Lodging sub-banner ─── */
+  // Letta dalla mappa canonical `accommodation_nights` → `accommodation_stays`
+  // (proiezione `AccommodationDisplay`), non più dai legacy `days.accommodation_*`.
+  // Mapping inverso tipo → label LodgingType: l'utente potrebbe non aver
+  // mai impostato un `type` esplicito (stay creata da explore-next non lo
+  // salva); in quel caso il pannello mostra "Other" come default neutro.
   const DB_TO_LODGING_TYPE: Record<string, LodgingType> = {
     hotel:      "Hotel",
     bb:         "B&B",
@@ -218,26 +417,31 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
     ryokan:     "Ryokan",
     other:      "Other",
   };
-  const lodging = selectedDay.accommodation_name
+  const acc = selectedDay.accommodation;
+  const lodging = acc
     ? {
-        type: selectedDay.accommodation_type
-          ? DB_TO_LODGING_TYPE[selectedDay.accommodation_type] ?? undefined
-          : undefined,
-        name: selectedDay.accommodation_name,
-        detail: selectedDay.accommodation_address ?? undefined,
-        href: selectedDay.accommodation_url ?? undefined,
-        label: "Staying at",
-        place: (selectedDay.accommodation_lat != null && selectedDay.accommodation_lng != null)
+        type: acc.type ? DB_TO_LODGING_TYPE[acc.type] ?? undefined : undefined,
+        name: acc.name,
+        detail: acc.address ?? undefined,
+        href: acc.url ?? undefined,
+        label: acc.nights_total > 1
+          ? `Notte ${acc.night_index + 1} di ${acc.nights_total}`
+          : "Staying at",
+        place: (acc.lat != null && acc.lng != null)
           ? {
-              name: selectedDay.accommodation_name,
-              formatted: selectedDay.accommodation_address ?? selectedDay.accommodation_name,
-              placeId: selectedDay.accommodation_place_id ?? "",
-              lat: selectedDay.accommodation_lat,
-              lng: selectedDay.accommodation_lng,
+              name: acc.name,
+              formatted: acc.address ?? acc.name,
+              placeId: acc.place_id ?? "",
+              lat: acc.lat,
+              lng: acc.lng,
             }
           : null,
       }
     : undefined;
+  // Nights stepper: visibile quando esiste una stay (stay_id presente).
+  // Drive l'`extend`/`reduce` con optimistic update sulla mappa giorno.
+  const stayId = acc?.stay_id ?? null;
+  const stayNights = acc?.nights_total ?? 0;
 
   /* ─── Next day ─── */
   const nextDayDow = nextDay?.date ? getDow(nextDay.date) : "";
@@ -535,35 +739,10 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
                 image_url,
               }).catch(() => {});
             }}
-            onSaveLodging={async (lodgingData) => {
-              const patch = lodgingData
-                ? {
-                    accommodation_type: lodgingData.type?.toLowerCase() ?? null,
-                    accommodation_name: lodgingData.name || null,
-                    accommodation_address: lodgingData.detail ?? null,
-                    accommodation_url: lodgingData.href ?? null,
-                    accommodation_place_id: lodgingData.place?.placeId ?? null,
-                    accommodation_lat: lodgingData.place?.lat ?? null,
-                    accommodation_lng: lodgingData.place?.lng ?? null,
-                    accommodation_cost_amount: lodgingData.budgetAmount ?? null,
-                    accommodation_cost_currency: lodgingData.budgetCurrency ?? null,
-                  }
-                : {
-                    accommodation_type: null, accommodation_name: null, accommodation_address: null,
-                    accommodation_url: null, accommodation_place_id: null, accommodation_lat: null,
-                    accommodation_lng: null, accommodation_cost_amount: null, accommodation_cost_currency: null,
-                  };
-              patchDay(selectedDayId, {
-                accommodation_type: patch.accommodation_type,
-                accommodation_name: patch.accommodation_name,
-                accommodation_address: patch.accommodation_address,
-                accommodation_url: patch.accommodation_url,
-                accommodation_place_id: patch.accommodation_place_id,
-                accommodation_lat: patch.accommodation_lat,
-                accommodation_lng: patch.accommodation_lng,
-              });
-              await api.days.update(selectedDayId, patch).catch(() => {});
-            }}
+            onSaveLodging={saveLodging}
+            lodgingNights={stayId ? stayNights : undefined}
+            onExtendLodgingNight={stayId ? extendLodging : undefined}
+            onReduceLodgingNight={stayId ? reduceLodging : undefined}
           />
         ) : (
         <>
@@ -608,51 +787,11 @@ export function TripDayView({ trip, days: initialDays, initialActivities, initia
               image_url,
             }).catch(() => {});
           }}
-          onSaveLodging={async (data) => {
-            const patch = {
-              accommodation_type: data.type?.toLowerCase() ?? null,
-              accommodation_name: data.name || null,
-              accommodation_address: data.detail ?? null,
-              accommodation_url: data.href ?? null,
-              accommodation_place_id: data.place?.placeId ?? null,
-              accommodation_lat: data.place?.lat ?? null,
-              accommodation_lng: data.place?.lng ?? null,
-              accommodation_cost_amount: data.budgetAmount ?? null,
-              accommodation_cost_currency: data.budgetCurrency ?? null,
-            };
-            patchDay(selectedDayId, {
-              accommodation_type: patch.accommodation_type,
-              accommodation_name: patch.accommodation_name,
-              accommodation_address: patch.accommodation_address,
-              accommodation_url: patch.accommodation_url,
-              accommodation_place_id: patch.accommodation_place_id,
-              accommodation_lat: patch.accommodation_lat,
-              accommodation_lng: patch.accommodation_lng,
-            });
-            await api.days.update(selectedDayId, patch).catch(() => {});
-          }}
-          onRemoveLodging={async () => {
-            patchDay(selectedDayId, {
-              accommodation_type: null,
-              accommodation_name: null,
-              accommodation_address: null,
-              accommodation_url: null,
-              accommodation_place_id: null,
-              accommodation_lat: null,
-              accommodation_lng: null,
-            });
-            await api.days.update(selectedDayId, {
-              accommodation_type: null,
-              accommodation_name: null,
-              accommodation_address: null,
-              accommodation_url: null,
-              accommodation_place_id: null,
-              accommodation_lat: null,
-              accommodation_lng: null,
-              accommodation_cost_amount: null,
-              accommodation_cost_currency: null,
-            }).catch(() => {});
-          }}
+          onSaveLodging={saveLodging}
+          onRemoveLodging={() => saveLodging(null)}
+          lodgingNights={stayId ? stayNights : undefined}
+          onExtendLodgingNight={stayId ? extendLodging : undefined}
+          onReduceLodgingNight={stayId ? reduceLodging : undefined}
           onPrev={prevDay ? () => selectDay(prevDay.id) : undefined}
           onNext={nextDay ? () => selectDay(nextDay.id) : undefined}
         />

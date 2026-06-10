@@ -15,8 +15,62 @@
  */
 
 import type { Dal, StayWithActivity, NightWithStay, UpdateStayInput } from "@/lib/dal";
-import { notFound, badRequest } from "@/lib/api/errors";
+import { notFound, badRequest, unauthorized } from "@/lib/api/errors";
 import { unwrap } from "./util";
+
+/** Mappa il `type` del lodging (hotel/campground/ryokan/…) all'icona Tabler
+ *  salvata su `activities.icon`. Stessa regola del backfill SQL e di
+ *  `accommodationIcon` lato FE — fonte unica server-side per la creazione
+ *  di una Property lodging fresh. */
+function iconForLodgingType(type?: string | null): string {
+  switch (type) {
+    case "campground": return "tent";
+    case "hostel":     return "building-skyscraper";
+    case "apartment":  return "building";
+    case "bb":         return "home";
+    case "ryokan":     return "home-2";
+    default:           return "bed";
+  }
+}
+
+/** Campi della Property activity (entity `activities`) che il pannello
+ *  lodging della daybyday può scrivere. Sono un sottoinsieme di
+ *  `UpdateActivityInput`: name/icon e localizzazione. Cost/booking
+ *  restano sulla stay. */
+export type LodgingPropertyPatch = {
+  title?: string;
+  icon?: string | null;
+  location?: string | null;
+  location_place_id?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  url?: string | null;
+};
+
+/** Input "uno-shot" per creare una stay completa da zero. Risolve il
+ *  check-in dalla `dayId`, default 1 notte. Stay fields + Property
+ *  fields nello stesso payload per ridurre il round-trip dal client. */
+export type CreateLodgingInput = {
+  tripId: string;
+  /** Day del check-in: la sua `date` diventa l'estremo inferiore della stay. */
+  dayId: string;
+  /** Notti consecutive a partire da check-in (default 1). Il client può
+   *  alzarle dopo via extendStay. */
+  nights?: number;
+  // Property fields
+  name: string;
+  type?: string | null;
+  address?: string | null;
+  url?: string | null;
+  placeId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  // Stay fields (tutti opzionali, il default tiene la stay in stato `todo`)
+  totalCostAmount?: number | null;
+  totalCostCurrency?: string | null;
+  paid?: boolean;
+  instanceNote?: string | null;
+};
 
 /** Parse "YYYY-MM-DD" into a Date at UTC midnight (avoid TZ drift). */
 function parseISODate(iso: string): Date {
@@ -68,6 +122,88 @@ export class AccommodationService {
   /** Update arbitrary stay fields (booking_status, cost, notes, …). */
   async update(stayId: string, patch: UpdateStayInput) {
     return unwrap(await this.dal.accommodations.update(stayId, patch));
+  }
+
+  /**
+   * Crea una stay nuova: prima crea l'activity Property (lodging), poi la
+   * stay 1-notte (o N-notti se `nights > 1`). Atomico dal punto di vista
+   * dell'utente — il pannello lodging della daybyday lo usa al posto del
+   * legacy `PATCH /api/days/[id]` con i campi `accommodation_*`.
+   */
+  async createWithProperty(input: CreateLodgingInput): Promise<StayWithActivity> {
+    if (!input.name?.trim()) throw badRequest("name is required");
+
+    // Risolvi la data del check-in dal dayId — e verifica che il giorno
+    // appartenga al trip dichiarato (no cross-trip via dayId trick).
+    const day = unwrap(await this.dal.trips.findDay(input.dayId));
+    if (!day.date) throw badRequest("Day has no date set yet — set it before adding lodging");
+    if (day.trip_id !== input.tripId) throw badRequest("Day does not belong to the trip");
+
+    const nights = input.nights ?? 1;
+    if (nights < 1) throw badRequest("nights must be >= 1");
+    const checkIn = day.date;
+    const checkOut = addDays(checkIn, nights);
+
+    // Owner della Property = utente corrente. Indispensabile per il
+    // controllo RLS lato activities (visibility=private, created_by=me).
+    const { data: user } = await this.dal.users.getCurrentUser();
+    if (!user) throw unauthorized();
+    const userId = user.id;
+
+    const activity = unwrap(await this.dal.activities.create({
+      created_by: userId,
+      title: input.name.trim().slice(0, 200),
+      category: "lodging",
+      icon: iconForLodgingType(input.type),
+      location: input.address ?? undefined,
+      location_place_id: input.placeId ?? undefined,
+      location_lat: input.lat ?? undefined,
+      location_lng: input.lng ?? undefined,
+      url: input.url ?? undefined,
+      visibility: "private",
+    }));
+
+    const stay = unwrap(await this.dal.accommodations.create({
+      trip_id: input.tripId,
+      activity_id: activity.id,
+      created_by: userId,
+      check_in: checkIn,
+      check_out: checkOut,
+      booking_status: input.paid ? "paid" : "todo",
+      total_cost_amount: input.totalCostAmount ?? null,
+      total_cost_currency: input.totalCostCurrency ?? null,
+      paid: input.paid ?? false,
+      instance_note: input.instanceNote ?? null,
+    }));
+
+    return this.findById(stay.id);
+  }
+
+  /**
+   * Update combinato: i campi della stay (booking, cost, notes) via
+   * `accommodations.update`; i campi della Property activity (name, icon,
+   * address, place_id, url) via `activities.update` usando l'activity_id
+   * della stay. Lascia che il client mandi un solo payload "lodging" senza
+   * sapere che dietro ci sono due tabelle.
+   */
+  async updateWithProperty(
+    stayId: string,
+    input: { stay?: UpdateStayInput; property?: LodgingPropertyPatch },
+  ): Promise<StayWithActivity> {
+    const propertyKeys = input.property ? Object.keys(input.property) : [];
+    const stayKeys = input.stay ? Object.keys(input.stay) : [];
+    if (propertyKeys.length === 0 && stayKeys.length === 0) {
+      return this.findById(stayId);
+    }
+
+    if (propertyKeys.length > 0 && input.property) {
+      const current = await this.findById(stayId);
+      unwrap(await this.dal.activities.update(current.activity.id, input.property));
+    }
+    if (stayKeys.length > 0 && input.stay) {
+      unwrap(await this.dal.accommodations.update(stayId, input.stay));
+    }
+    return this.findById(stayId);
   }
 
   async delete(stayId: string) {

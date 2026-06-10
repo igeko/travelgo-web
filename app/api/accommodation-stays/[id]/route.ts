@@ -4,6 +4,7 @@ import { requireStayEditor } from "@/lib/api/guards";
 import { serverDal } from "@/lib/dal";
 import { serverServices } from "@/lib/services";
 import type { UpdateStayInput } from "@/lib/dal";
+import type { LodgingPropertyPatch } from "@/lib/services/AccommodationService";
 
 async function revalidateTripForStay(stayId: string): Promise<void> {
   const dal = await serverDal();
@@ -14,12 +15,31 @@ async function revalidateTripForStay(stayId: string): Promise<void> {
   revalidatePath(`/trips/${tripId}`);
 }
 
-/** PATCH /api/accommodation-stays/[id] — update booking fields, check-in/out, notes. */
+/**
+ * PATCH /api/accommodation-stays/[id]
+ *
+ * Update combinato: campi della stay (booking_status, cost, check_in_time,
+ * notes) + campi della Property activity (name, icon, address, place,
+ * url). Il client manda un singolo payload `{ stay?, property? }`; il
+ * service applica i due update separati lasciando trasparente al client
+ * la duplice tabella.
+ *
+ * Retrocompatibilità: se il body NON ha né `stay` né `property` (es. una
+ * chiamata vecchia che mandava UpdateStayInput piatto), trattiamo
+ * l'intero body come `stay` per non rompere chiamate esistenti.
+ */
+type LodgingPatchBody =
+  | { stay?: UpdateStayInput; property?: LodgingPropertyPatch }
+  | UpdateStayInput;
+
 export const PATCH = route<{ id: string }>(async ({ req, params }) => {
   await requireStayEditor(params.id);
-  const body = await readJson<UpdateStayInput>(req);
+  const raw = await readJson<LodgingPatchBody>(req);
+  const body = raw && ("stay" in raw || "property" in raw)
+    ? raw as { stay?: UpdateStayInput; property?: LodgingPropertyPatch }
+    : { stay: raw as UpdateStayInput };
   const services = await serverServices();
-  const updated = await services.accommodations.update(params.id, body);
+  const updated = await services.accommodations.updateWithProperty(params.id, body);
   await revalidateTripForStay(params.id);
   return ok(updated);
 });

@@ -63,6 +63,13 @@ export type HeroBannerProps = {
   onSaveLodging?: (data: HeroBannerSubBannerData) => void;
   onRemoveLodging?: () => void;
   onAddLodging?: () => void;
+  /** Numero corrente di notti della stay (modello nuovo). Pass-through al
+   *  LodgingEditForm per mostrare lo stepper. */
+  lodgingNights?: number;
+  /** Stay esistente → +1 notte. Inoltrato come `onExtendNight` al form. */
+  onExtendLodgingNight?: () => void;
+  /** Stay esistente → −1 notte (la stay si elimina se collassa a 0). */
+  onReduceLodgingNight?: () => void;
   className?: string;
 };
 
@@ -91,6 +98,9 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
   onSaveLodging,
   onRemoveLodging,
   onAddLodging,
+  lodgingNights,
+  onExtendLodgingNight,
+  onReduceLodgingNight,
   className,
 }, ref) {
   const t = useTranslations("HeroBanner");
@@ -208,6 +218,9 @@ export const HeroBanner = forwardRef<HeroBannerHandle, HeroBannerProps>(function
           onSave={(data) => { onSaveLodging?.(data); setLodgingOpen(false); }}
           onCancel={() => setLodgingOpen(false)}
           onRemove={onRemoveLodging ? () => { onRemoveLodging(); setLodgingOpen(false); } : undefined}
+          nights={lodgingNights}
+          onExtendNight={onExtendLodgingNight}
+          onReduceNight={onReduceLodgingNight}
           className="border-t-0 !rounded-none"
         />
       )}

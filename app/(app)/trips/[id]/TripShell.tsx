@@ -10,6 +10,7 @@ import { useUser } from "@/features/app/UserContext";
 import { useTripRealtime } from "@/hooks/useTripRealtime";
 import { TripViewers } from "@/features/trip/TripViewers";
 import type { Trip, Day, Activity } from "@/lib/dal/domain";
+import type { AccommodationDisplay } from "@/features/explore/resolveAccommodations";
 import { cn } from "@/lib/cn";
 import { PAGE_MAX, PAGE_PX } from "@/lib/layout";
 
@@ -29,9 +30,16 @@ function EmptyTripState({ trip }: { trip: Trip }) {
   );
 }
 
+/** Ogni giorno arriva già annotato con la sua accommodation (proiezione
+ *  da `accommodation_nights` via `accommodationsFromNights`). Quando il
+ *  giorno non ha lodging, `accommodation` è null. */
+export type TripDayWithLodging = Day & {
+  accommodation: AccommodationDisplay | null;
+};
+
 type Props = {
   trip: Trip;
-  days: Day[];
+  days: TripDayWithLodging[];
   initialActivities: Activity[];
   initialDayId: string | null;
 };

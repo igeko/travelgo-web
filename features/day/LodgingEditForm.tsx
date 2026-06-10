@@ -7,6 +7,8 @@ import {
   IconChevronDown,
   IconCheck,
   IconLink,
+  IconMinus,
+  IconPlus,
   IconTrash,
   IconX,
 } from "@/components/ui/icons";
@@ -140,6 +142,16 @@ export type LodgingEditFormProps = {
   onCancel?: () => void;
   /** Called when the Remove button is pressed (only rendered when provided). */
   onRemove?: () => void;
+  /**
+   * Numero corrente di notti della stay. Quando > 0, il form mostra la
+   * riga "Notti N · +/-" allineata alla logica della Timeline V2: l'utente
+   * estende o riduce la stay senza chiudere l'editor. La mutation passa
+   * per `onExtendNight` / `onReduceNight`, NON per `onSave` (è un'azione
+   * indipendente con feedback immediato).
+   */
+  nights?: number;
+  onExtendNight?: () => void;
+  onReduceNight?: () => void;
   /** Hide the built-in footer (host provides its own + reads via ref). */
   hideFooter?: boolean;
   /** Hide the small "form title" eyebrow (host provides its own header). */
@@ -157,6 +169,9 @@ export const LodgingEditForm = forwardRef<LodgingEditFormHandle, LodgingEditForm
   onSave,
   onCancel,
   onRemove,
+  nights,
+  onExtendNight,
+  onReduceNight,
   hideFooter = false,
   hideTitle = false,
   showCaret = false,
@@ -230,6 +245,38 @@ export const LodgingEditForm = forwardRef<LodgingEditFormHandle, LodgingEditForm
       )}
 
       <LodgingTypePicker value={draftType} onChange={setDraftType} />
+
+      {/* Nights stepper — visibile solo per stay esistenti (nights > 0).
+          La mutation è indipendente dal Save (azione immediata, optimistic
+          gestito dall'host). Stesso pattern della Timeline V2 lodging row. */}
+      {typeof nights === "number" && nights > 0 && (onExtendNight || onReduceNight) ? (
+        <div className="flex items-center justify-between rounded-sm border border-border bg-surface px-3 py-2">
+          <span className="text-mini text-ink">
+            <span className="text-[18px] font-semibold tabular-nums">{nights}</span>{" "}
+            {nights === 1 ? "notte" : "notti"}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onReduceNight?.()}
+              disabled={!onReduceNight}
+              aria-label="Una notte in meno"
+              className="flex size-7 items-center justify-center rounded-full border border-border text-ink-soft transition-colors hover:bg-surface-soft disabled:opacity-30"
+            >
+              <IconMinus size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onExtendNight?.()}
+              disabled={!onExtendNight}
+              aria-label="Una notte in più"
+              className="flex size-7 items-center justify-center rounded-full border border-border text-ink-soft transition-colors hover:bg-surface-soft disabled:opacity-30"
+            >
+              <IconPlus size={13} />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <SoftField
         value={draftName}

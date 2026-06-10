@@ -82,6 +82,12 @@ export type DayEditFormProps = {
   onSaveDayInfo?: (data: HeroBannerData) => void;
   /** Save the lodging section (its own footer). `null` = lodging removed. */
   onSaveLodging?: (data: HeroBannerSubBannerData | null) => void;
+  /** Numero corrente di notti della stay (per stepper +/- nel LodgingEditForm). */
+  lodgingNights?: number;
+  /** Stay esistente → +1 notte. Inoltrato al LodgingEditForm. */
+  onExtendLodgingNight?: () => void;
+  /** Stay esistente → −1 notte. Inoltrato al LodgingEditForm. */
+  onReduceLodgingNight?: () => void;
   onCancel: () => void;
   onDelete?: () => void;
   className?: string;
@@ -164,6 +170,9 @@ export function DayEditForm({
   onNavCollapsedChange,
   onSaveDayInfo,
   onSaveLodging,
+  lodgingNights,
+  onExtendLodgingNight,
+  onReduceLodgingNight,
   onCancel,
   onDelete,
   className,
@@ -263,6 +272,9 @@ export function DayEditForm({
                 onSave={(d) => onSaveLodging?.(d)}
                 onCancel={onCancel}
                 onRemove={() => { setHasLodging(false); onSaveLodging?.(null); }}
+                nights={lodgingNights}
+                onExtendNight={onExtendLodgingNight}
+                onReduceNight={onReduceLodgingNight}
                 className="border-0 rounded-none px-0 pt-0 pb-0"
               />
             ) : (

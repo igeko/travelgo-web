@@ -3,11 +3,32 @@
  * Mirrors /api/accommodation-stays and the cross-table conversions.
  */
 import type { StayWithActivity, UpdateStayInput } from "@/lib/dal";
+import type {
+  CreateLodgingInput,
+  LodgingPropertyPatch,
+} from "@/lib/services/AccommodationService";
 import { post, patch, del } from "./http";
 
+export type UpdateLodgingInput = {
+  /** Campi della stay (booking_status, total_cost_*, instance_note…). */
+  stay?: UpdateStayInput;
+  /** Campi della Property activity (name → title, address → location,
+   *  place, url, icon). Iterabili insieme allo `stay` nello stesso PATCH. */
+  property?: LodgingPropertyPatch;
+};
+
 export const accommodations = {
-  /** PATCH /api/accommodation-stays/[id] — update booking/cost/notes/etc. */
-  update: (stayId: string, body: UpdateStayInput) =>
+  /**
+   * POST /api/accommodation-stays — crea Property activity + stay 1-notte
+   * in un solo round-trip. Usato dal pannello lodging della daybyday
+   * quando non esiste già una stay sul giorno selezionato. Il caller può
+   * passare `nights > 1` per stay multi-notte già al primo save.
+   */
+  create: (body: CreateLodgingInput) =>
+    post<StayWithActivity>(`/api/accommodation-stays`, body),
+
+  /** PATCH /api/accommodation-stays/[id] — update combinato stay + Property. */
+  update: (stayId: string, body: UpdateLodgingInput) =>
     patch<StayWithActivity>(`/api/accommodation-stays/${stayId}`, body),
 
   /** DELETE /api/accommodation-stays/[id] — drop the stay (nights cascade). */
