@@ -353,9 +353,11 @@ Esplorazioni intermedie (in chat, scartate o parcheggiate):
   la card ai due giorni): parcheggiate, da riprendere se la resa attuale
   non basta sui multi-notte.
 
-**Scelta attuale (semplice)**: la NightCard si ridimensiona COME le
-activity card — stessa Row col rail (non più full-width), icona 36px,
-stessi padding — con **solo bordo e niente bg**:
+**Scelta attuale (it.15b)**: la NightCard prende ALTEZZA e anatomia
+delle activity card (icona 36px, stessi padding) ma resta a **tutta
+larghezza**, tra un giorno e il successivo — attraversa anche la
+colonna del rail: è il separatore-notte, e lo span sui due giorni è
+raccontato proprio da questo. **Solo bordo, niente bg**:
 
 - token nuovo `--color-stay-border: #a9c9df`;
 - card: `rounded-md border border-stay-border bg-transparent`, hover

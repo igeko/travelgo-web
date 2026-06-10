@@ -214,10 +214,12 @@ function DevNotes() {
 
         <Block n={6} title="Card notte — nuovo componente NightCard">
           <p>
-            It.15 — <strong>stesse dimensioni e allineamento delle activity
-            card</strong> (stessa Row col rail, icona 36px, stessi padding),
-            ma SOLO BORDO e niente bg: <code>border-stay-border</code>{" "}
-            (#a9c9df, token nuovo; hover <code>border-stay-text/60</code>),
+            It.15b — <strong>altezza e anatomia delle activity card</strong>{" "}
+            (icona 36px, stessi padding) ma a <strong>TUTTA LARGHEZZA</strong>,
+            tra un giorno e il successivo (attraversa anche la colonna del
+            rail: è il separatore-notte). SOLO BORDO e niente bg:{" "}
+            <code>border-stay-border</code> (#a9c9df, token nuovo; hover{" "}
+            <code>border-stay-text/60</code>),
             riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
             struttura (niente luna), nome{" "}
             <code>text-meta font-medium text-ink</code>, &quot;Notte N di
