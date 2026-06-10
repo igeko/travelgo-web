@@ -233,22 +233,23 @@ function TransferRow({
   );
 }
 
-/** Banda notte — it.12: SEMPLIFICATA, una sola riga come le activity
- *  card. Check-in/check-out vivono solo nel dettaglio (TimePair
- *  dell'editor). Lo "span" tra due giorni resta raccontato dalla
- *  POSIZIONE della card (tra un giorno e il successivo) e dalla
- *  superficie `stay`. Riquadro icona arancio col solo tipo struttura. */
+/** Card notte — it.15: STESSE dimensioni e allineamento delle activity
+ *  card (Row con rail, icona 36px, stessi padding), ma SOLO BORDO in
+ *  tonalità stay e niente bg. La distinguono: badge arancio (tipo
+ *  struttura), bordo `stay-border`, "Notte N di M" in stay-text e la
+ *  posizione (in fondo al giorno, dopo il transfer di rientro).
+ *  Check-in/check-out restano solo nel dettaglio (it.12). */
 function NightDivider({ night }: { night: NightData }) {
   if (night.open) {
     return (
-      <div className="my-1.5">
+      <div className="py-1">
         <NightEditor night={night} />
       </div>
     );
   }
   return (
-    <div className="group my-1.5 cursor-pointer">
-      <div className="flex items-center gap-2.5 rounded-md bg-stay px-2.5 py-1.5 transition-colors hover:bg-stay-hover">
+    <Row rail="solid" className="py-0.5">
+      <div className="group flex cursor-pointer items-center gap-2.5 rounded-md border border-stay-border bg-transparent px-2.5 py-1.5 transition-colors hover:border-stay-text/60">
         <StopIcon icon={night.icon} accent="primary" />
         <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
           {night.name}
@@ -257,7 +258,7 @@ function NightDivider({ night }: { night: NightData }) {
           Notte {night.nightIndex} di {night.nightsTotal}
         </span>
       </div>
-    </div>
+    </Row>
   );
 }
 

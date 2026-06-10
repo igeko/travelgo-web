@@ -229,14 +229,17 @@ function MTransfer({
 
 function MNight({ night }: { night: NightData }) {
   return (
-    <div className="my-1 flex min-h-[36px] items-center gap-1.5 rounded-md bg-stay px-2 py-1">
-      <StopIcon icon={night.icon} accent="primary" size="sm" />
-      <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
-        {night.name}
-      </span>
-      <span className="shrink-0 text-[9px] text-stay-text">
-        {night.nightIndex}/{night.nightsTotal}
-      </span>
+    <div className="grid items-center gap-x-2" style={M_GRID}>
+      <MRail />
+      <div className="my-0.5 flex min-h-[36px] items-center gap-1.5 rounded-md border border-stay-border px-1.5 py-1">
+        <StopIcon icon={night.icon} accent="primary" size="sm" />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
+          {night.name}
+        </span>
+        <span className="shrink-0 text-[9px] text-stay-text">
+          {night.nightIndex}/{night.nightsTotal}
+        </span>
+      </div>
     </div>
   );
 }

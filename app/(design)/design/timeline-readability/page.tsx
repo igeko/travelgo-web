@@ -214,17 +214,16 @@ function DevNotes() {
 
         <Block n={6} title="Card notte — nuovo componente NightCard">
           <p>
-            Azzurro soft &quot;stay&quot; (<code>bg-stay</code> #dce8f1, in{" "}
-            <code>@theme</code> con <code>stay-hover</code> #cfdfeb e{" "}
-            <code>stay-text</code> #44708c — stessa tonalità di ink ma in
-            chiaro, zero conflitto col blu selezione), testo ink,{" "}
-            <strong>UNA sola riga come le activity card</strong>
-            (it.12 — check-in/check-out SOLO nel dettaglio): riquadro icona
-            ARANCIO (<code>bg-primary</code>) col solo tipo struttura
-            (niente luna) + nome <code>text-meta font-medium text-ink</code>{" "}
-            + &quot;Notte N di M&quot; in <code>text-stay-text</code>. Lo
-            span sui due giorni resta raccontato dalla POSIZIONE (la card
-            sta TRA un giorno e il successivo) e dalla superficie stay;
+            It.15 — <strong>stesse dimensioni e allineamento delle activity
+            card</strong> (stessa Row col rail, icona 36px, stessi padding),
+            ma SOLO BORDO e niente bg: <code>border-stay-border</code>{" "}
+            (#a9c9df, token nuovo; hover <code>border-stay-text/60</code>),
+            riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
+            struttura (niente luna), nome{" "}
+            <code>text-meta font-medium text-ink</code>, &quot;Notte N di
+            M&quot; in <code>text-stay-text</code>. Check-in/check-out SOLO
+            nel dettaglio (it.12). Lo span sui due giorni resta raccontato
+            dalla POSIZIONE (la card sta TRA un giorno e il successivo);
             orari e date di check-in/check-out vivono solo nell&apos;editor
             (TimePair). Dati già pronti da{" "}
             <code>resolveAccommodations</code>{" "}

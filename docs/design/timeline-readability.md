@@ -343,6 +343,30 @@ sospendere il rail dietro l'editor o portare l'editor su un layer sopra
 con bg pieno — scelta implementativa libera, l'effetto visivo è "rail
 coperto").
 
+## Iterazione 15 (2026-06-10) — notte come le activity, solo bordo
+
+Esplorazioni intermedie (in chat, scartate o parcheggiate):
+- **Via 6 (notte nel day header) SCARTATA** — perde il leg ultima
+  tappa → alloggio e la semantica "la notte chiude la giornata"
+  (l'accommodation si segna sul giorno in cui si va a letto).
+- Vie 7a-7d (anti-ripetizione su stay lunghi) e artifici 8a-8d (legare
+  la card ai due giorni): parcheggiate, da riprendere se la resa attuale
+  non basta sui multi-notte.
+
+**Scelta attuale (semplice)**: la NightCard si ridimensiona COME le
+activity card — stessa Row col rail (non più full-width), icona 36px,
+stessi padding — con **solo bordo e niente bg**:
+
+- token nuovo `--color-stay-border: #a9c9df`;
+- card: `rounded-md border border-stay-border bg-transparent`, hover
+  `border-stay-text/60`;
+- badge arancio tipo struttura, nome ink, "Notte N di M" stay-text;
+- posizione invariata (in fondo al giorno, dopo il transfer di rientro)
+  → il leg ultima tappa → alloggio resta sempre rappresentabile.
+
+Nota porting: rimuovere `bg-stay`/`bg-stay-hover` dalla card (i token
+restano per usi futuri, es. fasce multi-notte 7b).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
