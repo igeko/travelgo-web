@@ -131,21 +131,48 @@ function OptionRow({
 function Panel({
   mode,
   duration,
+  distance,
+  legs,
   children,
 }: {
   mode: string;
   duration: string;
+  distance?: string;
+  legs?: Leg[];
   children: ReactNode;
 }) {
   const ModeIcon = MODES.find((m) => m.key === mode)?.icon ?? IconCar;
   return (
     <div className="flex w-[340px] flex-col gap-[7px] rounded-sm bg-ink p-1">
-      {/* Header scuro = summary del collapsed (resa it.3+) */}
+      {/* Header scuro = SOLO info di viaggio (niente tratta: il contesto
+          è già dato dalle due tappe sopra/sotto la riga transfer):
+          modalità + durata + distanza + legs della combinazione attiva. */}
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/80">
         <ModeIcon size={13} className="shrink-0" />
         <span className="font-semibold text-white">{duration}</span>
-        <span className="text-white/50">·</span>
-        <span className="truncate">Spesa Beisia → Hotel Tavinos</span>
+        {distance ? (
+          <>
+            <span className="text-white/50">·</span>
+            <span>{distance}</span>
+          </>
+        ) : null}
+        {legs ? (
+          <>
+            <span className="text-white/50">·</span>
+            {legs.map((leg, i) => {
+              const Icon = leg.icon;
+              return (
+                <span key={i} className="flex items-center gap-1">
+                  {i > 0 ? (
+                    <IconChevronRight size={8} className="text-white/50" />
+                  ) : null}
+                  <Icon size={12} className="text-white/80" />
+                  <span className="font-medium text-white">{leg.label}</span>
+                </span>
+              );
+            })}
+          </>
+        ) : null}
         <span className="flex-1" />
         <IconX size={13} className="shrink-0 cursor-pointer text-white/60 hover:text-white" />
       </div>
@@ -185,7 +212,15 @@ export default function TransferModePage() {
           <h2 className="text-[15px] font-semibold text-ink">
             Mezzi — il TransitVerifier dentro il dettaglio
           </h2>
-          <Panel mode="transit" duration="46 min">
+          <Panel
+            mode="transit"
+            duration="46 min"
+            legs={[
+              { icon: IconWalk, label: "8 min" },
+              { icon: IconBus, label: "105" },
+              { icon: IconWalk, label: "10 min" },
+            ]}
+          >
             <div className="flex flex-col gap-1.5">
               <OptionRow
                 selected
@@ -230,7 +265,7 @@ export default function TransferModePage() {
           <h2 className="text-[15px] font-semibold text-ink">
             Auto — opzione singola + navigazione
           </h2>
-          <Panel mode="car" duration="40 min">
+          <Panel mode="car" duration="40 min" distance="32 km">
             <div className="flex flex-col gap-1.5">
               <OptionRow
                 selected
