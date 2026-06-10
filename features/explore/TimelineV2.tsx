@@ -664,14 +664,14 @@ function NightBandV2({
     >
       <div
         className={cn(
-          "flex flex-col rounded-md border bg-surface px-3.5 py-2 transition-colors",
-          hovered ? "border-border-strong" : "border-border hover:border-border-strong",
+          "flex flex-col rounded-md px-3.5 py-2 transition-colors",
+          hovered ? "bg-stay-hover" : "bg-stay hover:bg-stay-hover",
         )}
       >
         {/* check-in — appartiene al giorno sopra */}
-        <div className="flex items-center justify-between text-[11px] text-ink-soft">
+        <div className="flex items-center justify-between text-[11px] text-white/65">
           <span className="tabular-nums">
-            <span className="font-semibold text-ink">22:00</span> · check-in
+            <span className="font-semibold text-white">22:00</span> · check-in
           </span>
           <span>{fromLabel}</span>
         </div>
@@ -680,17 +680,17 @@ function NightBandV2({
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-white">
             <lodging.icon size={14} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-meta font-semibold text-ink">
+          <span className="min-w-0 flex-1 truncate text-meta font-semibold text-white">
             {lodging.title}
           </span>
-          <span className="shrink-0 text-[11px] text-ink-soft">
+          <span className="shrink-0 text-[11px] text-white/70">
             Notte {lodging.nightIndex} di {lodging.nightsTotal}
           </span>
         </div>
         {/* check-out — dalla parte del giorno dopo */}
-        <div className="flex items-center justify-between border-t border-border pt-1.5 text-[11px] text-ink-soft">
+        <div className="flex items-center justify-between border-t border-white/[0.18] pt-1.5 text-[11px] text-white/65">
           <span className="tabular-nums">
-            <span className="font-semibold text-ink">09:00</span> · check-out
+            <span className="font-semibold text-white">09:00</span> · check-out
           </span>
           <span>{toLabel}</span>
         </div>
