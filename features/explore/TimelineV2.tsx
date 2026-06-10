@@ -210,6 +210,9 @@ const SAMPLE_STEPS: TransferStep[] = [
 type TransferVM = {
   mode: "transit" | "car";
   duration: string;
+  /** Distanza già formattata (es. "32 km", "480 m"). Undefined quando il
+   *  leg non ha distance_m (bridge legacy persistito, fallback senza geo). */
+  distance?: string;
   /** Minuti grezzi del leg — usati dall'host per decidere `muted` (giorni
    *  collapsed: i leg >= 60 min restano comunque visibili, /design
    *  /timeline-readability it.10). */
@@ -232,14 +235,28 @@ function formatDurationMin(min: number): string {
   return parts.join(" ");
 }
 
+/** Formatta metri in user-facing: < 1 km → "X m", < 10 km → "Y,Z km" a 1
+ *  decimale, ≥ 10 km → "Z km" arrotondato. */
+function formatDistanceMeters(m: number): string {
+  if (!Number.isFinite(m) || m <= 0) return "0 m";
+  if (m < 1000) return `${Math.round(m)} m`;
+  const km = m / 1000;
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+}
+
 function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
   const duration = formatDurationMin(b.duration_min);
   const durationMin = Number.isFinite(b.duration_min) ? b.duration_min : 0;
-  if (carLike) return { mode: "car", duration, durationMin, legs: [], steps: [], destination };
+  const distance =
+    typeof b.distance_m === "number" && b.distance_m > 0
+      ? formatDistanceMeters(b.distance_m)
+      : undefined;
+  if (carLike) return { mode: "car", duration, distance, durationMin, legs: [], steps: [], destination };
   return {
     mode: "transit",
     duration,
+    distance,
     durationMin,
     legs: [{ kind: "bus", label: b.line ?? "—" }],
     steps: [{ kind: "bus", title: b.line ? `${b.line} ·` : "Transit", place: b.stops ?? undefined, subtitle: b.note ?? undefined }],
@@ -315,7 +332,13 @@ function buildItems(
     const next = visible[i + 1];
     const saved = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
-    const bridge = saved ?? computed ?? null;
+    // Saved vince su tutto tranne distance_m: i bridge persistiti pre-feature
+    // non hanno la distanza salvata, e il computed di sessione ce l'ha — la
+    // backfillamo così l'utente vede subito i km senza un refresh "magico"
+    // dopo che useChainBridges riscrive il bridge.
+    const bridge: BridgeData | null = saved && computed
+      ? { ...saved, distance_m: saved.distance_m ?? computed.distance_m ?? null }
+      : saved ?? computed ?? null;
     if (bridge) {
       items.push({
         kind: "transfer",
@@ -1077,6 +1100,7 @@ export function TimelineV2({
                               mode={item.transfer.mode}
                               state={open ? "open" : "default"}
                               duration={item.transfer.duration}
+                              distance={item.transfer.distance}
                               legs={item.transfer.legs}
                               steps={item.transfer.steps}
                               destination={item.transfer.destination}

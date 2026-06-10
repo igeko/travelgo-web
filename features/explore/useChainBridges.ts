@@ -86,6 +86,7 @@ export function useChainBridges(chain: TripStop[]): Map<string, BridgeData> {
           const bridge: BridgeData = {
             transport: DEFAULT_TRANSPORT,
             duration_min: Math.max(1, Math.round(res.durationSec / 60)),
+            distance_m: typeof res.distanceMeters === "number" ? res.distanceMeters : null,
             line: null,
             stops: null,
             note: null,

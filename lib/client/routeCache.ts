@@ -25,11 +25,11 @@ const KEY = "tg:routeCache:v1";
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — Google ToS ceiling for lat/lng
 const MAX_ENTRIES = 300; // bound localStorage footprint; oldest evicted first
 
-/** `p` = encoded polyline (richiesto), `d` = durationSec dal Routes API
- *  (opzionale, popolato dalla v2 dell'endpoint). Entries scritti dalla v1
- *  hanno solo `p` — getCachedDurationSec ritorna null in quel caso, il
- *  consumer ri-fetcha. */
-type Entry = { p: string; d?: number; t: number };
+/** `p` = encoded polyline (richiesto), `d` = durationSec dal Routes API,
+ *  `m` = distanceMeters dal Routes API. Tutti opzionali oltre a `p`:
+ *  entries scritti da versioni precedenti hanno solo `p`/`p`+`d`, i getter
+ *  ritornano null e il consumer ri-fetcha quando serve. */
+type Entry = { p: string; d?: number; m?: number; t: number };
 type Store = Record<string, Entry>;
 
 function hasStorage(): boolean {
@@ -81,6 +81,12 @@ export function getCachedDurationSec(key: string): number | null {
   return e?.d ?? null;
 }
 
+/** Cached distance in meters for this key, or null if absent/expired/old. */
+export function getCachedDistanceMeters(key: string): number | null {
+  const e = readEntry(key);
+  return e?.m ?? null;
+}
+
 function readEntry(key: string): Entry | null {
   if (!hasStorage()) return null;
   const store = readStore();
@@ -94,8 +100,13 @@ function readEntry(key: string): Entry | null {
   return entry;
 }
 
-/** Store polyline + optional duration, pruning expired entries and capping size. */
-export function setCachedPolyline(key: string, polyline: string, durationSec?: number): void {
+/** Store polyline + optional duration & distance, pruning expired entries and capping size. */
+export function setCachedPolyline(
+  key: string,
+  polyline: string,
+  durationSec?: number,
+  distanceMeters?: number,
+): void {
   if (!hasStorage() || !polyline) return;
   const store = readStore();
   const now = Date.now();
@@ -105,7 +116,7 @@ export function setCachedPolyline(key: string, polyline: string, durationSec?: n
     if (now - store[k].t > TTL_MS) delete store[k];
   }
 
-  store[key] = { p: polyline, d: durationSec, t: now };
+  store[key] = { p: polyline, d: durationSec, m: distanceMeters, t: now };
 
   // Cap: evict oldest until within budget.
   const keys = Object.keys(store);

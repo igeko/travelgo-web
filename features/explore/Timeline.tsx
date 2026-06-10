@@ -305,6 +305,9 @@ const SAMPLE_STEPS: TransferStep[] = [
 type TransferVM = {
   mode: "transit" | "car";
   duration: string;
+  /** Distanza già formattata (es. "32 km", "480 m"). Undefined quando il
+   *  leg non ha distance_m. */
+  distance?: string;
   legs: TransferLeg[];
   steps: TransferStep[];
   /** Destinazione del leg: usata dai deep-link Maps/Waze quando mode=car. */
@@ -328,13 +331,25 @@ function formatDurationMin(min: number): string {
   return parts.join(" ");
 }
 
+function formatDistanceMeters(m: number): string {
+  if (!Number.isFinite(m) || m <= 0) return "0 m";
+  if (m < 1000) return `${Math.round(m)} m`;
+  const km = m / 1000;
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+}
+
 function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
   const duration = formatDurationMin(b.duration_min);
-  if (carLike) return { mode: "car", duration, legs: [], steps: [], destination };
+  const distance =
+    typeof b.distance_m === "number" && b.distance_m > 0
+      ? formatDistanceMeters(b.distance_m)
+      : undefined;
+  if (carLike) return { mode: "car", duration, distance, legs: [], steps: [], destination };
   return {
     mode: "transit",
     duration,
+    distance,
     legs: [{ kind: "bus", label: b.line ?? "—" }],
     steps: [{ kind: "bus", title: b.line ? `${b.line} ·` : "Transit", place: b.stops ?? undefined, subtitle: b.note ?? undefined }],
   };
@@ -426,9 +441,12 @@ function buildItems(
     const next = visible[i + 1];
     // Priority: bridge salvato sul DB > computed lazy lato client >
     // sample (solo se `injectSample` attivo, fallback di onboarding).
+    // Backfill di distance_m dal computed quando il saved è pre-feature.
     const saved = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
-    const bridge = saved ?? computed ?? null;
+    const bridge: BridgeData | null = saved && computed
+      ? { ...saved, distance_m: saved.distance_m ?? computed.distance_m ?? null }
+      : saved ?? computed ?? null;
     if (bridge) {
       items.push({
         kind: "transfer",
@@ -1176,6 +1194,7 @@ export function Timeline({
                       mode={item.transfer.mode}
                       state={open ? "open" : "default"}
                       duration={item.transfer.duration}
+                      distance={item.transfer.distance}
                       legs={item.transfer.legs}
                       steps={item.transfer.steps}
                       destination={item.transfer.destination}

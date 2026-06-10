@@ -54,6 +54,9 @@ export type BookingStatus = "todo" | "booked" | "paid";
 export type BridgeData = {
   transport: "walk" | "metro" | "bus" | "taxi" | "bike" | "car" | "train";
   duration_min: number;
+  /** Distanza in metri dal Routes API. Null/undefined quando ignota
+   *  (entry persistite pre-distance, fallback senza geo, ecc.). */
+  distance_m?: number | null;
   line?: string | null;
   stops?: string | null;
   note?: string | null;

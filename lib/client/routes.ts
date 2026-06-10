@@ -2,7 +2,13 @@
  * lib/client/routes.ts — frontend client for the Google Routes proxy.
  */
 import { requestRaw } from "./http";
-import { routeCacheKey, getCachedPolyline, getCachedDurationSec, setCachedPolyline } from "./routeCache";
+import {
+  routeCacheKey,
+  getCachedPolyline,
+  getCachedDurationSec,
+  getCachedDistanceMeters,
+  setCachedPolyline,
+} from "./routeCache";
 import type { TransitOption } from "@/app/api/routes/transit/normalize";
 
 export type LatLng = { lat: number; lng: number };
@@ -13,27 +19,36 @@ export type {
   RideSegment,
 } from "@/app/api/routes/transit/normalize";
 
-export type RouteComputeResult = { polyline?: string; durationSec?: number };
+export type RouteComputeResult = {
+  polyline?: string;
+  durationSec?: number;
+  distanceMeters?: number;
+};
 
 export const routes = {
   /**
-   * POST /api/routes → { polyline, durationSec? }.
+   * POST /api/routes → { polyline, durationSec?, distanceMeters? }.
    * Client-cached (localStorage, ≤30d). Cache key = fingerprint(points + mode).
-   * Cache hit ritorna polyline + durationSec quando presente (entries scritte
-   * dalla v2 dell'endpoint); entries v1-only ritornano solo polyline e
-   * forzano un re-fetch quando il consumer chiede la duration.
+   * Cache hit ritorna polyline + durationSec + distanceMeters quando presenti;
+   * entries scritte da versioni precedenti possono mancare distanceMeters e
+   * forzano un re-fetch quando il consumer chiede la distanza.
    */
   compute: async (points: LatLng[], travelMode: string): Promise<RouteComputeResult> => {
     const key = routeCacheKey(points, travelMode);
     const cachedPolyline = getCachedPolyline(key);
     const cachedDuration = getCachedDurationSec(key);
-    // Cache hit "completo" (polyline + duration) → niente network.
-    if (cachedPolyline && cachedDuration != null) {
-      return { polyline: cachedPolyline, durationSec: cachedDuration };
+    const cachedDistance = getCachedDistanceMeters(key);
+    // Cache hit "completo" (polyline + duration + distance) → niente network.
+    if (cachedPolyline && cachedDuration != null && cachedDistance != null) {
+      return {
+        polyline: cachedPolyline,
+        durationSec: cachedDuration,
+        distanceMeters: cachedDistance,
+      };
     }
 
     const res = await requestRaw<RouteComputeResult>("POST", "/api/routes", { points, travelMode });
-    if (res.polyline) setCachedPolyline(key, res.polyline, res.durationSec);
+    if (res.polyline) setCachedPolyline(key, res.polyline, res.durationSec, res.distanceMeters);
     return res;
   },
 
