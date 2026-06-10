@@ -597,10 +597,23 @@
       "beach": "Beach",
       "swim": "Swim",
       "park": "Park",
+      "bed": "Hotel",
+      "tent": "Camping",
+      "house": "Apartment",
+      "ryokan": "Guest house",
       "star": "Favorite",
       "music": "Music",
       "info": "Info",
       "gift": "Gift"
+    },
+    "stopIconCategories": {
+      "food": "Food & drink",
+      "sights": "Sights",
+      "shop": "Shopping",
+      "transport": "Transport",
+      "nature": "Nature",
+      "sleep": "Lodging",
+      "other": "Other"
     }
   },
   "Go": {

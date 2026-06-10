@@ -41,6 +41,7 @@ import {
 } from "@/features/activity/ActivityTimeChips";
 import { ActivityTimePicker } from "@/features/activity/ActivityTimePicker";
 import { ActivityDurationPicker } from "@/features/activity/ActivityDurationPicker";
+import { IconPicker } from "@/features/activity/IconPicker";
 import { IconClock } from "@/components/ui/icons";
 
 /** HH:mm in numerico — coerente con i picker (minuti su step di 15). */
@@ -74,6 +75,8 @@ const MODE_OPTIONS = [
 export function ActivityStop({
   title,
   icon = IconBed,
+  iconKey = null,
+  onIconChange,
   state = "default",
   accent = "ink",
   mode = "sleep",
@@ -114,6 +117,12 @@ export function ActivityStop({
 }: {
   title: string;
   icon?: IconCmp;
+  /** Chiave dell'icona corrente (es. "coffee", "bed"). Usata dal IconPicker
+   *  per evidenziare l'opzione selezionata. Se null, niente highlight. */
+  iconKey?: string | null;
+  /** Callback quando l'utente sceglie una nuova icona dal picker. Quando
+   *  presente, lo StopIconBadge in stato open diventa un trigger del picker. */
+  onIconChange?: (iconKey: string) => void;
   state?: ActivityStopState;
   /** Collapsed badge tone. "primary" paints the icon badge orange (used
    *  for accommodation rows in the Explore timeline). */
@@ -206,6 +215,11 @@ export function ActivityStop({
   // Picker aperto: arrival/departure/duration esclusivi fra loro.
   // Il toggle (click sulla stessa chip due volte) chiude il picker.
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null);
+  // IconPicker: aperto dal click sullo StopIconBadge quando `onIconChange`
+  // è presente. Indipendente dagli altri picker (vive a fianco del titolo
+  // nell'header del pannello aperto).
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const iconPopoverRef = useRef<HTMLDivElement | null>(null);
   // Reset del picker quando il pannello si chiude (state ≠ "open"). Usiamo
   // il pattern "derive state from props" suggerito dai docs React (reset
   // in fase di render, evitando useEffect+setState che fa cascading
@@ -214,8 +228,23 @@ export function ActivityStop({
   const [lastState, setLastState] = useState(state);
   if (lastState !== state) {
     setLastState(state);
-    if (state !== "open") setOpenPicker(null);
+    if (state !== "open") {
+      setOpenPicker(null);
+      setIconPickerOpen(false);
+    }
   }
+
+  // Click-outside per chiudere il popover dell'IconPicker.
+  useEffect(() => {
+    if (!iconPickerOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      const node = iconPopoverRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      setIconPickerOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [iconPickerOpen]);
 
   // Le chip sono sempre presenti sull'activity (mode="stop"): se l'utente
   // non ha ancora impostato un'ora vediamo "—:—" e la chip resta
@@ -364,10 +393,37 @@ export function ActivityStop({
   }
 
   /* ── Open ───────────────────────────────────────────────────── */
+  const pickerMode = mode === "sleep" ? "lodging" : "activity";
   return (
     <div className={cn("flex w-full flex-col gap-1 rounded-sm bg-ink p-1", className)}>
       <div className="flex items-center gap-2 px-1 py-0.5">
-        <StopIconBadge icon={icon} tone="primary" />
+        {onIconChange ? (
+          <div ref={iconPopoverRef} className="relative">
+            <button
+              type="button"
+              aria-label="Cambia icona"
+              aria-expanded={iconPickerOpen}
+              onClick={() => setIconPickerOpen((v) => !v)}
+              className="block rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <StopIconBadge icon={icon} tone="primary" />
+            </button>
+            {iconPickerOpen ? (
+              <div className="absolute left-0 top-full z-dropdown mt-2">
+                <IconPicker
+                  mode={pickerMode}
+                  value={iconKey}
+                  onChange={(key) => {
+                    onIconChange(key);
+                    setIconPickerOpen(false);
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <StopIconBadge icon={icon} tone="primary" />
+        )}
         <span className="truncate text-[14px] text-white">{title}</span>
       </div>
 

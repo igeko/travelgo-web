@@ -43,6 +43,9 @@ export type AccommodationDisplay = {
    *  address, the title, etc.) on the same entity backing the stay. Only
    *  set by the canonical resolver — the legacy fallback has no entity. */
   activity_id?: string;
+  /** Icon key sull'entità Property (activities.icon). Quando set, vince
+   *  sulla mappa icona per `type` nel render. Solo canonical resolver. */
+  iconKey?: string | null;
 };
 
 // ── Canonical resolver: from nights ───────────────────────────────
@@ -87,6 +90,7 @@ export function accommodationsFromNights<D extends { id: string }>(
         nights_total: totalByStay.get(n.stay_id) ?? 1,
         stay_id: n.stay_id,
         activity_id: a.id,
+        iconKey: a.icon ?? null,
       },
     };
   });

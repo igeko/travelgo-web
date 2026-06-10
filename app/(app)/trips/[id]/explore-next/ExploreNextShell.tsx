@@ -95,6 +95,38 @@ function applyTimeEdits(
 }
 
 /**
+ * Apply optimistic icon edits onto a TimelineDayData[] projection. Keyed by
+ * activity entity id; each entry overwrites `activity.icon` on every scheduled
+ * occurrence. Per le accommodation V2 risale all'activity via accommodation.
+ * activity_id e sovrascrive iconKey, così l'icona corrente nel pannello e nel
+ * pin lodging si aggiornano subito senza attendere il server snapshot.
+ */
+function applyIconEdits(
+  days: TimelineDayData[],
+  edits: Map<string, string>,
+): TimelineDayData[] {
+  if (edits.size === 0) return days;
+  return days.map((day) => {
+    let mutated = false;
+    const activities = day.activities.map((act) => {
+      const entityId = act.activity_id ?? act.entity_id ?? null;
+      if (!entityId || !edits.has(entityId)) return act;
+      mutated = true;
+      return { ...act, icon: edits.get(entityId)! };
+    });
+    const acc = day.accommodation;
+    if (acc?.activity_id && edits.has(acc.activity_id)) {
+      return {
+        ...day,
+        activities: mutated ? activities : day.activities,
+        accommodation: { ...acc, iconKey: edits.get(acc.activity_id)! },
+      };
+    }
+    return mutated ? { ...day, activities } : day;
+  });
+}
+
+/**
  * Apply optimistic coordinate edits onto a TimelineDayData[] projection.
  * Keyed by activity entity id. Overwrites only lat/lng on every scheduled
  * occurrence AND on every accommodation pointing to that entity, leaving
@@ -398,6 +430,13 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [optTimeEdits, setOptTimeEdits] = useState<Map<string, ScheduledTimePatch>>(
     () => new Map(),
   );
+  // Optimistic icon edits keyed by activity entity id. L'icona è dato di
+  // entità (activities.icon), quindi propaga a ogni occorrenza scheduled e
+  // all'accommodation che la usa come Property. Cleared come gli altri overlay
+  // al rientro del snapshot.
+  const [optIconEdits, setOptIconEdits] = useState<Map<string, string>>(
+    () => new Map(),
+  );
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
@@ -407,6 +446,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optCoordEdits.size > 0) setOptCoordEdits(new Map());
     if (optMoveActions.length > 0) setOptMoveActions([]);
     if (optTimeEdits.size > 0) setOptTimeEdits(new Map());
+    if (optIconEdits.size > 0) setOptIconEdits(new Map());
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
@@ -417,8 +457,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optCoordEdits.size > 0) out = applyCoordEdits(out, optCoordEdits);
     if (optMoveActions.length > 0) out = applyMoveActions(out, optMoveActions);
     if (optTimeEdits.size > 0) out = applyTimeEdits(out, optTimeEdits);
+    if (optIconEdits.size > 0) out = applyIconEdits(out, optIconEdits);
     return out;
-  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions, optTimeEdits]);
+  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions, optTimeEdits, optIconEdits]);
 
   // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
   // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
@@ -681,6 +722,35 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
+  /**
+   * Cambio icona dal IconPicker (StopIconBadge nell'open card). Optimistic:
+   * applichiamo subito sull'overlay `optIconEdits` (chiave = activity entity
+   * id), poi PATCH /api/activities/[id] e router.refresh. Su errore: rollback.
+   * Riusa lo schema entity-level dell'updateEntity esistente.
+   */
+  const handleIconChange = useCallback(
+    async (activityId: string, iconKey: string) => {
+      setOptIconEdits((prev) => {
+        const next = new Map(prev);
+        next.set(activityId, iconKey);
+        return next;
+      });
+      try {
+        await api.activities.updateEntity(activityId, { icon: iconKey });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateIcon failed:", err);
+        setOptIconEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(activityId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleAddressChange = useCallback(
     async (activityId: string, place: PlaceResult | null) => {
       // Optimistic: apply locally first so the AddressField shows the new
@@ -923,6 +993,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onExtendStay={handleExtendStay}
             onReduceStay={handleReduceStay}
             onAddressChange={handleAddressChange}
+            onIconChange={handleIconChange}
             onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
             hoveredRowId={hoveredRowId}
