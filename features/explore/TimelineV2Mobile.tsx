@@ -120,6 +120,17 @@ type Props = {
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
+  /** Inline editing dell'icona (activities.icon) — keyed by entity id. */
+  onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
+  /** Inline editing del titolo (activities.title) — keyed by entity id. */
+  onTitleChange?: (activityId: string, title: string) => void | Promise<void>;
+  /** Inline editing della descrizione (activities.short_desc) — keyed by entity id. */
+  onShortDescChange?: (activityId: string, shortDesc: string) => void | Promise<void>;
+  /** Inline editing delle note del giorno (days.notes) — keyed by day id.
+   *  In questa iterazione il mobile renderizza le notes solo in READ; il
+   *  prop è accettato come API drop-in con la desktop ma l'edit affordance
+   *  inline non è ancora implementato qui. */
+  onDayNotesChange?: (dayId: string, notes: string) => void | Promise<void>;
   onUpdateActivityInstance?: (
     scheduledId: string,
     patch: { time?: string | null; duration_min?: number | null },
@@ -263,7 +274,12 @@ type Item =
 type LodgingVM = {
   id: string;
   title: string;
+  /** Descrizione breve della Property che backa lo stay (activities.short_desc). */
+  shortDesc: string | null;
   icon: IconCmp;
+  /** Icon key sull'entità Property (activities.icon). Passata al ActivityStop
+   *  open per il IconPicker. */
+  iconKey: string | null;
   address: string | null;
   placeId: string | null;
   lat: number | null;
@@ -329,10 +345,13 @@ function buildLodging(
   dayId: string,
 ): LodgingVM | null {
   if (!accommodation) return null;
+  const fromKey = accommodation.iconKey ? getStopIcon(accommodation.iconKey) : null;
   return {
     id: `lodging-${dayId}`,
     title: accommodation.name,
-    icon: accommodationIcon(accommodation.type),
+    shortDesc: accommodation.short_desc ?? null,
+    icon: fromKey ?? accommodationIcon(accommodation.type),
+    iconKey: accommodation.iconKey ?? null,
     address: accommodation.address,
     placeId: accommodation.place_id,
     lat: accommodation.lat,
@@ -655,6 +674,9 @@ function MNightCard({
   onOpen,
   onClose,
   onAddressChange,
+  onIconChange,
+  onTitleChange,
+  onShortDescChange,
   onConvertToStop,
   onExtendStay,
   onReduceStay,
@@ -667,6 +689,9 @@ function MNightCard({
   onOpen: () => void;
   onClose: () => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
+  onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
+  onTitleChange?: (activityId: string, title: string) => void | Promise<void>;
+  onShortDescChange?: (activityId: string, shortDesc: string) => void | Promise<void>;
   onConvertToStop?: (stayId: string) => void | Promise<void>;
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
@@ -677,9 +702,14 @@ function MNightCard({
         <ActivityStop
           title={lodging.title}
           icon={lodging.icon}
+          iconKey={lodging.iconKey}
+          onIconChange={onIconChange && lodging.activityId ? (key) => {
+            void onIconChange(lodging.activityId!, key);
+          } : undefined}
           accent="primary"
           state="open"
           mode="sleep"
+          description={lodging.shortDesc ?? undefined}
           nights={lodging.nightsTotal}
           nightIndex={lodging.nightIndex}
           addressLocation={lodging.address}
@@ -689,6 +719,12 @@ function MNightCard({
           onAddressChange={(place) => {
             if (lodging.activityId) void onAddressChange?.(lodging.activityId, place);
           }}
+          onTitleCommit={onTitleChange && lodging.activityId ? (next) => {
+            void onTitleChange(lodging.activityId!, next);
+          } : undefined}
+          onShortDescCommit={onShortDescChange && lodging.activityId ? (next) => {
+            void onShortDescChange(lodging.activityId!, next);
+          } : undefined}
           onOpen={onOpen}
           onClose={onClose}
           onRemove={onClose}
@@ -782,6 +818,11 @@ export function TimelineV2Mobile({
   onExtendStay,
   onReduceStay,
   onAddressChange,
+  onIconChange,
+  onTitleChange,
+  onShortDescChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onDayNotesChange: _onDayNotesChange,
   onUpdateActivityInstance,
   openOverride,
   hoveredRowId,
@@ -1174,12 +1215,25 @@ export function TimelineV2Mobile({
                                     isDragging={isDragging}
                                     title={a.title}
                                     icon={Icon}
+                                    iconKey={a.icon}
+                                    onIconChange={onIconChange ? (key) => {
+                                      const entityId = a.activity_id ?? a.entity_id ?? null;
+                                      if (entityId) void onIconChange(entityId, key);
+                                    } : undefined}
                                     size="sm"
                                     state={open ? "open" : hovered ? "selected" : "default"}
                                     mode="stop"
                                     timeRange={a.time ?? "—"}
                                     time={rowTime}
                                     description={a.short_desc ?? undefined}
+                                    onTitleCommit={onTitleChange ? (next) => {
+                                      const entityId = a.activity_id ?? a.entity_id ?? null;
+                                      if (entityId) void onTitleChange(entityId, next);
+                                    } : undefined}
+                                    onShortDescCommit={onShortDescChange ? (next) => {
+                                      const entityId = a.activity_id ?? a.entity_id ?? null;
+                                      if (entityId) void onShortDescChange(entityId, next);
+                                    } : undefined}
                                     arrivalHM={arrivalHM ?? undefined}
                                     departureHM={departureHM ?? undefined}
                                     arrivalDateLabel={arrivalDateLabel}
@@ -1265,6 +1319,9 @@ export function TimelineV2Mobile({
                     onOpen={() => setOpenId(lodging.id)}
                     onClose={() => setOpenId(null)}
                     onAddressChange={onAddressChange}
+                    onIconChange={onIconChange}
+                    onTitleChange={onTitleChange}
+                    onShortDescChange={onShortDescChange}
                     onConvertToStop={onConvertToStop}
                     onExtendStay={onExtendStay}
                     onReduceStay={onReduceStay}

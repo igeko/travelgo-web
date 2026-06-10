@@ -1230,6 +1230,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onExtendStay={handleExtendStay}
             onReduceStay={handleReduceStay}
             onAddressChange={handleAddressChange}
+            onIconChange={handleIconChange}
+            onTitleChange={handleTitleChange}
+            onShortDescChange={handleShortDescChange}
+            onDayNotesChange={handleDayNotesChange}
             onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
             hoveredRowId={hoveredRowId}
