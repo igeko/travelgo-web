@@ -46,6 +46,19 @@ migrazione una tantum. `STOP_ICONS` resta solo come legacy-resolver.
   con lo StayTypePicker (timeline-readability it.11) e l'icona deriva
   da `accommodationIcon(type)`.
 
+## Nota (2026-06-10) — riallineamento richiesto
+
+L'implementazione (`features/activity/IconPicker.tsx`, commit 149db34)
+ha introdotto una variante A TAB basata su `STOP_ICON_CATEGORIES` — un
+set parallelo che NON rispetta il vincolo fondante (dominio =
+EXPLORE_CATEGORY_TREE). Decisione di Enrico: la direzione resta
+**A · Sezioni** (tutto visibile, scroll). La pagina sketch è stata
+ripristinata con la A come principale; la variante tab è archiviata in
+fondo per confronto. Il componente reale va riallineato: resa a sezioni
++ dominio derivato dall'albero categorie; `STOP_ICON_CATEGORIES` non
+deve diventare una seconda fonte di verità (al più legacy-resolver per
+le vecchie chiavi di `activity.icon`).
+
 ## Stato
 
 - [x] Sketch generalizzato + demo interattiva
