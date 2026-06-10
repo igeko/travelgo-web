@@ -223,6 +223,20 @@ stessa tonalità (h≈204) ribaltata in chiaro.
   `border-ink/15`, riquadro icona `bg-primary` invariato.
 - Zero conflitto col blu selezione; il badge arancio resta l'àncora.
 
+## Iterazione 10 (2026-06-10) — transfer solo a giorno selezionato
+
+I tempi di percorrenza si mostrano SOLO quando il giorno è selezionato
+(coerente con la regola degli orari per-stop). Giorno collapsed →
+segmento tratteggiato muto: il leg si intuisce ma non pesa.
+
+**Eccezione leg lunghi**: i trasferimenti ≥1h (soglia da condividere
+come costante, su `duration_min` ≥ 60) mostrano icona+durata anche da
+collapsed — un leg di 2h+ ridisegna la giornata e va visto a colpo
+d'occhio nel browse del viaggio. Da espanso: label completa (durata +
+distanza + legs); lo stato open del Transfer è raggiungibile solo da lì.
+
+Applicato anche al mobile (half = muto/solo lunghi, full = completo).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

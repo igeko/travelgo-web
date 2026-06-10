@@ -198,12 +198,29 @@ function MStopRow({
   );
 }
 
-function MTransfer({ t, tone }: { t: TransferInfo; tone?: "default" | "selected" }) {
+function MTransfer({
+  t,
+  tone,
+  expanded = false,
+}: {
+  t: TransferInfo;
+  tone?: "default" | "selected";
+  expanded?: boolean;
+}) {
+  const longLeg = /\d+\s*h/.test(t.duration);
+  if (!expanded && !longLeg) {
+    return (
+      <div className="grid items-center gap-x-2" style={M_GRID}>
+        <MRail dashed tone={tone} />
+        <div className="h-2.5" />
+      </div>
+    );
+  }
   return (
     <div className="grid items-center gap-x-2" style={M_GRID}>
       <MRail dashed tone={tone} />
       <div className="origin-left scale-[0.92] py-1">
-        <TransferLabel t={t} />
+        <TransferLabel t={expanded ? t : { mode: t.mode, duration: t.duration }} />
       </div>
     </div>
   );
@@ -307,12 +324,14 @@ function SheetFull() {
       <div className="flex-1 overflow-hidden px-3 pb-1">
         <MDayHeader day={day} expanded />
         <div className="rounded-md bg-surface-soft ring-1 ring-ink/10">
-          {day.incomingTransfer ? <MTransfer t={day.incomingTransfer} tone="selected" /> : null}
+          {day.incomingTransfer ? (
+            <MTransfer t={day.incomingTransfer} tone="selected" expanded />
+          ) : null}
           {visible.map((stop) => (
             <div key={stop.title}>
               <MStopRow stop={stop} expanded tone="selected" />
               {stop.transferOut && !stop.fuzzy ? (
-                <MTransfer t={stop.transferOut} tone="selected" />
+                <MTransfer t={stop.transferOut} tone="selected" expanded />
               ) : null}
             </div>
           ))}

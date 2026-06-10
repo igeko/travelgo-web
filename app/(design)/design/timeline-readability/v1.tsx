@@ -191,17 +191,38 @@ function StopRow({
   );
 }
 
+/** It.10 — i tempi di percorrenza si mostrano SOLO a giorno selezionato.
+ *  Collapsed: segmento tratteggiato muto (il leg si intuisce, non pesa).
+ *  Eccezione: leg lunghi (≥1h) mostrano comunque la durata — ridisegnano
+ *  la giornata e vanno visti anche a colpo d'occhio. */
+function isLongLeg(t: TransferInfo): boolean {
+  return /\d+\s*h/.test(t.duration) || /\dg/.test(t.duration);
+}
+
 function TransferRow({
   t,
   tone,
+  expanded = false,
 }: {
   t: TransferInfo;
   tone?: "default" | "selected";
+  expanded?: boolean;
 }) {
+  if (!expanded && !isLongLeg(t)) {
+    return (
+      <Row rail="dashed" tone={tone}>
+        <div className="h-3" />
+      </Row>
+    );
+  }
   return (
     <Row rail="dashed" tone={tone}>
       <div className="py-1.5 pl-1">
-        <TransferLabel t={t} />
+        {expanded ? (
+          <TransferLabel t={t} />
+        ) : (
+          <TransferLabel t={{ mode: t.mode, duration: t.duration }} />
+        )}
       </div>
     </Row>
   );
@@ -268,13 +289,13 @@ export function TimelineV1() {
               )}
             >
               {day.incomingTransfer ? (
-                <TransferRow t={day.incomingTransfer} tone={tone} />
+                <TransferRow t={day.incomingTransfer} tone={tone} expanded={expanded} />
               ) : null}
               {visible.map((stop) => (
                 <div key={stop.title} className="flex flex-col">
                   <StopRow stop={stop} expanded={expanded} tone={tone} />
                   {stop.transferOut && !stop.fuzzy ? (
-                    <TransferRow t={stop.transferOut} tone={tone} />
+                    <TransferRow t={stop.transferOut} tone={tone} expanded={expanded} />
                   ) : null}
                 </div>
               ))}

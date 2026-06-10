@@ -153,15 +153,19 @@ function DevNotes() {
 
         <Block n={5} title="Transfer — Transfer.tsx (collapsed)">
           <p>
-            Il collapsed cambia resa: tratto di rail tratteggiato
-            (<code>border-l-2 border-dashed border-ink/20</code>, /50 se
-            giorno espanso) + label accanto: icona modalità 13px, durata{" "}
+            Tempi di percorrenza visibili SOLO a giorno selezionato. Giorno
+            collapsed: solo il tratto di rail tratteggiato muto
+            (<code>border-l-2 border-dashed border-ink/20</code>) —
+            eccezione: leg lunghi (≥60 min) mostrano comunque icona+durata.
+            Giorno espanso: label completa (icona modalità 13px, durata{" "}
             <strong>11px semibold ink</strong>, distanza, legs transit
-            (walk › bus › walk). Lo stato open (dettaglio percorso +
-            Maps/Waze) resta com&apos;è. La distanza oggi NON esiste su{" "}
-            <code>BridgeData</code>: aggiungere <code>distance_m</code> al
-            bridge JSON e a <code>useChainBridges</code> (Directions la
-            fornisce già); finché manca, mostrare solo la durata.
+            walk › bus › walk), rail /50. Lo stato open (dettaglio percorso
+            + Maps/Waze) resta com&apos;è, raggiungibile solo da espanso.
+            La distanza oggi NON esiste su <code>BridgeData</code>:
+            aggiungere <code>distance_m</code> al bridge JSON e a{" "}
+            <code>useChainBridges</code> (Directions la fornisce già);
+            finché manca, mostrare solo la durata. Soglia leg lungo:
+            costante condivisa (60 min) su <code>duration_min</code>.
           </p>
         </Block>
 
