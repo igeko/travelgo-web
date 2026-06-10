@@ -288,6 +288,23 @@ successivo) e dalla superficie stay, non più dalle righe orarie.
 
 Aggiornati: `NightDivider` (v1), `MNight` (mobile), blocco 6 DevNotes.
 
+## Iterazione 13 (2026-06-10) — transfer SEMPRE nascosti collapsed
+
+Rivisitata l'eccezione "leg ≥1h" di it.10: in pratica creava confusione
+("perché vedo gli spostamenti in alcuni giorni e in altri no?") e
+rompeva l'invariante semplice "collapsed = colonna pulita di tappe".
+
+**Regola finale**: i Transfer (incoming cross-day + activity↔activity
+intra-day) sono renderizzati ESCLUSIVAMENTE a giorno espanso. Nessuna
+eccezione per durata. Implementazione: `TimelineV2.buildItems` filtra a
+monte, niente spacer muted — lo spazio verticale si compatta davvero.
+
+I leg lunghi non spariscono dall'app: bastano un click sul giorno per
+vederli (con tutte le informazioni: distanza, modalità, legs transit,
+deep-link Maps/Waze). Il browse veloce vede solo le tappe.
+
+Costante `LONG_LEG_MIN` rimossa dal codice.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

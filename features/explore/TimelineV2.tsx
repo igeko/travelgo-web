@@ -255,11 +255,6 @@ type LodgingVM = {
   activityId?: string;
 };
 
-/** Leg ≥ 60 min sono "lunghi" — restano visibili anche sui giorni collapsed
- *  (sono spostamenti che cambiano il senso della giornata; tenerli sempre
- *  visibili è la spec /design/timeline-readability it.10). */
-const LONG_LEG_MIN = 60;
-
 function buildItems(
   acts: Activity[],
   expanded: boolean,
@@ -273,23 +268,18 @@ function buildItems(
     .filter((a) => expanded || a.fuzzy !== true);
 
   // Transfer (incoming cross-day + activity↔activity intra-day): renderizzati
-  // SOLO a giorno espanso, con eccezione leg lunghi (>= LONG_LEG_MIN). Niente
-  // spacer "muted" — i giorni collapsed compattano davvero lo spazio verticale.
-  const includeTransfer = (b: BridgeData | null | undefined): boolean => {
-    if (!b) return false;
-    if (expanded) return true;
-    return Number.isFinite(b.duration_min) && b.duration_min >= LONG_LEG_MIN;
-  };
-
-  if (incomingChainPrevId && visible.length > 0) {
+  // SOLO a giorno espanso. Niente spacer muted, niente eccezione per leg
+  // lunghi — i giorni collapsed compattano davvero lo spazio verticale
+  // (decisione utente, supera l'eccezione documentata in it.10).
+  if (expanded && incomingChainPrevId && visible.length > 0) {
     const first = visible[0];
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
     const bridge = computedIn ?? first.bridge_in_json ?? null;
-    if (includeTransfer(bridge)) {
+    if (bridge) {
       items.push({
         kind: "transfer",
         id: `${first.id}-in`,
-        transfer: bridgeTransfer(bridge!, destinationFromActivity(first)),
+        transfer: bridgeTransfer(bridge, destinationFromActivity(first)),
       });
     }
   }
@@ -298,15 +288,16 @@ function buildItems(
     items.push({ kind: "activity", activity });
     const last = i === visible.length - 1;
     if (last) return;
+    if (!expanded) return; // collapsed: niente transfer fra le tappe.
     const next = visible[i + 1];
     const saved = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
     const bridge = saved ?? computed ?? null;
-    if (includeTransfer(bridge)) {
+    if (bridge) {
       items.push({
         kind: "transfer",
         id: `${activity.id}-br`,
-        transfer: bridgeTransfer(bridge!, destinationFromActivity(next)),
+        transfer: bridgeTransfer(bridge, destinationFromActivity(next)),
       });
     } else if (injectSample && expanded) {
       // Sample injectato solo a giorno espanso: 46 min è sotto la soglia,
