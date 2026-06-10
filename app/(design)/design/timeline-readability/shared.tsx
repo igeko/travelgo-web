@@ -6,41 +6,28 @@
 import type { ComponentType } from "react";
 import { cn } from "@/lib/cn";
 import {
-  IconBackpack,
   IconBed,
-  IconBeer,
-  IconBuildingBank,
-  IconBuildingChurch,
-  IconBuildingCommunity,
-  IconBuildingCottage,
-  IconBuildingMonument,
-  IconBurger,
   IconBus,
   IconCar,
   IconChevronRight,
   IconClock,
   IconCoffee,
-  IconCompass,
-  IconEye,
   IconGripVertical,
-  IconHome,
   IconMapPin,
   IconMinus,
   IconMountain,
-  IconParking,
   IconPlane,
   IconPlus,
   IconShoppingBag,
   IconBuildingStore,
-  IconSoup,
   IconTent,
-  IconToolsKitchen2,
   IconTorii,
   IconTree,
   IconTrash,
   IconWalk,
   IconX,
 } from "@/components/ui/icons";
+import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
 
 /* ─── Tipi ──────────────────────────────────────────────────────── */
 
@@ -479,77 +466,45 @@ export function IconPickerTrigger({
   );
 }
 
-/** Popover flottante a SEZIONI: tutte le icone delle categorie di
- *  ExploreToolbar (EXPLORE_CATEGORY_TREE), raggruppate per macro
- *  Dormi/Mangia/Esplora. Un solo tap per scegliere; label i18n
- *  (ExploreCategories.*) come tooltip. Selezionata = bg-ink. */
+/** Popover flottante a SEZIONI — il dominio è SEMPRE quello della
+ *  ExploreToolbar: derivato da EXPLORE_CATEGORY_TREE, nessuna lista
+ *  hardcoded (una categoria nuova compare qui automaticamente).
+ *  Versione generalizzata + demo interattiva: /design/icon-picker. */
 export function IconPickerPanel({ selected }: { selected: IconCmp }) {
-  const sections: { macro: string; MacroIcon: IconCmp; subs: { id: string; Icon: IconCmp }[] }[] = [
-    {
-      macro: "Dormi",
-      MacroIcon: IconBed,
-      subs: [
-        { id: "hotel", Icon: IconBuildingCottage },
-        { id: "bnb", Icon: IconBuildingCommunity },
-        { id: "ostello", Icon: IconBackpack },
-        { id: "appartamenti", Icon: IconHome },
-        { id: "camping", Icon: IconTent },
-      ],
-    },
-    {
-      macro: "Mangia",
-      MacroIcon: IconSoup,
-      subs: [
-        { id: "ristoranti", Icon: IconToolsKitchen2 },
-        { id: "caffe", Icon: IconCoffee },
-        { id: "bar", Icon: IconBeer },
-        { id: "street", Icon: IconBurger },
-        { id: "mercati", Icon: IconShoppingBag },
-      ],
-    },
-    {
-      macro: "Esplora",
-      MacroIcon: IconCompass,
-      subs: [
-        { id: "musei", Icon: IconBuildingBank },
-        { id: "monumenti", Icon: IconBuildingMonument },
-        { id: "culto", Icon: IconBuildingChurch },
-        { id: "parchi", Icon: IconTree },
-        { id: "viste", Icon: IconEye },
-        { id: "parking", Icon: IconParking },
-      ],
-    },
-  ];
   return (
     <div className="w-[252px] rounded-md border border-border-strong bg-surface p-2.5 shadow-float">
-      {sections.map(({ macro, MacroIcon, subs }, i) => (
-        <div key={macro} className={cn(i > 0 && "mt-2.5")}>
-          <p className="mb-1 flex items-center gap-1.5 px-0.5 text-[9px] font-medium uppercase tracking-eyebrow text-ink-faint">
-            <MacroIcon size={12} />
-            {macro}
-          </p>
-          <div className="grid grid-cols-6 gap-1">
-            {subs.map(({ id, Icon }) => {
-              const isSel = Icon === selected;
-              return (
-                <span
-                  key={id}
-                  role="button"
-                  title={id}
-                  className={cn(
-                    "flex h-8 cursor-pointer items-center justify-center rounded-md",
-                    isSel
-                      ? "bg-ink text-white"
-                      : "bg-surface-soft text-ink-soft hover:bg-ink/10 hover:text-ink",
-                  )}
-                >
-                  <Icon size={16} />
-                </span>
-              );
-            })}
+      {EXPLORE_CATEGORY_TREE.map((macro, i) => {
+        const MacroIcon = macro.icon;
+        return (
+          <div key={macro.id} className={cn(i > 0 && "mt-2.5")}>
+            <p className="mb-1 flex items-center gap-1.5 px-0.5 text-[9px] font-medium uppercase tracking-eyebrow text-ink-faint">
+              <MacroIcon size={12} />
+              {macro.id}
+            </p>
+            <div className="grid grid-cols-6 gap-1">
+              {macro.subs.map((sub) => {
+                const Icon = sub.icon;
+                const isSel = Icon === selected;
+                return (
+                  <span
+                    key={sub.id}
+                    role="button"
+                    title={sub.id}
+                    className={cn(
+                      "flex h-8 cursor-pointer items-center justify-center rounded-md",
+                      isSel
+                        ? "bg-ink text-white"
+                        : "bg-surface-soft text-ink-soft hover:bg-ink/10 hover:text-ink",
+                    )}
+                  >
+                    <Icon size={16} />
+                  </span>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
