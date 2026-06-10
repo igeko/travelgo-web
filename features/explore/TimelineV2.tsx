@@ -163,15 +163,6 @@ function formatLongLabel(iso: string): string {
   return `${weekdayLong[0].toUpperCase()}${weekdayLong.slice(1)} ${day} ${monthLong[0].toUpperCase()}${monthLong.slice(1)}`;
 }
 
-/** Format "Mer 5" — short label per check-in/check-out della banda notte. */
-function formatShortDate(iso: string): string {
-  const d = localDate(iso);
-  const weekday = d
-    .toLocaleDateString("it-IT", { weekday: "short" })
-    .replace(".", "");
-  return `${weekday[0].toUpperCase()}${weekday.slice(1)} ${d.getDate()}`;
-}
-
 /* ── Day load (fill bar input) ────────────────────────────────────── */
 
 function computeDayLoad(activities: Activity[]): { fillPct: number; overflow: boolean } {
@@ -602,15 +593,15 @@ function DayHeaderV2({
 /* ── NightBand V2 ─────────────────────────────────────────────────── */
 
 /**
- * Banda notte FRA i giorni — collapsed: card bianca a 3 righe
- * (check-in / nome+notte / check-out). Quando aperta, ospita il vero
- * `ActivityStop` mode="sleep" così tutta la logica esistente (toggle
- * sleep↔stop, stepper notti, address change, remove) resta intatta.
+ * Banda notte FRA i giorni — collapsed: card a UNA RIGA (it.12) come una
+ * stop card normale, con sfondo stay soft. Mostra solo riquadro icona
+ * (tipo struttura) + nome + "Notte N di M" a destra. Orari e date
+ * check-in/check-out vivono nel detail/editor (TimePair). Quando aperta,
+ * ospita il vero `ActivityStop` mode="sleep" con tutta la logica
+ * esistente (toggle sleep↔stop, stepper notti, address change, remove).
  */
 function NightBandV2({
   lodging,
-  fromIso,
-  toIso,
   open,
   hovered,
   onOpen,
@@ -621,10 +612,6 @@ function NightBandV2({
   onReduceStay,
 }: {
   lodging: LodgingVM;
-  /** ISO del giorno di check-in (sotto cui la banda è renderizzata). */
-  fromIso: string | null;
-  /** ISO del giorno di check-out (giorno seguente). */
-  toIso: string | null;
   open: boolean;
   hovered: boolean;
   onOpen: () => void;
@@ -671,9 +658,6 @@ function NightBandV2({
     );
   }
 
-  const fromLabel = fromIso ? formatShortDate(fromIso) : "";
-  const toLabel = toIso ? formatShortDate(toIso) : "";
-
   return (
     <button
       type="button"
@@ -686,36 +670,19 @@ function NightBandV2({
     >
       <div
         className={cn(
-          "flex flex-col rounded-sm px-3.5 py-2 transition-colors",
+          "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors",
           hovered ? "bg-stay-hover" : "bg-stay hover:bg-stay-hover",
         )}
       >
-        {/* check-in — appartiene al giorno sopra */}
-        <div className="flex items-center justify-between text-[11px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">22:00</span> · check-in
-          </span>
-          <span>{fromLabel}</span>
-        </div>
-        {/* nome struttura — badge arancio col tipo */}
-        <div className="flex items-center gap-2.5 py-1.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-xs bg-primary text-white">
-            <lodging.icon size={14} />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-meta font-semibold text-ink">
-            {lodging.title}
-          </span>
-          <span className="shrink-0 text-[11px] text-stay-text">
-            Notte {lodging.nightIndex} di {lodging.nightsTotal}
-          </span>
-        </div>
-        {/* check-out — dalla parte del giorno dopo */}
-        <div className="flex items-center justify-between border-t border-ink/15 pt-1.5 text-[11px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">09:00</span> · check-out
-          </span>
-          <span>{toLabel}</span>
-        </div>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-white">
+          <lodging.icon size={18} />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
+          {lodging.title}
+        </span>
+        <span className="shrink-0 text-[11px] text-stay-text">
+          Notte {lodging.nightIndex} di {lodging.nightsTotal}
+        </span>
       </div>
     </button>
   );
@@ -991,7 +958,7 @@ export function TimelineV2({
         ref={rootRef}
         className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}
       >
-        {sortedDays.map((day, dayIdx) => {
+        {sortedDays.map((day) => {
           const expanded = selectedDayId === day.id;
           const dayLoad = computeDayLoad(day.activities);
           const items = buildItems(
@@ -1003,7 +970,6 @@ export function TimelineV2({
           );
           const lodging = buildLodging(day.accommodation, day.id);
           const showNotes = expanded && !!day.notes;
-          const nextDay = sortedDays[dayIdx + 1];
 
           // Solver tempi: arrivo/partenza per ogni activity del giorno.
           const dayActsOrdered = [...day.activities]
@@ -1221,8 +1187,6 @@ export function TimelineV2({
               {lodging ? (
                 <NightBandV2
                   lodging={lodging}
-                  fromIso={day.date}
-                  toIso={nextDay?.date ?? null}
                   open={openId === lodging.id}
                   hovered={openId !== lodging.id && hoveredRowId === lodging.id}
                   onOpen={() => setOpenId(lodging.id)}
