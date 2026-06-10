@@ -1057,7 +1057,14 @@ export function TimelineV2({
                     const hovered = !open && hoveredRowId === a.id;
                     const fuzzy = a.fuzzy === true;
                     const Icon = getStopIcon(a.icon) ?? IconMapPin;
-                    const rowTime = !fuzzy && expanded && a.time ? a.time : undefined;
+                    // Orario row: usa il tempo CALCOLATO dal solver (cascade
+                    // dayStart 09:00 + bridges + duration_min + override
+                    // `time`). `a.time` da solo non basta — solo la prima
+                    // tappa lo ha settato (anchor), le altre lo derivano.
+                    const computedArrivalMin = dayTimes.get(a.id)?.arrivalMin ?? null;
+                    const rowTime = !fuzzy && expanded && computedArrivalMin != null
+                      ? `${String(Math.floor(computedArrivalMin / 60)).padStart(2, "0")}:${String(computedArrivalMin % 60).padStart(2, "0")}`
+                      : undefined;
 
                     const handleRemove = () => {
                       setOpenId(null);
