@@ -43,12 +43,18 @@ export async function GET(req: NextRequest) {
   }
   if (!mapsConfigured()) return NextResponse.json({ error: "Not configured" }, { status: 500 });
 
+  // `locationRestriction` (vincolo duro) e non `locationBias` (suggerimento
+  // soft): query categoriche come "temple church place of worship" sono
+  // ambigue globalmente e con `locationBias` Google ritorna spesso match
+  // notori fuori dall'area (es. luoghi famosi a Londra) ignorando il
+  // suggerimento. Con la restriction Google non può cercare oltre il cerchio
+  // — radius già clampato a [1, 50000] m, il massimo accettato dall'API.
   const res = await placesSearchTextV1(
     {
       textQuery: query,
       languageCode: "en",
       maxResultCount: 20,
-      locationBias: {
+      locationRestriction: {
         circle: {
           center: { latitude: lat, longitude: lng },
           radius: Math.round(radius),

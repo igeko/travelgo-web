@@ -123,8 +123,9 @@ export function placesTextSearch(params: PlacesParams, revalidate?: number): Pro
  *
  * Sostituisce `placesTextSearch` per chi non ha piu' la legacy "Places API"
  * abilitata sulla key (Google ora richiede la migrazione a "Places API (New)"):
- * il body porta `textQuery` + `locationBias.circle.{center, radius}`, la
- * field-mask sceglie i campi nella response. Auth via `X-Goog-Api-Key`.
+ * il body porta `textQuery` + `locationBias`/`locationRestriction` (circle o
+ * rectangle), la field-mask sceglie i campi nella response. Auth via
+ * `X-Goog-Api-Key`.
  */
 export function placesSearchTextV1(
   body: unknown,
