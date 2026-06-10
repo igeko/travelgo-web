@@ -435,7 +435,14 @@ export function ActivityStop({
               aria-label="Cambia icona"
               aria-expanded={iconPickerOpen}
               onClick={() => setIconPickerOpen((v) => !v)}
-              className="block rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className={cn(
+                // Stesso pattern del design /design/icon-picker: piccolo
+                // padding intorno al badge, highlight bianco/10 in hover
+                // (badge su bg-ink), stato aperto = highlight stabile.
+                "flex cursor-pointer items-center rounded-sm p-0.5 outline-none transition-colors",
+                "hover:bg-white/10 focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary",
+                iconPickerOpen && "bg-white/10",
+              )}
             >
               <StopIconBadge icon={icon} tone="primary" />
             </button>
