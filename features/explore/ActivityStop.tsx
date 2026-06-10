@@ -41,7 +41,7 @@ import {
 } from "@/features/activity/ActivityTimeChips";
 import { ActivityTimePicker } from "@/features/activity/ActivityTimePicker";
 import { ActivityDurationPicker } from "@/features/activity/ActivityDurationPicker";
-import { IconPicker } from "@/features/activity/IconPicker";
+import { CategoryIconPicker } from "@/features/activity/IconPicker";
 import { IconClock } from "@/components/ui/icons";
 
 /** HH:mm in numerico — coerente con i picker (minuti su step di 15). */
@@ -425,7 +425,6 @@ export function ActivityStop({
   }
 
   /* ── Open ───────────────────────────────────────────────────── */
-  const pickerMode = mode === "sleep" ? "lodging" : "activity";
   return (
     <div className={cn("flex w-full flex-col gap-1 rounded-sm bg-ink p-1", className)}>
       <div className="flex items-center gap-2 px-1 py-0.5">
@@ -442,11 +441,10 @@ export function ActivityStop({
             </button>
             {iconPickerOpen ? (
               <div className="absolute left-0 top-full z-dropdown mt-2">
-                <IconPicker
-                  mode={pickerMode}
-                  value={iconKey}
-                  onChange={(key) => {
-                    onIconChange(key);
+                <CategoryIconPicker
+                  selectedId={iconKey}
+                  onSelect={(id) => {
+                    onIconChange(id);
                     setIconPickerOpen(false);
                   }}
                 />

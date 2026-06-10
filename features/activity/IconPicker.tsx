@@ -3,122 +3,128 @@
 /**
  * features/activity/IconPicker.tsx
  * ─────────────────────────────────────────────────────────────────
- * Popover di selezione icona per activity / pernottamenti.
+ * Popover di selezione icona, ancorato al badge icona nell'header del
+ * pannello dettaglio (state="open") di una activity o di un
+ * pernottamento.
  *
- * - Activity (mode="activity") → tutte le categorie ECCETTO `sleep`.
- * - Lodging  (mode="lodging")  → SOLO la categoria `sleep` (i tab
- *   spariscono perché non c'è scelta).
+ * Direzione (it.11b di timeline-readability, /design/icon-picker):
+ *   - Popover flottante, sezioni stacked, un solo tap per scegliere.
+ *   - Niente liste hardcoded, niente set paralleli.
+ *   - Dominio = SEMPRE quello di EXPLORE_CATEGORY_TREE — la stessa
+ *     fonte della ExploreToolbar via `useExploreCategories()`. Aggiungi
+ *     una categoria all'albero e la trovi qui senza toccare il picker.
  *
- * Controllato: il parent passa `value` (icon key corrente) e riceve
- * la nuova chiave via `onChange`. Il picker NON persiste — è il
- * consumer a fare la PATCH e a chiudere il popover.
+ * Due livelli:
+ *   - `IconPicker` — puro, presentazionale. Riceve `groups` e basta.
+ *     Nessuna icona propria, nessun dominio implicito.
+ *   - `CategoryIconPicker` — wrapper di dominio. Costruisce i groups
+ *     a partire da `useExploreCategories()`. È la API consumata dai
+ *     consumer reali (ActivityStop, …): un solo punto di accoppiamento
+ *     col dominio Explore.
  *
- * Atomic level: molecule. Composto da pillole categoria + grid icone.
+ * Atomic level: molecule. Stand-alone (positioning del popover sta al
+ * parent).
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/cn";
-import {
-  STOP_ICONS,
-  STOP_ICON_CATEGORIES,
-  type StopIconCategory,
-} from "@/features/activity/Timeline/stopIcons";
+import { useExploreCategories } from "@/features/explore/useExploreCategories";
 
-export type IconPickerMode = "activity" | "lodging";
+type IconCmp = ComponentType<{ size?: number; className?: string }>;
 
+export type IconPickerItem = { id: string; label: string; icon: IconCmp };
+export type IconPickerGroup = {
+  id: string;
+  label: string;
+  icon: IconCmp;
+  items: IconPickerItem[];
+};
+
+/** Picker puro: non sa nulla del dominio. Il chiamante passa i groups. */
 export function IconPicker({
-  mode,
-  value,
-  onChange,
+  groups,
+  selectedId,
+  onSelect,
   className,
 }: {
-  mode: IconPickerMode;
-  /** Icon key corrente (può essere null su entità senza icona ancora). */
-  value: string | null;
-  /** Chiamato al click su una icona. Il parent decide se chiudere e/o persistere. */
-  onChange: (key: string) => void;
+  groups: IconPickerGroup[];
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
   className?: string;
 }) {
-  const tIcons = useTranslations("Timeline.stopIcons");
-  const tCats = useTranslations("Timeline.stopIconCategories");
-
-  const allowedCategories = useMemo<StopIconCategory[]>(
-    () =>
-      mode === "lodging"
-        ? ["sleep"]
-        : STOP_ICON_CATEGORIES.filter((c) => c !== "sleep"),
-    [mode],
-  );
-
-  // Categoria iniziale: quella della icona corrente quando ancora valida,
-  // altrimenti la prima categoria permessa.
-  const currentCategory: StopIconCategory | null = useMemo(() => {
-    const opt = STOP_ICONS.find((i) => i.key === value);
-    if (opt && allowedCategories.includes(opt.category)) return opt.category;
-    return null;
-  }, [value, allowedCategories]);
-
-  const [activeCat, setActiveCat] = useState<StopIconCategory>(
-    currentCategory ?? allowedCategories[0],
-  );
-
-  const items = useMemo(
-    () => STOP_ICONS.filter((i) => i.category === activeCat),
-    [activeCat],
-  );
-
   return (
     <div
       className={cn(
-        "flex w-[300px] flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-float",
+        "w-[252px] rounded-md border border-border-strong bg-surface p-2.5 shadow-float",
         className,
       )}
     >
-      {allowedCategories.length > 1 ? (
-        <div className="flex flex-wrap gap-1">
-          {allowedCategories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCat(cat)}
-              className={cn(
-                "rounded-pill px-2 py-1 text-tiny font-medium transition-colors",
-                activeCat === cat
-                  ? "bg-ink text-white"
-                  : "bg-surface-soft text-ink-soft hover:bg-surface-warm hover:text-ink",
-              )}
-            >
-              {tCats(cat)}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-6 gap-1">
-        {items.map(({ key, Icon }) => {
-          const selected = key === value;
-          return (
-            <button
-              key={key}
-              type="button"
-              title={tIcons(key)}
-              aria-label={tIcons(key)}
-              aria-pressed={selected}
-              onClick={() => onChange(key)}
-              className={cn(
-                "flex aspect-square items-center justify-center rounded-sm transition-colors",
-                selected
-                  ? "bg-primary text-white"
-                  : "text-ink-soft hover:bg-surface-soft hover:text-ink",
-              )}
-            >
-              <Icon size={18} />
-            </button>
-          );
-        })}
-      </div>
+      {groups.map((group, i) => {
+        const MacroIcon = group.icon;
+        return (
+          <div key={group.id} className={cn(i > 0 && "mt-2.5")}>
+            <p className="mb-1 flex items-center gap-1.5 px-0.5 text-[9px] font-medium uppercase tracking-eyebrow text-ink-faint">
+              <MacroIcon size={12} />
+              {group.label}
+            </p>
+            <div className="grid grid-cols-6 gap-1">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isSel = item.id === selectedId;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    title={item.label}
+                    aria-label={item.label}
+                    aria-pressed={isSel}
+                    onClick={() => onSelect?.(item.id)}
+                    className={cn(
+                      "flex h-8 cursor-pointer items-center justify-center rounded-md transition-colors",
+                      isSel
+                        ? "bg-ink text-white"
+                        : "bg-surface-soft text-ink-soft hover:bg-ink/10 hover:text-ink",
+                    )}
+                  >
+                    <Icon size={16} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** Wrapper di dominio: il picker delle categorie Explore. Unica fonte —
+ *  EXPLORE_CATEGORY_TREE via `useExploreCategories()` — coerente con la
+ *  ExploreToolbar. Aggiungi una categoria all'albero → appare qui senza
+ *  toccare nulla. È questo il componente che si usa nei consumer reali. */
+export function CategoryIconPicker({
+  selectedId,
+  onSelect,
+  className,
+}: {
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  className?: string;
+}) {
+  const macros = useExploreCategories();
+  const groups: IconPickerGroup[] = macros.map((m) => ({
+    id: m.id,
+    label: m.label,
+    icon: m.icon,
+    items: m.subs.map((s) => ({ id: s.id, label: s.label, icon: s.icon })),
+  }));
+  return (
+    <IconPicker
+      groups={groups}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      className={className}
+    />
   );
 }

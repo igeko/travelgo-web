@@ -6,6 +6,7 @@ import {
   IconTrain, IconBeach, IconSwimming, IconTree, IconStar, IconMusic,
   IconInfoCircle, IconGift, IconTent, IconHome, IconBuildingCottage,
 } from "@/components/ui/icons";
+import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
 
 /* ─────────────────────────────────────────────────────────────────
    Set fisso di icone per gli "stop" (attività + pernottamenti).
@@ -62,12 +63,12 @@ export const STOP_ICONS: StopIconOption[] = [
   { key: "beach",     Icon: IconBeach,            category: "nature" },
   { key: "swim",      Icon: IconSwimming,         category: "nature" },
   { key: "park",      Icon: IconTree,             category: "nature" },
-  // Sleep (solo lodging — vedi IconPicker.onlyCategories)
+  // Sleep (legacy stop-icons; il nuovo IconPicker usa EXPLORE_CATEGORY_TREE)
   { key: "bed",       Icon: IconBed,              category: "sleep" },
   { key: "tent",      Icon: IconTent,             category: "sleep" },
   { key: "house",     Icon: IconHome,             category: "sleep" },
   { key: "ryokan",    Icon: IconBuildingCottage,  category: "sleep" },
-  // Other (rimane disponibile alle activity)
+  // Other
   { key: "rest",      Icon: IconBed,              category: "other" },
   { key: "star",      Icon: IconStar,             category: "other" },
   { key: "music",     Icon: IconMusic,            category: "other" },
@@ -75,7 +76,26 @@ export const STOP_ICONS: StopIconOption[] = [
   { key: "gift",      Icon: IconGift,             category: "other" },
 ];
 
-const BY_KEY = new Map(STOP_ICONS.map((o) => [o.key, o.Icon]));
+/** Index globale.
+ *
+ *  Il nuovo IconPicker persiste valori da `EXPLORE_CATEGORY_TREE`
+ *  (es. `caffe`, `monumenti`, `hotel`) — quindi `getStopIcon` deve
+ *  riuscire a risolverli. Ordine:
+ *    1. STOP_ICONS legacy (back-compat: `coffee`, `view`, `bed`, …)
+ *    2. EXPLORE_CATEGORY_TREE subs (la nuova fonte canonica)
+ *
+ *  Le chiavi LEGACY vincono in caso di clash sul nome (es. STOP `bed`
+ *  → IconBed mentre EXPLORE non lo definisce: nessun conflitto). I sub
+ *  EXPLORE riempiono le chiavi rimanenti (`caffe`, `ristoranti`, `bar`,
+ *  `street`, `mercati`, `musei`, `monumenti`, `culto`, `parchi`, `viste`,
+ *  `parking`, `hotel`, `bnb`, `ostello`, `appartamenti`, `camping`). */
+const BY_KEY = new Map<string, IconCmp>();
+for (const { key, Icon } of STOP_ICONS) BY_KEY.set(key, Icon);
+for (const macro of EXPLORE_CATEGORY_TREE) {
+  for (const sub of macro.subs) {
+    if (!BY_KEY.has(sub.id)) BY_KEY.set(sub.id, sub.icon);
+  }
+}
 
 /** Componente icona per una chiave (o null se sconosciuta). */
 export function getStopIcon(key?: string | null): IconCmp | null {
