@@ -12,7 +12,7 @@ import { PlaceHoverCard, type SavedPlaceInfo } from "@/features/explore/PlaceHov
 import { AddedPill } from "@/features/explore/AddedPill";
 import type { PlaceEnriched } from "@/app/api/places/photo-search/route";
 import { useExploreCategories } from "@/features/explore/useExploreCategories";
-import { EXPLORE_CATEGORY_TREE } from "@/features/explore/categories";
+import { EXPLORE_CATEGORY_TREE, EXPLORE_SUB_TO_ICON_KEY } from "@/features/explore/categories";
 import {
   iconGlyph,
   NIGHT,
@@ -36,6 +36,9 @@ export type AddToTripRequest = {
   lat: number;
   lng: number;
   categories?: string[];
+  /** STOP_ICONS key da salvare su `activities.icon` (es. "coffee", "museum").
+   *  Valorizzato quando il pin proviene da una sub-category ExploreToolbar. */
+  icon?: string;
 };
 
 /** Default activity/day image — used by night cards when the stop has none. */
@@ -204,6 +207,11 @@ export const ExploreMap = forwardRef<MapHandle, {
 
   const [goMarkers, setGoMarkers] = useState<MapMarker[]>([]);
   const [categoryMarkers, setCategoryMarkers] = useState<MapMarker[]>([]);
+  // markerId (placeId) → sub-category id, popolata insieme ai categoryMarkers.
+  // Serve a propagare l'icona della sub al payload "Add to trip" quando l'utente
+  // pinna un risultato di categoria. Plain object perché `Map` è ombreggiato
+  // dall'import del componente <Map/> in questo file.
+  const categorySubByMarkerId = useRef<Record<string, string>>({});
   const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
   // "Search <category> near here" action bubble — appears when the user
   // clicks an empty patch of the map with a category selected. Cleared on
@@ -408,7 +416,11 @@ export const ExploreMap = forwardRef<MapHandle, {
   // che restare senza alcun feedback.
   useEffect(() => {
     const subId = selectedSubIds[0];
-    if (!subId) { setCategoryMarkers([]); return; }
+    if (!subId) {
+      setCategoryMarkers([]);
+      categorySubByMarkerId.current = {};
+      return;
+    }
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(async () => {
       const term = SUB_GOOGLE[subId];
@@ -422,12 +434,16 @@ export const ExploreMap = forwardRef<MapHandle, {
         );
         // Category area-search can return many dense pins → cluster them.
         // Go and night layers stay regular (low cardinality, semantic).
-        setCategoryMarkers(places.map((p) => ({
+        const nextMarkers = places.map((p) => ({
           id: p.placeId, lat: p.lat, lng: p.lng, title: p.name,
           glyph: pin.glyph,
           categoryKind: pin.kind,
           clustered: true,
-        })));
+        }));
+        const subMap: Record<string, string> = {};
+        for (const p of places) subMap[p.placeId] = subId;
+        categorySubByMarkerId.current = subMap;
+        setCategoryMarkers(nextMarkers);
       } catch (err) {
         console.error("[ExploreMap] category area-search failed:", err);
       } finally {
@@ -739,12 +755,15 @@ export const ExploreMap = forwardRef<MapHandle, {
                   ? undefined
                   : (place) => {
                       close();
+                      const subId = categorySubByMarkerId.current[id];
+                      const subIcon = subId ? EXPLORE_SUB_TO_ICON_KEY[subId] : undefined;
                       onAddToTripRequest?.({
                         placeId: id,
                         title: place?.name ?? m.title ?? t("placeFallback"),
                         lat: place?.lat ?? m.lat,
                         lng: place?.lng ?? m.lng,
                         categories: place?.types,
+                        icon: subIcon,
                       });
                     }
               }

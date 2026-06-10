@@ -49,6 +49,36 @@ export type ExploreMacroCategoryDef = {
   subs: ExploreSubcategoryDef[];
 };
 
+/**
+ * Mappa ExploreToolbar sub-category id → STOP_ICONS key (cfr.
+ * `features/activity/Timeline/stopIcons.tsx`). Quando l'utente aggiunge
+ * un'attività a partire da un pin di categoria della mappa, l'icona
+ * della sub viene salvata su `activities.icon` e la Timeline la riprende
+ * come glifo della tappa. Le sub di "dormi" sono incluse per simmetria,
+ * anche se il flusso accomodation segue di norma una strada parallela.
+ */
+export const EXPLORE_SUB_TO_ICON_KEY: Record<string, string> = {
+  // Esplora
+  musei: "museum",
+  monumenti: "monument",
+  culto: "monument",
+  parchi: "park",
+  viste: "view",
+  parking: "car",
+  // Mangia
+  ristoranti: "food",
+  caffe: "coffee",
+  bar: "drink",
+  street: "food",
+  mercati: "market",
+  // Dormi
+  hotel: "rest",
+  bnb: "rest",
+  ostello: "rest",
+  appartamenti: "rest",
+  camping: "rest",
+};
+
 export const EXPLORE_CATEGORY_TREE: ExploreMacroCategoryDef[] = [
   {
     id: "dormi",

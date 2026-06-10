@@ -45,6 +45,7 @@ export const POST = route<{ id: string }>(async ({ req, params }) => {
         ? raw.durationHintMin
         : null,
     isAccommodation: raw.isAccommodation === true,
+    icon: typeof raw.icon === "string" && raw.icon.trim() ? raw.icon.trim() : null,
   };
 
   const context: AddPlaceContext = {

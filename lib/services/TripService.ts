@@ -72,6 +72,9 @@ export type AddPlaceInput = {
   categories?: string[];
   durationHintMin?: number | null;
   isAccommodation?: boolean;
+  /** STOP_ICONS key da persistere sull'entity activity. Tipicamente
+   *  l'icona della sub-category ExploreToolbar che ha generato il pin. */
+  icon?: string | null;
 };
 
 export type AddPlaceContext = {
@@ -772,6 +775,8 @@ export class TripService {
     const afterTitle = prevActivity?.title ?? null;
 
     // Persist — Scheduler creates entity + scheduled row in one shot.
+    // `icon` viene salvato sull'entity activity (ENTITY_FIELDS lo accetta) e
+    // poi la Timeline lo risolve via getStopIcon().
     const scheduledActivity = await this.scheduler.addToDay(position.dayId, {
       title: built.title,
       location: built.location,
@@ -782,6 +787,7 @@ export class TripService {
       time: built.time,
       position: built.position,
       type: built.type,
+      ...(place.icon ? { icon: place.icon } : {}),
     });
 
     // Bridge recalc (Fase 2). Best-effort: if Google fails we surface in logs
