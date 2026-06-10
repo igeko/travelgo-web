@@ -69,6 +69,7 @@ import {
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
 import { ActivityStop } from "./ActivityStop";
+import { StopIconBadge } from "./StopIconBadge";
 import type { PlaceResult } from "@/components/ui/AddressField";
 import { FuzzyStop } from "./FuzzyStop";
 import {
@@ -182,14 +183,6 @@ function formatLongLabel(iso: string): string {
   const day = d.getDate();
   const monthLong = d.toLocaleDateString("it-IT", { month: "long" });
   return `${weekdayLong[0].toUpperCase()}${weekdayLong.slice(1)} ${day} ${monthLong[0].toUpperCase()}${monthLong.slice(1)}`;
-}
-
-function formatShortDate(iso: string): string {
-  const d = localDate(iso);
-  const weekday = d
-    .toLocaleDateString("it-IT", { weekday: "short" })
-    .replace(".", "");
-  return `${weekday[0].toUpperCase()}${weekday.slice(1)} ${d.getDate()}`;
 }
 
 /* ── Day load (fill bar input) ────────────────────────────────────── */
@@ -480,39 +473,10 @@ function applyDragPreview(
 }
 
 /* ── Atoms mobile-compact ─────────────────────────────────────────── */
-
-/** Rail column width: 30px (vs 44px desktop). */
-const M_RAIL_COL = "30px";
-const M_GRID = { gridTemplateColumns: `${M_RAIL_COL} minmax(0,1fr)` } as const;
-
-/** Rail compatto a 30px. */
-function MRailCell({
-  line = "solid",
-  tone = "default",
-}: {
-  line?: "solid" | "dashed" | "none";
-  tone?: "default" | "selected";
-}) {
-  return (
-    <div className="relative flex justify-center self-stretch">
-      {line === "solid" ? (
-        <div
-          className={cn(
-            "absolute inset-y-0 w-[3px] rounded-full",
-            tone === "selected" ? "bg-ink" : "bg-timeline-rail",
-          )}
-        />
-      ) : line === "dashed" ? (
-        <div
-          className={cn(
-            "absolute inset-y-0 border-l-2 border-dashed",
-            tone === "selected" ? "border-ink/50" : "border-ink/20",
-          )}
-        />
-      ) : null}
-    </div>
-  );
-}
+// La day strip orizzontale sticky fa già da indicatore selezione/sequenza
+// dei giorni, quindi la colonna sinistra (targa data + rail) della lista
+// è ridondante in mobile e l'abbiamo rimossa. Le righe stop/transfer/notte
+// vivono a tutta larghezza dentro il giorno.
 
 /* ── DayStrip — targhe orizzontali sticky ─────────────────────────── */
 
@@ -597,6 +561,11 @@ function DayStrip({
 
 /* ── DayHeader mobile ─────────────────────────────────────────────── */
 
+/**
+ * Header del giorno mobile: solo label + chevron, niente targa/rail
+ * (la day strip in alto fa già da indicatore selezione). L'header è
+ * comunque un button toggle per espandere/comprimere il giorno.
+ */
 function MDayHeader({
   dateIso,
   dayNumber,
@@ -608,9 +577,6 @@ function MDayHeader({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const parts = dateIso
-    ? formatDayParts(dateIso)
-    : { weekday: "", dayNum: dayNumber, monthShort: "" };
   const longLabel = dateIso ? formatLongLabel(dateIso) : `Giorno ${dayNumber}`;
   return (
     <button
@@ -618,47 +584,18 @@ function MDayHeader({
       aria-expanded={expanded}
       aria-label={`${longLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
       onClick={onToggle}
-      className="group/day grid w-full cursor-pointer items-center gap-x-2 text-left"
-      style={M_GRID}
+      className="group/day flex min-h-[32px] w-full cursor-pointer items-center gap-1.5 rounded-sm px-1 text-left transition-colors hover:bg-surface-soft"
     >
-      <div className="relative flex justify-center py-0.5">
-        <div
-          className={cn(
-            "absolute inset-y-0 w-[3px] rounded-full",
-            expanded ? "bg-ink" : "bg-timeline-rail",
-          )}
-        />
-        <div
-          className={cn(
-            "relative z-10 flex aspect-square w-[30px] flex-col items-center justify-center rounded-sm border transition-colors",
-            expanded
-              ? "border-ink bg-ink text-white"
-              : "border-border-strong bg-surface text-ink group-hover/day:border-ink/40",
-          )}
-        >
-          <span
-            className={cn(
-              "text-[7px] font-extrabold uppercase leading-none",
-              expanded ? "text-primary-tint" : "text-ink/45",
-            )}
-          >
-            {parts.weekday}
-          </span>
-          <span className="text-[13px] font-bold leading-none">{parts.dayNum}</span>
-        </div>
-      </div>
-      <div className="flex min-h-[30px] items-center gap-1.5 rounded-sm px-1 transition-colors group-hover/day:bg-surface-soft">
-        <span className="truncate text-[12px] font-semibold text-ink">{longLabel}</span>
-        <span className="shrink-0 text-[10px] text-ink-faint">G{dayNumber}</span>
-        <span className="flex-1" />
-        <IconChevronDown
-          size={13}
-          className={cn(
-            "shrink-0 text-ink-faint transition-transform",
-            expanded && "rotate-180 text-ink",
-          )}
-        />
-      </div>
+      <span className="truncate text-[12px] font-semibold text-ink">{longLabel}</span>
+      <span className="shrink-0 text-[10px] text-ink-faint">G{dayNumber}</span>
+      <span className="flex-1" />
+      <IconChevronDown
+        size={13}
+        className={cn(
+          "shrink-0 text-ink-faint transition-transform",
+          expanded && "rotate-180 text-ink",
+        )}
+      />
     </button>
   );
 }
@@ -667,8 +604,6 @@ function MDayHeader({
 
 function MNightCard({
   lodging,
-  fromIso,
-  toIso,
   open,
   hovered,
   onOpen,
@@ -682,8 +617,6 @@ function MNightCard({
   onReduceStay,
 }: {
   lodging: LodgingVM;
-  fromIso: string | null;
-  toIso: string | null;
   open: boolean;
   hovered: boolean;
   onOpen: () => void;
@@ -743,46 +676,30 @@ function MNightCard({
     );
   }
 
-  const fromLabel = fromIso ? formatShortDate(fromIso) : "";
-  const toLabel = toIso ? formatShortDate(toIso) : "";
-
+  // Allineata alla NightBand desktop attuale: bordo border-border-strong,
+  // badge primary, label + "Notte N di M" sullato — niente più card stay
+  // con check-in/check-out (rimossi dal desktop, decisione utente).
   return (
     <button
       type="button"
       onClick={onOpen}
       data-row-id={lodging.id}
       aria-label={`Pernottamento ${lodging.title} — apri editor`}
-      className="my-1.5 block w-full cursor-pointer text-left"
+      className="group my-1.5 block w-full cursor-pointer text-left"
     >
       <div
         className={cn(
-          "flex flex-col rounded-md px-2.5 py-1.5 transition-colors",
-          hovered ? "bg-stay-hover" : "bg-stay hover:bg-stay-hover",
+          "flex items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+          hovered ? "border-ink/50" : "border-border-strong hover:border-ink/50",
         )}
       >
-        <div className="flex items-center justify-between text-[10px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">22:00</span> · check-in
-          </span>
-          <span>{fromLabel}</span>
-        </div>
-        <div className="flex items-center gap-1.5 py-1">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-xs bg-primary text-white">
-            <lodging.icon size={12} />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink">
-            {lodging.title}
-          </span>
-          <span className="shrink-0 text-[9px] text-stay-text">
-            {lodging.nightIndex}/{lodging.nightsTotal}
-          </span>
-        </div>
-        <div className="flex items-center justify-between border-t border-ink/15 pt-1 text-[10px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">09:00</span> · check-out
-          </span>
-          <span>{toLabel}</span>
-        </div>
+        <StopIconBadge icon={lodging.icon} tone="primary" size={20} />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
+          {lodging.title}
+        </span>
+        <span className="shrink-0 text-[10px] text-ink-soft">
+          Notte {lodging.nightIndex} di {lodging.nightsTotal}
+        </span>
       </div>
     </button>
   );
@@ -792,10 +709,8 @@ function MNightCard({
 
 function MEndOfTrip() {
   return (
-    <div className="mt-1 grid items-center gap-x-2" style={M_GRID}>
-      <div className="flex justify-center py-1">
-        <div className="h-1 w-6 bg-ink/15" />
-      </div>
+    <div className="mt-1 flex items-center gap-2 px-1 py-1">
+      <div className="h-1 w-6 bg-ink/15" />
       <span className="text-[10px] text-ink-faint">Fine viaggio</span>
     </div>
   );
@@ -840,6 +755,19 @@ export function TimelineV2Mobile({
     if (!el) return;
     el.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [hoveredRowId]);
+
+  // Scroll-to-day: quando l'utente seleziona un giorno (tap su una targa
+  // della day strip o sull'header del giorno stesso), porta il blocco del
+  // giorno in cima al container scrollable. La day strip sticky resta
+  // visibile; ogni blocco-giorno ha `scroll-mt-12` per non finire coperto.
+  useEffect(() => {
+    if (!selectedDayId) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const el = root.querySelector<HTMLElement>(`[data-day-id="${selectedDayId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [selectedDayId]);
 
   const collisionDetection: CollisionDetection = (args) => {
     const containers = args.droppableContainers;
@@ -1052,7 +980,7 @@ export function TimelineV2Mobile({
         />
 
         <div className="flex flex-col pt-1">
-          {sortedDays.map((day, dayIdx) => {
+          {sortedDays.map((day) => {
             const expanded = selectedDayId === day.id;
             // dayLoad: utile in futuro per una FillBar mobile. La targa
             // header mobile non la mostra (la fill è già letta dal
@@ -1067,7 +995,6 @@ export function TimelineV2Mobile({
             );
             const lodging = buildLodging(day.accommodation, day.id);
             const showNotes = expanded && !!day.notes;
-            const nextDay = sortedDays[dayIdx + 1];
 
             const dayActsOrdered = [...day.activities]
               .filter((x) => x.fuzzy !== true)
@@ -1082,10 +1009,13 @@ export function TimelineV2Mobile({
             const sortableIndexOf =
               sortableIndexByDay.get(day.id) ?? new Map<string, number>();
 
-            const tone = expanded ? ("selected" as const) : ("default" as const);
 
             return (
-              <div key={day.id} className="flex flex-col">
+              <div
+                key={day.id}
+                data-day-id={day.id}
+                className="flex scroll-mt-14 flex-col"
+              >
                 <MDayHeader
                   dateIso={day.date}
                   dayNumber={day.day_number}
@@ -1105,39 +1035,20 @@ export function TimelineV2Mobile({
                       if (item.kind === "transfer") {
                         const open = openId === item.id;
                         // Visibilità transfer: solo a giorno espanso, salvo
-                        // open. Allineato a /design/timeline-readability it.10
-                        // — qui semplifichiamo: muted quando non espanso.
-                        if (!expanded && !open) {
-                          return (
-                            <div
-                              key={item.id}
-                              className="grid items-center gap-x-2"
-                              style={M_GRID}
-                            >
-                              <MRailCell line="dashed" tone={tone} />
-                              <div aria-hidden className="h-2.5" />
-                            </div>
-                          );
-                        }
+                        // open. Senza rail, transfer collapsed = nulla.
+                        if (!expanded && !open) return null;
                         return (
-                          <div
-                            key={item.id}
-                            className="grid items-center gap-x-2"
-                            style={M_GRID}
-                          >
-                            <MRailCell line="dashed" tone={tone} />
-                            <div className="py-0.5 pl-0.5">
-                              <Transfer
-                                mode={item.transfer.mode}
-                                state={open ? "open" : "default"}
-                                duration={item.transfer.duration}
-                                legs={item.transfer.legs}
-                                steps={item.transfer.steps}
-                                destination={item.transfer.destination}
-                                onOpen={() => setOpenId(item.id)}
-                                onClose={() => setOpenId(null)}
-                              />
-                            </div>
+                          <div key={item.id} className="px-1 py-0.5">
+                            <Transfer
+                              mode={item.transfer.mode}
+                              state={open ? "open" : "default"}
+                              duration={item.transfer.duration}
+                              legs={item.transfer.legs}
+                              steps={item.transfer.steps}
+                              destination={item.transfer.destination}
+                              onOpen={() => setOpenId(item.id)}
+                              onClose={() => setOpenId(null)}
+                            />
                           </div>
                         );
                       }
@@ -1156,25 +1067,17 @@ export function TimelineV2Mobile({
 
                       if (fuzzy) {
                         return (
-                          <div
-                            key={a.id}
-                            data-row-id={a.id}
-                            className="grid items-center gap-x-2"
-                            style={M_GRID}
-                          >
-                            <MRailCell line="solid" tone={tone} />
-                            <div className="py-0.5">
-                              <FuzzyStop
-                                title={a.title}
-                                icon={Icon}
-                                size="sm"
-                                state={open ? "open" : hovered ? "selected" : "default"}
-                                description={a.short_desc ?? undefined}
-                                onOpen={() => setOpenId(a.id)}
-                                onClose={() => setOpenId(null)}
-                                onRemove={handleRemove}
-                              />
-                            </div>
+                          <div key={a.id} data-row-id={a.id} className="px-1 py-0.5">
+                            <FuzzyStop
+                              title={a.title}
+                              icon={Icon}
+                              size="sm"
+                              state={open ? "open" : hovered ? "selected" : "default"}
+                              description={a.short_desc ?? undefined}
+                              onOpen={() => setOpenId(a.id)}
+                              onClose={() => setOpenId(null)}
+                              onRemove={handleRemove}
+                            />
                           </div>
                         );
                       }
@@ -1204,13 +1107,8 @@ export function TimelineV2Mobile({
                                 ? formatChipDate(day.date, t?.departureDayOffset ?? 0)
                                 : undefined;
                             return (
-                              <div
-                                className="grid items-center gap-x-2"
-                                style={M_GRID}
-                              >
-                                <MRailCell line="solid" tone={tone} />
-                                <div className="py-0.5">
-                                  <ActivityStop
+                              <div className="px-1 py-0.5">
+                                <ActivityStop
                                     dragHandleProps={dragHandleProps}
                                     isDragging={isDragging}
                                     title={a.title}
@@ -1283,7 +1181,6 @@ export function TimelineV2Mobile({
                                       }
                                     }}
                                   />
-                                </div>
                               </div>
                             );
                           }}
@@ -1293,17 +1190,14 @@ export function TimelineV2Mobile({
                   </SortableContext>
 
                   {showNotes ? (
-                    <div className="grid items-stretch gap-x-2" style={M_GRID}>
-                      <MRailCell line="solid" tone={tone} />
-                      <div className="py-1.5">
-                        <div className="flex flex-col gap-1 rounded-sm bg-surface-warm/80 p-2">
-                          <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-primary">
-                            Today notes
-                          </p>
-                          <p className="whitespace-pre-line text-[11px] leading-relaxed text-ink">
-                            {day.notes}
-                          </p>
-                        </div>
+                    <div className="px-1 py-1.5">
+                      <div className="flex flex-col gap-1 rounded-sm bg-surface-warm/80 p-2">
+                        <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-primary">
+                          Today notes
+                        </p>
+                        <p className="whitespace-pre-line text-[11px] leading-relaxed text-ink">
+                          {day.notes}
+                        </p>
                       </div>
                     </div>
                   ) : null}
@@ -1312,8 +1206,6 @@ export function TimelineV2Mobile({
                 {lodging ? (
                   <MNightCard
                     lodging={lodging}
-                    fromIso={day.date}
-                    toIso={nextDay?.date ?? null}
                     open={openId === lodging.id}
                     hovered={openId !== lodging.id && hoveredRowId === lodging.id}
                     onOpen={() => setOpenId(lodging.id)}
