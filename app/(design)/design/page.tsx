@@ -23,6 +23,34 @@ async function getSketches(): Promise<string[]> {
   }
 }
 
+/**
+ * Live thumbnail: iframe che renderizza /design/<slug> ridimensionato via
+ * CSS transform. `loading="lazy"` evita di caricare tutti gli sketch al
+ * primo paint (solo quelli a vista); `pointer-events:none` lascia il click
+ * al Link esterno. Proporzioni reali 1280×900 scalate a 256×180 (×0.2).
+ */
+function Thumbnail({ slug }: { slug: string }) {
+  return (
+    <div
+      className="relative w-[256px] h-[180px] flex-shrink-0 overflow-hidden rounded-md border border-border bg-surface-soft"
+      aria-hidden
+    >
+      <iframe
+        src={`/design/${slug}`}
+        loading="lazy"
+        tabIndex={-1}
+        title={`Preview ${slug}`}
+        className="absolute left-0 top-0 origin-top-left pointer-events-none border-0"
+        style={{
+          width: 1280,
+          height: 900,
+          transform: "scale(0.2)",
+        }}
+      />
+    </div>
+  );
+}
+
 export default async function DesignIndex() {
   const sketches = await getSketches();
 
@@ -51,21 +79,19 @@ export default async function DesignIndex() {
           <span className="text-ink-faint text-[12px]">Crea una nuova cartella con dentro un <code className="bg-surface-soft px-1 py-0.5 rounded">page.tsx</code> per cominciare.</span>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {sketches.map((slug) => (
             <Link
               key={slug}
               href={`/design/${slug}`}
-              className="group bg-surface border border-border rounded-lg p-4 hover:border-border-strong transition-colors flex items-center gap-3"
+              className="group bg-surface border border-border rounded-lg p-3 hover:border-border-strong transition-colors flex items-center gap-4"
             >
-              <div className="w-8 h-8 rounded-md bg-surface-soft flex items-center justify-center flex-shrink-0 text-ink-soft">
-                <i className="ti ti-vector-bezier-2 text-[14px]" />
-              </div>
+              <Thumbnail slug={slug} />
               <div className="flex-1 min-w-0">
                 <h2 className="text-[14px] font-medium text-ink">{slug}</h2>
                 <p className="text-[11px] text-ink-faint mt-0.5">/design/{slug}</p>
               </div>
-              <i className="ti ti-arrow-up-right text-ink-faint text-[16px] group-hover:text-orange-deep transition-colors" />
+              <i className="ti ti-arrow-up-right text-ink-faint text-[16px] group-hover:text-orange-deep transition-colors mr-2" />
             </Link>
           ))}
         </div>
