@@ -384,9 +384,9 @@ export function ActivityStop({
         {time ? (
           <span
             className={cn(
-              "shrink-0 tabular-nums",
-              compact ? "text-[10px]" : "text-nano",
-              selected ? "text-white/70" : "text-ink-soft",
+              "shrink-0 font-medium tabular-nums",
+              compact ? "text-tiny" : "text-mini",
+              selected ? "text-white/80" : "text-ink-soft",
             )}
           >
             {time}
