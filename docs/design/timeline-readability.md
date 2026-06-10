@@ -192,6 +192,24 @@ bottom sheet a 3 stati), Timeline V1 dentro lo sheet:
 
 File: `mobile.tsx` (gallery 3 phone frame in fondo alla pagina sketch).
 
+## Iterazione 8 (2026-06-10) — card notte su navy "stay"
+
+Dopo la bianca (it.6) e le varianti primary (4a-4d, valutate in chat),
+scelta una direzione nuova da screenshot di Enrico: **navy #1a3a4f con
+riquadro icona arancione**.
+
+- Nuovo token in `@theme`: `--color-stay: #1a3a4f` + `--color-stay-hover:
+  #22465c`. NON si riusa `ink-hover` (semantica sbagliata: è lo stato
+  hover di ink) né `night` (#4338ca indigo, già usato da ExploreMap/
+  PlaceHoverCard per il night-route layer).
+- Card: `bg-stay` testo bianco, hover `bg-stay-hover`; riquadro icona
+  `bg-primary` col solo tipo struttura (niente luna); "Notte N di M"
+  white/70; hairline white/18; struttura 3 righe cronologiche invariata.
+- Distinguo dalla selezione (`ink`): tonalità più chiara + badge arancio
+  + forma a 3 righe. Verificato side-by-side con un giorno espanso.
+- Allineata anche la card notte mobile (`mobile.tsx`). Pin mappa resta
+  quadrato arancio.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

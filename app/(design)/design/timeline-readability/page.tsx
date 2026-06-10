@@ -167,13 +167,18 @@ function DevNotes() {
 
         <Block n={6} title="Card notte — nuovo componente NightCard">
           <p>
-            Bianca come le activity (<code>bg-surface border-border</code>,
-            hover <code>border-strong</code>), tre righe cronologiche:
+            Navy &quot;stay&quot; (<code>bg-stay</code> #1a3a4f, token nuovo in{" "}
+            <code>@theme</code> con <code>stay-hover</code> #22465c — NON è il
+            blu selezione <code>ink</code>), testo bianco, tre righe
+            cronologiche:
             check-in (orario semibold + data, lato giorno sopra) · nome con
             badge <code>bg-primary</code> e SOLO icona tipo struttura
             (niente luna) + &quot;Notte N di M&quot; in ink-soft · hairline ·
             check-out <strong>sempre dalla parte del giorno dopo</strong>.
-            Dati già pronti da <code>resolveAccommodations</code>{" "}
+            Riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
+            struttura, niente luna; &quot;Notte N di M&quot; in white/70,
+            hairline white/18. Dati già pronti da{" "}
+            <code>resolveAccommodations</code>{" "}
             (<code>night_index</code>/<code>nights_total</code>, stay_id,
             activity_id); per uno stay multi-notte si renderizza una card per
             notte, come oggi. Click → editor open attuale (mode sleep,

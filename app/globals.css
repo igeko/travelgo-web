@@ -23,6 +23,11 @@
   --color-ink-soft: #5b6b78;
   --color-ink-faint: #8a98a3;
 
+  /* Stay — superficie pernottamento (Explore Timeline NightCard).
+     Navy leggermente più chiaro di ink: NON è uno stato di selezione. */
+  --color-stay: #1a3a4f;
+  --color-stay-hover: #22465c;
+
   /* Surface — campi form */
   --color-surface-input: #fafaf6;
 
