@@ -977,7 +977,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       {/* Panel sinistro — card arrotondata che contiene la Timeline. */}
       <aside
         ref={panelRef}
-        className="absolute left-4 top-4 z-20 flex max-h-[calc(100%-2rem)] w-[360px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
+        className="absolute left-2 top-2 z-20 flex max-h-[calc(100%-1rem)] w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TimelineV2
