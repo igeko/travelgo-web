@@ -153,10 +153,14 @@ function StopRow({
   tone?: "default" | "selected";
 }) {
   if (stop.open) {
+    // It.14 — focus mode: l'editor aperto esce dalla griglia e si
+    // prende TUTTA la larghezza del pannello (il rail si interrompe
+    // e riprende sotto). ~50px recuperati su 360 per chip orari,
+    // durata e descrizione. Stesso pattern del NightEditor.
     return (
-      <Row rail="solid" tone={tone} className="py-1">
+      <div className="py-1">
         <StopEditor stop={stop} />
-      </Row>
+      </div>
     );
   }
   if (stop.fuzzy) {

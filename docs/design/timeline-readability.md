@@ -323,6 +323,26 @@ Componenti mock: `TodayNotesEmpty`, `TodayNotesEditing` in shared.tsx;
 galleria dei 3 stati in pagina (il giorno espanso del hero ha già note).
 Applicato anche al mobile (full state).
 
+## Iterazione 14 (2026-06-10) — editor full-bleed (focus mode)
+
+Domanda di Enrico: ottimizzare lo spazio tra la colonna del giorno e la
+colonna destra? Sì, ma SOLO per lo stato aperto:
+
+- **Collapsed**: la colonna giorno resta — è l'orientamento della lista
+  (targhe, rail, allineamento card). Non si tocca.
+- **Open (editor attività/notte)**: focus mode — l'editor esce dalla
+  griglia `[44px | 1fr]` e occupa tutta la larghezza del pannello; il
+  rail si interrompe dietro e riprende sotto. ~50px recuperati su 360
+  (+16% di larghezza utile) per chip ARRIVO/PARTENZA (niente più date
+  troncate), durata e descrizione. Il NightEditor era già full-bleed:
+  ora vale per entrambi.
+
+Porting: in Timeline.tsx la row aperta passa a `gridColumn: "1 / -1"`
+(la colonna 1 del giorno è già `gridRow: 1 / lastRow+1`, quindi serve
+sospendere il rail dietro l'editor o portare l'editor su un layer sopra
+con bg pieno — scelta implementativa libera, l'effetto visivo è "rail
+coperto").
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
