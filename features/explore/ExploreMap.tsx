@@ -43,6 +43,10 @@ export type AddToTripRequest = {
    *  (`fuzzy: true`). Sceltabile dalla voce "Flessibile" dello split
    *  button "Aggiungi al viaggio" in PlaceHoverCard. */
   fuzzy?: boolean;
+  /** Quando true, il place viene aggiunto come pernottamento (lo slot e
+   *  l'orario di default vengono fissati dall'algoritmo add-to-trip).
+   *  Sceltabile dalla voce "Pernottamento" dello split button. */
+  isAccommodation?: boolean;
 };
 
 /** Default activity/day image — used by night cards when the stop has none. */
@@ -733,6 +737,7 @@ export const ExploreMap = forwardRef<MapHandle, {
                     lng: place?.lng ?? searchPlace.lng,
                     categories: place?.types ?? searchPlace.types,
                     fuzzy: opts?.fuzzy,
+                    isAccommodation: opts?.isAccommodation,
                   });
                 }}
               />
@@ -770,6 +775,7 @@ export const ExploreMap = forwardRef<MapHandle, {
                         categories: place?.types,
                         icon: subIcon,
                         fuzzy: opts?.fuzzy,
+                        isAccommodation: opts?.isAccommodation,
                       });
                     }
               }

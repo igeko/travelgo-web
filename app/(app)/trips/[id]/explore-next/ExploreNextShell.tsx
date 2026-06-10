@@ -549,6 +549,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             categories: input.categories,
             icon: input.icon,
             fuzzy: input.fuzzy,
+            isAccommodation: input.isAccommodation,
           },
           selectedDayId,
           selectedActivityId,

@@ -7,6 +7,8 @@
     "addAsStop": "Tappa",
     "addAsFlex": "Flessibile",
     "addAsFlexHint": "Senza orario",
+    "addAsAccommodation": "Pernottamento",
+    "addAsAccommodationHint": "Aggiungi come alloggio",
     "adding": "Aggiungo al viaggio…",
     "searching": "Cerco {category}…",
     "addToTripError": "Non sono riuscito ad aggiungere il luogo. Riprova.",
