@@ -17,7 +17,12 @@
  * del giorno dopo), transfer completi (incoming + ultima tappa → notte).
  */
 
-import { MockMap } from "./shared";
+import {
+  MockMap,
+  TodayNotes,
+  TodayNotesEditing,
+  TodayNotesEmpty,
+} from "./shared";
 import { TimelineV1 } from "./v1";
 import { MobileGallery } from "./mobile";
 
@@ -50,6 +55,41 @@ export default function TimelineReadabilityPage() {
           </div>
         </aside>
       </div>
+
+      {/* Note del giorno — i tre stati (it.13). Il giorno espanso nel
+          hero ha già note: qui si vede anche il caso vuoto + editing. */}
+      <section className="mt-12">
+        <h2 className="text-[17px] font-semibold text-ink">
+          Note del giorno — stati
+        </h2>
+        <p className="mb-4 mt-1 max-w-[680px] text-mini leading-relaxed text-ink-soft">
+          Nel giorno espanso il blocco note c&apos;è SEMPRE: compilato mostra
+          le note (pencil in hover), vuoto mostra l&apos;affordance
+          tratteggiata — tap → editing inline, Invio salva su{" "}
+          <code className="rounded bg-surface-soft px-1 text-[12px]">days.notes</code>,
+          Esc annulla. Stessa posizione: sotto le tappe, sopra la notte.
+        </p>
+        <div className="grid max-w-[900px] grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+              vuoto
+            </span>
+            <TodayNotesEmpty />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+              editing
+            </span>
+            <TodayNotesEditing />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+              compilato
+            </span>
+            <TodayNotes notes={"Ritiro camper entro le 11:00 — documenti + patente internazionale."} />
+          </div>
+        </div>
+      </section>
 
       <section className="mt-12">
         <h2 className="text-[17px] font-semibold text-ink">Mobile — proposta</h2>
@@ -133,9 +173,12 @@ function DevNotes() {
             tutta l&apos;altezza del giorno; il blocco contenuti prende{" "}
             <code>bg-surface-soft</code> pieno + <code>ring-1 ring-ink/10</code>.
             In zoom compaiono: orari per-stop (a destra nella row, dal solver{" "}
-            <code>computeDayTimes</code>), fuzzy stop e Today notes — regole
-            attuali invariate. Il bg ink resta riservato a selezione/open in
-            tutta l&apos;app.
+            <code>computeDayTimes</code>), fuzzy stop e il blocco note — che
+            c&apos;è SEMPRE: con note → TodayNotes (pencil in hover); senza →
+            affordance tratteggiata &quot;Aggiungi note al giorno&quot; → editing
+            inline (textarea nel blocco warm, Invio salva su{" "}
+            <code>days.notes</code> via PATCH del giorno, Esc annulla). Il bg
+            ink resta riservato a selezione/open in tutta l&apos;app.
           </p>
         </Block>
 

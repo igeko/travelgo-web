@@ -29,6 +29,7 @@ import {
   StopIcon,
   TransferLabel,
   TodayNotes,
+  TodayNotesEmpty,
   type DayData,
   type NightData,
   type StopData,
@@ -321,14 +322,12 @@ function SheetFull() {
               ) : null}
             </div>
           ))}
-          {day.notes ? (
-            <div className="grid items-stretch gap-x-2" style={M_GRID}>
-              <MRail tone="selected" />
-              <div className="origin-top-left scale-[0.95] py-1 pr-1">
-                <TodayNotes notes={day.notes} />
-              </div>
+          <div className="grid items-stretch gap-x-2" style={M_GRID}>
+            <MRail tone="selected" />
+            <div className="origin-top-left scale-[0.95] py-1 pr-1">
+              {day.notes ? <TodayNotes notes={day.notes} /> : <TodayNotesEmpty />}
             </div>
-          ) : null}
+          </div>
         </div>
         {day.night ? <MNight night={day.night} /> : null}
       </div>

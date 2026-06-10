@@ -15,6 +15,7 @@ import {
   StopEditor,
   StopIcon,
   TodayNotes,
+  TodayNotesEmpty,
   TransferLabel,
   type DayData,
   type NightData,
@@ -283,10 +284,16 @@ export function TimelineV1() {
                   ) : null}
                 </div>
               ))}
-              {expanded && day.notes ? (
+              {/* Note del giorno: blocco compilato, oppure affordance
+                  "Aggiungi note" quando il giorno espanso non ne ha. */}
+              {expanded ? (
                 <Row rail="solid" tone={tone} className="items-stretch">
                   <div className="py-1">
-                    <TodayNotes notes={day.notes} />
+                    {day.notes ? (
+                      <TodayNotes notes={day.notes} />
+                    ) : (
+                      <TodayNotesEmpty />
+                    )}
                   </div>
                 </Row>
               ) : null}

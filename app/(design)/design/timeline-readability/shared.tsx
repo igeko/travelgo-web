@@ -16,6 +16,8 @@ import {
   IconMapPin,
   IconMinus,
   IconMountain,
+  IconNotes,
+  IconPencil,
   IconPlane,
   IconPlus,
   IconShoppingBag,
@@ -349,12 +351,51 @@ export function FillBar({ pct, className }: { pct: number; className?: string })
 
 export function TodayNotes({ notes }: { notes: string }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-sm bg-surface-warm/80 p-3">
-      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-primary">
+    <div className="group/notes flex cursor-pointer flex-col gap-1.5 rounded-sm bg-surface-warm/80 p-3">
+      <p className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.08em] text-primary">
         Today notes
+        {/* edit affordance: visibile soft, piena in hover (touch ok) */}
+        <IconPencil
+          size={12}
+          className="text-ink/30 transition-opacity group-hover/notes:text-ink/60"
+        />
       </p>
       <p className="whitespace-pre-line text-mini leading-relaxed text-ink">
         {notes}
+      </p>
+    </div>
+  );
+}
+
+/** Giorno espanso SENZA note: affordance per aggiungerle (it.13).
+ *  Stessa posizione del blocco TodayNotes (sotto le tappe, sopra la
+ *  notte), riga tratteggiata ghost — tap → stato editing. */
+export function TodayNotesEmpty() {
+  return (
+    <button
+      type="button"
+      className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-sm border border-dashed border-border-strong py-2 text-[11px] text-ink-faint transition-colors hover:border-primary-border hover:bg-surface-warm/50 hover:text-ink-soft"
+    >
+      <IconNotes size={13} />
+      Aggiungi note al giorno
+    </button>
+  );
+}
+
+/** Stato editing (mock statico): textarea inline nello stesso blocco
+ *  warm, salvataggio su blur/⏎ → scrive `days.notes`. */
+export function TodayNotesEditing() {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-sm bg-surface-warm/80 p-3 ring-1 ring-primary-border">
+      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-primary">
+        Today notes
+      </p>
+      <div className="min-h-[52px] rounded-xs bg-surface-input px-2 py-1.5 text-mini leading-relaxed text-ink">
+        Ritiro camper entro le 11:00 —{" "}
+        <span className="animate-pulse text-primary">|</span>
+      </div>
+      <p className="text-right text-[9px] text-ink-faint">
+        Invio per salvare · Esc per annullare
       </p>
     </div>
   );

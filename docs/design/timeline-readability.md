@@ -305,6 +305,24 @@ deep-link Maps/Waze). Il browse veloce vede solo le tappe.
 
 Costante `LONG_LEG_MIN` rimossa dal codice.
 
+## Iterazione 13 (2026-06-10) — note del giorno: stato vuoto
+
+Gap segnalato: il giorno espanso mostra le note quando ci sono, ma un
+giorno senza note non aveva l'affordance per aggiungerle.
+
+Nel giorno espanso il blocco note ora c'è SEMPRE, stessa posizione
+(sotto le tappe, sopra la notte):
+
+- **compilato** → TodayNotes con pencil (soft, piena in hover);
+- **vuoto** → riga tratteggiata ghost "Aggiungi note al giorno"
+  (IconNotes, hover warm) → tap apre l'editing;
+- **editing** → textarea inline nel blocco warm (`ring-primary-border`),
+  Invio salva su `days.notes` (PATCH del giorno), Esc annulla.
+
+Componenti mock: `TodayNotesEmpty`, `TodayNotesEditing` in shared.tsx;
+galleria dei 3 stati in pagina (il giorno espanso del hero ha già note).
+Applicato anche al mobile (full state).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
