@@ -29,7 +29,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import {
   closestCenter,
   type CollisionDetection,
@@ -743,29 +743,43 @@ export function TimelineV2({
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll-into-view per la row in hover (sync con i pin in mappa). Porta in
-  // cima il GIORNO che contiene la row (DayBadge come primo elemento
-  // visibile), non la row singola: la querySelector trova la row,
-  // closest('[data-day-id]') risale al DayDropContainer di quel giorno e
-  // `scrollIntoView({block:"start"})` lo allinea al top del container
-  // scrollabile. Self-clamping quando il giorno è già abbastanza in fondo.
-  // Fallback alla row stessa nel caso teorico in cui il day wrapper manchi.
+  // Scroll-into-view per una row: porta in cima il GIORNO che la contiene
+  // (DayBadge come primo elemento visibile), non la row singola. La
+  // querySelector trova la row, closest('[data-day-id]') risale al
+  // DayDropContainer di quel giorno e `scrollIntoView({block:"start"})` lo
+  // allinea al top del container scrollabile. Self-clamping quando il
+  // giorno è già abbastanza in fondo. Fallback alla row stessa nel caso
+  // teorico in cui il day wrapper manchi.
   //
-  // Debounce 300ms: passare velocemente sopra più pin con il mouse non deve
-  // sparare uno scroll per ogni pin attraversato — solo se l'utente resta
-  // fermo per ≥ 300ms su un pin ci interessa portare il suo giorno in cima.
-  useEffect(() => {
-    if (!hoveredRowId) return;
+  // Stesso helper usato da DUE trigger:
+  //   1. `hoveredRowId` (sync con pin hover in mappa) — debounce 300ms così
+  //      passare il mouse su più pin in sequenza non spara uno scroll per
+  //      ogni pin attraversato.
+  //   2. `openOverride` (es. add-to-trip success, click sul pin) — instant
+  //      perché è un'azione esplicita dell'utente: vogliamo subito vedere
+  //      la row appena aperta.
+  const scrollRowIntoView = useCallback((rowId: string) => {
     const root = rootRef.current;
     if (!root) return;
-    const timer = window.setTimeout(() => {
-      const row = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
-      if (!row) return;
-      const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
-      target.scrollIntoView({ block: "start", behavior: "smooth" });
-    }, 300);
+    const row = root.querySelector<HTMLElement>(`[data-row-id="${rowId}"]`);
+    if (!row) return;
+    const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (!hoveredRowId) return;
+    const timer = window.setTimeout(() => scrollRowIntoView(hoveredRowId), 300);
     return () => window.clearTimeout(timer);
-  }, [hoveredRowId]);
+  }, [hoveredRowId, scrollRowIntoView]);
+
+  useEffect(() => {
+    if (!openOverride) return;
+    // Aspetta un frame perché la row appena aggiunta potrebbe non essere
+    // ancora montata nel DOM (l'ottimistico arriva nello stesso giro).
+    const raf = window.requestAnimationFrame(() => scrollRowIntoView(openOverride));
+    return () => window.cancelAnimationFrame(raf);
+  }, [openOverride, scrollRowIntoView]);
 
   // ── DnD: sensors + collision detection (copia dal Timeline v1) ───
   const collisionDetection: CollisionDetection = (args) => {
