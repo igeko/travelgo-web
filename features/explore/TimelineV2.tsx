@@ -750,14 +750,21 @@ export function TimelineV2({
   // `scrollIntoView({block:"start"})` lo allinea al top del container
   // scrollabile. Self-clamping quando il giorno è già abbastanza in fondo.
   // Fallback alla row stessa nel caso teorico in cui il day wrapper manchi.
+  //
+  // Debounce 300ms: passare velocemente sopra più pin con il mouse non deve
+  // sparare uno scroll per ogni pin attraversato — solo se l'utente resta
+  // fermo per ≥ 300ms su un pin ci interessa portare il suo giorno in cima.
   useEffect(() => {
     if (!hoveredRowId) return;
     const root = rootRef.current;
     if (!root) return;
-    const row = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
-    if (!row) return;
-    const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
-    target.scrollIntoView({ block: "start", behavior: "smooth" });
+    const timer = window.setTimeout(() => {
+      const row = root.querySelector<HTMLElement>(`[data-row-id="${hoveredRowId}"]`);
+      if (!row) return;
+      const target = row.closest<HTMLElement>("[data-day-id]") ?? row;
+      target.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 300);
+    return () => window.clearTimeout(timer);
   }, [hoveredRowId]);
 
   // ── DnD: sensors + collision detection (copia dal Timeline v1) ───
