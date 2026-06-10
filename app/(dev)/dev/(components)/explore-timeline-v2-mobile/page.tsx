@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import type { TripSnapshot } from "@/lib/dal";
 import { TimelineV2Mobile } from "@/features/explore/TimelineV2Mobile";
+import { MobileSheet } from "@/features/explore/MobileSheet";
 import { resolveAccommodations } from "@/features/explore/resolveAccommodations";
 import { StatePicker } from "../_components/StatePicker";
 import { Button } from "@/components/ui/Button";
@@ -173,15 +174,22 @@ export default function ExploreTimelineV2MobileSandboxPage() {
               desktop dietro <code>hidden lg:block</code>).
             </li>
             <li>
+              <code>MobileSheet</code> wrappa la Timeline con drag-to-snap a
+              tre stati: peek (80px) / half (50%) / full (88%). Trascina la
+              grip per snappare; un tap sulla grip senza drag cicla
+              peek → half → full. Notifica l&apos;altezza al parent via{" "}
+              <code>onHeightChange</code> (usato per il <code>viewportInset.bottom</code>{" "}
+              della mappa Explore).
+            </li>
+            <li>
               Lo stato <code>open</code> di una row non è ridisegnato a misura
               mobile in questa iterazione: la card editor (StopEditorCard) resta
               quella desktop. Su sheet stretti resta leggibile, ma il prossimo
               passo è probabilmente uno sheet full-screen quando una row apre.
             </li>
             <li>
-              Drag&amp;drop: stesso pattern della desktop (TouchSensor 200ms
-              delay). Il grip resta sempre visibile al 40% (touch fallback al
-              posto dell&apos;hover-only).
+              Drag&amp;drop attività: stesso pattern della desktop
+              (TouchSensor 200ms delay).
             </li>
           </ul>
         </section>
@@ -190,7 +198,9 @@ export default function ExploreTimelineV2MobileSandboxPage() {
   );
 }
 
-/** Cornice telefono 300×620 — stesso ratio del mock /design/timeline-readability. */
+/** Cornice telefono 300×620 — stesso ratio del mock /design/timeline-readability.
+ *  Il `children` è renderizzato DENTRO un MobileSheet drag-to-snap, sopra
+ *  un placeholder "mappa" leggero. */
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -201,8 +211,22 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="absolute left-1/2 top-[10px] z-50 h-[18px] w-[70px] -translate-x-1/2 rounded-[10px] bg-[#1a1410]"
       />
-      <div className="relative h-full w-full overflow-y-auto rounded-[22px] bg-surface">
-        {children}
+      <div className="relative h-full w-full overflow-hidden rounded-[22px] bg-[#e8e3d8]">
+        {/* Placeholder mappa: griglia leggera per ricordare un canvas mappa. */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #d4cdbd 1px, transparent 1px), linear-gradient(to bottom, #d4cdbd 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+            opacity: 0.5,
+          }}
+        />
+        <span className="absolute right-2 top-7 text-[8px] italic text-ink-faint/70">
+          design mock
+        </span>
+        <MobileSheet defaultState="half">{children}</MobileSheet>
       </div>
     </div>
   );
