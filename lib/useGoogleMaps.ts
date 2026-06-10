@@ -5,14 +5,15 @@ import { useSyncExternalStore } from "react";
 /* ─────────────────────────────────────────────────────────────────
    useGoogleMaps · singleton loader for the Google Maps JS SDK.
 
-   Guarantees the <script> tag is injected only once, even across
-   React StrictMode double-mounts or multiple <Map> instances on
-   the same page.
+   Usa il bootstrap loader ufficiale (`importLibrary` installata
+   sincronamente, script lazy-loaded alla prima chiamata): idempotente
+   per design — sopravvive a HMR e a React StrictMode senza il warning
+   "Google Maps JavaScript API multiple times".
 
    Returns:
      "idle"    — not started yet
      "loading" — script injected, waiting for google.maps
-     "ready"   — window.google.maps is available
+     "ready"   — window.google.maps è pronto (Map, Marker, Polyline, …)
      "error"   — script failed to load
 ───────────────────────────────────────────────────────────────── */
 
@@ -27,33 +28,72 @@ function notify(s: Status) {
   _listeners.forEach((fn) => fn(s));
 }
 
-function loadScript(apiKey: string) {
-  if (_status !== "idle") return; // already started
-  notify("loading");
-
-  const script = document.createElement("script");
-  // `loading=async` segnala esplicitamente al loader che lo script viene
-  // caricato in modo asincrono — Google lo richiede per evitare il warning
-  // "loaded directly without loading=async" in console (https://goo.gle
-  // /js-api-loading). `async`/`defer` sull'elemento restano comunque
-  // necessari per il browser.
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker&v=weekly&loading=async`;
-  script.async = true;
-  script.defer = true;
-  script.onload = () => {
-    // Con `loading=async` l'evento onload espone solo `google.maps.importLibrary`:
-    // i costruttori (`Map`, `Marker`, `Polyline`, …) non sono ancora globali.
-    // Pre-importiamo qui le librerie usate dal codice, così quando notifichiamo
-    // "ready" tutti i `new google.maps.*` sincroni funzionano come col loader
-    // legacy senza dover toccare ogni call site.
-    google.maps
-      .importLibrary("maps")
-      .then(() => google.maps.importLibrary("marker"))
-      .then(() => notify("ready"))
-      .catch(() => notify("error"));
+// Bootstrap loader ufficiale di Google (https://developers.google.com
+// /maps/documentation/javascript/load-maps-js-api#dynamic-library-import).
+// Installa `google.maps.importLibrary` sincronamente; lo script vero e
+// proprio è scaricato al primo `importLibrary(...)`. Lo snippet è
+// idempotente: chiamarlo due volte non rilancia il fetch.
+function installBootstrap(apiKey: string) {
+  type ImportLibraryFn = (name: string, ...args: unknown[]) => Promise<unknown>;
+  type MapsNs = {
+    importLibrary?: ImportLibraryFn;
+    __ib__?: (value: unknown) => void;
   };
-  script.onerror = () => notify("error");
-  document.head.appendChild(script);
+  type GlobalGoogle = { maps?: MapsNs };
+
+  const win = window as unknown as { google?: GlobalGoogle };
+  if (win.google?.maps?.importLibrary) return; // già installato
+
+  const opts = { key: apiKey, v: "weekly" } as const;
+  const PKG = "The Google Maps JavaScript API";
+  const CALLBACK = "__ib__";
+  const google: GlobalGoogle = (win.google = win.google ?? {});
+  const maps: MapsNs = (google.maps = google.maps ?? {});
+  const queued = new Set<string>();
+  let bootPromise: Promise<unknown> | undefined;
+
+  const load = () => {
+    if (bootPromise) return bootPromise;
+    bootPromise = new Promise<unknown>((resolve, reject) => {
+      const params = new URLSearchParams();
+      params.set("libraries", [...queued].join(","));
+      for (const [k, v] of Object.entries(opts)) {
+        params.set(k.replace(/[A-Z]/g, (ch) => "_" + ch.toLowerCase()), String(v));
+      }
+      params.set("callback", `google.maps.${CALLBACK}`);
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?" + params.toString();
+      script.onerror = () => {
+        bootPromise = undefined;
+        reject(new Error(PKG + " could not load."));
+      };
+      script.nonce = document.querySelector("script[nonce]")?.getAttribute("nonce") ?? "";
+      maps[CALLBACK] = resolve;
+      document.head.appendChild(script);
+    });
+    return bootPromise;
+  };
+
+  if (maps.importLibrary) {
+    console.warn(PKG + " only loaded once. Ignoring:", opts);
+    return;
+  }
+  const importLibrary: ImportLibraryFn = (name, ...args) => {
+    queued.add(name);
+    return load().then(() => maps.importLibrary!(name, ...args));
+  };
+  maps.importLibrary = importLibrary;
+}
+
+function loadLibraries() {
+  if (_status === "ready" || _status === "loading") return;
+  notify("loading");
+  Promise.all([
+    google.maps.importLibrary("maps"),
+    google.maps.importLibrary("marker"),
+  ])
+    .then(() => notify("ready"))
+    .catch(() => notify("error"));
 }
 
 function subscribe(onChange: () => void): () => void {
@@ -65,7 +105,8 @@ function subscribe(onChange: () => void): () => void {
     console.warn("[useGoogleMaps] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.");
     if (_status !== "error") notify("error");
   } else if (_status === "idle") {
-    loadScript(apiKey);
+    installBootstrap(apiKey);
+    loadLibraries();
   }
 
   return () => {
