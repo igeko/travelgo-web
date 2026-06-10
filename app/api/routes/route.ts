@@ -70,8 +70,11 @@ export async function POST(req: NextRequest) {
     polylineEncoding: "ENCODED_POLYLINE",
   };
 
-  // Polyline + duration + distanza — campi additivi nel fieldMask;
-  // consumer che ignorano `durationSec`/`distanceMeters` non se ne accorgono.
+  // Polyline + duration — duration è additiva (un solo campo extra nel
+  // fieldMask), consumer che ignorano `durationSec` non se ne accorgono.
+  // `distanceMeters` è additivo nel field mask: nessun consumer rompe se
+  // ignora il nuovo campo; chi lo usa (RouteVerifier per la OptionRow di
+  // car/walk) lo legge senza fare un secondo round-trip.
   const res = await computeRoutes(
     requestBody,
     "routes.polyline.encodedPolyline,routes.duration,routes.distanceMeters",
@@ -101,11 +104,9 @@ export async function POST(req: NextRequest) {
     typeof rawDuration === "string"
       ? Number(rawDuration.replace(/s$/, "")) || null
       : null;
-
-  // `distanceMeters` arriva come number nativo (intero, metri). Null se
-  // assente — il consumer rende lo spazio km solo quando definito.
-  const rawDistance = data?.routes?.[0]?.distanceMeters;
-  const distanceMeters = typeof rawDistance === "number" ? rawDistance : null;
+  const distanceMeters = typeof data?.routes?.[0]?.distanceMeters === "number"
+    ? data.routes[0].distanceMeters
+    : null;
 
   return NextResponse.json({ polyline: encodedPolyline, durationSec, distanceMeters });
 }

@@ -29,7 +29,9 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/client";
 import {
   closestCenter,
   type CollisionDetection,
@@ -265,7 +267,7 @@ function bridgeTransfer(b: BridgeData, destination?: TransferDestination): Trans
 
 function destinationFromActivity(a: Activity): TransferDestination | undefined {
   if (a.location_lat == null || a.location_lng == null) return undefined;
-  return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, title: a.title };
+  return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, label: a.title };
 }
 
 /* ── Item model (stop column) ─────────────────────────────────────── */
@@ -787,7 +789,7 @@ export function TimelineV2({
   hoveredRowId,
   className,
 }: Props) {
-  const t = useTranslations("Explore");
+  const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -1093,15 +1095,37 @@ export function TimelineV2({
                 )}
               >
                 <SortableContext items={dayIds} strategy={verticalListSortingStrategy}>
-                  {items.map((item) => {
+                  {items.map((item, idx) => {
                     if (item.kind === "transfer") {
                       const open = openId === item.id;
-                      // Spec /design/timeline-readability it.10: i Transfer
-                      // appaiono SOLO a giorno espanso (eccezione leg lunghi
-                      // ≥ 60 min, gestita upstream in `buildItems`). Sui
-                      // giorni collapsed non vengono proprio renderizzati
-                      // — niente spacer muted, lo spazio verticale si
-                      // compatta davvero.
+                      // Coords origin/destination dalle activity adiacenti:
+                      // - intra-day "-br": prev activity → next activity
+                      // - cross-day "-in": no plumbing per ora (RouteVerifier
+                      //   non parte se origin manca), fallback statico.
+                      const prev = idx > 0 ? items[idx - 1] : null;
+                      const next = idx < items.length - 1 ? items[idx + 1] : null;
+                      const prevAct = prev?.kind === "activity" ? prev.activity : null;
+                      const nextAct = next?.kind === "activity" ? next.activity : null;
+                      const isIncoming = item.id.endsWith("-in");
+                      const origin = !isIncoming && prevAct && prevAct.location_lat != null && prevAct.location_lng != null
+                        ? { lat: prevAct.location_lat, lng: prevAct.location_lng, placeId: prevAct.location_place_id, label: prevAct.title }
+                        : undefined;
+                      const destEndpoint = nextAct && nextAct.location_lat != null && nextAct.location_lng != null
+                        ? { lat: nextAct.location_lat, lng: nextAct.location_lng, placeId: nextAct.location_place_id, label: nextAct.title }
+                        : item.transfer.destination;
+                      // onApply: scrive bridge_out_json sull'activity di
+                      // partenza (intra-day). Incoming non gestito qui.
+                      const onApply = !isIncoming && prevAct
+                        ? async (bridge: BridgeData) => {
+                            try {
+                              await api.activities.setBridge(prevAct.id, "out", bridge as unknown as Record<string, unknown>);
+                              setOpenId(null);
+                              router.refresh();
+                            } catch (err) {
+                              console.error("[TimelineV2] setBridge failed:", err);
+                            }
+                          }
+                        : undefined;
                       return (
                         <div
                           key={item.id}
@@ -1116,8 +1140,9 @@ export function TimelineV2({
                               duration={item.transfer.duration}
                               distance={item.transfer.distance}
                               legs={item.transfer.legs}
-                              steps={item.transfer.steps}
-                              destination={item.transfer.destination}
+                              origin={origin}
+                              destination={destEndpoint}
+                              onApply={onApply}
                               onOpen={() => setOpenId(item.id)}
                               onClose={() => setOpenId(null)}
                             />

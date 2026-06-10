@@ -270,7 +270,7 @@ function bridgeTransfer(b: BridgeData, destination?: TransferDestination): Trans
 
 function destinationFromActivity(a: Activity): TransferDestination | undefined {
   if (a.location_lat == null || a.location_lng == null) return undefined;
-  return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, title: a.title };
+  return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, label: a.title };
 }
 
 /* ── Item model ───────────────────────────────────────────────────── */

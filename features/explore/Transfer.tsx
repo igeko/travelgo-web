@@ -16,19 +16,21 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+import { useState } from "react";
 import {
   IconWalk,
   IconBus,
   IconCar,
   IconChevronRight,
-  IconBrandGoogleMaps,
-  IconBrandWaze,
   IconX,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { RouteVerifier, type RouteVerifierEndpoint, type RouteVerifierMode } from "./RouteVerifier";
+import type { BridgeData } from "@/lib/dal/domain";
 
-export type TransferMode = "transit" | "car";
+
+export type TransferMode = "transit" | "car" | "walk";
 export type TransferState = "default" | "hover" | "open";
 
 export type TransferLeg = { kind: "walk" | "bus"; label: string };
@@ -43,32 +45,60 @@ export type TransferStep = {
 };
 
 /** Destinazione del leg, usata dal pannello aperto in modalità car per
- *  costruire i deep-link a Google Maps e Waze. `placeId` (Google) è
- *  opzionale: quando presente arricchisce il link Maps per una
- *  destinazione più precisa (ingresso/entrata del POI vs centroide). */
-export type TransferDestination = {
-  lat: number;
-  lng: number;
-  placeId?: string | null;
-  /** Nome della destinazione, usato come label nel deep-link Maps. */
-  title?: string;
-};
+ *  costruire i deep-link a Google Maps e Waze. Alias di
+ *  `RouteVerifierEndpoint` — stessi campi, stesso uso (RouteVerifier li
+ *  consuma direttamente). */
+export type TransferDestination = RouteVerifierEndpoint;
 
 const LEG_ICON = { walk: IconWalk, bus: IconBus } as const;
 
-/** Costruisce l'URL deep-link a Google Maps Directions. L'origine è
- *  lasciata libera così Maps usa la posizione corrente dell'utente —
- *  comportamento atteso per "portami là". */
-function googleMapsUrl(d: TransferDestination): string {
-  const dest = encodeURIComponent(d.title ?? `${d.lat},${d.lng}`);
-  const placeQs = d.placeId ? `&destination_place_id=${encodeURIComponent(d.placeId)}` : "";
-  return `https://www.google.com/maps/dir/?api=1&destination=${dest}${placeQs}`;
+/* ── Mode switch (rif. /design/transfer-mode) ──────────────────────── */
+const MODE_OPTIONS: { key: TransferMode; label: string; icon: typeof IconWalk }[] = [
+  { key: "walk",    label: "A piedi", icon: IconWalk },
+  { key: "car",     label: "Auto",    icon: IconCar },
+  { key: "transit", label: "Mezzi",   icon: IconBus },
+];
+
+function ModeSwitch({
+  active,
+  onChange,
+}: {
+  active: TransferMode;
+  onChange: (next: TransferMode) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Modalità di trasporto"
+      className="flex gap-0.5 rounded-pill bg-surface-soft p-0.5"
+    >
+      {MODE_OPTIONS.map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={key === active}
+          onClick={() => onChange(key)}
+          title={label}
+          className={cn(
+            "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-pill px-2 py-1.5 text-mini font-medium transition-colors",
+            key === active
+              ? "bg-ink text-white"
+              : "text-ink-soft hover:bg-surface-warm hover:text-ink",
+          )}
+        >
+          <Icon size={14} />
+          <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
-/** Waze deep-link. Accetta solo coords (niente placeId), `navigate=yes`
- *  fa partire la navigazione direttamente. */
-function wazeUrl(d: TransferDestination): string {
-  return `https://www.waze.com/ul?ll=${d.lat}%2C${d.lng}&navigate=yes`;
+/** TransferMode → RouteVerifierMode. La Transfer.mode legacy includeva
+ *  solo "transit"/"car"; ora aggiungiamo "walk" e mappiamo 1:1. */
+function toRouteMode(m: TransferMode): RouteVerifierMode {
+  return m === "car" ? "car" : m === "walk" ? "walk" : "transit";
 }
 
 export function Transfer({
@@ -78,8 +108,10 @@ export function Transfer({
   distance,
   muted = false,
   legs = [],
-  steps = [],
+  origin,
   destination,
+  departureTime,
+  onApply,
   onOpen,
   onClose,
   className,
@@ -100,17 +132,45 @@ export function Transfer({
   muted?: boolean;
   /** Collapsed transit chip strip. */
   legs?: TransferLeg[];
-  /** Open transit route detail. */
+  /**
+   * @deprecated Legacy: lista di "step" precomputati per l'open state.
+   * Oggi l'open state si pilota dal `RouteVerifier` (vedi `origin` /
+   * `destination` / `onApply`). Manteniamo la prop solo come no-op per
+   * non rompere i caller in flight; rimossa quando tutti migrano.
+   */
   steps?: TransferStep[];
-  /** Quando il modo è "car" e questa è passata, il pannello aperto mostra
-   *  due bottoni Maps/Waze invece del testo placeholder. */
-  destination?: TransferDestination;
+  /**
+   * Open-state dependencies (rif. /design/transfer-mode). Quando presenti
+   * insieme a `onApply`, il body dell'open ospita il ModeSwitch +
+   * RouteVerifier interattivo: lo switch ricomputa il leg, il bottone
+   * "Usa questa" applica il bridge tramite `onApply`.
+   *
+   * Quando uno qualsiasi manca, l'open state mostra solo il summary
+   * navy + il vecchio fallback per car (deep-link Maps/Waze) — utile
+   * a sandbox / situazioni in cui l'host non ha ancora wire-up.
+   */
+  origin?: RouteVerifierEndpoint;
+  destination?: RouteVerifierEndpoint;
+  departureTime?: string;
+  /** Callback dell'apply: l'host scrive BridgeData su
+   *  scheduled_activities.bridge_out_json (PATCH instance) e ricarica
+   *  la timeline. La modalità riflette quello che l'utente ha scelto. */
+  onApply?: (bridge: BridgeData) => void;
   onOpen?: () => void;
   onClose?: () => void;
   className?: string;
 }) {
   const open = state === "open";
-  const ModeIcon = mode === "car" ? IconCar : IconBus;
+  // Stato locale del ModeSwitch: parte dalla `mode` corrente del bridge
+  // salvato; lo switch lo cambia senza notificare l'host (sarà l'apply a
+  // persistere). Re-sync su `mode` quando l'host passa una nuova prop.
+  const [localMode, setLocalMode] = useState<TransferMode>(mode);
+  const [lastMode, setLastMode] = useState<TransferMode>(mode);
+  if (mode !== lastMode) {
+    setLastMode(mode);
+    setLocalMode(mode);
+  }
+  const ModeIcon = localMode === "car" ? IconCar : localMode === "walk" ? IconWalk : IconBus;
 
   /* Summary row (shared by collapsed + open header) — `dark` flips the
      palette to white for the open navy header.
@@ -195,79 +255,67 @@ export function Transfer({
   }
 
   /* ── Open ───────────────────────────────────────────────────── */
+  // Modalità interattiva (rif. /design/transfer-mode): richiede coords
+  // origin + destination + callback onApply. Sandbox e v1 deprecata che
+  // non li passano cadono nel fallback statico ("steps" precalcolati).
+  const canVerify = !!origin && !!destination && !!onApply;
+
+  // Wrapper sicuro per onApply nello switch: setta lo state locale, poi
+  // il RouteVerifier (rimontato col nuovo cacheKey) fetcha le opzioni
+  // della nuova modalità. L'apply scrive il bridge + chiude (host).
+  const handleApply = (bridge: BridgeData) => {
+    onApply?.(bridge);
+  };
+
   return (
     <div className={cn("flex w-full flex-col gap-[7px] rounded-sm bg-ink p-1", className)}>
-      <div className="py-0.5">{summary(true)}</div>
+      {/* Header navy: summary del bridge corrente + close. */}
+      <div className="flex items-center gap-1.5">
+        <div className="flex-1">{summary(true)}</div>
+        <Button
+          size="sm"
+          variant="ghost"
+          iconOnly
+          onClick={onClose}
+          aria-label="Close"
+          className="-mr-1 text-white/70 hover:text-white"
+        >
+          <IconX />
+        </Button>
+      </div>
 
-      <div className="flex w-full flex-col gap-2 rounded-sm bg-surface px-4 py-4">
-        <div className="flex w-full justify-end">
-          <Button size="sm" variant="ghost" iconOnly onClick={onClose} aria-label="Close">
-            <IconX />
-          </Button>
-        </div>
-
-        {mode === "car" ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <IconCar size={20} className="shrink-0 text-ink-soft" />
-              <span className="text-micro text-ink-soft">
-                {destination
-                  ? "Apri la navigazione"
-                  : "Aggiungi una destinazione per navigare"}
-              </span>
-            </div>
-            {destination && (
-              <div className="flex gap-2">
-                <a
-                  href={googleMapsUrl(destination)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm",
-                    "border border-border bg-surface px-3 py-1.5 text-micro font-medium text-ink",
-                    "transition-colors hover:bg-surface-soft",
-                  )}
-                >
-                  <IconBrandGoogleMaps size={14} className="shrink-0" />
-                  Google Maps
-                </a>
-                <a
-                  href={wazeUrl(destination)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm",
-                    "border border-border bg-surface px-3 py-1.5 text-micro font-medium text-ink",
-                    "transition-colors hover:bg-surface-soft",
-                  )}
-                >
-                  <IconBrandWaze size={14} className="shrink-0" />
-                  Waze
-                </a>
+      <div className="flex w-full flex-col gap-2.5 rounded-sm bg-surface px-3 py-3">
+        {canVerify ? (
+          <>
+            <ModeSwitch active={localMode} onChange={setLocalMode} />
+            <RouteVerifier
+              mode={toRouteMode(localMode)}
+              origin={origin}
+              destination={destination}
+              departureTime={departureTime}
+              onApply={handleApply}
+            />
+          </>
+        ) : (
+          // Fallback statico per sandbox / v1 che non passano le coords:
+          // mostriamo i precomputati `legs` come strip read-only.
+          <div className="flex flex-col gap-2 py-1">
+            {legs.length === 0 ? (
+              <p className="text-mini text-ink-soft">Nessun dato di percorso disponibile.</p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5 text-mini text-ink">
+                {legs.map((leg, i) => {
+                  const Icon = LEG_ICON[leg.kind];
+                  return (
+                    <span key={i} className="flex items-center gap-1">
+                      {i > 0 ? <IconChevronRight size={8} className="text-ink-faint" /> : null}
+                      <Icon size={13} className="text-ink/55" />
+                      <span className="font-medium">{leg.label}</span>
+                    </span>
+                  );
+                })}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="flex w-full flex-col gap-2">
-            {steps.map((step, i) => {
-              const Icon = LEG_ICON[step.kind];
-              return (
-                <div key={i} className="flex w-full items-start gap-2">
-                  <Icon size={20} className="mt-0.5 shrink-0 text-ink-soft" />
-                  {step.subtitle ? (
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <p className="text-micro font-medium text-ink">
-                        {step.title}
-                        {step.place ? <span className="text-ink-soft"> {step.place}</span> : null}
-                      </p>
-                      <p className="text-micro text-ink-soft">{step.subtitle}</p>
-                    </div>
-                  ) : (
-                    <span className="text-micro text-ink-soft">{step.title}</span>
-                  )}
-                </div>
-              );
-            })}
           </div>
         )}
       </div>
