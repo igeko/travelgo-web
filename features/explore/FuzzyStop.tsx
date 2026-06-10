@@ -27,6 +27,8 @@ import { ArrivalDeparture, type ActivityTime } from "./ArrivalDeparture";
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
 
 export type FuzzyStopState = "default" | "hover" | "selected" | "open";
+/** Scala visiva del collapsed (vedi `ActivityStopSize`). */
+export type FuzzyStopSize = "md" | "sm";
 
 export function FuzzyStop({
   title,
@@ -41,6 +43,7 @@ export function FuzzyStop({
   onOpen,
   onClose,
   onRemove,
+  size = "md",
   className,
 }: {
   title: string;
@@ -55,28 +58,36 @@ export function FuzzyStop({
   onOpen?: () => void;
   onClose?: () => void;
   onRemove?: () => void;
+  /** Scala visiva del collapsed. Default "md". */
+  size?: FuzzyStopSize;
   className?: string;
 }) {
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
     const selected = state === "selected";
     const Wrapper = onOpen ? "button" : "div";
+    const compact = size === "sm";
     return (
       <Wrapper
         type={onOpen ? "button" : undefined}
         onClick={onOpen}
         className={cn(
-          "flex w-full items-center gap-2 rounded-sm p-1",
+          "flex w-full items-center rounded-sm",
+          compact ? "gap-1.5 px-1 py-0.5" : "gap-2 p-1",
           onOpen && "cursor-pointer",
           state === "hover" && "bg-surface-soft",
           selected && "bg-ink",
           className,
         )}
       >
-        <Icon size={16} className={cn("shrink-0", selected ? "text-white" : "text-ink-soft")} />
+        <Icon
+          size={compact ? 13 : 16}
+          className={cn("shrink-0", selected ? "text-white" : "text-ink-soft")}
+        />
         <span
           className={cn(
-            "truncate text-mini font-medium capitalize",
+            "truncate font-medium capitalize",
+            compact ? "text-[11px]" : "text-mini",
             selected ? "text-white" : "text-ink-soft",
           )}
         >

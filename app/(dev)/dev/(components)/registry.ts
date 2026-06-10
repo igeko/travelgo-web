@@ -168,6 +168,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Route Rail + Night Divider · porting di /design/timeline-readability V1 · attiva su /trips/[id]/explore-next · stessi ActivityStop/Transfer reali della v1",
   },
   {
+    slug: "explore-timeline-v2-mobile",
+    title: "Timeline (v2) · mobile",
+    group: "Features",
+    subgroup: "Explore",
+    description: "Versione mobile-compact della v2: day strip orizzontale sticky, rail 30px, row sm (ActivityStop/FuzzyStop size sm), NightCard padding ridotto. Drop-in dentro un bottom-sheet.",
+  },
+  {
     slug: "explore-timeline",
     title: "Timeline (v1, deprecated)",
     group: "Features",

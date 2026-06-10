@@ -63,6 +63,15 @@ type IconCmp = ComponentType<{ size?: number; className?: string }>;
 export type ActivityStopState = "default" | "hover" | "selected" | "open";
 export type ActivityStopAccent = "ink" | "primary";
 export type LodgingMode = "sleep" | "stop";
+/**
+ * Scala visiva della row collapsed.
+ *   - "md": default desktop — min-h-8, badge 24px, font 14px, grip 16px.
+ *   - "sm": mobile compatto — min-h-7, badge 20px, font 12px, grip 12px,
+ *     grip visibile sempre al 40% (touch fallback al posto del solo
+ *     hover-only). Lo stato "open" resta invariato in entrambi i casi
+ *     (l'editor non si ridisegna a misura mobile in questa iterazione).
+ */
+export type ActivityStopSize = "md" | "sm";
 
 export type { ActivityTime };
 
@@ -110,11 +119,14 @@ export function ActivityStop({
   onNightsChange,
   dragHandleProps,
   isDragging = false,
+  size = "md",
   className,
 }: {
   title: string;
   icon?: IconCmp;
   state?: ActivityStopState;
+  /** Scala visiva del collapsed (vedi `ActivityStopSize`). Default "md". */
+  size?: ActivityStopSize;
   /** Collapsed badge tone. "primary" paints the icon badge orange (used
    *  for accommodation rows in the Explore timeline). */
   accent?: ActivityStopAccent;
@@ -306,12 +318,16 @@ export function ActivityStop({
     // sandbox; the `hover:` / `group-hover:` pair adds the native pointer
     // affordance inside Timeline, where the parent doesn't track hover.
     const interactive = !!onOpen && !selected;
+    const compact = size === "sm";
     return (
       <Wrapper
         type={onOpen ? "button" : undefined}
         onClick={onOpen}
         className={cn(
-          "group flex min-h-8 w-full items-center justify-between gap-3 rounded-sm py-1 pr-3.5 pl-1",
+          "group flex w-full items-center justify-between rounded-sm pl-1",
+          compact
+            ? "min-h-7 gap-1.5 py-0.5 pr-2"
+            : "min-h-8 gap-3 py-1 pr-3.5",
           onOpen && "cursor-pointer",
           state === "hover" && "bg-surface-soft",
           interactive && "hover:bg-surface-soft focus-visible:bg-surface-soft",
@@ -320,16 +336,27 @@ export function ActivityStop({
           className,
         )}
       >
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <StopIconBadge icon={icon} tone={selected || accent === "primary" ? "primary" : "ink"} />
-          <span className={cn("truncate text-[14px]", selected ? "text-white" : "text-ink")}>
+        <span className={cn("flex min-w-0 flex-1 items-center", compact ? "gap-1.5" : "gap-2")}>
+          <StopIconBadge
+            icon={icon}
+            tone={selected || accent === "primary" ? "primary" : "ink"}
+            size={compact ? 20 : 24}
+          />
+          <span
+            className={cn(
+              "truncate",
+              compact ? "text-[12px] font-medium" : "text-[14px]",
+              selected ? "text-white" : "text-ink",
+            )}
+          >
             {title}
           </span>
         </span>
         {time ? (
           <span
             className={cn(
-              "shrink-0 text-nano tabular-nums",
+              "shrink-0 tabular-nums",
+              compact ? "text-[10px]" : "text-nano",
               selected ? "text-white/70" : "text-ink-soft",
             )}
           >
@@ -349,14 +376,19 @@ export function ActivityStop({
             className={cn(
               "inline-flex shrink-0 text-ink-faint transition-opacity",
               dragHandleProps ? "cursor-grab active:cursor-grabbing touch-none" : "",
-              state === "hover"
-                ? "opacity-100"
-                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+              // Touch fallback: in mobile il grip è sempre visibile al 40%
+              // (hover-only è invisibile su touch); su desktop resta hidden
+              // di default e appare in hover.
+              compact
+                ? "opacity-40 group-hover:opacity-100 focus-within:opacity-100"
+                : state === "hover"
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
             )}
             aria-label={dragHandleProps ? "Trascina per riordinare" : undefined}
             role={dragHandleProps ? "button" : undefined}
           >
-            <IconGripVertical size={16} />
+            <IconGripVertical size={compact ? 12 : 16} />
           </span>
         ) : null}
       </Wrapper>
