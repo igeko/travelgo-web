@@ -127,6 +127,77 @@ function applyIconEdits(
 }
 
 /**
+ * Apply optimistic activity title edits onto a TimelineDayData[] projection.
+ * Keyed by entity id; sovrascrive `activity.title` su ogni occorrenza
+ * scheduled e `accommodation.name` quando la Property è la stessa entity.
+ */
+function applyTitleEdits(
+  days: TimelineDayData[],
+  edits: Map<string, string>,
+): TimelineDayData[] {
+  if (edits.size === 0) return days;
+  return days.map((day) => {
+    let mutated = false;
+    const activities = day.activities.map((act) => {
+      const entityId = act.activity_id ?? act.entity_id ?? null;
+      if (!entityId || !edits.has(entityId)) return act;
+      mutated = true;
+      return { ...act, title: edits.get(entityId)! };
+    });
+    const acc = day.accommodation;
+    if (acc?.activity_id && edits.has(acc.activity_id)) {
+      return {
+        ...day,
+        activities: mutated ? activities : day.activities,
+        accommodation: { ...acc, name: edits.get(acc.activity_id)! },
+      };
+    }
+    return mutated ? { ...day, activities } : day;
+  });
+}
+
+/**
+ * Apply optimistic activity short_desc edits. Mirrors applyTitleEdits ma
+ * sui campi description: `activity.short_desc` per gli stop e
+ * `accommodation.short_desc` per il lodging (Property entity condivisa).
+ */
+function applyShortDescEdits(
+  days: TimelineDayData[],
+  edits: Map<string, string>,
+): TimelineDayData[] {
+  if (edits.size === 0) return days;
+  return days.map((day) => {
+    let mutated = false;
+    const activities = day.activities.map((act) => {
+      const entityId = act.activity_id ?? act.entity_id ?? null;
+      if (!entityId || !edits.has(entityId)) return act;
+      mutated = true;
+      return { ...act, short_desc: edits.get(entityId)! };
+    });
+    const acc = day.accommodation;
+    if (acc?.activity_id && edits.has(acc.activity_id)) {
+      return {
+        ...day,
+        activities: mutated ? activities : day.activities,
+        accommodation: { ...acc, short_desc: edits.get(acc.activity_id)! },
+      };
+    }
+    return mutated ? { ...day, activities } : day;
+  });
+}
+
+/**
+ * Apply optimistic day notes edits. Keyed by day id; sovrascrive `day.notes`.
+ */
+function applyDayNotesEdits(
+  days: TimelineDayData[],
+  edits: Map<string, string>,
+): TimelineDayData[] {
+  if (edits.size === 0) return days;
+  return days.map((day) => (edits.has(day.id) ? { ...day, notes: edits.get(day.id)! } : day));
+}
+
+/**
  * Apply optimistic coordinate edits onto a TimelineDayData[] projection.
  * Keyed by activity entity id. Overwrites only lat/lng on every scheduled
  * occurrence AND on every accommodation pointing to that entity, leaving
@@ -437,6 +508,21 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const [optIconEdits, setOptIconEdits] = useState<Map<string, string>>(
     () => new Map(),
   );
+  // Optimistic title edits keyed by activity entity id. Propaga a ogni
+  // occorrenza scheduled e all'accommodation che usa la stessa Property.
+  const [optTitleEdits, setOptTitleEdits] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  // Optimistic short_desc edits keyed by activity entity id. Stessa
+  // propagazione di optTitleEdits — l'entity è condivisa fra stop e lodging.
+  const [optShortDescEdits, setOptShortDescEdits] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  // Optimistic day notes edits keyed by day id. days.notes è dato del giorno,
+  // non dell'entity: niente propagazione cross-day.
+  const [optDayNotesEdits, setOptDayNotesEdits] = useState<Map<string, string>>(
+    () => new Map(),
+  );
   const [lastDaysRef, setLastDaysRef] = useState(days);
   if (days !== lastDaysRef) {
     setLastDaysRef(days);
@@ -447,6 +533,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optMoveActions.length > 0) setOptMoveActions([]);
     if (optTimeEdits.size > 0) setOptTimeEdits(new Map());
     if (optIconEdits.size > 0) setOptIconEdits(new Map());
+    if (optTitleEdits.size > 0) setOptTitleEdits(new Map());
+    if (optShortDescEdits.size > 0) setOptShortDescEdits(new Map());
+    if (optDayNotesEdits.size > 0) setOptDayNotesEdits(new Map());
   }
 
   const effectiveDays = useMemo<TimelineDayData[]>(() => {
@@ -458,8 +547,11 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     if (optMoveActions.length > 0) out = applyMoveActions(out, optMoveActions);
     if (optTimeEdits.size > 0) out = applyTimeEdits(out, optTimeEdits);
     if (optIconEdits.size > 0) out = applyIconEdits(out, optIconEdits);
+    if (optTitleEdits.size > 0) out = applyTitleEdits(out, optTitleEdits);
+    if (optShortDescEdits.size > 0) out = applyShortDescEdits(out, optShortDescEdits);
+    if (optDayNotesEdits.size > 0) out = applyDayNotesEdits(out, optDayNotesEdits);
     return out;
-  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions, optTimeEdits, optIconEdits]);
+  }, [visibleDays, optStayActions, optAddressEdits, optCoordEdits, optMoveActions, optTimeEdits, optIconEdits, optTitleEdits, optShortDescEdits, optDayNotesEdits]);
 
   // Chain canonico del trip — ordinato, dedup multi-night, sa già dove
   // mettere l'accommodation (ultimo nodo del giorno di check-in, mai
@@ -752,6 +844,94 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [router],
   );
 
+  /**
+   * Editing inline del titolo activity/accommodation. Stesso pattern di
+   * handleIconChange: optimistic Map per entity id, PATCH entity, rollback
+   * + pill on error. Title nullo non è valido — la lasciamo passare al
+   * server che applicherà la propria validazione (typicamente: ignora o
+   * 400). UI: il SoftField mostra subito il valore committato.
+   */
+  const handleTitleChange = useCallback(
+    async (activityId: string, title: string) => {
+      setOptTitleEdits((prev) => {
+        const next = new Map(prev);
+        next.set(activityId, title);
+        return next;
+      });
+      try {
+        await api.activities.updateEntity(activityId, { title });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateTitle failed:", err);
+        setOptTitleEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(activityId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
+  /**
+   * Editing inline della descrizione (activities.short_desc). Stringa vuota
+   * salvata come null per coerenza con il resto del modello.
+   */
+  const handleShortDescChange = useCallback(
+    async (activityId: string, shortDesc: string) => {
+      const value = shortDesc.length > 0 ? shortDesc : "";
+      setOptShortDescEdits((prev) => {
+        const next = new Map(prev);
+        next.set(activityId, value);
+        return next;
+      });
+      try {
+        await api.activities.updateEntity(activityId, {
+          short_desc: shortDesc.length > 0 ? shortDesc : null,
+        });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateShortDesc failed:", err);
+        setOptShortDescEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(activityId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
+  /**
+   * Editing inline delle note del giorno (days.notes). Stringa vuota →
+   * null (clear esplicito). Stesso pattern di handleTitleChange ma keyed
+   * by day id.
+   */
+  const handleDayNotesChange = useCallback(
+    async (dayId: string, notes: string) => {
+      setOptDayNotesEdits((prev) => {
+        const next = new Map(prev);
+        next.set(dayId, notes);
+        return next;
+      });
+      try {
+        await api.days.update(dayId, { notes: notes.length > 0 ? notes : null });
+        router.refresh();
+      } catch (err) {
+        console.error("[ExploreNextShell] updateDayNotes failed:", err);
+        setOptDayNotesEdits((prev) => {
+          const next = new Map(prev);
+          next.delete(dayId);
+          return next;
+        });
+        setPillState({ kind: "error", action: "remove" });
+      }
+    },
+    [router],
+  );
+
   const handleAddressChange = useCallback(
     async (activityId: string, place: PlaceResult | null) => {
       // Optimistic: apply locally first so the AddressField shows the new
@@ -995,6 +1175,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onReduceStay={handleReduceStay}
             onAddressChange={handleAddressChange}
             onIconChange={handleIconChange}
+            onTitleChange={handleTitleChange}
+            onShortDescChange={handleShortDescChange}
+            onDayNotesChange={handleDayNotesChange}
             onUpdateActivityInstance={handleUpdateActivityInstance}
             openOverride={openOverride}
             hoveredRowId={hoveredRowId}

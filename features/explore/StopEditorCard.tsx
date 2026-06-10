@@ -17,6 +17,7 @@
 import type { ComponentType, ReactNode } from "react";
 import { IconX, IconUnlink, IconArrowUp, IconArrowDown } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
+import { EditableText } from "@/components/ui/EditableText";
 import { cn } from "@/lib/cn";
 
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
@@ -24,6 +25,8 @@ type IconCmp = ComponentType<{ size?: number; className?: string }>;
 export function StopEditorCard({
   icon: Icon,
   title,
+  onTitleCommit,
+  titlePlaceholder,
   onClose,
   onRemove,
   removeLabel = "Remove",
@@ -36,6 +39,10 @@ export function StopEditorCard({
 }: {
   icon: IconCmp;
   title: string;
+  /** Quando passato, l'header diventa editabile inline via SoftField. */
+  onTitleCommit?: (next: string) => void | Promise<void>;
+  /** Placeholder per l'editor inline del titolo. Ignorato se `onTitleCommit` non è passato. */
+  titlePlaceholder?: string;
   onClose?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
@@ -61,7 +68,16 @@ export function StopEditorCard({
       <header className="flex w-full items-center gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Icon size={22} className="shrink-0 text-ink" />
-          <p className="truncate text-[16px] font-semibold text-ink">{title}</p>
+          {onTitleCommit ? (
+            <EditableText
+              value={title}
+              onCommit={onTitleCommit}
+              placeholder={titlePlaceholder}
+              inputClassName="text-[16px] font-semibold text-ink"
+            />
+          ) : (
+            <p className="truncate text-[16px] font-semibold text-ink">{title}</p>
+          )}
         </div>
         <Button
           size="sm"

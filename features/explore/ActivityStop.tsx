@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
+import { EditableText } from "@/components/ui/EditableText";
 import { StopIconBadge } from "./StopIconBadge";
 import { StopEditorCard } from "./StopEditorCard";
 import { SegmentToggle } from "./SegmentToggle";
@@ -97,6 +98,8 @@ export function ActivityStop({
   timeRange = "10:30 → 11:00",
   time,
   description,
+  onTitleCommit,
+  onShortDescCommit,
   addressLocation = null,
   addressPlaceId = null,
   addressLat = null,
@@ -156,6 +159,11 @@ export function ActivityStop({
    *  on each row when the day is expanded. */
   time?: string;
   description?: string;
+  /** Quando passato, il titolo nell'header della card aperta diventa editabile inline. */
+  onTitleCommit?: (next: string) => void | Promise<void>;
+  /** Quando passato, la descrizione (short_desc) diventa editabile inline con
+   *  placeholder always-visible nella card aperta. */
+  onShortDescCommit?: (next: string) => void | Promise<void>;
   /**
    * Address as four primitive props (NOT a pre-built PlaceResult object) so
    * the AddressField below sees a referentially stable `value` across renders.
@@ -467,6 +475,8 @@ export function ActivityStop({
       <StopEditorCard
         icon={icon}
         title={title}
+        onTitleCommit={onTitleCommit}
+        titlePlaceholder={t("titlePlaceholder")}
         onClose={onClose}
         onRemove={onRemove}
         onMoveUp={onMoveUp}
@@ -525,7 +535,16 @@ export function ActivityStop({
           )}
         </div>
 
-        {description ? (
+        {onShortDescCommit ? (
+          <EditableText
+            value={description ?? ""}
+            onCommit={onShortDescCommit}
+            placeholder={t("descriptionPlaceholder")}
+            multiline
+            rows={2}
+            inputClassName="text-mini text-ink"
+          />
+        ) : description ? (
           <p className="w-full text-mini text-ink">{description}</p>
         ) : null}
 

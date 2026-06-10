@@ -29,7 +29,10 @@
     "days": "Giorni {from}–{to}",
     "openLink": "Apri link",
     "nightSingular": "notte",
-    "nightsPlural": "notti"
+    "nightsPlural": "notti",
+    "titlePlaceholder": "Titolo",
+    "descriptionPlaceholder": "Aggiungi una descrizione…",
+    "dayNotesPlaceholder": "Aggiungi una nota per il giorno…"
   },
   "ExploreCategories": {
     "dormi": "Dormi",

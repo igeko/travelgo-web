@@ -21,6 +21,9 @@ import type { NightWithStay } from "@/lib/dal";
 
 export type AccommodationDisplay = {
   name: string;
+  /** activities.short_desc della Property che backa lo stay. Solo canonical
+   *  resolver; il legacy non ha entity associata e mette null. */
+  short_desc?: string | null;
   type: string | null;
   address: string | null;
   url: string | null;
@@ -78,6 +81,7 @@ export function accommodationsFromNights<D extends { id: string }>(
       ...d,
       accommodation: {
         name: a.title,
+        short_desc: a.short_desc ?? null,
         type: null,
         address: a.location,
         url: a.url,

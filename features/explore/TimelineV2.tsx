@@ -64,6 +64,8 @@ import {
 } from "@/components/ui/icons";
 import { getStopIcon } from "@/features/activity/Timeline/stopIcons";
 import { cn } from "@/lib/cn";
+import { useTranslations } from "next-intl";
+import { EditableText } from "@/components/ui/EditableText";
 import { ActivityStop } from "./ActivityStop";
 import { StopIconBadge } from "./StopIconBadge";
 import type { PlaceResult } from "@/components/ui/AddressField";
@@ -116,6 +118,12 @@ type Props = {
    * dell'istanza schedulata.
    */
   onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
+  /** Editing inline del titolo (activities.title). Riceve l'entity id. */
+  onTitleChange?: (activityId: string, title: string) => void | Promise<void>;
+  /** Editing inline della descrizione (activities.short_desc). */
+  onShortDescChange?: (activityId: string, shortDesc: string) => void | Promise<void>;
+  /** Editing inline delle note del giorno (days.notes). */
+  onDayNotesChange?: (dayId: string, notes: string) => void | Promise<void>;
   onUpdateActivityInstance?: (
     scheduledId: string,
     patch: { time?: string | null; duration_min?: number | null },
@@ -252,6 +260,9 @@ type Item =
 type LodgingVM = {
   id: string;
   title: string;
+  /** Descrizione breve della Property che backa lo stay (activities.short_desc).
+   *  Solo canonical resolver — null dal legacy. */
+  shortDesc: string | null;
   icon: IconCmp;
   /** Icon key sull'entità Property (activities.icon). Quando set, l'icon
    *  componente sopra è già `getStopIcon(iconKey)`; manteniamo la key per
@@ -335,6 +346,7 @@ function buildLodging(
   return {
     id: `lodging-${dayId}`,
     title: accommodation.name,
+    shortDesc: accommodation.short_desc ?? null,
     icon: fromKey ?? accommodationIcon(accommodation.type),
     iconKey: accommodation.iconKey ?? null,
     address: accommodation.address,
@@ -615,6 +627,8 @@ function NightBandV2({
   onClose,
   onAddressChange,
   onIconChange,
+  onTitleChange,
+  onShortDescChange,
   onConvertToStop,
   onExtendStay,
   onReduceStay,
@@ -626,6 +640,8 @@ function NightBandV2({
   onClose: () => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
   onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
+  onTitleChange?: (activityId: string, title: string) => void | Promise<void>;
+  onShortDescChange?: (activityId: string, shortDesc: string) => void | Promise<void>;
   onConvertToStop?: (stayId: string) => void | Promise<void>;
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
@@ -644,6 +660,7 @@ function NightBandV2({
           accent="primary"
           state="open"
           mode="sleep"
+          description={lodging.shortDesc ?? undefined}
           nights={lodging.nightsTotal}
           nightIndex={lodging.nightIndex}
           addressLocation={lodging.address}
@@ -653,6 +670,12 @@ function NightBandV2({
           onAddressChange={(place) => {
             if (lodging.activityId) void onAddressChange?.(lodging.activityId, place);
           }}
+          onTitleCommit={onTitleChange && lodging.activityId ? (next) => {
+            void onTitleChange(lodging.activityId!, next);
+          } : undefined}
+          onShortDescCommit={onShortDescChange && lodging.activityId ? (next) => {
+            void onShortDescChange(lodging.activityId!, next);
+          } : undefined}
           onOpen={onOpen}
           onClose={onClose}
           onRemove={onClose}
@@ -733,11 +756,15 @@ export function TimelineV2({
   onReduceStay,
   onAddressChange,
   onIconChange,
+  onTitleChange,
+  onShortDescChange,
+  onDayNotesChange,
   onUpdateActivityInstance,
   openOverride,
   hoveredRowId,
   className,
 }: Props) {
+  const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -982,7 +1009,10 @@ export function TimelineV2({
             chainPrevByDay.get(day.id) ?? null,
           );
           const lodging = buildLodging(day.accommodation, day.id);
-          const showNotes = expanded && !!day.notes;
+          // Note editabili: visibile (anche da vuoto, con placeholder) quando
+          // il giorno è espanso E il parent passa l'handler. Altrimenti, fallback
+          // legacy: solo se ci sono note salvate.
+          const showNotes = expanded && (!!onDayNotesChange || !!day.notes);
 
           // Solver tempi: arrivo/partenza per ogni activity del giorno.
           const dayActsOrdered = [...day.activities]
@@ -1163,6 +1193,14 @@ export function TimelineV2({
                                     const entityId = a.activity_id ?? a.entity_id ?? null;
                                     if (entityId) void onAddressChange?.(entityId, place);
                                   }}
+                                  onTitleCommit={onTitleChange ? (next) => {
+                                    const entityId = a.activity_id ?? a.entity_id ?? null;
+                                    if (entityId) void onTitleChange(entityId, next);
+                                  } : undefined}
+                                  onShortDescCommit={onShortDescChange ? (next) => {
+                                    const entityId = a.activity_id ?? a.entity_id ?? null;
+                                    if (entityId) void onShortDescChange(entityId, next);
+                                  } : undefined}
                                   onOpen={() => setOpenId(a.id)}
                                   onClose={() => setOpenId(null)}
                                   onRemove={handleRemove}
@@ -1185,7 +1223,8 @@ export function TimelineV2({
                   })}
                 </SortableContext>
 
-                {/* Today notes — solo se espanso. */}
+                {/* Today notes — solo se espanso. Editabili inline quando il
+                    parent passa `onDayNotesChange` (anche da vuoto, con placeholder). */}
                 {showNotes ? (
                   <div
                     className="grid items-stretch gap-x-3"
@@ -1197,9 +1236,20 @@ export function TimelineV2({
                         <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-primary">
                           Today notes
                         </p>
-                        <p className="whitespace-pre-line text-mini leading-relaxed text-ink">
-                          {day.notes}
-                        </p>
+                        {onDayNotesChange ? (
+                          <EditableText
+                            value={day.notes ?? ""}
+                            onCommit={(next) => onDayNotesChange(day.id, next)}
+                            placeholder={t("dayNotesPlaceholder")}
+                            multiline
+                            rows={2}
+                            inputClassName="text-mini leading-relaxed text-ink whitespace-pre-line"
+                          />
+                        ) : (
+                          <p className="whitespace-pre-line text-mini leading-relaxed text-ink">
+                            {day.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1232,6 +1282,8 @@ export function TimelineV2({
                   onClose={() => setOpenId(null)}
                   onAddressChange={onAddressChange}
                   onIconChange={onIconChange}
+                  onTitleChange={onTitleChange}
+                  onShortDescChange={onShortDescChange}
                   onConvertToStop={onConvertToStop}
                   onExtendStay={onExtendStay}
                   onReduceStay={onReduceStay}
