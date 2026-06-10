@@ -258,6 +258,22 @@ Mock statici in `shared.tsx`: `IconPickerTrigger`, `IconPickerGrid`
 (aperto nell'editor di Spesa Beisia), `StayTypePicker` (nell'editor
 della Notte 1).
 
+### It.11b — scelta proposta A "Sezioni" (su 3 valutate in chat)
+
+- **Picker flottante** (popover `z-dropdown`, `shadow-float`, ancorato
+  al badge icona nell'header dell'editor) che sovrasta il corpo.
+- **Icone = categorie ExploreToolbar**: tutte le sub di
+  `EXPLORE_CATEGORY_TREE` (16), raggruppate per macro Dormi/Mangia/
+  Esplora con eyebrow icona+label. Un solo tap; tooltip = label i18n
+  `ExploreCategories.*`. Selezionata `bg-ink`, celle `bg-surface-soft`.
+- **Trigger SENZA chevron**: il cambio icona avviene nel dettaglio, il
+  badge icona è tappabile così com'è (hover bg).
+- **Nota dati**: `activity.icon` oggi salva chiavi `STOP_ICONS`
+  (`coffee`, `shop`…), non gli id categoria (`caffe`, `mercati`…) —
+  serve mappa di conversione o migrazione delle chiavi esistenti.
+- Mock aggiornato: `IconPickerPanel` in `shared.tsx` (sostituisce
+  `IconPickerGrid`).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

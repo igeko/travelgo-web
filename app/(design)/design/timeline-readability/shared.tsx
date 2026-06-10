@@ -6,22 +6,35 @@
 import type { ComponentType } from "react";
 import { cn } from "@/lib/cn";
 import {
+  IconBackpack,
   IconBed,
+  IconBeer,
+  IconBuildingBank,
+  IconBuildingChurch,
+  IconBuildingCommunity,
+  IconBuildingCottage,
+  IconBuildingMonument,
+  IconBurger,
   IconBus,
   IconCar,
-  IconChevronDown,
   IconChevronRight,
   IconClock,
   IconCoffee,
+  IconCompass,
+  IconEye,
   IconGripVertical,
+  IconHome,
   IconMapPin,
   IconMinus,
   IconMountain,
+  IconParking,
   IconPlane,
   IconPlus,
   IconShoppingBag,
   IconBuildingStore,
+  IconSoup,
   IconTent,
+  IconToolsKitchen2,
   IconTorii,
   IconTree,
   IconTrash,
@@ -440,10 +453,11 @@ function RemoveButton() {
   );
 }
 
-/* ─── Icon picker (mock statico) ────────────────────────────────── */
+/* ─── Icon picker (mock statico, proposta A "Sezioni") ──────────── */
 
-/** Trigger: il badge icona nell'header dell'editor diventa un bottone
- *  (chevron-down sempre visibile). Tap → popover con la griglia. */
+/** Trigger: il badge icona nell'header dell'editor è tappabile così
+ *  com'è — NIENTE chevron (il cambio icona avviene nel dettaglio,
+ *  l'affordance è l'hover/press del badge stesso). */
 export function IconPickerTrigger({
   icon: Icon,
   dark = true,
@@ -454,64 +468,88 @@ export function IconPickerTrigger({
   return (
     <span
       className={cn(
-        "flex shrink-0 cursor-pointer items-center gap-0.5 rounded-sm px-1 py-0.5",
+        "flex shrink-0 cursor-pointer items-center rounded-sm px-1 py-0.5",
         dark ? "hover:bg-white/10" : "hover:bg-surface-soft",
       )}
       role="button"
       aria-label="Cambia icona"
     >
       <Icon size={15} className="shrink-0" />
-      <IconChevronDown size={10} className={dark ? "text-white/50" : "text-ink-faint"} />
     </span>
   );
 }
 
-/** Popover: griglia del set fisso STOP_ICONS (24 chiavi — la chiave va
- *  in activity.icon). Selezionata = bg-ink. Niente search: 24 icone
- *  stanno in 4 righe. Label i18n come tooltip (Timeline.stopIcons.*). */
-export function IconPickerGrid({ selected }: { selected: IconCmp }) {
-  const icons: { key: string; Icon: IconCmp }[] = [
-    { key: "coffee", Icon: IconCoffee },
-    { key: "shop", Icon: IconShoppingBag },
-    { key: "market", Icon: IconBuildingStore },
-    { key: "view", Icon: IconMountain },
-    { key: "park", Icon: IconTree },
-    { key: "monument", Icon: IconTorii },
-    { key: "car", Icon: IconCar },
-    { key: "bus", Icon: IconBus },
-    { key: "walk", Icon: IconWalk },
-    { key: "rest", Icon: IconBed },
-    { key: "flight", Icon: IconPlane },
-    { key: "camp", Icon: IconTent },
+/** Popover flottante a SEZIONI: tutte le icone delle categorie di
+ *  ExploreToolbar (EXPLORE_CATEGORY_TREE), raggruppate per macro
+ *  Dormi/Mangia/Esplora. Un solo tap per scegliere; label i18n
+ *  (ExploreCategories.*) come tooltip. Selezionata = bg-ink. */
+export function IconPickerPanel({ selected }: { selected: IconCmp }) {
+  const sections: { macro: string; MacroIcon: IconCmp; subs: { id: string; Icon: IconCmp }[] }[] = [
+    {
+      macro: "Dormi",
+      MacroIcon: IconBed,
+      subs: [
+        { id: "hotel", Icon: IconBuildingCottage },
+        { id: "bnb", Icon: IconBuildingCommunity },
+        { id: "ostello", Icon: IconBackpack },
+        { id: "appartamenti", Icon: IconHome },
+        { id: "camping", Icon: IconTent },
+      ],
+    },
+    {
+      macro: "Mangia",
+      MacroIcon: IconSoup,
+      subs: [
+        { id: "ristoranti", Icon: IconToolsKitchen2 },
+        { id: "caffe", Icon: IconCoffee },
+        { id: "bar", Icon: IconBeer },
+        { id: "street", Icon: IconBurger },
+        { id: "mercati", Icon: IconShoppingBag },
+      ],
+    },
+    {
+      macro: "Esplora",
+      MacroIcon: IconCompass,
+      subs: [
+        { id: "musei", Icon: IconBuildingBank },
+        { id: "monumenti", Icon: IconBuildingMonument },
+        { id: "culto", Icon: IconBuildingChurch },
+        { id: "parchi", Icon: IconTree },
+        { id: "viste", Icon: IconEye },
+        { id: "parking", Icon: IconParking },
+      ],
+    },
   ];
   return (
-    <div className="rounded-md border border-border bg-surface p-2 shadow-float">
-      <p className="mb-1.5 px-1 text-[9px] font-medium uppercase tracking-wide text-ink-faint">
-        Icona della tappa
-      </p>
-      <div className="grid grid-cols-6 gap-1">
-        {icons.map(({ key, Icon }) => {
-          const isSel = Icon === selected;
-          return (
-            <span
-              key={key}
-              role="button"
-              title={key}
-              className={cn(
-                "flex size-8 cursor-pointer items-center justify-center rounded-md",
-                isSel
-                  ? "bg-ink text-white"
-                  : "text-ink-soft hover:bg-surface-soft hover:text-ink",
-              )}
-            >
-              <Icon size={16} />
-            </span>
-          );
-        })}
-      </div>
-      <p className="mt-1.5 px-1 text-[9px] text-ink-faint">
-        +12 altre · set fisso STOP_ICONS
-      </p>
+    <div className="w-[252px] rounded-md border border-border-strong bg-surface p-2.5 shadow-float">
+      {sections.map(({ macro, MacroIcon, subs }, i) => (
+        <div key={macro} className={cn(i > 0 && "mt-2.5")}>
+          <p className="mb-1 flex items-center gap-1.5 px-0.5 text-[9px] font-medium uppercase tracking-eyebrow text-ink-faint">
+            <MacroIcon size={12} />
+            {macro}
+          </p>
+          <div className="grid grid-cols-6 gap-1">
+            {subs.map(({ id, Icon }) => {
+              const isSel = Icon === selected;
+              return (
+                <span
+                  key={id}
+                  role="button"
+                  title={id}
+                  className={cn(
+                    "flex h-8 cursor-pointer items-center justify-center rounded-md",
+                    isSel
+                      ? "bg-ink text-white"
+                      : "bg-surface-soft text-ink-soft hover:bg-ink/10 hover:text-ink",
+                  )}
+                >
+                  <Icon size={16} />
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -553,7 +591,7 @@ export function StayTypePicker({ selected }: { selected: IconCmp }) {
 export function StopEditor({ stop }: { stop: StopData }) {
   const Icon = stop.icon;
   return (
-    <div className="flex flex-col gap-1 rounded-md bg-ink p-1">
+    <div className="relative flex flex-col gap-1 rounded-md bg-ink p-1">
       <div className="flex items-center gap-2 px-2 py-1.5 text-white">
         <IconPickerTrigger icon={Icon} />
         <span className="flex-1 truncate text-meta font-semibold">
@@ -561,10 +599,11 @@ export function StopEditor({ stop }: { stop: StopData }) {
         </span>
         <IconX size={14} className="shrink-0 cursor-pointer text-white/60 hover:text-white" />
       </div>
-      {/* Picker aperto (mock statico) — nella realtà è un popover
-          ancorato al trigger, z-dropdown, chiuso su selezione/Esc. */}
-      <div className="px-1">
-        <IconPickerGrid selected={Icon} />
+      {/* Picker FLOTTANTE aperto (mock statico): popover ancorato al
+          badge icona, z-dropdown, sovrasta il corpo dell'editor.
+          Chiusura su selezione / Esc / click-out. */}
+      <div className="absolute left-1.5 top-9 z-dropdown">
+        <IconPickerPanel selected={Icon} />
       </div>
       <div className="flex flex-col gap-3 rounded-sm bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
