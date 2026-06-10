@@ -19,6 +19,7 @@
 
 import { MockMap } from "./shared";
 import { TimelineV1 } from "./v1";
+import { MobileGallery } from "./mobile";
 
 export default function TimelineReadabilityPage() {
   return (
@@ -49,6 +50,22 @@ export default function TimelineReadabilityPage() {
           </div>
         </aside>
       </div>
+
+      <section className="mt-12">
+        <h2 className="text-[17px] font-semibold text-ink">Mobile — proposta</h2>
+        <p className="mb-6 mt-1 max-w-[680px] text-mini leading-relaxed text-ink-soft">
+          Stesso pattern approvato in{" "}
+          <code className="rounded bg-surface-soft px-1 text-[12px]">/design/explore-mobile-states</code>:
+          mappa full canvas + bottom sheet a tre stati. La Timeline vive nello
+          sheet; la <strong className="font-semibold text-ink">day strip</strong>{" "}
+          (le targhe-data della V1, ridotte, in scroll orizzontale) è sticky in
+          tutti gli stati e fa da day-selector — tap su una targa: pin/path
+          filtrati in mappa e sheet a full col giorno espanso. Touch: grip
+          sempre visibile a bassa opacità, row ≥36-44px, drag con long-press
+          (TouchSensor 200ms già configurato in Timeline.tsx).
+        </p>
+        <MobileGallery />
+      </section>
 
       <DevNotes />
     </div>

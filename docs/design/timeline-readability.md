@@ -171,6 +171,27 @@ A distinguerla: struttura a 3 righe (check-in / nome / check-out),
 badge quadrato arancio col tipo struttura, "Notte N di M" in ink-soft.
 Pin mappa resta quadrato arancio.
 
+## Iterazione 7 (2026-06-10) — proposta mobile
+
+Pattern riusato da `/design/explore-mobile-states` (mappa full canvas +
+bottom sheet a 3 stati), Timeline V1 dentro lo sheet:
+
+- **Day strip**: le targhe-data della V1 (ridotte a 40px) in scroll
+  orizzontale, sticky in cima allo sheet in TUTTI gli stati. È il
+  day-selector mobile: tap → giorno selezionato, pin/path filtrati,
+  sheet a full col giorno espanso.
+- **peek**: handle + day strip + riga "Ora" (prossimo leg: transfer +
+  destinazione) + input Go sticky.
+- **half**: itinerario V1 collapsed (giorni chiusi, transfer nei
+  separatori, card notte bianca tra i giorni).
+- **full**: zoom giorno — header ink, rail ink, orari, fuzzy, notes;
+  la strip resta per saltare tra giorni.
+- **Touch**: grip sempre visibile a bassa opacità (regola no
+  hover-only), row ≥36-44px, drag con long-press 200ms (TouchSensor
+  già configurato in Timeline.tsx).
+
+File: `mobile.tsx` (gallery 3 phone frame in fondo alla pagina sketch).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
