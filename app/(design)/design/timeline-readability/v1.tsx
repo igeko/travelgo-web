@@ -228,10 +228,11 @@ function TransferRow({
   );
 }
 
-/** Banda notte — it.9: azzurro soft "stay" (#dce8f1, 6d) sulla
- *  tonalità di ink ma in chiaro: zero conflitto col blu selezione.
- *  Testo ink, label/meta in `stay-text` (#44708c), riquadro icona
- *  ARANCIO col solo tipo struttura (niente luna). */
+/** Banda notte — it.12: SEMPLIFICATA, una sola riga come le activity
+ *  card. Check-in/check-out vivono solo nel dettaglio (TimePair
+ *  dell'editor). Lo "span" tra due giorni resta raccontato dalla
+ *  POSIZIONE della card (tra un giorno e il successivo) e dalla
+ *  superficie `stay`. Riquadro icona arancio col solo tipo struttura. */
 function NightDivider({ night }: { night: NightData }) {
   if (night.open) {
     return (
@@ -242,31 +243,14 @@ function NightDivider({ night }: { night: NightData }) {
   }
   return (
     <div className="group my-1.5 cursor-pointer">
-      <div className="flex flex-col rounded-md bg-stay px-3.5 py-2 transition-colors hover:bg-stay-hover">
-        {/* check-in — appartiene al giorno sopra */}
-        <div className="flex items-center justify-between text-[11px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">{night.checkIn}</span> · check-in
-          </span>
-          <span>{night.fromLabel}</span>
-        </div>
-        {/* nome struttura — riquadro arancio col solo tipo */}
-        <div className="flex items-center gap-2.5 py-1.5">
-          <StopIcon icon={night.icon} accent="primary" size="sm" />
-          <span className="min-w-0 flex-1 truncate text-meta font-semibold text-ink">
-            {night.name}
-          </span>
-          <span className="shrink-0 text-[11px] text-stay-text">
-            Notte {night.nightIndex} di {night.nightsTotal}
-          </span>
-        </div>
-        {/* check-out — sempre dalla parte del giorno dopo */}
-        <div className="flex items-center justify-between border-t border-ink/15 pt-1.5 text-[11px] text-stay-text">
-          <span className="tabular-nums">
-            <span className="font-semibold text-ink">{night.checkOut}</span> · check-out
-          </span>
-          <span>{night.toLabel}</span>
-        </div>
+      <div className="flex items-center gap-2.5 rounded-md bg-stay px-2.5 py-1.5 transition-colors hover:bg-stay-hover">
+        <StopIcon icon={night.icon} accent="primary" />
+        <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
+          {night.name}
+        </span>
+        <span className="shrink-0 text-[11px] text-stay-text">
+          Notte {night.nightIndex} di {night.nightsTotal}
+        </span>
       </div>
     </div>
   );

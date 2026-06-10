@@ -174,16 +174,16 @@ function DevNotes() {
             Azzurro soft &quot;stay&quot; (<code>bg-stay</code> #dce8f1, in{" "}
             <code>@theme</code> con <code>stay-hover</code> #cfdfeb e{" "}
             <code>stay-text</code> #44708c — stessa tonalità di ink ma in
-            chiaro, zero conflitto col blu selezione), testo ink, tre righe
-            cronologiche:
-            check-in (orario semibold + data, lato giorno sopra) · nome con
-            badge <code>bg-primary</code> e SOLO icona tipo struttura
-            (niente luna) + &quot;Notte N di M&quot; in ink-soft · hairline ·
-            check-out <strong>sempre dalla parte del giorno dopo</strong>.
-            Riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
-            struttura, niente luna; label/meta e &quot;Notte N di M&quot; in{" "}
-            <code>text-stay-text</code>, orari <code>text-ink</code> semibold,
-            hairline <code>border-ink/15</code>. Dati già pronti da{" "}
+            chiaro, zero conflitto col blu selezione), testo ink,{" "}
+            <strong>UNA sola riga come le activity card</strong>
+            (it.12 — check-in/check-out SOLO nel dettaglio): riquadro icona
+            ARANCIO (<code>bg-primary</code>) col solo tipo struttura
+            (niente luna) + nome <code>text-meta font-medium text-ink</code>{" "}
+            + &quot;Notte N di M&quot; in <code>text-stay-text</code>. Lo
+            span sui due giorni resta raccontato dalla POSIZIONE (la card
+            sta TRA un giorno e il successivo) e dalla superficie stay;
+            orari e date di check-in/check-out vivono solo nell&apos;editor
+            (TimePair). Dati già pronti da{" "}
             <code>resolveAccommodations</code>{" "}
             (<code>night_index</code>/<code>nights_total</code>, stay_id,
             activity_id); per uno stay multi-notte si renderizza una card per

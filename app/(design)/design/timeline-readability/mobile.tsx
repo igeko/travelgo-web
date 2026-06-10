@@ -228,28 +228,14 @@ function MTransfer({
 
 function MNight({ night }: { night: NightData }) {
   return (
-    <div className="my-1 flex flex-col rounded-md bg-stay px-2.5 py-1.5">
-      <div className="flex items-center justify-between text-[10px] text-stay-text">
-        <span className="tabular-nums">
-          <span className="font-semibold text-ink">{night.checkIn}</span> · check-in
-        </span>
-        <span>{night.fromLabel}</span>
-      </div>
-      <div className="flex items-center gap-1.5 py-1">
-        <StopIcon icon={night.icon} accent="primary" size="sm" />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink">
-          {night.name}
-        </span>
-        <span className="shrink-0 text-[9px] text-stay-text">
-          {night.nightIndex}/{night.nightsTotal}
-        </span>
-      </div>
-      <div className="flex items-center justify-between border-t border-ink/15 pt-1 text-[10px] text-stay-text">
-        <span className="tabular-nums">
-          <span className="font-semibold text-ink">{night.checkOut}</span> · check-out
-        </span>
-        <span>{night.toLabel}</span>
-      </div>
+    <div className="my-1 flex min-h-[36px] items-center gap-1.5 rounded-md bg-stay px-2 py-1">
+      <StopIcon icon={night.icon} accent="primary" size="sm" />
+      <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
+        {night.name}
+      </span>
+      <span className="shrink-0 text-[9px] text-stay-text">
+        {night.nightIndex}/{night.nightsTotal}
+      </span>
     </div>
   );
 }

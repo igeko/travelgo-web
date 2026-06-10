@@ -274,6 +274,20 @@ della Notte 1).
 - Mock aggiornato: `IconPickerPanel` in `shared.tsx` (sostituisce
   `IconPickerGrid`).
 
+## Iterazione 12 (2026-06-10) — NightCard semplificata
+
+La card a 3 righe era troppo ricca. Collapsed → **una sola riga, come
+le activity card**: riquadro icona arancio (tipo struttura) + nome
+(`text-meta font-medium text-ink`) + "Notte N di M" (`text-stay-text`),
+superficie `bg-stay`, hover `bg-stay-hover`.
+
+Check-in/check-out (orari + date) si spostano SOLO nel dettaglio —
+l'editor li ha già (TimePair "check-in / check-out"). Lo span sui due
+giorni resta raccontato dalla posizione della card (TRA un giorno e il
+successivo) e dalla superficie stay, non più dalle righe orarie.
+
+Aggiornati: `NightDivider` (v1), `MNight` (mobile), blocco 6 DevNotes.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)
