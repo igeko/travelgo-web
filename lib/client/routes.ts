@@ -25,7 +25,7 @@ export type RouteComputeResult = {
   /** Distanza in metri del percorso completo (Google Routes
    *  `routes.distanceMeters`). Usata dal RouteVerifier per la chip
    *  distanza nelle modalità walk/car/bike. */
-  distanceMeters?: number | null;
+  distanceMeters?: number;
 };
 
 export const routes = {

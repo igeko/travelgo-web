@@ -29,7 +29,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import {
@@ -790,6 +790,7 @@ export function TimelineV2({
   className,
 }: Props) {
   const router = useRouter();
+  const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
