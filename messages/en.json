@@ -7,6 +7,8 @@
     "addAsStop": "Stop",
     "addAsFlex": "Flexible",
     "addAsFlexHint": "No fixed time",
+    "addAsAccommodation": "Stay",
+    "addAsAccommodationHint": "Add as lodging",
     "adding": "Adding to your trip…",
     "searching": "Searching {category}…",
     "addToTripError": "Couldn't add the place. Try again.",

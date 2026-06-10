@@ -27,6 +27,7 @@ import {
   IconChevronDown,
   IconMapPin,
   IconCircleDashed,
+  IconBed,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
@@ -82,13 +83,15 @@ export function PlaceHoverCard({
   onFavorite?: () => void;
   /**
    * Add this place to the current trip (Google mode only). The current
-   * enriched Place is forwarded when available; `opts.fuzzy=true` quando
-   * l'utente sceglie "Flessibile" dallo split menu — il caller la propaga
-   * a `AddToTripRequest.fuzzy` per persistere la riga senza orario.
+   * enriched Place is forwarded when available; gli `opts` provengono dalla
+   * voce dello split menu scelta dall'utente:
+   * - `fuzzy: true` → riga creata senza orario (voce "Flessibile").
+   * - `isAccommodation: true` → riga creata come pernottamento (voce
+   *   "Pernottamento"); l'algoritmo add-to-trip ne fissa slot e check-in.
    */
   onAddToTrip?: (
     place: PlaceEnriched | null,
-    opts?: { fuzzy?: boolean },
+    opts?: { fuzzy?: boolean; isAccommodation?: boolean },
   ) => void;
   /**
    * Compact rendering for mobile sheet "place" state: label corta su
@@ -277,6 +280,7 @@ export function PlaceHoverCard({
                 compact={compact}
                 onAddStop={() => onAddToTrip(place)}
                 onAddFlex={() => onAddToTrip(place, { fuzzy: true })}
+                onAddAccommodation={() => onAddToTrip(place, { isAccommodation: true })}
               />
             )}
             <Button
@@ -317,10 +321,12 @@ function SplitAddToTripButton({
   compact,
   onAddStop,
   onAddFlex,
+  onAddAccommodation,
 }: {
   compact: boolean;
   onAddStop: () => void;
   onAddFlex: () => void;
+  onAddAccommodation: () => void;
 }) {
   const t = useTranslations("Explore");
   const [open, setOpen] = useState(false);
@@ -404,6 +410,15 @@ function SplitAddToTripButton({
             onClick={() => {
               setOpen(false);
               onAddFlex();
+            }}
+          />
+          <MenuItem
+            icon={<IconBed size={16} />}
+            label={t("addAsAccommodation")}
+            hint={t("addAsAccommodationHint")}
+            onClick={() => {
+              setOpen(false);
+              onAddAccommodation();
             }}
           />
         </div>
