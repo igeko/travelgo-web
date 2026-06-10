@@ -264,6 +264,11 @@ type LodgingVM = {
   activityId?: string;
 };
 
+/** Leg ≥ 60 min sono "lunghi" — restano visibili anche sui giorni collapsed
+ *  (sono spostamenti che cambiano il senso della giornata; tenerli sempre
+ *  visibili è la spec /design/timeline-readability it.10). */
+const LONG_LEG_MIN = 60;
+
 function buildItems(
   acts: Activity[],
   expanded: boolean,
@@ -276,15 +281,24 @@ function buildItems(
     .sort((a, b) => a.position - b.position)
     .filter((a) => expanded || a.fuzzy !== true);
 
+  // Transfer (incoming cross-day + activity↔activity intra-day): renderizzati
+  // SOLO a giorno espanso, con eccezione leg lunghi (>= LONG_LEG_MIN). Niente
+  // spacer "muted" — i giorni collapsed compattano davvero lo spazio verticale.
+  const includeTransfer = (b: BridgeData | null | undefined): boolean => {
+    if (!b) return false;
+    if (expanded) return true;
+    return Number.isFinite(b.duration_min) && b.duration_min >= LONG_LEG_MIN;
+  };
+
   if (incomingChainPrevId && visible.length > 0) {
     const first = visible[0];
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
     const bridge = computedIn ?? first.bridge_in_json ?? null;
-    if (bridge) {
+    if (includeTransfer(bridge)) {
       items.push({
         kind: "transfer",
         id: `${first.id}-in`,
-        transfer: bridgeTransfer(bridge, destinationFromActivity(first)),
+        transfer: bridgeTransfer(bridge!, destinationFromActivity(first)),
       });
     }
   }
@@ -297,13 +311,15 @@ function buildItems(
     const saved = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
     const bridge = saved ?? computed ?? null;
-    if (bridge) {
+    if (includeTransfer(bridge)) {
       items.push({
         kind: "transfer",
         id: `${activity.id}-br`,
-        transfer: bridgeTransfer(bridge, destinationFromActivity(next)),
+        transfer: bridgeTransfer(bridge!, destinationFromActivity(next)),
       });
-    } else if (injectSample) {
+    } else if (injectSample && expanded) {
+      // Sample injectato solo a giorno espanso: 46 min è sotto la soglia,
+      // quindi sui collapsed sparisce comunque.
       items.push({
         kind: "transfer",
         id: `${activity.id}-sample`,
@@ -1021,12 +1037,11 @@ export function TimelineV2({
                     if (item.kind === "transfer") {
                       const open = openId === item.id;
                       // Spec /design/timeline-readability it.10: i Transfer
-                      // appaiono in full SOLO a giorno selezionato; sui
-                      // giorni collapsed diventano spacer `muted` non
-                      // interattivi. Eccezione: leg ≥ 60 min restano
-                      // visibili anche collapsed (sono spostamenti lunghi
-                      // che cambiano il senso della giornata).
-                      const muted = !expanded && item.transfer.durationMin < 60;
+                      // appaiono SOLO a giorno espanso (eccezione leg lunghi
+                      // ≥ 60 min, gestita upstream in `buildItems`). Sui
+                      // giorni collapsed non vengono proprio renderizzati
+                      // — niente spacer muted, lo spazio verticale si
+                      // compatta davvero.
                       return (
                         <div
                           key={item.id}
@@ -1038,7 +1053,6 @@ export function TimelineV2({
                             <Transfer
                               mode={item.transfer.mode}
                               state={open ? "open" : "default"}
-                              muted={muted}
                               duration={item.transfer.duration}
                               legs={item.transfer.legs}
                               steps={item.transfer.steps}
