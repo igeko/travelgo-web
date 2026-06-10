@@ -1179,6 +1179,20 @@ export function TimelineV2({
                     </div>
                   </div>
                 ) : null}
+
+                {/* Empty-day drop placeholder: senza contenuto il DayDropContainer
+                    collassa a 0px e nessun pointer/closestCenter lo seleziona —
+                    quindi i drop sui giorni vuoti fallivano. Visibile solo
+                    durante un drag attivo, dà area + feedback. */}
+                {activeDragId && dayIds.length === 0 ? (
+                  <div
+                    className="grid items-center gap-x-3"
+                    style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
+                  >
+                    <RailCell line="dashed" tone={tone} />
+                    <div className="my-1 h-12 rounded-md border border-dashed border-border bg-surface-soft/60" />
+                  </div>
+                ) : null}
               </DayDropContainer>
 
               {/* Banda notte — FUORI dal day block, fra i giorni. Multi-notte:
