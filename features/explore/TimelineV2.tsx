@@ -960,6 +960,7 @@ export function TimelineV2({
 
   return (
     <DndContext
+      id="explore-timeline-v2"
       sensors={sensors}
       collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
