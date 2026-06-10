@@ -199,7 +199,10 @@ export function ExploreToolbar({
   const searchPanel = isSearchOpen && (
     <div
       ref={searchWrapperRef}
-      className={cn("relative", isVertical ? "w-[280px]" : "w-full max-w-full")}
+      className={cn(
+        "pointer-events-auto relative",
+        isVertical ? "w-[280px]" : "w-full max-w-full",
+      )}
     >
       <div className="flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float">
         <span className="inline-flex h-7 flex-shrink-0 items-center justify-center pl-2 text-ink-soft">
@@ -298,7 +301,7 @@ export function ExploreToolbar({
       role="group"
       aria-label={openMacro.label}
       className={cn(
-        "flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
+        "pointer-events-auto flex items-center gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
         !isVertical && "max-w-full overflow-x-auto scrollbar-none",
       )}
     >
@@ -361,7 +364,7 @@ export function ExploreToolbar({
       aria-orientation={orientation}
       aria-label="Categories"
       className={cn(
-        "flex gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
+        "pointer-events-auto flex gap-1 rounded-pill border border-border-strong bg-surface p-1.5 shadow-float",
         isVertical ? "flex-col" : "flex-row items-center",
         !isVertical && "max-w-full overflow-x-auto scrollbar-none",
       )}
@@ -448,10 +451,15 @@ export function ExploreToolbar({
   // Vertical: search/chip panel to the left of the rail. Horizontal: rail on
   // top, panel stacked below. Mutual exclusion guarantees only one of
   // `searchPanel` / `chipRow` is truthy at any time.
+  //
+  // `pointer-events-none` sul wrapper lascia passare i click destinati alla
+  // mappa nelle zone "vuote" del rettangolo (gap fra figli + area scoperta
+  // dal chipRow corto). Ogni figlio interattivo si ri-attiva con
+  // `pointer-events-auto`.
   return (
     <div
       className={cn(
-        "flex",
+        "pointer-events-none flex",
         isVertical ? "items-start gap-2" : "flex-col items-stretch gap-1",
         className,
       )}
