@@ -108,6 +108,13 @@ export const sandboxRegistry: SandboxEntry[] = [
     subgroup: "Fields",
     description: "Thumbnail + dark popover · Upload tab with 7 states (idle → drag-over → uploading → complete → error)",
   },
+  {
+    slug: "icon-picker",
+    title: "IconPicker",
+    group: "Atoms",
+    subgroup: "Fields",
+    description: "Popover scelta icona attività/pernottamenti · tab categoria + grid 6 col · activity esclude sleep, lodging mostra solo sleep",
+  },
   // Map subgroup
   {
     slug: "map",

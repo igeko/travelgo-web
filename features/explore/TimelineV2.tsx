@@ -108,6 +108,13 @@ type Props = {
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
+  /**
+   * Cambio icona dal IconPicker (StopIconBadge nell'open card). Riceve
+   * l'activity entity id (NON lo scheduled id) e la nuova icon key. La
+   * scrittura va su `activities.icon` — l'icona è dato di entità, non
+   * dell'istanza schedulata.
+   */
+  onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
   onUpdateActivityInstance?: (
     scheduledId: string,
     patch: { time?: string | null; duration_min?: number | null },
@@ -245,6 +252,10 @@ type LodgingVM = {
   id: string;
   title: string;
   icon: IconCmp;
+  /** Icon key sull'entità Property (activities.icon). Quando set, l'icon
+   *  componente sopra è già `getStopIcon(iconKey)`; manteniamo la key per
+   *  passarla al IconPicker e segnalare la selezione corrente. */
+  iconKey: string | null;
   address: string | null;
   placeId: string | null;
   lat: number | null;
@@ -317,10 +328,14 @@ function buildLodging(
   dayId: string,
 ): LodgingVM | null {
   if (!accommodation) return null;
+  // L'icona viene risolta in cascade: prima activities.icon (se presente),
+  // poi mappa per `accommodation.type`, poi fallback IconBed.
+  const fromKey = accommodation.iconKey ? getStopIcon(accommodation.iconKey) : null;
   return {
     id: `lodging-${dayId}`,
     title: accommodation.name,
-    icon: accommodationIcon(accommodation.type),
+    icon: fromKey ?? accommodationIcon(accommodation.type),
+    iconKey: accommodation.iconKey ?? null,
     address: accommodation.address,
     placeId: accommodation.place_id,
     lat: accommodation.lat,
@@ -598,6 +613,7 @@ function NightBandV2({
   onOpen,
   onClose,
   onAddressChange,
+  onIconChange,
   onConvertToStop,
   onExtendStay,
   onReduceStay,
@@ -608,6 +624,7 @@ function NightBandV2({
   onOpen: () => void;
   onClose: () => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
+  onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
   onConvertToStop?: (stayId: string) => void | Promise<void>;
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
@@ -619,6 +636,10 @@ function NightBandV2({
         <ActivityStop
           title={lodging.title}
           icon={lodging.icon}
+          iconKey={lodging.iconKey}
+          onIconChange={onIconChange && lodging.activityId ? (key) => {
+            void onIconChange(lodging.activityId!, key);
+          } : undefined}
           accent="primary"
           state="open"
           mode="sleep"
@@ -712,6 +733,7 @@ export function TimelineV2({
   onExtendStay,
   onReduceStay,
   onAddressChange,
+  onIconChange,
   onUpdateActivityInstance,
   openOverride,
   hoveredRowId,
@@ -1100,6 +1122,11 @@ export function TimelineV2({
                                   isDragging={isDragging}
                                   title={a.title}
                                   icon={Icon}
+                                  iconKey={a.icon}
+                                  onIconChange={onIconChange ? (key) => {
+                                    const entityId = a.activity_id ?? a.entity_id ?? null;
+                                    if (entityId) void onIconChange(entityId, key);
+                                  } : undefined}
                                   state={open ? "open" : hovered ? "selected" : "default"}
                                   mode="stop"
                                   timeRange={a.time ?? "—"}
@@ -1197,6 +1224,7 @@ export function TimelineV2({
                   onOpen={() => setOpenId(lodging.id)}
                   onClose={() => setOpenId(null)}
                   onAddressChange={onAddressChange}
+                  onIconChange={onIconChange}
                   onConvertToStop={onConvertToStop}
                   onExtendStay={onExtendStay}
                   onReduceStay={onReduceStay}

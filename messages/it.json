@@ -597,10 +597,23 @@
       "beach": "Spiaggia",
       "swim": "Nuoto",
       "park": "Parco",
+      "bed": "Hotel",
+      "tent": "Campeggio",
+      "house": "Appartamento",
+      "ryokan": "Ryokan",
       "star": "Preferito",
       "music": "Musica",
       "info": "Info",
       "gift": "Regalo"
+    },
+    "stopIconCategories": {
+      "food": "Cibo & drink",
+      "sights": "Luoghi",
+      "shop": "Acquisti",
+      "transport": "Trasporti",
+      "nature": "Natura",
+      "sleep": "Pernottamento",
+      "other": "Altro"
     }
   },
   "Go": {
