@@ -24,9 +24,12 @@
   --color-ink-faint: #8a98a3;
 
   /* Stay — superficie pernottamento, NON è uno stato di selezione.
-     Distinta da `ink` (selected/open) e da `night` indigo (night-route layer). */
-  --color-stay: #1a3a4f;
-  --color-stay-hover: #22465c;
+     Azzurro soft sulla tonalità di ink (h≈204); `stay-text` per label/meta
+     sulla superficie. Distinta da `ink` (selected/open) e da `night`
+     indigo (night-route layer). */
+  --color-stay: #dce8f1;
+  --color-stay-hover: #cfdfeb;
+  --color-stay-text: #44708c;
 
   /* Surface — campi form */
   --color-surface-input: #fafaf6;

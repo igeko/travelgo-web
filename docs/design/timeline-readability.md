@@ -210,6 +210,19 @@ riquadro icona arancione**.
 - Allineata anche la card notte mobile (`mobile.tsx`). Pin mappa resta
   quadrato arancio.
 
+## Iterazione 9 (2026-06-10) — stay soft (6d)
+
+Provate 4 schiariture del navy #1a3a4f (6a-6d in chat). **Scelta la 6d**:
+stessa tonalità (h≈204) ribaltata in chiaro.
+
+- Token aggiornati in `@theme`: `--color-stay: #dce8f1`,
+  `--color-stay-hover: #cfdfeb`, nuovo `--color-stay-text: #44708c`
+  (label/meta sulla superficie stay).
+- Card: `bg-stay`, testo ink (nome semibold, orari semibold), label
+  check-in/check-out/date/"Notte N di M" in `text-stay-text`, hairline
+  `border-ink/15`, riquadro icona `bg-primary` invariato.
+- Zero conflitto col blu selezione; il badge arancio resta l'àncora.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

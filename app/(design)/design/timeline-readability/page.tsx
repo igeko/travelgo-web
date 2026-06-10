@@ -167,17 +167,19 @@ function DevNotes() {
 
         <Block n={6} title="Card notte — nuovo componente NightCard">
           <p>
-            Navy &quot;stay&quot; (<code>bg-stay</code> #1a3a4f, token nuovo in{" "}
-            <code>@theme</code> con <code>stay-hover</code> #22465c — NON è il
-            blu selezione <code>ink</code>), testo bianco, tre righe
+            Azzurro soft &quot;stay&quot; (<code>bg-stay</code> #dce8f1, in{" "}
+            <code>@theme</code> con <code>stay-hover</code> #cfdfeb e{" "}
+            <code>stay-text</code> #44708c — stessa tonalità di ink ma in
+            chiaro, zero conflitto col blu selezione), testo ink, tre righe
             cronologiche:
             check-in (orario semibold + data, lato giorno sopra) · nome con
             badge <code>bg-primary</code> e SOLO icona tipo struttura
             (niente luna) + &quot;Notte N di M&quot; in ink-soft · hairline ·
             check-out <strong>sempre dalla parte del giorno dopo</strong>.
             Riquadro icona ARANCIO (<code>bg-primary</code>) col solo tipo
-            struttura, niente luna; &quot;Notte N di M&quot; in white/70,
-            hairline white/18. Dati già pronti da{" "}
+            struttura, niente luna; label/meta e &quot;Notte N di M&quot; in{" "}
+            <code>text-stay-text</code>, orari <code>text-ink</code> semibold,
+            hairline <code>border-ink/15</code>. Dati già pronti da{" "}
             <code>resolveAccommodations</code>{" "}
             (<code>night_index</code>/<code>nights_total</code>, stay_id,
             activity_id); per uno stay multi-notte si renderizza una card per
