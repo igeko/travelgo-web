@@ -20,7 +20,6 @@ import {
   IconWalk,
   IconBus,
   IconCar,
-  IconClock,
   IconChevronRight,
   IconBrandGoogleMaps,
   IconBrandWaze,
@@ -76,6 +75,8 @@ export function Transfer({
   mode = "transit",
   state = "default",
   duration = "46 min",
+  distance,
+  muted = false,
   legs = [],
   steps = [],
   destination,
@@ -86,6 +87,17 @@ export function Transfer({
   mode?: TransferMode;
   state?: TransferState;
   duration?: string;
+  /** Distanza formattata (es. "32 km"). Renderizzata dopo la durata
+   *  quando presente — in attesa di `distance_m` su BridgeData. */
+  distance?: string;
+  /**
+   * Giorno NON selezionato (/design/timeline-readability it.10): il
+   * transfer si riduce a uno spacer muto non interattivo — i tempi di
+   * percorrenza si mostrano solo a giorno espanso. L'host (Timeline)
+   * decide, incl. l'eccezione leg lunghi ≥60 min che restano visibili.
+   * Ignorato quando state="open".
+   */
+  muted?: boolean;
   /** Collapsed transit chip strip. */
   legs?: TransferLeg[];
   /** Open transit route detail. */
@@ -98,57 +110,70 @@ export function Transfer({
   className?: string;
 }) {
   const open = state === "open";
+  const ModeIcon = mode === "car" ? IconCar : IconBus;
 
   /* Summary row (shared by collapsed + open header) — `dark` flips the
-     palette to white for the open navy header. */
+     palette to white for the open navy header.
+     Resa /design/timeline-readability it.3+: tutto left-aligned, icona
+     modalità 13px + durata 11px semibold + (distanza) + legs transit
+     walk › linea › walk. Niente più text-nano (8px, illeggibile). */
   const summary = (dark: boolean) => (
-    <div className="flex w-full items-center gap-4 px-6">
-      <span
-        className={cn(
-          "flex w-[54px] shrink-0 items-center gap-1 py-0.5 text-nano",
-          dark ? "text-white" : "text-ink-soft",
-        )}
-      >
-        <IconClock size={9} className="shrink-0" />
+    <div
+      className={cn(
+        "flex w-full flex-wrap items-center gap-1.5 px-2.5 text-[11px]",
+        dark ? "text-white/80" : "text-ink-soft",
+      )}
+    >
+      <ModeIcon
+        size={13}
+        className={cn("shrink-0", dark ? "text-white/80" : "text-ink/55")}
+      />
+      <span className={cn("font-semibold", dark ? "text-white" : "text-ink")}>
         {duration}
       </span>
-
-      {mode === "car" ? (
-        <IconCar size={14} className={cn("shrink-0", dark ? "text-white" : "text-ink-soft")} />
-      ) : (
-        <span className="flex flex-1 items-center justify-end gap-1.5">
+      {distance ? (
+        <>
+          <span className={dark ? "text-white/50" : "text-ink-faint"}>·</span>
+          <span>{distance}</span>
+        </>
+      ) : null}
+      {mode === "transit" && legs.length > 0 ? (
+        <>
+          <span className={dark ? "text-white/50" : "text-ink-faint"}>·</span>
           {legs.map((leg, i) => {
             const Icon = LEG_ICON[leg.kind];
             return (
-              <span key={i} className="flex items-center gap-1.5">
+              <span key={i} className="flex items-center gap-1">
                 {i > 0 ? (
                   <IconChevronRight
                     size={8}
                     className={cn("shrink-0", dark ? "text-white/60" : "text-ink-faint")}
                   />
                 ) : null}
+                <Icon
+                  size={11}
+                  className={cn("shrink-0", dark ? "text-white/80" : "text-ink/55")}
+                />
                 <span
                   className={cn(
-                    "flex items-center gap-1 text-nano",
-                    leg.kind === "bus"
-                      ? dark
-                        ? "font-medium text-white"
-                        : "font-medium text-ink"
-                      : dark
-                        ? "text-white"
-                        : "text-ink-soft",
+                    leg.kind === "bus" &&
+                      (dark ? "font-medium text-white" : "font-medium text-ink"),
                   )}
                 >
-                  <Icon size={leg.kind === "bus" ? 11 : 8} className="shrink-0" />
                   {leg.label}
                 </span>
               </span>
             );
           })}
-        </span>
-      )}
+        </>
+      ) : null}
     </div>
   );
+
+  /* ── Muted (giorno non selezionato) ─────────────────────────── */
+  if (!open && muted) {
+    return <div aria-hidden className={cn("h-3 w-full", className)} />;
+  }
 
   /* ── Collapsed ──────────────────────────────────────────────── */
   if (!open) {
