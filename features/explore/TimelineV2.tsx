@@ -703,8 +703,7 @@ function NightBandV2({
   lodging,
   open,
   hovered,
-  expanded,
-  checkInTime,
+  tone,
   onOpen,
   onClose,
   onAddressChange,
@@ -718,13 +717,8 @@ function NightBandV2({
   lodging: LodgingVM;
   open: boolean;
   hovered: boolean;
-  /** Il giorno parent è espanso/selezionato? In questo stato la notte
-   *  diventa il "footer fuso" del DayDropContainer (full-bleed) invece
-   *  della card-in-griglia (it.16). */
-  expanded: boolean;
-  /** Orario di check-in da mostrare nel footer ({HH:MM}), visibile solo
-   *  nello stato espanso (come gli orari per-tappa). */
-  checkInTime?: string;
+  /** Tone del rail — segue lo stato del day (selected quando espanso). */
+  tone: "default" | "selected";
   onOpen: () => void;
   onClose: () => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
@@ -735,93 +729,73 @@ function NightBandV2({
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
 }) {
-  // Editor: full-bleed in entrambi gli stati — l'open card della
-  // ActivityStop occupa tutta la larghezza del DayDropContainer (niente
-  // grid rail+content, attraversa anche la colonna rail).
+  // Open state: editor dentro la griglia [44px | 1fr], esattamente come
+  // un ActivityStop aperto — la card sta nella colonna content, il rail
+  // resta visibile in colonna 1.
   if (open) {
     return (
-      <div className="py-0.5" data-row-id={lodging.id}>
-        <ActivityStop
-          title={lodging.title}
-          icon={lodging.icon}
-          iconKey={lodging.iconKey}
-          onIconChange={onIconChange && lodging.activityId ? (key) => {
-            void onIconChange(lodging.activityId!, key);
-          } : undefined}
-          accent="primary"
-          state="open"
-          mode="sleep"
-          description={lodging.shortDesc ?? undefined}
-          nights={lodging.nightsTotal}
-          nightIndex={lodging.nightIndex}
-          addressLocation={lodging.address}
-          addressPlaceId={lodging.placeId}
-          addressLat={lodging.lat}
-          addressLng={lodging.lng}
-          onAddressChange={(place) => {
-            if (lodging.activityId) void onAddressChange?.(lodging.activityId, place);
-          }}
-          onTitleCommit={onTitleChange && lodging.activityId ? (next) => {
-            void onTitleChange(lodging.activityId!, next);
-          } : undefined}
-          onShortDescCommit={onShortDescChange && lodging.activityId ? (next) => {
-            void onShortDescChange(lodging.activityId!, next);
-          } : undefined}
-          onOpen={onOpen}
-          onClose={onClose}
-          onRemove={onClose}
-          onModeChange={(next) => {
-            if (next === "stop" && lodging.stayId) {
-              void onConvertToStop?.(lodging.stayId);
-            }
-          }}
-          onNightsChange={(next) => {
-            if (!lodging.stayId) return;
-            if (next > lodging.nightsTotal) void onExtendStay?.(lodging.stayId);
-            else if (next < lodging.nightsTotal) void onReduceStay?.(lodging.stayId);
-          }}
-        />
+      <div
+        className="grid items-start gap-x-3"
+        style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
+        data-row-id={lodging.id}
+      >
+        <RailCell line="solid" tone={tone} />
+        <div className="py-0.5">
+          <ActivityStop
+            title={lodging.title}
+            icon={lodging.icon}
+            iconKey={lodging.iconKey}
+            onIconChange={onIconChange && lodging.activityId ? (key) => {
+              void onIconChange(lodging.activityId!, key);
+            } : undefined}
+            accent="primary"
+            state="open"
+            mode="sleep"
+            description={lodging.shortDesc ?? undefined}
+            nights={lodging.nightsTotal}
+            nightIndex={lodging.nightIndex}
+            addressLocation={lodging.address}
+            addressPlaceId={lodging.placeId}
+            addressLat={lodging.lat}
+            addressLng={lodging.lng}
+            onAddressChange={(place) => {
+              if (lodging.activityId) void onAddressChange?.(lodging.activityId, place);
+            }}
+            onTitleCommit={onTitleChange && lodging.activityId ? (next) => {
+              void onTitleChange(lodging.activityId!, next);
+            } : undefined}
+            onShortDescCommit={onShortDescChange && lodging.activityId ? (next) => {
+              void onShortDescChange(lodging.activityId!, next);
+            } : undefined}
+            onOpen={onOpen}
+            onClose={onClose}
+            onRemove={onClose}
+            onModeChange={(next) => {
+              if (next === "stop" && lodging.stayId) {
+                void onConvertToStop?.(lodging.stayId);
+              }
+            }}
+            onNightsChange={(next) => {
+              if (!lodging.stayId) return;
+              if (next > lodging.nightsTotal) void onExtendStay?.(lodging.stayId);
+              else if (next < lodging.nightsTotal) void onReduceStay?.(lodging.stayId);
+            }}
+          />
+        </div>
       </div>
     );
   }
 
-  // Giorno espanso: la notte NON è più una card. È il footer FUSO del
-  // DayDropContainer — ultima riga full-width, border-t come divisione
-  // visibile fra giorno e notte, attraversa anche la zona rail (it.16).
-  if (expanded) {
-    return (
-      <button
-        type="button"
-        onClick={onOpen}
-        data-row-id={lodging.id}
-        aria-label={`Pernottamento ${lodging.title} — apri editor`}
-        className={cn(
-          "group flex w-full cursor-pointer items-center justify-between gap-3 rounded-b-md border-t border-ink/15 bg-transparent px-2.5 py-2 text-left transition-colors",
-          hovered ? "bg-stay/40" : "hover:bg-stay/40",
-        )}
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
-          <span className="truncate text-[14px] text-ink">
-            {lodging.title}
-          </span>
-        </span>
-        <span className="shrink-0 text-[11px] text-stay-text tabular-nums">
-          {checkInTime ? `${checkInTime} · ` : ""}Notte {lodging.nightIndex} di {lodging.nightsTotal}
-        </span>
-      </button>
-    );
-  }
-
-  // Giorno collapsed: row-in-griglia [44px | 1fr] allineata alle activity
-  // card. Niente bordo, niente bg — hover bg-surface-soft come gli stop.
+  // Closed state: row-in-griglia [44px | 1fr] allineata alle activity, niente
+  // bordo, hover:bg-surface-soft come gli stop. La notte si comporta come
+  // una qualsiasi activity dentro il giorno.
   return (
     <div
       className="grid items-center gap-x-3"
       style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
       data-row-id={lodging.id}
     >
-      <RailCell line="solid" tone="default" />
+      <RailCell line="solid" tone={tone} />
       <div className="py-0.5">
         <button
           type="button"
@@ -1255,25 +1229,6 @@ export function TimelineV2({
             prevChainId: chainPrevByDay.get(day.id) ?? null,
           }).byId;
 
-          // Check-in proxy: la NightCard espansa mostra a destra l'orario
-          // d'arrivo al pernottamento — proxy ragionevole = departure
-          // dell'ultima activity timeata + bridge verso l'accommodation
-          // (quando disponibile). Niente activity → niente checkIn.
-          let checkInTime: string | undefined;
-          if (lodging && expanded && dayActsOrdered.length > 0) {
-            const last = dayActsOrdered[dayActsOrdered.length - 1];
-            const lastT = dayTimes.get(last.id);
-            if (lastT) {
-              const bridge = lodging.stayId
-                ? computedBridges?.get(`${last.id}|acc:${lodging.stayId}`)
-                : undefined;
-              const total = lastT.departureMin + (bridge?.duration_min ?? 0);
-              const h = Math.floor(total / 60) % 24;
-              const m = Math.round(total) % 60;
-              checkInTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-            }
-          }
-
           const dayIds = sortableIdsByDay.get(day.id) ?? [];
           const sortableIndexOf = sortableIndexByDay.get(day.id) ?? new Map<string, number>();
 
@@ -1618,20 +1573,16 @@ export function TimelineV2({
                   </div>
                 ) : null}
 
-                {/* NightCard (it.16) — DENTRO il DayDropContainer, in fondo.
-                    Due rese:
-                     - giorno collapsed: card-in-griglia [44px|1fr], allineata
-                       alle activity card, solo bordo;
-                     - giorno expanded: footer FUSO full-bleed (attraversa la
-                       colonna rail), border-t fa da divisione visibile fra
-                       giorno e notte. */}
+                {/* NightCard — sempre dentro la griglia [44px|1fr] del giorno,
+                    in fondo. Si comporta come una row activity: rail in col 1,
+                    contenuto in col 2; open → ActivityStop mode="sleep" nella
+                    stessa griglia. Niente footer fuso, niente full-bleed. */}
                 {lodging ? (
                   <NightBandV2
                     lodging={lodging}
                     open={openId === lodging.id}
                     hovered={openId !== lodging.id && hoveredRowId === lodging.id}
-                    expanded={expanded}
-                    checkInTime={checkInTime}
+                    tone={tone}
                     onOpen={() => setOpenId(lodging.id)}
                     onClose={() => setOpenId(null)}
                     onAddressChange={onAddressChange}
