@@ -227,15 +227,34 @@ function MTransfer({
   );
 }
 
+/** Collapsed: allineata alle tappe (rail visibile), solo bordo. */
 function MNight({ night }: { night: NightData }) {
   return (
-    <div className="my-1 flex min-h-[36px] items-center gap-1.5 rounded-md border border-border-strong px-2 py-1">
+    <div className="grid items-center gap-x-2" style={M_GRID}>
+      <MRail />
+      <div className="my-0.5 flex min-h-[36px] items-center gap-1.5 rounded-md border border-border-strong px-1.5 py-1">
+        <StopIcon icon={night.icon} accent="primary" size="sm" />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
+          {night.name}
+        </span>
+        <span className="shrink-0 text-[9px] text-stay-text">
+          {night.nightIndex}/{night.nightsTotal}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Giorno selezionato: footer fuso col container (full width, hairline). */
+function MNightFooter({ night }: { night: NightData }) {
+  return (
+    <div className="mt-0.5 flex min-h-[34px] items-center gap-1.5 border-t border-ink/15 px-1.5 py-1">
       <StopIcon icon={night.icon} accent="primary" size="sm" />
       <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
         {night.name}
       </span>
-      <span className="shrink-0 text-[9px] text-stay-text">
-        {night.nightIndex}/{night.nightsTotal}
+      <span className="shrink-0 text-[9px] tabular-nums text-stay-text">
+        {night.checkIn} · {night.nightIndex}/{night.nightsTotal}
       </span>
     </div>
   );
@@ -328,8 +347,9 @@ function SheetFull() {
               {day.notes ? <TodayNotes notes={day.notes} /> : <TodayNotesEmpty />}
             </div>
           </div>
+          {/* It.16 — la notte chiude il container del giorno (footer fuso) */}
+          {day.night ? <MNightFooter night={day.night} /> : null}
         </div>
-        {day.night ? <MNight night={day.night} /> : null}
       </div>
       <GoInput />
     </>

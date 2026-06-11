@@ -371,6 +371,27 @@ delle targhe giorno** (it.15c):
 Nota porting: rimuovere `bg-stay`/`bg-stay-hover` dalla card (i token
 restano per usi futuri, es. fasce multi-notte 7b).
 
+## Iterazione 16 (2026-06-11) — notte allineata + footer fuso
+
+Valutate in chat 3 integrazioni col container del giorno selezionato
+(card interna / footer fuso bg-stay / parte del container). Scelta:
+**B con il background della C** — footer fuso ma trasparente.
+
+- **Collapsed**: la card notte si ALLINEA alle attività (Row col rail,
+  non più full-width), anatomia activity, solo bordo `border-strong`
+  (hover `ink/40`), "Notte N di M" in stay-text. Invariato il transfer
+  di rientro sopra di lei.
+- **Giorno selezionato**: la notte è un TUTT'UNO col container — footer
+  fuso a piena larghezza del contenitore espanso (attraversa anche la
+  zona rail), separato da hairline `border-ink/15`, **bg trasparente**
+  (lo sfondo è il surface-soft del container), hover `bg-stay/40`.
+  In zoom compare l'orario di check-in ("19:30 · Notte 2 di 5"),
+  coerente con gli orari per-tappa visibili solo in zoom.
+- Editor full-bleed invariato in entrambi gli stati.
+
+Componenti sketch: `NightDivider` (collapsed) + `NightFooter` (expanded)
+in v1; `MNight` + `MNightFooter` in mobile.
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

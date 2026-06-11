@@ -233,12 +233,14 @@ function TransferRow({
   );
 }
 
-/** Card notte — it.15b: ALTEZZA e anatomia delle activity card (icona
- *  36px, stessi padding) ma a TUTTA LARGHEZZA, tra un giorno e il
- *  successivo: è il separatore-notte, e lo span sui due giorni resta
- *  raccontato dal fatto che attraversa anche la colonna del rail.
- *  Solo BORDO in tonalità stay, niente bg. Check-in/check-out solo
- *  nel dettaglio (it.12). */
+/** Card notte — it.16, due rese:
+ *  - COLLAPSED: allineata alle attività (Row col rail), anatomia
+ *    activity card, solo bordo border-strong (come le targhe giorno),
+ *    niente bg. Check-in/check-out solo nel dettaglio (it.12).
+ *  - GIORNO SELEZIONATO: la notte è un TUTT'UNO col container del
+ *    giorno — footer fuso a piena larghezza del contenitore, separato
+ *    da hairline, bg trasparente (lo sfondo è quello del container).
+ *    In zoom compare anche l'orario di check-in, come gli orari tappe. */
 function NightDivider({ night }: { night: NightData }) {
   if (night.open) {
     return (
@@ -248,11 +250,8 @@ function NightDivider({ night }: { night: NightData }) {
     );
   }
   return (
-    <div className="group my-1 cursor-pointer">
-      {/* Bordo = stesso colore delle targhe giorno (border-strong),
-          hover ink/40 come la targa: notte e giorni parlano la stessa
-          lingua di contorno. */}
-      <div className="flex items-center gap-2.5 rounded-md border border-border-strong bg-transparent px-2.5 py-1.5 transition-colors group-hover:border-ink/40">
+    <Row rail="solid" className="py-0.5">
+      <div className="group flex cursor-pointer items-center gap-2.5 rounded-md border border-border-strong bg-transparent px-2.5 py-1.5 transition-colors hover:border-ink/40">
         <StopIcon icon={night.icon} accent="primary" />
         <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
           {night.name}
@@ -261,6 +260,28 @@ function NightDivider({ night }: { night: NightData }) {
           Notte {night.nightIndex} di {night.nightsTotal}
         </span>
       </div>
+    </Row>
+  );
+}
+
+/** Footer notte del giorno selezionato — chiude il container espanso. */
+function NightFooter({ night }: { night: NightData }) {
+  if (night.open) {
+    return (
+      <div className="px-1 py-1">
+        <NightEditor night={night} />
+      </div>
+    );
+  }
+  return (
+    <div className="mt-1 flex cursor-pointer items-center gap-2.5 border-t border-ink/15 px-2.5 py-2 transition-colors hover:bg-stay/40">
+      <StopIcon icon={night.icon} accent="primary" />
+      <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
+        {night.name}
+      </span>
+      <span className="shrink-0 text-[11px] tabular-nums text-stay-text">
+        {night.checkIn} · Notte {night.nightIndex} di {night.nightsTotal}
+      </span>
     </div>
   );
 }
@@ -305,8 +326,17 @@ export function TimelineV1() {
                   </div>
                 </Row>
               ) : null}
+              {/* It.16 — giorno selezionato: la notte è il footer fuso
+                  del container (piena larghezza, hairline, bg del
+                  container stesso). */}
+              {expanded && day.night ? (
+                <NightFooter night={day.night} />
+              ) : null}
             </div>
-            {day.night ? <NightDivider night={day.night} /> : null}
+            {/* Collapsed: card allineata alle attività. */}
+            {!expanded && day.night ? (
+              <NightDivider night={day.night} />
+            ) : null}
           </div>
         );
       })}
