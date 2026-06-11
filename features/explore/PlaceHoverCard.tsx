@@ -203,30 +203,34 @@ export function PlaceHoverCard({
                 rubare attenzione all'immagine. */}
             {hasSlider && (
               <>
-                <button
-                  type="button"
+                <Button
+                  variant="over-media"
+                  size="sm"
+                  iconOnly
                   aria-label="Foto precedente"
                   onClick={(e) => {
                     e.stopPropagation();
                     setImgLoaded(false);
                     setImgIdx((i) => (i - 1 + photoCount) % photoCount);
                   }}
-                  className="absolute left-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/55 text-white backdrop-blur-sm transition-colors hover:bg-ink/75"
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2"
                 >
-                  <IconChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
+                  <IconChevronLeft size={14} />
+                </Button>
+                <Button
+                  variant="over-media"
+                  size="sm"
+                  iconOnly
                   aria-label="Foto successiva"
                   onClick={(e) => {
                     e.stopPropagation();
                     setImgLoaded(false);
                     setImgIdx((i) => (i + 1) % photoCount);
                   }}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/55 text-white backdrop-blur-sm transition-colors hover:bg-ink/75"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2"
                 >
-                  <IconChevronRight size={16} />
-                </button>
+                  <IconChevronRight size={14} />
+                </Button>
                 {/* Dots indicator: piccoli puntini sopra la banda ink. */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-12 flex items-center justify-center gap-1">
                   {photoRefs!.map((_, i) => (
