@@ -1428,6 +1428,11 @@ export function TimelineV2({
                                 <FuzzyStop
                                   title={a.title}
                                   icon={Icon}
+                                  iconKey={a.icon}
+                                  onIconChange={onIconChange ? (key) => {
+                                    const entityId = a.activity_id ?? a.entity_id ?? null;
+                                    if (entityId) void onIconChange(entityId, key);
+                                  } : undefined}
                                   state={open ? "open" : hovered ? "selected" : "default"}
                                   description={a.short_desc ?? undefined}
                                   arrivalHM={fArrivalHM}

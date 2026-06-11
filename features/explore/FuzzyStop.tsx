@@ -22,14 +22,16 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
 import { IconCoffee } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { api } from "@/lib/client";
 import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
 import { EditableText } from "@/components/ui/EditableText";
+import { CategoryIconPicker } from "@/features/activity/IconPicker";
 import { StopEditorCard } from "./StopEditorCard";
+import { StopIconBadge } from "./StopIconBadge";
 import { InlineActivityTime, type ClockHM } from "./InlineActivityTime";
 import { type ActivityTime } from "./ArrivalDeparture";
 
@@ -42,6 +44,8 @@ export type FuzzyStopSize = "md" | "sm";
 export function FuzzyStop({
   title,
   icon: Icon = IconCoffee,
+  iconKey = null,
+  onIconChange,
   state = "default",
   description,
   onTitleCommit,
@@ -70,6 +74,11 @@ export function FuzzyStop({
 }: {
   title: string;
   icon?: IconCmp;
+  /** Chiave dell'icona corrente (es. "coffee"). Quando settata col
+   *  callback `onIconChange`, lo StopIconBadge nell'header open diventa
+   *  trigger del CategoryIconPicker. */
+  iconKey?: string | null;
+  onIconChange?: (iconKey: string) => void;
   state?: FuzzyStopState;
   description?: string;
   /** Editor inline del titolo nell'header (StopEditorCard). */
@@ -152,6 +161,8 @@ export function FuzzyStop({
     <OpenFuzzyStop
       title={title}
       icon={Icon}
+      iconKey={iconKey}
+      onIconChange={onIconChange}
       description={description}
       onTitleCommit={onTitleCommit}
       onShortDescCommit={onShortDescCommit}
@@ -182,6 +193,8 @@ export function FuzzyStop({
 function OpenFuzzyStop({
   title,
   icon: Icon,
+  iconKey,
+  onIconChange,
   description,
   onTitleCommit,
   onShortDescCommit,
@@ -205,6 +218,8 @@ function OpenFuzzyStop({
 }: {
   title: string;
   icon: IconCmp;
+  iconKey?: string | null;
+  onIconChange?: (iconKey: string) => void;
   description?: string;
   onTitleCommit?: (next: string) => void | Promise<void>;
   onShortDescCommit?: (next: string) => void | Promise<void>;
@@ -226,6 +241,22 @@ function OpenFuzzyStop({
   className?: string;
   t: ReturnType<typeof useTranslations>;
 }) {
+  // IconPicker open state — gemellato al pattern di ActivityStop. Lo
+  // ricreiamo qui (anziché reidratarlo dal parent) per non far perdere
+  // al click-outside l'isolamento del popover.
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const iconPopoverRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!iconPickerOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      const node = iconPopoverRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      setIconPickerOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [iconPickerOpen]);
+
   const [fetchedFormatted, setFetchedFormatted] = useState<string | null>(null);
   useEffect(() => {
     if (addressLocation) return;
@@ -267,7 +298,36 @@ function OpenFuzzyStop({
   return (
     <div className={cn("flex w-full flex-col gap-1 rounded-sm bg-ink p-1", className)}>
       <div className="flex items-center gap-2 px-1 py-0.5">
-        <Icon size={16} className="shrink-0 text-white" />
+        {onIconChange ? (
+          <div ref={iconPopoverRef} className="relative">
+            <button
+              type="button"
+              aria-label="Cambia icona"
+              aria-expanded={iconPickerOpen}
+              onClick={() => setIconPickerOpen((v) => !v)}
+              className={cn(
+                "flex cursor-pointer items-center rounded-sm p-0.5 outline-none transition-colors",
+                "hover:bg-white/10 focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary",
+                iconPickerOpen && "bg-white/10",
+              )}
+            >
+              <Icon size={16} className="shrink-0 text-white" />
+            </button>
+            {iconPickerOpen ? (
+              <div className="absolute left-0 top-full z-dropdown mt-2">
+                <CategoryIconPicker
+                  selectedId={iconKey ?? null}
+                  onSelect={(id) => {
+                    onIconChange(id);
+                    setIconPickerOpen(false);
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <Icon size={16} className="shrink-0 text-white" />
+        )}
         <span className="truncate text-mini font-medium capitalize text-white">{title}</span>
       </div>
 
