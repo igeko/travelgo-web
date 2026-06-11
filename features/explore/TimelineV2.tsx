@@ -786,9 +786,10 @@ function NightBandV2({
     );
   }
 
-  // Closed state: row-in-griglia [44px | 1fr] allineata alle activity, niente
-  // bordo, hover:bg-surface-soft come gli stop. La notte si comporta come
-  // una qualsiasi activity dentro il giorno.
+  // Closed state: row-in-griglia [44px | 1fr] allineata alle activity. Padding
+  // e struttura interna IDENTICI all'ActivityStop closed default (pl-1 pr-3.5
+  // py-1 min-h-8 gap-3 rounded-sm; icona + titolo in uno span flex-1 gap-2) —
+  // così la notte sta sulla stessa baseline degli stop, senza shift visivo.
   return (
     <div
       className="grid items-center gap-x-3"
@@ -802,13 +803,15 @@ function NightBandV2({
           onClick={onOpen}
           aria-label={`Pernottamento ${lodging.title} — apri editor`}
           className={cn(
-            "group flex w-full cursor-pointer items-center gap-2 rounded-md bg-transparent px-2.5 py-1.5 text-left transition-colors",
+            "group flex min-h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-sm pl-1 pr-3.5 py-1 text-left transition-colors",
             hovered ? "bg-surface-soft" : "hover:bg-surface-soft",
           )}
         >
-          <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-            {lodging.title}
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
+            <span className="truncate text-[14px] text-ink">
+              {lodging.title}
+            </span>
           </span>
           <span className="shrink-0 text-[11px] text-stay-text">
             Notte {lodging.nightIndex} di {lodging.nightsTotal}
