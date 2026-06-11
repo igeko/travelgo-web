@@ -813,8 +813,8 @@ function NightBandV2({
     );
   }
 
-  // Giorno collapsed: card-in-griglia [44px | 1fr] allineata alle activity
-  // card. Solo bordo (border-strong → ink/40 hover), niente bg.
+  // Giorno collapsed: row-in-griglia [44px | 1fr] allineata alle activity
+  // card. Niente bordo, niente bg — hover bg-surface-soft come gli stop.
   return (
     <div
       className="grid items-center gap-x-3"
@@ -827,22 +827,18 @@ function NightBandV2({
           type="button"
           onClick={onOpen}
           aria-label={`Pernottamento ${lodging.title} — apri editor`}
-          className="group block w-full cursor-pointer text-left"
+          className={cn(
+            "group flex w-full cursor-pointer items-center gap-2 rounded-md bg-transparent px-2.5 py-1.5 text-left transition-colors",
+            hovered ? "bg-surface-soft" : "hover:bg-surface-soft",
+          )}
         >
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-md border bg-transparent px-2.5 py-1.5 transition-colors",
-              hovered ? "border-ink/40" : "border-border-strong group-hover:border-ink/40",
-            )}
-          >
-            <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
-            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
-              {lodging.title}
-            </span>
-            <span className="shrink-0 text-[11px] text-stay-text">
-              Notte {lodging.nightIndex} di {lodging.nightsTotal}
-            </span>
-          </div>
+          <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
+          <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+            {lodging.title}
+          </span>
+          <span className="shrink-0 text-[11px] text-stay-text">
+            Notte {lodging.nightIndex} di {lodging.nightsTotal}
+          </span>
         </button>
       </div>
     </div>
