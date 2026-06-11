@@ -272,6 +272,13 @@ function buildItems(
   injectSample: boolean,
   computedBridges?: Map<string, BridgeData>,
   incomingChainPrevId?: string | null,
+  outgoingLodging?: {
+    chainId: string;
+    title: string;
+    lat: number;
+    lng: number;
+    placeId: string | null;
+  } | null,
 ): Item[] {
   const items: Item[] = [];
   const visible = [...acts]
@@ -320,6 +327,31 @@ function buildItems(
       });
     }
   });
+
+  // Transfer di FINE giornata: ultima activity → pernottamento del giorno.
+  // Reso solo a giorno espanso e quando c'è davvero almeno un'activity
+  // con coords (= ultimo elemento dei visible). Il bridge è già stato
+  // computato da useChainBridges sul leg chain[lastAct|acc:stayKey].
+  if (expanded && outgoingLodging && visible.length > 0) {
+    const lastAct = [...visible].reverse().find(
+      (a) => a.location_lat != null && a.location_lng != null,
+    );
+    if (lastAct) {
+      const bridge = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      if (bridge) {
+        items.push({
+          kind: "transfer",
+          id: `${lastAct.id}-out-lodging`,
+          transfer: bridgeTransfer(bridge, {
+            lat: outgoingLodging.lat,
+            lng: outgoingLodging.lng,
+            placeId: outgoingLodging.placeId,
+            title: outgoingLodging.title,
+          }),
+        });
+      }
+    }
+  }
   return items;
 }
 
@@ -979,6 +1011,32 @@ export function TimelineV2({
     }
   }
 
+  // lodging chain entry per day → outgoing Transfer (ultima activity →
+  // pernottamento). Grazie a buildTripChain (rev. multi-notte) ogni
+  // giorno con accommodation ha la propria entry, sia "vera" (first
+  // night) che pin-hidden (notti successive della stessa stay).
+  type OutgoingLodging = {
+    chainId: string;
+    title: string;
+    lat: number;
+    lng: number;
+    placeId: string | null;
+  };
+  const lodgingByDay = new Map<string, OutgoingLodging>();
+  if (chain) {
+    for (const s of chain) {
+      if (s.kind !== "accommodation") continue;
+      if (lodgingByDay.has(s.dayId)) continue;
+      lodgingByDay.set(s.dayId, {
+        chainId: s.id,
+        title: s.title,
+        lat: s.lat,
+        lng: s.lng,
+        placeId: s.placeId,
+      });
+    }
+  }
+
   return (
     <DndContext
       id="explore-timeline-v2"
@@ -1002,6 +1060,7 @@ export function TimelineV2({
             injectSampleTransfers,
             computedBridges,
             chainPrevByDay.get(day.id) ?? null,
+            lodgingByDay.get(day.id) ?? null,
           );
           const lodging = buildLodging(day.accommodation, day.id);
           const showNotes = expanded && !!day.notes;

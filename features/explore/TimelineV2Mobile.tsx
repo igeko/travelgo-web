@@ -280,6 +280,13 @@ function buildItems(
   injectSample: boolean,
   computedBridges?: Map<string, BridgeData>,
   incomingChainPrevId?: string | null,
+  outgoingLodging?: {
+    chainId: string;
+    title: string;
+    lat: number;
+    lng: number;
+    placeId: string | null;
+  } | null,
 ): Item[] {
   const items: Item[] = [];
   const visible = [...acts]
@@ -321,6 +328,28 @@ function buildItems(
       });
     }
   });
+
+  // Outgoing: ultima activity → pernottamento del giorno (vedi TimelineV2).
+  if (outgoingLodging && visible.length > 0) {
+    const lastAct = [...visible].reverse().find(
+      (a) => a.location_lat != null && a.location_lng != null,
+    );
+    if (lastAct) {
+      const bridge = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      if (bridge) {
+        items.push({
+          kind: "transfer",
+          id: `${lastAct.id}-out-lodging`,
+          transfer: bridgeTransfer(bridge, {
+            lat: outgoingLodging.lat,
+            lng: outgoingLodging.lng,
+            placeId: outgoingLodging.placeId,
+            title: outgoingLodging.title,
+          }),
+        });
+      }
+    }
+  }
   return items;
 }
 
@@ -990,6 +1019,29 @@ export function TimelineV2Mobile({
     }
   }
 
+  // Outgoing lodging per day (vedi TimelineV2 desktop).
+  type OutgoingLodging = {
+    chainId: string;
+    title: string;
+    lat: number;
+    lng: number;
+    placeId: string | null;
+  };
+  const lodgingByDay = new Map<string, OutgoingLodging>();
+  if (chain) {
+    for (const s of chain) {
+      if (s.kind !== "accommodation") continue;
+      if (lodgingByDay.has(s.dayId)) continue;
+      lodgingByDay.set(s.dayId, {
+        chainId: s.id,
+        title: s.title,
+        lat: s.lat,
+        lng: s.lng,
+        placeId: s.placeId,
+      });
+    }
+  }
+
   return (
     <DndContext
       id="explore-timeline-v2-mobile"
@@ -1024,6 +1076,7 @@ export function TimelineV2Mobile({
               injectSampleTransfers,
               computedBridges,
               chainPrevByDay.get(day.id) ?? null,
+              lodgingByDay.get(day.id) ?? null,
             );
             const lodging = buildLodging(day.accommodation, day.id);
             const showNotes = expanded && !!day.notes;
