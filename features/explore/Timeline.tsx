@@ -303,7 +303,7 @@ const SAMPLE_STEPS: TransferStep[] = [
 ];
 
 type TransferVM = {
-  mode: "transit" | "car";
+  mode: "transit" | "car" | "walk";
   duration: string;
   /** Distanza già formattata (es. "32 km", "480 m"). Undefined quando il
    *  leg non ha distance_m. */
@@ -340,12 +340,14 @@ function formatDistanceMeters(m: number): string {
 
 function bridgeTransfer(b: BridgeData, destination?: TransferDestination): TransferVM {
   const carLike = b.transport === "car" || b.transport === "taxi";
+  const walkLike = b.transport === "walk" || b.transport === "bike";
   const duration = formatDurationMin(b.duration_min);
   const distance =
     typeof b.distance_m === "number" && b.distance_m > 0
       ? formatDistanceMeters(b.distance_m)
       : undefined;
   if (carLike) return { mode: "car", duration, distance, legs: [], steps: [], destination };
+  if (walkLike) return { mode: "walk", duration, distance, legs: [], steps: [], destination };
   return {
     mode: "transit",
     duration,

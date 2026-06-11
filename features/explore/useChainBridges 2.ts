@@ -25,7 +25,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import type { BridgeData } from "@/lib/dal/domain";
 import type { TripStop } from "./tripChain";
@@ -64,12 +64,6 @@ export function useChainBridges(
   skipPersistFor?: Set<string>,
 ): Map<string, BridgeData> {
   const [computed, setComputed] = useState<Map<string, BridgeData>>(new Map());
-
-  // Refs per leggere il valore corrente di skipPersistFor nel .then
-  // del fetch (che può risolversi dopo che skipPersistFor è cambiato):
-  // così non sovrascriviamo un bridge che l'utente ha appena salvato.
-  const skipPersistRef = useRef(skipPersistFor);
-  skipPersistRef.current = skipPersistFor;
 
   useEffect(() => {
     if (chain.length < 2) return;
@@ -126,12 +120,9 @@ export function useChainBridges(
 
       // Persistenza opportunistica: act→act con scheduled.id su entrambi i
       // lati. accommodation legs vengono saltati (no posto naturale di
-      // persistenza nello schema attuale). Saltiamo anche i leg per cui
-      // esiste già un bridge salvato (vedi `skipPersistFor`): la scelta
-      // dell'utente vince sul computed DRIVING-default. Fire-and-forget.
+      // persistenza nello schema attuale). Fire-and-forget.
       for (const r of settled) {
         if (r.prev.kind !== "activity" || r.curr.kind !== "activity") continue;
-        if (skipPersistRef.current?.has(r.prev.id)) continue;
         api.activities
           .setBridge(r.prev.id, "out", r.bridge as unknown as Record<string, unknown>)
           .catch((err) => console.warn("[useChainBridges] persist failed:", err));

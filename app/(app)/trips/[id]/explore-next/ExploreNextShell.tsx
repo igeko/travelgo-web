@@ -591,14 +591,27 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // accommodation/stays/use_previous. Vedi `features/explore/tripChain.ts`.
   const chain = useMemo(() => buildTripChain(effectiveDays), [effectiveDays]);
 
+  // Activity ids con bridge_out_json già salvato. Passati a useChainBridges
+  // per impedire la persistenza opportunistica del computed (DRIVING default)
+  // sopra una scelta esplicita dell'utente — es. quando applica "A piedi" nel
+  // RouteVerifier, il transport "walk" persiste e non viene riscritto a "car".
+  const savedOutActIds = useMemo<Set<string>>(() => {
+    const ids = new Set<string>();
+    for (const d of effectiveDays) {
+      for (const a of d.activities) {
+        if (a.bridge_out_json) ids.add(a.id);
+      }
+    }
+    return ids;
+  }, [effectiveDays]);
+
   // Bridge calcolati lazy per i leg del chain: ad ogni mount, ogni coppia
   // consecutiva viene ricomputata via Google Routes (mode DRIVING). La
   // cache localStorage 30gg condivisa con la mappa gestisce il dedup
-  // network — punti uguali → cache hit, zero call. Il valore eventualmente
-  // persistito su `bridge_out_json` può essere stantio (un addPlace passato
-  // su un chain diverso), quindi non lo usiamo come dedup; piuttosto la
-  // persistenza overwrite-sempre aggiorna il DB alla verità corrente.
-  const computedBridges = useChainBridges(chain);
+  // network — punti uguali → cache hit, zero call. Per i leg che già
+  // hanno un bridge salvato saltiamo la persistenza opportunistica, così
+  // la scelta dell'utente non viene clobbered (vedi savedOutActIds).
+  const computedBridges = useChainBridges(chain, savedOutActIds);
 
   // Effective bridges per leg, keyed by `${prevId}|${currId}`. Stessa
   // priorità di TimelineV2.buildItems: saved (bridge_out_json sulla
