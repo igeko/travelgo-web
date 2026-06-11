@@ -14,17 +14,22 @@
  * Regole di composizione (per giorno, in ordine di `day_number`):
  *   1. Append delle activity del giorno sortate per `position` (con
  *      coordinate valide).
- *   2. Append dell'accommodation del giorno SE differente dalla stay
- *      registrata l'ultima volta — dedup per `stay_id` (o per
- *      `dayId-legacy-{...}` come fallback per i record senza stay).
+ *   2. Append dell'accommodation del giorno (se ha coords), sempre —
+ *      così il path del giorno termina davvero all'alloggio e quello
+ *      del giorno successivo parte da lì. Dedup pin via `isPinHidden`:
+ *      la prima notte di una stay è "pin visibile", le notti seguenti
+ *      sono pin nascosti (`isPinHidden=true`) ma restano nel chain
+ *      perché i ROUTE devono passare dall'alloggio ogni sera.
  *   3. Skip silenzioso quando coords mancano: l'algoritmo non
  *      sintetizza punti.
  *
- * Conseguenza diretta: per Hotel 5-notti compare UN solo `TripStop`
- * (alla check-in date); per il successivo cambio alloggio compare un
- * nuovo `TripStop`, e la sequenza `[Hotel, Camping]` produce
- * naturalmente il percorso di transizione cross-day senza logiche
- * speciali a valle.
+ * Conseguenza:
+ *   - `chainToMarkers` filtra `isPinHidden` → un solo pin per stay
+ *     multi-notte (Hotel 5-notti = 1 pin).
+ *   - `chainToRouteSpecs` consuma il chain pieno → ogni giorno della
+ *     stay parte dall'hotel al mattino e ci rientra la sera.
+ *   - Il cambio alloggio resta naturale: la sequenza `[Hotel, Camping]`
+ *     produce il leg di transizione cross-day senza logiche speciali.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -58,21 +63,32 @@ export type TripStop = {
   placeId: string | null;
   /** Glyph come stringa SVG già pronta per `MapMarker.glyph`. */
   glyph: string;
+  /**
+   * `true` per le notti successive alla prima di una stay multi-notte.
+   * Lo stop resta nel chain (così il path passa dall'hotel ogni sera
+   * e ne parte ogni mattina), ma `chainToMarkers` lo filtra per non
+   * disegnare un secondo pin sopra al primo.
+   */
+  isPinHidden?: boolean;
 };
 
 /**
  * Costruisce il chain canonico del trip. Pura, deterministica, no I/O.
  *
- * Dedup multi-night: traccia l'ultima `stayKey` aggiunta. Quando il
- * giorno corrente ha la stessa stay, l'accommodation NON viene ri-
- * appesa al chain — la sua identità (e quindi posizione spaziale) è
- * già nel chain dal giorno di check-in. Quando cambia, viene aggiunta
- * di nuovo e diventa il next-stop spaziale.
+ * Multi-night handling: l'accommodation di OGNI giorno (che ne ha una)
+ * viene sempre appesa al chain a fine giornata, così i path della
+ * mappa terminano davvero all'alloggio e il giorno dopo ne parte —
+ * anche durante una stay multi-notte (Hotel A per D1-D2-D3 → ogni
+ * giorno ha il leg sera→hotel e mattina→hotel).
+ *
+ * Pin dedup: la prima notte di una stay è il pin "vero"; le notti
+ * seguenti hanno lo stesso `id` ma `isPinHidden=true`. `chainToMarkers`
+ * le filtra, quindi sulla mappa compare un solo pin per stay.
  */
 export function buildTripChain(days: TimelineDayData[]): TripStop[] {
   const chain: TripStop[] = [];
   const ordered = [...days].sort((a, b) => a.day_number - b.day_number);
-  let lastStayKey: string | null = null;
+  const seenStays = new Set<string>();
 
   for (const day of ordered) {
     // 1) Activities ordinate, con coords valide.
@@ -92,26 +108,27 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
       });
     }
 
-    // 2) Accommodation, dedup per stay.
+    // 2) Accommodation: appesa sempre quando ha coords; pin nascosto
+    //    dalla seconda notte in poi della stessa stay.
     const acc = day.accommodation;
     if (acc?.lat != null && acc?.lng != null) {
       // stay_id quando disponibile (canonical resolver), altrimenti un
       // fallback per-day per il legacy resolver (che non ha stay).
       const stayKey = acc.stay_id ?? `legacy:${day.id}`;
-      if (stayKey !== lastStayKey) {
-        chain.push({
-          id: `acc:${stayKey}`,
-          kind: "accommodation",
-          dayId: day.id,
-          chainIndex: chain.length,
-          lat: acc.lat,
-          lng: acc.lng,
-          title: acc.name,
-          placeId: acc.place_id ?? null,
-          glyph: iconGlyph("acc:bed", IconBed),
-        });
-        lastStayKey = stayKey;
-      }
+      const isFirstNight = !seenStays.has(stayKey);
+      chain.push({
+        id: `acc:${stayKey}`,
+        kind: "accommodation",
+        dayId: day.id,
+        chainIndex: chain.length,
+        lat: acc.lat,
+        lng: acc.lng,
+        title: acc.name,
+        placeId: acc.place_id ?? null,
+        glyph: iconGlyph("acc:bed", IconBed),
+        isPinHidden: !isFirstNight,
+      });
+      if (isFirstNight) seenStays.add(stayKey);
     }
   }
 
@@ -126,9 +143,12 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
 export type ChainStopState = (stop: TripStop) => "default" | "dimmed";
 
 /** Trasforma il chain in `MapMarker[]` (un pin per tappa, accommodation
- *  inclusa, niente duplicati multi-night). */
+ *  inclusa, niente duplicati multi-night). Le notti "ripetute" della
+ *  stessa stay (`isPinHidden`) restano nel chain per i route ma non
+ *  vengono materializzate come marker. */
 export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapMarker[] {
-  return chain.map((s) => ({
+  const visible = chain.filter((s) => !s.isPinHidden);
+  return visible.map((s) => ({
     id: s.id,
     lat: s.lat,
     lng: s.lng,
