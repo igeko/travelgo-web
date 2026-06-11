@@ -958,6 +958,7 @@ export function TimelineV2Mobile({
     if (
       openId.endsWith("-br") ||
       openId.endsWith("-in") ||
+      openId.endsWith("-out-lodging") ||
       openId.endsWith("-sample")
     ) {
       onSelectActivity?.(null);

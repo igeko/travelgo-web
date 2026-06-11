@@ -1076,6 +1076,7 @@ export function TimelineV2({
     if (
       openId.endsWith("-br") ||
       openId.endsWith("-in") ||
+      openId.endsWith("-out-lodging") ||
       openId.endsWith("-sample")
     ) {
       onSelectActivity?.(null);

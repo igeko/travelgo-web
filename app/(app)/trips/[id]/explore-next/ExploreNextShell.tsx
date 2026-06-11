@@ -712,6 +712,16 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           ? { from: chain[idx], to: chain[idx + 1] }
           : null;
       }
+      // Outgoing fine giornata: `${lastActivityId}-out-lodging` →
+      // from = quell'activity nel chain, to = chain[idx+1] (l'accommodation
+      // appesa subito dopo in buildTripChain).
+      if (id.endsWith("-out-lodging")) {
+        const fromId = id.slice(0, -"-out-lodging".length);
+        const idx = chain.findIndex((s) => s.id === fromId);
+        return idx >= 0 && idx < chain.length - 1
+          ? { from: chain[idx], to: chain[idx + 1] }
+          : null;
+      }
       return null;
     };
     const seg = decode(transferId);
