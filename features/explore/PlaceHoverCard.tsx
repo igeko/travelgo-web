@@ -25,9 +25,12 @@ import {
   IconExternalLink,
   IconCalendarPlus,
   IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
   IconMapPin,
   IconCircleDashed,
   IconBed,
+  IconBrandGoogleMaps,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/client";
@@ -105,6 +108,9 @@ export function PlaceHoverCard({
   const [loading, setLoading] = useState(!saved && !initialPlace);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  // Slider sulle foto Google: indice corrente, ripristinato a 0 quando
+  // cambia il placeId (= nuovo set di photoRefs in arrivo).
+  const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
     if (saved || initialPlace || !placeId) return;
@@ -119,13 +125,28 @@ export function PlaceHoverCard({
     return () => { cancelled = true; };
   }, [placeId, saved, initialPlace]);
 
+  // Reset all'apertura di un nuovo place: indice slider + flag immagine.
+  useEffect(() => {
+    setImgIdx(0);
+    setImgLoaded(false);
+    setImgError(false);
+  }, [placeId]);
+
   const name = saved?.name || place?.name || fallbackName;
   // ~270px-wide slot → request a small photo (retina-ish) instead of 600px.
+  // Slider: in modalità Google scorriamo le `photoRefs` (fino a 5 da
+  // Place Details v1). In modalità saved restiamo sull'unica immagine.
+  const photoRefs = saved ? null : (place?.photoRefs ?? []);
+  const safeIdx = photoRefs && photoRefs.length > 0
+    ? Math.min(imgIdx, photoRefs.length - 1)
+    : 0;
   const photoUrl = saved
     ? saved.image
-    : place?.photoRefs?.[0]
-      ? api.places.photoUrl(place.photoRefs[0], 400)
+    : photoRefs && photoRefs[safeIdx]
+      ? api.places.photoUrl(photoRefs[safeIdx], 400)
       : null;
+  const photoCount = photoRefs?.length ?? 0;
+  const hasSlider = photoCount > 1;
   const price = priceSymbols(place?.priceLevel);
   const showImage = photoUrl && !imgError;
   const summary = saved ? saved.description || saved.address : place?.editorialSummary || place?.address;
@@ -148,7 +169,7 @@ export function PlaceHoverCard({
     ) : null;
 
   const hasGoogleMeta =
-    !saved && (place?.openNow != null || price != null || place?.website != null);
+    !saved && (place?.openNow != null || price != null || place?.website != null || place?.placeId != null);
 
   return (
     <div className="place-card-in relative w-[270px] rounded-md border border-border-strong bg-surface shadow-float">
@@ -159,9 +180,12 @@ export function PlaceHoverCard({
           overflow-hidden + rounded-t-md per matchare i corner). */}
       {showImage ? (
         <div className="relative">
-          <div className="relative h-[130px] overflow-hidden rounded-t-md bg-gradient-to-br from-primary-soft to-surface-warm">
+          {/* Aspect 3:2 → 270x180 (landscape) — molto più aria rispetto
+              al precedente 130px (che ritagliava le foto a metà). */}
+          <div className="relative aspect-[3/2] overflow-hidden rounded-t-md bg-gradient-to-br from-primary-soft to-surface-warm">
             {photoUrl && !imgError && (
               <img
+                key={safeIdx}
                 src={photoUrl}
                 alt={name}
                 loading="lazy"
@@ -173,6 +197,49 @@ export function PlaceHoverCard({
                   imgLoaded ? "opacity-100" : "opacity-0",
                 )}
               />
+            )}
+            {/* Slider arrow buttons — visible solo quando ci sono ≥ 2 foto.
+                Riposizionate a metà altezza, semi-trasparenti per non
+                rubare attenzione all'immagine. */}
+            {hasSlider && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Foto precedente"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImgLoaded(false);
+                    setImgIdx((i) => (i - 1 + photoCount) % photoCount);
+                  }}
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/55 text-white backdrop-blur-sm transition-colors hover:bg-ink/75"
+                >
+                  <IconChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Foto successiva"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImgLoaded(false);
+                    setImgIdx((i) => (i + 1) % photoCount);
+                  }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/55 text-white backdrop-blur-sm transition-colors hover:bg-ink/75"
+                >
+                  <IconChevronRight size={16} />
+                </button>
+                {/* Dots indicator: piccoli puntini sopra la banda ink. */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-12 flex items-center justify-center gap-1">
+                  {photoRefs!.map((_, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all",
+                        i === safeIdx ? "w-4 bg-white" : "w-1.5 bg-white/55",
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
             )}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-ink px-3 py-2 text-white">
               <span className="truncate text-[14px] font-medium leading-tight">{name}</span>
@@ -266,6 +333,17 @@ export function PlaceHoverCard({
               >
                 <IconExternalLink className="h-3 w-3" stroke={2} />
                 {t("website")}
+              </a>
+            )}
+            {place?.placeId && (
+              <a
+                href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(place.placeId)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-night hover:underline"
+              >
+                <IconBrandGoogleMaps className="h-3 w-3" stroke={2} />
+                Google
               </a>
             )}
           </div>
