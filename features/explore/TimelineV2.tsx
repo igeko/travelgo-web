@@ -703,6 +703,8 @@ function NightBandV2({
   lodging,
   open,
   hovered,
+  expanded,
+  checkInTime,
   onOpen,
   onClose,
   onAddressChange,
@@ -716,6 +718,13 @@ function NightBandV2({
   lodging: LodgingVM;
   open: boolean;
   hovered: boolean;
+  /** Il giorno parent è espanso/selezionato? In questo stato la notte
+   *  diventa il "footer fuso" del DayDropContainer (full-bleed) invece
+   *  della card-in-griglia (it.16). */
+  expanded: boolean;
+  /** Orario di check-in da mostrare nel footer ({HH:MM}), visibile solo
+   *  nello stato espanso (come gli orari per-tappa). */
+  checkInTime?: string;
   onOpen: () => void;
   onClose: () => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
@@ -726,10 +735,12 @@ function NightBandV2({
   onExtendStay?: (stayId: string) => void | Promise<void>;
   onReduceStay?: (stayId: string) => void | Promise<void>;
 }) {
-  // Open state: stessa ActivityStop usata dall'editor di prima.
+  // Editor: full-bleed in entrambi gli stati — l'open card della
+  // ActivityStop occupa tutta la larghezza del DayDropContainer (niente
+  // grid rail+content, attraversa anche la colonna rail).
   if (open) {
     return (
-      <div className="my-2" data-row-id={lodging.id}>
+      <div className="py-0.5" data-row-id={lodging.id}>
         <ActivityStop
           title={lodging.title}
           icon={lodging.icon}
@@ -774,31 +785,67 @@ function NightBandV2({
     );
   }
 
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-row-id={lodging.id}
-      aria-label={`Pernottamento ${lodging.title} — apri editor`}
-      className={cn(
-        "group my-2 block w-full cursor-pointer text-left",
-      )}
-    >
-      <div
+  // Giorno espanso: la notte NON è più una card. È il footer FUSO del
+  // DayDropContainer — ultima riga full-width, border-t come divisione
+  // visibile fra giorno e notte, attraversa anche la zona rail (it.16).
+  if (expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        data-row-id={lodging.id}
+        aria-label={`Pernottamento ${lodging.title} — apri editor`}
         className={cn(
-          "flex items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-colors",
-          hovered ? "border-ink/50" : "border-border-strong hover:border-ink/50",
+          "group flex w-full cursor-pointer items-center justify-between gap-3 rounded-b-md border-t border-ink/15 bg-transparent px-2.5 py-2 text-left transition-colors",
+          hovered ? "bg-stay/40" : "hover:bg-stay/40",
         )}
       >
-        <StopIconBadge icon={lodging.icon} tone="primary" />
-        <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
-          {lodging.title}
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+          <StopIconBadge icon={lodging.icon} tone="primary" size={36} />
+          <span className="truncate text-meta font-medium text-ink">
+            {lodging.title}
+          </span>
         </span>
-        <span className="shrink-0 text-[11px] text-ink-soft">
-          Notte {lodging.nightIndex} di {lodging.nightsTotal}
+        <span className="shrink-0 text-[11px] text-stay-text tabular-nums">
+          {checkInTime ? `${checkInTime} · ` : ""}Notte {lodging.nightIndex} di {lodging.nightsTotal}
         </span>
+      </button>
+    );
+  }
+
+  // Giorno collapsed: card-in-griglia [44px | 1fr] allineata alle activity
+  // card. Solo bordo (border-strong → ink/40 hover), niente bg.
+  return (
+    <div
+      className="grid items-center gap-x-3"
+      style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
+      data-row-id={lodging.id}
+    >
+      <RailCell line="solid" tone="default" />
+      <div className="py-0.5">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Pernottamento ${lodging.title} — apri editor`}
+          className="group block w-full cursor-pointer text-left"
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2.5 rounded-md border bg-transparent px-2.5 py-1.5 transition-colors",
+              hovered ? "border-ink/40" : "border-border-strong group-hover:border-ink/40",
+            )}
+          >
+            <StopIconBadge icon={lodging.icon} tone="primary" size={36} />
+            <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
+              {lodging.title}
+            </span>
+            <span className="shrink-0 text-[11px] text-stay-text">
+              Notte {lodging.nightIndex} di {lodging.nightsTotal}
+            </span>
+          </div>
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1182,7 +1229,8 @@ export function TimelineV2({
         ref={rootRef}
         className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}
       >
-        {sortedDays.map((day) => {
+        {sortedDays.map((day, dayIdx) => {
+          const isLastDay = dayIdx === sortedDays.length - 1;
           const expanded = selectedDayId === day.id;
           const dayLoad = computeDayLoad(day.activities);
           const items = buildItems(
@@ -1210,6 +1258,25 @@ export function TimelineV2({
             bridges: computedBridges,
             prevChainId: chainPrevByDay.get(day.id) ?? null,
           }).byId;
+
+          // Check-in proxy: la NightCard espansa mostra a destra l'orario
+          // d'arrivo al pernottamento — proxy ragionevole = departure
+          // dell'ultima activity timeata + bridge verso l'accommodation
+          // (quando disponibile). Niente activity → niente checkIn.
+          let checkInTime: string | undefined;
+          if (lodging && expanded && dayActsOrdered.length > 0) {
+            const last = dayActsOrdered[dayActsOrdered.length - 1];
+            const lastT = dayTimes.get(last.id);
+            if (lastT) {
+              const bridge = lodging.stayId
+                ? computedBridges?.get(`${last.id}|acc:${lodging.stayId}`)
+                : undefined;
+              const total = lastT.departureMin + (bridge?.duration_min ?? 0);
+              const h = Math.floor(total / 60) % 24;
+              const m = Math.round(total) % 60;
+              checkInTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+            }
+          }
 
           const dayIds = sortableIdsByDay.get(day.id) ?? [];
           const sortableIndexOf = sortableIndexByDay.get(day.id) ?? new Map<string, number>();
@@ -1549,26 +1616,55 @@ export function TimelineV2({
                     <div className="my-1 h-12 rounded-md border border-dashed border-border bg-surface-soft/60" />
                   </div>
                 ) : null}
+
+                {/* NightCard (it.16) — DENTRO il DayDropContainer, in fondo.
+                    Due rese:
+                     - giorno collapsed: card-in-griglia [44px|1fr], allineata
+                       alle activity card, solo bordo;
+                     - giorno expanded: footer FUSO full-bleed (attraversa la
+                       colonna rail), border-t fa da divisione visibile fra
+                       giorno e notte. */}
+                {lodging ? (
+                  <NightBandV2
+                    lodging={lodging}
+                    open={openId === lodging.id}
+                    hovered={openId !== lodging.id && hoveredRowId === lodging.id}
+                    expanded={expanded}
+                    checkInTime={checkInTime}
+                    onOpen={() => setOpenId(lodging.id)}
+                    onClose={() => setOpenId(null)}
+                    onAddressChange={onAddressChange}
+                    onIconChange={onIconChange}
+                    onTitleChange={onTitleChange}
+                    onShortDescChange={onShortDescChange}
+                    onConvertToStop={onConvertToStop}
+                    onExtendStay={onExtendStay}
+                    onReduceStay={onReduceStay}
+                  />
+                ) : null}
               </DayDropContainer>
 
-              {/* Banda notte — FUORI dal day block, fra i giorni. Multi-notte:
-                  appare una volta per ogni notte (la stessa stay genera una
-                  banda per ogni giorno di check-in lungo lo span). */}
-              {lodging ? (
-                <NightBandV2
-                  lodging={lodging}
-                  open={openId === lodging.id}
-                  hovered={openId !== lodging.id && hoveredRowId === lodging.id}
-                  onOpen={() => setOpenId(lodging.id)}
-                  onClose={() => setOpenId(null)}
-                  onAddressChange={onAddressChange}
-                  onIconChange={onIconChange}
-                  onTitleChange={onTitleChange}
-                  onShortDescChange={onShortDescChange}
-                  onConvertToStop={onConvertToStop}
-                  onExtendStay={onExtendStay}
-                  onReduceStay={onReduceStay}
-                />
+              {/* Rail bridge — continua la spina dalla fine del giorno corrente
+                  alla DayHeader del giorno successivo. Senza questo segmento la
+                  ring/bg-soft del DayDropContainer espanso (o lo spazio fra
+                  giorni collapsed) interrompe visivamente la riga verticale.
+                  Saltato sull'ultimo giorno: lì EndOfTripV2 chiude la spina. */}
+              {!isLastDay ? (
+                <div
+                  className="grid gap-x-3"
+                  style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
+                  aria-hidden
+                >
+                  <div className="relative flex h-3 justify-center">
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 w-[3px] rounded-full",
+                        expanded ? "bg-ink" : "bg-timeline-rail",
+                      )}
+                    />
+                  </div>
+                  <div />
+                </div>
               ) : null}
             </div>
           );
