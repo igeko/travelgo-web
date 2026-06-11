@@ -47,17 +47,25 @@ export async function GET(req: NextRequest) {
   // soft): query categoriche come "temple church place of worship" sono
   // ambigue globalmente e con `locationBias` Google ritorna spesso match
   // notori fuori dall'area (es. luoghi famosi a Londra) ignorando il
-  // suggerimento. Con la restriction Google non può cercare oltre il cerchio
-  // — radius già clampato a [1, 50000] m, il massimo accettato dall'API.
+  // suggerimento.
+  //
+  // `places:searchText` accetta solo `rectangle` come restriction (non
+  // `circle`). Derivo un box approssimato dal cerchio: lat_offset =
+  // raggio / 111320 m, lng_offset uguale corretto per `cos(lat)`. Gli
+  // angoli del box sforano il cerchio di ~√2·raggio, accettabile — la
+  // metrica chiave è che la search non possa più finire dall'altra parte
+  // del mondo.
+  const latOffset = radius / 111320;
+  const lngOffset = radius / (111320 * Math.cos((lat * Math.PI) / 180));
   const res = await placesSearchTextV1(
     {
       textQuery: query,
       languageCode: "en",
       maxResultCount: 20,
       locationRestriction: {
-        circle: {
-          center: { latitude: lat, longitude: lng },
-          radius: Math.round(radius),
+        rectangle: {
+          low: { latitude: lat - latOffset, longitude: lng - lngOffset },
+          high: { latitude: lat + latOffset, longitude: lng + lngOffset },
         },
       },
     },
