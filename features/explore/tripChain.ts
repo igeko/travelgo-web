@@ -28,7 +28,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { MapMarker, RoutePoint, RouteSpec } from "@/components/ui/Map";
+import type { MapMarker, RoutePoint, RouteSpec, TransportMode } from "@/components/ui/Map";
 import { iconGlyph, INK, INK_LIGHT } from "@/components/ui/mapPins";
 import { IconBed } from "@/components/ui/icons";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
@@ -176,6 +176,14 @@ const DAY_PATH_CASING_WEIGHT = 5;
 export function chainToRouteSpecs(
   chain: TripStop[],
   opacityFor: (dayId: string) => number,
+  /**
+   * Lookup opzionale del transport per ogni leg (`prev.id → curr.id`).
+   * Quando passato, il RouteSpec del giorno porta `perLegTransport[]` e
+   * la mappa applica `legStyle` per-leg: walking → puntinato (no casing),
+   * bus → tratteggiato, car/taxi → solido spesso. Senza, l'intera
+   * polyline resta uniforme DRIVING.
+   */
+  getLegTransport?: (fromId: string, toId: string) => TransportMode | null,
 ): RouteSpec[] {
   if (chain.length < 2) return [];
 
@@ -184,7 +192,12 @@ export function chainToRouteSpecs(
   // `RoutePoint` porta opzionalmente il placeId — propagato dal TripStop
   // di provenienza così downstream (cache server-side, switch a Google
   // Routes con `{placeId}`) può consumarlo senza ri-derivare dai latlng.
-  type Group = { firstIdx: number; points: RoutePoint[]; dayId: string };
+  type Group = {
+    firstIdx: number;
+    points: RoutePoint[];
+    dayId: string;
+    transports: (TransportMode | null)[];
+  };
   const groups = new Map<string, Group>();
   for (let i = 1; i < chain.length; i++) {
     const prev = chain[i - 1];
@@ -196,10 +209,12 @@ export function chainToRouteSpecs(
         firstIdx: i,
         dayId,
         points: [{ lat: prev.lat, lng: prev.lng, placeId: prev.placeId }],
+        transports: [],
       };
       groups.set(dayId, g);
     }
     g.points.push({ lat: curr.lat, lng: curr.lng, placeId: curr.placeId });
+    g.transports.push(getLegTransport?.(prev.id, curr.id) ?? null);
   }
 
   // Costruisci RouteSpec, scartando quelli degeneri (es. zero-length).
@@ -209,12 +224,19 @@ export function chainToRouteSpecs(
     // del giorno, skippa la head.
     const head = g.points[0];
     const firstReal = g.points[1] ?? null;
-    const trimmed = sameCoord(head, firstReal) ? g.points.slice(1) : g.points;
+    const dropHead = sameCoord(head, firstReal);
+    const trimmed = dropHead ? g.points.slice(1) : g.points;
     if (trimmed.length < 2) continue;
+    // Allinea i transport quando dropHead taglia il primo punto.
+    const trimmedTransports = dropHead ? g.transports.slice(1) : g.transports;
+    const hasAnyTransport = trimmedTransports.some((t) => t !== null);
     out.push({
       id: `day-${g.dayId}`,
       points: trimmed,
       travelMode: "DRIVING",
+      // Solo se almeno un transport è noto: senza, lascia indefinito così
+      // il Map riconosce uniformità e fa una sola call (cheap path).
+      ...(hasAnyTransport ? { perLegTransport: trimmedTransports } : {}),
       style: {
         color: INK_LIGHT,
         weight: DAY_PATH_LINE_WEIGHT,

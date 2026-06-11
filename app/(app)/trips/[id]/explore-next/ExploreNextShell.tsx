@@ -13,7 +13,7 @@ import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/ex
 import { useChainBridges } from "@/features/explore/useChainBridges";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
-import type { Activity } from "@/lib/dal/domain";
+import type { Activity, BridgeData } from "@/lib/dal/domain";
 import {
   applyOptStayActions,
   type OptStayAction,
@@ -591,6 +591,51 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // accommodation/stays/use_previous. Vedi `features/explore/tripChain.ts`.
   const chain = useMemo(() => buildTripChain(effectiveDays), [effectiveDays]);
 
+  // Bridge calcolati lazy per i leg del chain: ad ogni mount, ogni coppia
+  // consecutiva viene ricomputata via Google Routes (mode DRIVING). La
+  // cache localStorage 30gg condivisa con la mappa gestisce il dedup
+  // network — punti uguali → cache hit, zero call. Il valore eventualmente
+  // persistito su `bridge_out_json` può essere stantio (un addPlace passato
+  // su un chain diverso), quindi non lo usiamo come dedup; piuttosto la
+  // persistenza overwrite-sempre aggiorna il DB alla verità corrente.
+  const computedBridges = useChainBridges(chain);
+
+  // Effective bridges per leg, keyed by `${prevId}|${currId}`. Stessa
+  // priorità di TimelineV2.buildItems: saved (bridge_out_json sulla
+  // activity di partenza) vince per i campi editabili (transport, line,
+  // stops, note, duration_min); computed (useChainBridges) backfilla
+  // distance_m e fa da fallback se il salvato manca. Le accommodation
+  // hanno solo computed (lo schema non persiste bridge sulle stays).
+  const effectiveBridges = useMemo<Map<string, BridgeData>>(() => {
+    const out = new Map<string, BridgeData>();
+    const savedOutByActId = new Map<string, BridgeData>();
+    for (const d of effectiveDays) {
+      for (const a of d.activities) {
+        if (a.bridge_out_json) savedOutByActId.set(a.id, a.bridge_out_json);
+      }
+    }
+    for (let i = 1; i < chain.length; i++) {
+      const prev = chain[i - 1];
+      const curr = chain[i];
+      const key = `${prev.id}|${curr.id}`;
+      const saved = savedOutByActId.get(prev.id);
+      const c = computedBridges.get(key);
+      const merged = saved && c
+        ? { ...saved, distance_m: saved.distance_m ?? c.distance_m ?? null }
+        : saved ?? c ?? null;
+      if (merged) out.set(key, merged);
+    }
+    return out;
+  }, [chain, effectiveDays, computedBridges]);
+
+  // Lookup transport-per-leg per il rendering mappa: walk → puntinato,
+  // bus → tratteggiato, car/taxi → solido spesso (vedi legStyle in Map.tsx).
+  const getLegTransport = useCallback(
+    (fromId: string, toId: string) =>
+      effectiveBridges.get(`${fromId}|${toId}`)?.transport ?? null,
+    [effectiveBridges],
+  );
+
   // Stato di dimming per stop — regola identica al passato:
   //   - nessun giorno focused → tutto "default"
   //   - un giorno focused → stop di QUEL giorno "default", gli altri "dimmed"
@@ -613,11 +658,12 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // Percorso reale lungo il chain — RouteSpec per giorno, leg "di
   // pertinenza" della tappa di destinazione (per il dimming). Geometria
   // via Google Routes (`api.routes.compute`, cache localStorage 30gg).
-  // Travel mode DRIVING uniforme, niente `perLegTransport` — la linea
-  // resta continua e leggibile (legStyle("walk") sarebbe dotted, ecc.).
+  // Travel mode DRIVING di default; quando un leg ha un transport noto
+  // dal bridge effettivo (walk/bus/car/…), `perLegTransport` fa scattare
+  // il rendering per-leg con `legStyle` dedicato (walk → puntinato).
   const dayPathRoutes = useMemo<RouteSpec[]>(
-    () => chainToRouteSpecs(chain, opacityOf),
-    [chain, opacityOf],
+    () => chainToRouteSpecs(chain, opacityOf, getLegTransport),
+    [chain, opacityOf, getLegTransport],
   );
 
   /**
@@ -657,6 +703,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     };
     const seg = decode(transferId);
     if (!seg) return null;
+    // Transport del leg: se "walk", l'overlay viene disegnato puntinato
+    // via legStyle (no casing); la travelMode WALKING garantisce che la
+    // geometria fetched da Google segua il path pedonale, non quello auto.
+    const transport = getLegTransport(seg.from.id, seg.to.id);
     return {
       id: `transfer-hl:${seg.from.id}->${seg.to.id}`,
       points: [
@@ -664,13 +714,14 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         { lat: seg.to.lat, lng: seg.to.lng, placeId: seg.to.placeId },
       ],
       travelMode: "DRIVING",
+      ...(transport ? { perLegTransport: [transport] } : {}),
       style: {
         color: "#f47b3a", // --color-primary (brand orange) — vedi globals.css
         weight: 4,        // più spesso del 2.5px base così "pop"
         opacity: 1,
       },
     };
-  }, [hoveredTransferId, selectedTransferId, chain]);
+  }, [hoveredTransferId, selectedTransferId, chain, getLegTransport]);
 
   // Pacchetto routes per la mappa: day-path + (opzionale) overlay del
   // transfer selezionato. L'ordine è significativo: il transfer viene
@@ -681,15 +732,6 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       selectedTransferRoute ? [...dayPathRoutes, selectedTransferRoute] : dayPathRoutes,
     [dayPathRoutes, selectedTransferRoute],
   );
-
-  // Bridge calcolati lazy per i leg del chain: ad ogni mount, ogni coppia
-  // consecutiva viene ricomputata via Google Routes (mode DRIVING). La
-  // cache localStorage 30gg condivisa con la mappa gestisce il dedup
-  // network — punti uguali → cache hit, zero call. Il valore eventualmente
-  // persistito su `bridge_out_json` può essere stantio (un addPlace passato
-  // su un chain diverso), quindi non lo usiamo come dedup; piuttosto la
-  // persistenza overwrite-sempre aggiorna il DB alla verità corrente.
-  const computedBridges = useChainBridges(chain);
 
   // Sync row→pin: quando l'utente seleziona una row in Timeline (o l'host
   // setta selectedActivityId da altre vie, incluso il click su un pin), pan
