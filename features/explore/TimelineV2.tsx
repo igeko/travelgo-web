@@ -800,9 +800,9 @@ function NightBandV2({
           hovered ? "bg-stay/40" : "hover:bg-stay/40",
         )}
       >
-        <span className="flex min-w-0 flex-1 items-center gap-2.5">
-          <StopIconBadge icon={lodging.icon} tone="primary" size={36} />
-          <span className="truncate text-meta font-medium text-ink">
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
+          <span className="truncate text-[14px] text-ink">
             {lodging.title}
           </span>
         </span>
@@ -831,12 +831,12 @@ function NightBandV2({
         >
           <div
             className={cn(
-              "flex items-center gap-2.5 rounded-md border bg-transparent px-2.5 py-1.5 transition-colors",
+              "flex items-center gap-2 rounded-md border bg-transparent px-2.5 py-1.5 transition-colors",
               hovered ? "border-ink/40" : "border-border-strong group-hover:border-ink/40",
             )}
           >
-            <StopIconBadge icon={lodging.icon} tone="primary" size={36} />
-            <span className="min-w-0 flex-1 truncate text-meta font-medium text-ink">
+            <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
+            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
               {lodging.title}
             </span>
             <span className="shrink-0 text-[11px] text-stay-text">
