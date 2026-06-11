@@ -1140,9 +1140,11 @@ export function TimelineV2({
           // legacy: solo se ci sono note salvate.
           const showNotes = expanded && (!!onDayNotesChange || !!day.notes);
 
-          // Solver tempi: arrivo/partenza per ogni activity del giorno.
+          // Solver tempi: arrivo/partenza per ogni activity del giorno —
+          // anche le fuzzy entrano nella cascade (it. "fuzzy = activity"
+          // del feedback Enrico): hanno chip Arrivo/Partenza/Durata come
+          // le altre, con tempi calcolati dal solver e editabili.
           const dayActsOrdered = [...day.activities]
-            .filter((x) => x.fuzzy !== true)
             .sort((x, y) => x.position - y.position);
           const dayTimes = computeDayTimes({
             activities: dayActsOrdered,
@@ -1281,15 +1283,49 @@ export function TimelineV2({
                         >
                           <RailCell line="solid" tone={tone} />
                           <div className="py-0.5">
-                            <FuzzyStop
-                              title={a.title}
-                              icon={Icon}
-                              state={open ? "open" : hovered ? "selected" : "default"}
-                              description={a.short_desc ?? undefined}
-                              onOpen={() => setOpenId(a.id)}
-                              onClose={() => setOpenId(null)}
-                              onRemove={handleRemove}
-                            />
+                            {(() => {
+                              const ft = dayTimes.get(a.id);
+                              const fArrivalHM = ft
+                                ? { hour: Math.floor(ft.arrivalMin / 60), minute: ft.arrivalMin % 60 }
+                                : undefined;
+                              const fDepartureHM = ft
+                                ? { hour: Math.floor(ft.departureMin / 60), minute: ft.departureMin % 60 }
+                                : undefined;
+                              const fDurationMin = a.duration_min ?? DEFAULT_ACTIVITY_DURATION_MIN;
+                              const fArrivalDateLabel = ft && day.date
+                                ? formatChipDate(day.date, ft.arrivalDayOffset ?? 0)
+                                : undefined;
+                              const fDepartureDateLabel = ft && day.date
+                                ? formatChipDate(day.date, ft.departureDayOffset ?? 0)
+                                : undefined;
+                              return (
+                                <FuzzyStop
+                                  title={a.title}
+                                  icon={Icon}
+                                  state={open ? "open" : hovered ? "selected" : "default"}
+                                  description={a.short_desc ?? undefined}
+                                  arrivalHM={fArrivalHM}
+                                  departureHM={fDepartureHM}
+                                  arrivalDateLabel={fArrivalDateLabel}
+                                  departureDateLabel={fDepartureDateLabel}
+                                  durationMin={fDurationMin}
+                                  onArrivalChange={(hm) => {
+                                    void onUpdateActivityInstance?.(a.id, { time: formatHMForDb(hm) });
+                                  }}
+                                  onDepartureChange={(hm) => {
+                                    if (!fArrivalHM) return;
+                                    const newDur = diffMinutesHM(fArrivalHM, hm);
+                                    void onUpdateActivityInstance?.(a.id, { duration_min: newDur });
+                                  }}
+                                  onDurationChange={(min) => {
+                                    void onUpdateActivityInstance?.(a.id, { duration_min: min });
+                                  }}
+                                  onOpen={() => setOpenId(a.id)}
+                                  onClose={() => setOpenId(null)}
+                                  onRemove={handleRemove}
+                                />
+                              );
+                            })()}
                           </div>
                         </div>
                       );

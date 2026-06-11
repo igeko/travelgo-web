@@ -11,8 +11,8 @@
  *
  * States: default · hover · selected (navy) · open.
  *
- * Atomic level: organism. Composes StopEditorCard + AddressRow +
- * ArrivalDeparture.
+ * Atomic level: organism. Composes StopEditorCard + AddressRow + InlineActivityTime
+ * (chip arrivo/partenza/durata identiche ad ActivityStop).
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -21,8 +21,8 @@ import { IconCoffee } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { StopEditorCard } from "./StopEditorCard";
 import { AddressRow } from "./AddressRow";
-import { StoppingFor } from "./StoppingFor";
-import { ArrivalDeparture, type ActivityTime } from "./ArrivalDeparture";
+import { InlineActivityTime, type ClockHM } from "./InlineActivityTime";
+import { type ActivityTime } from "./ArrivalDeparture";
 
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
 
@@ -34,12 +34,18 @@ export function FuzzyStop({
   title,
   icon: Icon = IconCoffee,
   state = "default",
-  duration = "30 minutes",
-  timeRange = "10:30 → 11:00",
   description,
   address,
   arrival,
   departure,
+  arrivalHM,
+  departureHM,
+  arrivalDateLabel,
+  departureDateLabel,
+  durationMin,
+  onArrivalChange,
+  onDepartureChange,
+  onDurationChange,
   onOpen,
   onClose,
   onRemove,
@@ -49,12 +55,24 @@ export function FuzzyStop({
   title: string;
   icon?: IconCmp;
   state?: FuzzyStopState;
-  duration?: string;
-  timeRange?: string;
   description?: string;
   address?: string;
+  /** @deprecated Legacy ArrivalDeparture display — sostituito dalle chip
+   *  con picker via `arrivalHM` / `departureHM`. Mantenuto per
+   *  retrocompatibilità sandbox. */
   arrival?: ActivityTime;
   departure?: ActivityTime;
+  /** Tempi calcolati dal solver (cascade): valori in HH:mm numerico,
+   *  identici a quelli usati da `ActivityStop` open per le chip di
+   *  arrivo/partenza/durata. */
+  arrivalHM?: ClockHM;
+  departureHM?: ClockHM;
+  arrivalDateLabel?: string;
+  departureDateLabel?: string;
+  durationMin?: number;
+  onArrivalChange?: (hm: ClockHM) => void;
+  onDepartureChange?: (hm: ClockHM) => void;
+  onDurationChange?: (durationMin: number) => void;
   onOpen?: () => void;
   onClose?: () => void;
   onRemove?: () => void;
@@ -106,13 +124,20 @@ export function FuzzyStop({
       </div>
 
       <StopEditorCard icon={Icon} title={title} onClose={onClose} onRemove={onRemove}>
-        <StoppingFor duration={duration} timeRange={timeRange} />
-
         {description ? <p className="w-full text-mini text-ink">{description}</p> : null}
 
         <AddressRow value={address} />
 
-        <ArrivalDeparture arrival={arrival} departure={departure} />
+        <InlineActivityTime
+          arrivalHM={arrivalHM}
+          departureHM={departureHM}
+          arrivalDateLabel={arrivalDateLabel}
+          departureDateLabel={departureDateLabel}
+          durationMin={durationMin}
+          onArrivalChange={onArrivalChange}
+          onDepartureChange={onDepartureChange}
+          onDurationChange={onDurationChange}
+        />
       </StopEditorCard>
     </div>
   );

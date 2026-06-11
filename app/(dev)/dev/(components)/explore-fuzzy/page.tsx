@@ -44,8 +44,6 @@ export default function ExploreFuzzySandboxPage() {
               title="Caffè Specialty"
               icon={IconCoffee}
               state={state}
-              duration="30 minutes"
-              timeRange="10:30 → 11:00"
               description={DESCRIPTION}
               address=""
               arrival={{ time: "10:30", date: "Thu, 04 Aug" }}
