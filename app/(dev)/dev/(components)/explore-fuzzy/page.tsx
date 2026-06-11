@@ -45,9 +45,6 @@ export default function ExploreFuzzySandboxPage() {
               icon={IconCoffee}
               state={state}
               description={DESCRIPTION}
-              address=""
-              arrival={{ time: "10:30", date: "Thu, 04 Aug" }}
-              departure={{ time: "11:00", date: "Thu, 04 Aug" }}
               onOpen={() => setForced("open")}
               onClose={() => setForced("default")}
               onRemove={() => setForced("default")}
