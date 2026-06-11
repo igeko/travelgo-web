@@ -1100,6 +1100,14 @@ export function TimelineV2({
     }
   }
 
+  // Lookup chain stop by id — serve a risolvere `origin` dei transfer
+  // cross-day (`-in`) dal chain prev (può essere accommodation senza
+  // controparte fra le activity rese in items).
+  const chainStopById = new Map<string, import("./tripChain").TripStop>();
+  if (chain) {
+    for (const s of chain) chainStopById.set(s.id, s);
+  }
+
   return (
     <DndContext
       id="explore-timeline-v2"
@@ -1168,27 +1176,43 @@ export function TimelineV2({
                   {items.map((item, idx) => {
                     if (item.kind === "transfer") {
                       const open = openId === item.id;
-                      // Coords origin/destination dalle activity adiacenti:
-                      // - intra-day "-br": prev activity → next activity
-                      // - cross-day "-in": no plumbing per ora (RouteVerifier
-                      //   non parte se origin manca), fallback statico.
+                      // Coords origin/destination del leg:
+                      // - intra-day "-br": prev activity → next activity (entrambi
+                      //   sono items adiacenti nel timeline).
+                      // - cross-day "-in": il prev item non esiste (il transfer è
+                      //   il primo item del giorno); origin viene preso dal chain
+                      //   stop in `chainPrevByDay` (può essere accommodation o
+                      //   activity del giorno precedente). Destination è la prima
+                      //   activity del giorno (next item).
                       const prev = idx > 0 ? items[idx - 1] : null;
                       const next = idx < items.length - 1 ? items[idx + 1] : null;
                       const prevAct = prev?.kind === "activity" ? prev.activity : null;
                       const nextAct = next?.kind === "activity" ? next.activity : null;
                       const isIncoming = item.id.endsWith("-in");
-                      const origin = !isIncoming && prevAct && prevAct.location_lat != null && prevAct.location_lng != null
-                        ? { lat: prevAct.location_lat, lng: prevAct.location_lng, placeId: prevAct.location_place_id, label: prevAct.title }
-                        : undefined;
+                      const incomingPrevStop = isIncoming
+                        ? chainStopById.get(chainPrevByDay.get(day.id) ?? "")
+                        : null;
+                      const origin = isIncoming
+                        ? incomingPrevStop
+                          ? { lat: incomingPrevStop.lat, lng: incomingPrevStop.lng, placeId: incomingPrevStop.placeId, label: incomingPrevStop.title }
+                          : undefined
+                        : prevAct && prevAct.location_lat != null && prevAct.location_lng != null
+                          ? { lat: prevAct.location_lat, lng: prevAct.location_lng, placeId: prevAct.location_place_id, label: prevAct.title }
+                          : undefined;
                       const destEndpoint = nextAct && nextAct.location_lat != null && nextAct.location_lng != null
                         ? { lat: nextAct.location_lat, lng: nextAct.location_lng, placeId: nextAct.location_place_id, label: nextAct.title }
                         : item.transfer.destination;
-                      // onApply: scrive bridge_out_json sull'activity di
-                      // partenza (intra-day). Incoming non gestito qui.
-                      const onApply = !isIncoming && prevAct
+                      // onApply: per "-br" scriviamo `bridge_out_json` su prevAct;
+                      // per "-in" scriviamo `bridge_in_json` sulla prima activity
+                      // del giorno (nextAct) con direction "in". Niente onApply
+                      // quando le activity coinvolte non sono nel chain previsto
+                      // (edge case fuzzy/accommodation).
+                      const applyTarget = isIncoming ? nextAct : prevAct;
+                      const applyDirection: "in" | "out" = isIncoming ? "in" : "out";
+                      const onApply = applyTarget
                         ? async (bridge: BridgeData) => {
                             try {
-                              await api.activities.setBridge(prevAct.id, "out", bridge as unknown as Record<string, unknown>);
+                              await api.activities.setBridge(applyTarget.id, applyDirection, bridge as unknown as Record<string, unknown>);
                               setOpenId(null);
                               router.refresh();
                             } catch (err) {

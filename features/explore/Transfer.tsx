@@ -285,17 +285,19 @@ export function Transfer({
       </div>
 
       <div className="flex w-full flex-col gap-2.5 rounded-sm bg-surface px-3 py-3">
+        {/* ModeSwitch sempre visibile in open: l'utente deve poter cambiare
+            modalità (a livello UI) anche quando il consumer non ha passato
+            le coords o l'apply. Senza canVerify il cambio resta locale —
+            l'apply persistente serve canVerify=true. */}
+        <ModeSwitch active={localMode} onChange={setLocalMode} />
         {canVerify ? (
-          <>
-            <ModeSwitch active={localMode} onChange={setLocalMode} />
-            <RouteVerifier
-              mode={toRouteMode(localMode)}
-              origin={origin}
-              destination={destination}
-              departureTime={departureTime}
-              onApply={handleApply}
-            />
-          </>
+          <RouteVerifier
+            mode={toRouteMode(localMode)}
+            origin={origin}
+            destination={destination}
+            departureTime={departureTime}
+            onApply={handleApply}
+          />
         ) : (
           // Fallback statico per sandbox / v1 che non passano le coords:
           // mostriamo i precomputati `legs` come strip read-only.
