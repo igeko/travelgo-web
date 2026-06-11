@@ -105,6 +105,14 @@ type Props = {
   injectSampleTransfers?: boolean;
   onSelectDay?: (dayId: string | null) => void;
   onSelectActivity?: (activityId: string | null) => void;
+  /**
+   * Apertura di un transfer nella timeline. Riceve l'id sintetico del
+   * transfer (`${activity.id}-br` per outgoing, `${first.id}-in` per
+   * incoming day-bridge) o null quando nessun transfer è aperto. Il
+   * consumer lo decodifica contro il chain per derivare gli endpoint e
+   * rifletterli sulla mappa.
+   */
+  onSelectTransfer?: (transferId: string | null) => void;
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
   onDragMove?: (scheduledId: string, targetDayId: string, targetIndex: number) => void | Promise<void>;
@@ -772,6 +780,7 @@ export function TimelineV2({
   injectSampleTransfers = false,
   onSelectDay,
   onSelectActivity,
+  onSelectTransfer,
   onRemoveActivity,
   onMoveActivity,
   onDragMove,
@@ -958,10 +967,29 @@ export function TimelineV2({
     setDragPreview(null);
   };
 
-  // Bubble openId → host (selectedActivityId per Add-to-Trip downstream).
+  // Bubble openId → host. I transfer hanno id sintetici (`-br` / `-in`),
+  // gli scheduled.id delle activity sono UUID (mai con quei suffissi),
+  // quindi il suffix è un disambiguatore affidabile. Activity e transfer
+  // bubble sono mutuamente esclusivi: aprendo un transfer la selezione
+  // activity precedente viene azzerata (e viceversa).
   useEffect(() => {
-    onSelectActivity?.(openId);
-  }, [openId, onSelectActivity]);
+    if (!openId) {
+      onSelectActivity?.(null);
+      onSelectTransfer?.(null);
+      return;
+    }
+    if (
+      openId.endsWith("-br") ||
+      openId.endsWith("-in") ||
+      openId.endsWith("-sample")
+    ) {
+      onSelectActivity?.(null);
+      onSelectTransfer?.(openId);
+    } else {
+      onSelectActivity?.(openId);
+      onSelectTransfer?.(null);
+    }
+  }, [openId, onSelectActivity, onSelectTransfer]);
 
   // openOverride sync (pattern "adjust during render" — react.dev).
   const [lastOpenOverride, setLastOpenOverride] = useState(openOverride);

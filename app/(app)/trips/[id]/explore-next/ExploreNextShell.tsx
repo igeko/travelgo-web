@@ -450,6 +450,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // when no row is open — the algorithm falls back to selectedDayId, then
   // to "end of last populated day".
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  // Transfer aperto nella timeline → evidenziato in arancione brand sulla
+  // mappa. L'id è quello sintetico emesso da TimelineV2 (`-br` / `-in` /
+  // `-sample`); la decodifica in (from, to) chain stop avviene sotto.
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
   // Row Timeline evidenziata come "selezionata ma non aperta" durante
   // l'hover sul pin corrispondente. Per activity è lo scheduled.id; per
   // accommodation traduciamo `acc:${stayKey}` in `lodging-${dayId}` (la
@@ -610,6 +614,64 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const dayPathRoutes = useMemo<RouteSpec[]>(
     () => chainToRouteSpecs(chain, opacityOf),
     [chain, opacityOf],
+  );
+
+  /**
+   * Overlay arancione brand per il transfer selezionato nella timeline.
+   *
+   * Decodifica `selectedTransferId` (id sintetico di TimelineV2) in una
+   * coppia (from, to) di chain stop:
+   *   - `${aId}-in`  → to = chain.find(aId);   from = chain[idx-1]
+   *   - `${aId}-br`  → from = chain.find(aId); to   = chain[idx+1]
+   *   - `${aId}-sample` → null (mock dev-only, niente geometria reale)
+   *
+   * Il segmento viene aggiunto come `RouteSpec` separato a valle del
+   * `dayPathRoutes` così, per ordine di insert sulla mappa, l'arancione
+   * vince visivamente sopra la linea base (stesso `zIndex: 2` di default,
+   * later insert wins).
+   */
+  const selectedTransferRoute = useMemo<RouteSpec | null>(() => {
+    if (!selectedTransferId) return null;
+    const decode = (id: string): { from: typeof chain[number]; to: typeof chain[number] } | null => {
+      if (id.endsWith("-in")) {
+        const toId = id.slice(0, -3);
+        const idx = chain.findIndex((s) => s.id === toId);
+        return idx > 0 ? { from: chain[idx - 1], to: chain[idx] } : null;
+      }
+      if (id.endsWith("-br")) {
+        const fromId = id.slice(0, -3);
+        const idx = chain.findIndex((s) => s.id === fromId);
+        return idx >= 0 && idx < chain.length - 1
+          ? { from: chain[idx], to: chain[idx + 1] }
+          : null;
+      }
+      return null;
+    };
+    const seg = decode(selectedTransferId);
+    if (!seg) return null;
+    return {
+      id: `transfer-hl:${seg.from.id}->${seg.to.id}`,
+      points: [
+        { lat: seg.from.lat, lng: seg.from.lng, placeId: seg.from.placeId },
+        { lat: seg.to.lat, lng: seg.to.lng, placeId: seg.to.placeId },
+      ],
+      travelMode: "DRIVING",
+      style: {
+        color: "#f47b3a", // --color-primary (brand orange) — vedi globals.css
+        weight: 4,        // più spesso del 2.5px base così "pop"
+        opacity: 1,
+      },
+    };
+  }, [selectedTransferId, chain]);
+
+  // Pacchetto routes per la mappa: day-path + (opzionale) overlay del
+  // transfer selezionato. L'ordine è significativo: il transfer viene
+  // dopo così l'arancione si dipinge sopra la linea base nello stesso
+  // tier di zIndex.
+  const mapRoutes = useMemo<RouteSpec[]>(
+    () =>
+      selectedTransferRoute ? [...dayPathRoutes, selectedTransferRoute] : dayPathRoutes,
+    [dayPathRoutes, selectedTransferRoute],
   );
 
   // Bridge calcolati lazy per i leg del chain: ad ogni mount, ogni coppia
@@ -1159,7 +1221,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         zoom={zoom}
         nightRoute={nightRoute}
         extraMarkers={itineraryMarkers}
-        extraRoutes={dayPathRoutes}
+        extraRoutes={mapRoutes}
         viewportInset={{ left: panelWidth, bottom: effectiveSheetHeight }}
         onAddToTripRequest={handleAddToTripRequest}
         onExtraMarkerDragEnd={handlePinDragEnd}
@@ -1197,6 +1259,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             computedBridges={computedBridges}
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
+            onSelectTransfer={setSelectedTransferId}
             onRemoveActivity={handleRemoveActivity}
             onMoveActivity={handleMoveActivity}
             onDragMove={handleDragMove}
@@ -1230,6 +1293,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           computedBridges={computedBridges}
           onSelectDay={handleSelectDay}
           onSelectActivity={setSelectedActivityId}
+          onSelectTransfer={setSelectedTransferId}
           onRemoveActivity={handleRemoveActivity}
           onMoveActivity={handleMoveActivity}
           onDragMove={handleDragMove}

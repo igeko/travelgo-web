@@ -113,6 +113,9 @@ type Props = {
   injectSampleTransfers?: boolean;
   onSelectDay?: (dayId: string | null) => void;
   onSelectActivity?: (activityId: string | null) => void;
+  /** Apertura di un transfer — id sintetico (`-br`/`-in`/`-sample`) o null.
+   *  Vedi TimelineV2 per la convenzione completa. */
+  onSelectTransfer?: (transferId: string | null) => void;
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
   onDragMove?: (scheduledId: string, targetDayId: string, targetIndex: number) => void | Promise<void>;
@@ -744,6 +747,7 @@ export function TimelineV2Mobile({
   injectSampleTransfers = false,
   onSelectDay,
   onSelectActivity,
+  onSelectTransfer,
   onRemoveActivity,
   onMoveActivity,
   onDragMove,
@@ -912,9 +916,26 @@ export function TimelineV2Mobile({
     setDragPreview(null);
   };
 
+  // Bubble openId → host, distinguendo activity vs transfer (vedi TimelineV2
+  // per la convenzione sugli id sintetici).
   useEffect(() => {
-    onSelectActivity?.(openId);
-  }, [openId, onSelectActivity]);
+    if (!openId) {
+      onSelectActivity?.(null);
+      onSelectTransfer?.(null);
+      return;
+    }
+    if (
+      openId.endsWith("-br") ||
+      openId.endsWith("-in") ||
+      openId.endsWith("-sample")
+    ) {
+      onSelectActivity?.(null);
+      onSelectTransfer?.(openId);
+    } else {
+      onSelectActivity?.(openId);
+      onSelectTransfer?.(null);
+    }
+  }, [openId, onSelectActivity, onSelectTransfer]);
 
   const [lastOpenOverride, setLastOpenOverride] = useState(openOverride);
   if (openOverride !== lastOpenOverride) {
