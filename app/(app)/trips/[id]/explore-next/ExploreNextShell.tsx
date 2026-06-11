@@ -454,6 +454,10 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // mappa. L'id è quello sintetico emesso da TimelineV2 (`-br` / `-in` /
   // `-sample`); la decodifica in (from, to) chain stop avviene sotto.
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
+  // Transfer in preview: dwell di ~150ms di hover sulla riga del Transfer,
+  // senza apertura della card. Vince sul selected quando attivo (mouse
+  // dentro), torna a selected appena il cursore esce.
+  const [hoveredTransferId, setHoveredTransferId] = useState<string | null>(null);
   // Row Timeline evidenziata come "selezionata ma non aperta" durante
   // l'hover sul pin corrispondente. Per activity è lo scheduled.id; per
   // accommodation traduciamo `acc:${stayKey}` in `lodging-${dayId}` (la
@@ -631,7 +635,11 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
    * later insert wins).
    */
   const selectedTransferRoute = useMemo<RouteSpec | null>(() => {
-    if (!selectedTransferId) return null;
+    // Hover (preview) vince sul selected (click commit) finché il mouse è
+    // dentro la riga. Quando l'hover finisce, l'highlight torna sul
+    // selected o sparisce se nessuno dei due è attivo.
+    const transferId = hoveredTransferId ?? selectedTransferId;
+    if (!transferId) return null;
     const decode = (id: string): { from: typeof chain[number]; to: typeof chain[number] } | null => {
       if (id.endsWith("-in")) {
         const toId = id.slice(0, -3);
@@ -647,7 +655,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       }
       return null;
     };
-    const seg = decode(selectedTransferId);
+    const seg = decode(transferId);
     if (!seg) return null;
     return {
       id: `transfer-hl:${seg.from.id}->${seg.to.id}`,
@@ -662,7 +670,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
         opacity: 1,
       },
     };
-  }, [selectedTransferId, chain]);
+  }, [hoveredTransferId, selectedTransferId, chain]);
 
   // Pacchetto routes per la mappa: day-path + (opzionale) overlay del
   // transfer selezionato. L'ordine è significativo: il transfer viene
@@ -1260,6 +1268,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onSelectDay={handleSelectDay}
             onSelectActivity={setSelectedActivityId}
             onSelectTransfer={setSelectedTransferId}
+            onHoverTransfer={setHoveredTransferId}
             onRemoveActivity={handleRemoveActivity}
             onMoveActivity={handleMoveActivity}
             onDragMove={handleDragMove}

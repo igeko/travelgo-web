@@ -113,6 +113,14 @@ type Props = {
    * rifletterli sulla mappa.
    */
   onSelectTransfer?: (transferId: string | null) => void;
+  /**
+   * Hover su un transfer con piccolo dwell (~150ms): segnala al consumer
+   * che il transfer è in "preview" (per evidenziarlo sulla mappa senza
+   * aprirne la card). Stessa forma di id di `onSelectTransfer`. La
+   * priorità click > hover viene applicata DAL consumer (di solito
+   * `hoveredTransferId ?? selectedTransferId`).
+   */
+  onHoverTransfer?: (transferId: string | null) => void;
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
   onDragMove?: (scheduledId: string, targetDayId: string, targetIndex: number) => void | Promise<void>;
@@ -513,6 +521,11 @@ function applyDragPreview(
 
 const RAIL_COL = "44px";
 
+/** Dwell prima di considerare un Transfer "in preview" sull'hover (ms).
+ *  Sotto la soglia per sentirsi reattivo, abbastanza alto da non
+ *  scatenarsi durante un attraversamento veloce in diagonale. */
+const TRANSFER_HOVER_DWELL = 150;
+
 /** Rail cell — la stripe verticale di sinistra (44px) col line solid/dashed. */
 function RailCell({
   line = "solid",
@@ -781,6 +794,7 @@ export function TimelineV2({
   onSelectDay,
   onSelectActivity,
   onSelectTransfer,
+  onHoverTransfer,
   onRemoveActivity,
   onMoveActivity,
   onDragMove,
@@ -803,6 +817,33 @@ export function TimelineV2({
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Hover preselect dei transfer: dopo TRANSFER_HOVER_DWELL ms di
+  // permanenza, l'id passa al consumer come "preview" (highlight mappa).
+  // Lasciare il rect cancella sia il timer pendente sia lo stato attivo.
+  const [hoveredTransferId, setHoveredTransferId] = useState<string | null>(null);
+  const hoverDwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (hoverDwellTimer.current) clearTimeout(hoverDwellTimer.current);
+    };
+  }, []);
+  const armTransferHover = useCallback((transferId: string) => {
+    if (hoverDwellTimer.current) clearTimeout(hoverDwellTimer.current);
+    hoverDwellTimer.current = setTimeout(() => {
+      setHoveredTransferId(transferId);
+    }, TRANSFER_HOVER_DWELL);
+  }, []);
+  const clearTransferHover = useCallback(() => {
+    if (hoverDwellTimer.current) {
+      clearTimeout(hoverDwellTimer.current);
+      hoverDwellTimer.current = null;
+    }
+    setHoveredTransferId(null);
+  }, []);
+  useEffect(() => {
+    onHoverTransfer?.(hoveredTransferId);
+  }, [hoveredTransferId, onHoverTransfer]);
 
   // Scroll-into-view per una row: porta in cima il GIORNO che la contiene
   // (DayBadge come primo elemento visibile), non la row singola. La
@@ -1162,7 +1203,11 @@ export function TimelineV2({
                           style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
                         >
                           <RailCell line="dashed" tone={tone} />
-                          <div className="py-1 pl-1">
+                          <div
+                            className="py-1 pl-1"
+                            onPointerEnter={() => armTransferHover(item.id)}
+                            onPointerLeave={clearTransferHover}
+                          >
                             <Transfer
                               mode={item.transfer.mode}
                               state={open ? "open" : "default"}
