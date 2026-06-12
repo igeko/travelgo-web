@@ -149,6 +149,10 @@ export type MapProps = {
   markers?: MapMarker[];
   /** Key of the selected marker — rendered orange, the rest ink. */
   selectedMarkerId?: string | null;
+  /** Id pin da rendere come hovered (proveniente da host esterno, es.
+   *  hover row in Timeline). Combinato con l'hover via mouse: l'unione
+   *  decide quale marker disegnare scalato 1.25×. */
+  hoveredMarkerId?: string | null;
   /** Fired when the user clicks the basemap (empty area). */
   onMapClick?: (latlng: LatLng) => void;
   /** Fired when the user clicks a Google POI label (placeId + position). */
@@ -805,6 +809,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     controls = {},
     markers,
     selectedMarkerId,
+    hoveredMarkerId,
     onMapClick,
     onPoiClick,
     onMarkerClick,
@@ -1285,6 +1290,35 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     // wrapper possono ancora reframmare a comando esplicito via
     // `mapHandle.fitAll()` (vedi useImperativeHandle sopra).
   }, [markers, status, selectedMarkerId, hoverPin, unhoverPin]);
+
+  // External hover (Timeline row hover → pin) — applica/rimuove l'hover
+  // sull'icona del marker corrispondente. NON tocca lo state hoverId
+  // interno (che pilota il dwell del card popover): qui aggiorniamo solo
+  // l'icon scale, coerente con il mouseover diretto sul pin.
+  const prevExternalHoverRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (status !== "ready") return;
+    const prev = prevExternalHoverRef.current;
+    const next = hoveredMarkerId ?? null;
+    if (prev === next) return;
+    prevExternalHoverRef.current = next;
+    // Reset hover sul precedente
+    if (prev) {
+      const marker = markersByKey.current[prev];
+      const desc = (markersRef.current ?? []).find((mk) => (mk.id ?? `${mk.lat},${mk.lng}`) === prev);
+      if (marker && desc && desc.variant === "roadmap") {
+        marker.setIcon(iconForMarker(desc, selectedIdRef.current === prev, false, false));
+      }
+    }
+    // Applica hover sul nuovo
+    if (next) {
+      const marker = markersByKey.current[next];
+      const desc = (markersRef.current ?? []).find((mk) => (mk.id ?? `${mk.lat},${mk.lng}`) === next);
+      if (marker && desc && desc.variant === "roadmap") {
+        marker.setIcon(iconForMarker(desc, selectedIdRef.current === next, false, true));
+      }
+    }
+  }, [hoveredMarkerId, status]);
 
   // Route polylines: every entry in `routes` is drawn as its own polyline
   // (single-call when transport+colour are uniform, per-leg otherwise).

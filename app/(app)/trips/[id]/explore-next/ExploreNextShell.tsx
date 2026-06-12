@@ -462,6 +462,9 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // Timeline non sa nulla del formato pin → mantiene il proprio id).
   // Convivenza con l'open: la Timeline ignora l'hover sulla row già aperta.
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  // Hover su una row della Timeline → traduciamo l'id row in pin id e
+  // lo passiamo alla Map (sync row → pin, opposto di handleItineraryPinHover).
+  const [hoveredPinFromList, setHoveredPinFromList] = useState<string | null>(null);
 
   // Stato ottimistico:
   //  - pendingAdds: activity restituite dall'addPlace, già visibili in Timeline
@@ -1269,6 +1272,25 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // (`acc:${stayKey}` per accommodation) nell'id row usato dalla Timeline
   // (`lodging-${dayId}` per il lodging). Activity: pinId = scheduled.id,
   // coincide direttamente con l'id row. Su out (`null`) reset.
+  // Mapping inverso row → pin: per accommodation `lodging-${dayId}` →
+  // pin `acc:${stayKey}`; per activity/fuzzy l'id row coincide col pin id.
+  const handleRowHover = useCallback(
+    (rowId: string | null) => {
+      if (rowId === null) { setHoveredPinFromList(null); return; }
+      if (rowId.startsWith("lodging-")) {
+        const dayId = rowId.slice("lodging-".length);
+        const d = effectiveDays.find((x) => x.id === dayId);
+        const acc = d?.accommodation;
+        if (!acc) { setHoveredPinFromList(null); return; }
+        const stayKey = acc.stay_id ?? `legacy:${dayId}`;
+        setHoveredPinFromList(`acc:${stayKey}`);
+        return;
+      }
+      setHoveredPinFromList(rowId);
+    },
+    [effectiveDays],
+  );
+
   const handleItineraryPinHover = useCallback(
     (pinId: string | null) => {
       if (pinId === null) { setHoveredRowId(null); return; }
@@ -1305,6 +1327,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
             onSelectActivity={setSelectedActivityId}
             onSelectTransfer={setSelectedTransferId}
             onHoverTransfer={setHoveredTransferId}
+            onHoverRow={handleRowHover}
             onRemoveActivity={handleRemoveActivity}
             onMoveActivity={handleMoveActivity}
             onDragMove={handleDragMove}
@@ -1336,6 +1359,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           zoom={zoom}
           nightRoute={nightRoute}
           extraMarkers={itineraryMarkers}
+          hoveredPinId={hoveredPinFromList}
           extraRoutes={mapRoutes}
           viewportInset={{ bottom: effectiveSheetHeight }}
           onAddToTripRequest={handleAddToTripRequest}

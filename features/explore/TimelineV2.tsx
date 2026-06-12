@@ -121,6 +121,14 @@ type Props = {
    * `hoveredTransferId ?? selectedTransferId`).
    */
   onHoverTransfer?: (transferId: string | null) => void;
+  /**
+   * Hover su una row dell'itinerario (activity / fuzzy / accommodation).
+   * Riceve l'id row: per activity/fuzzy è `scheduled_activities.id`, per
+   * accommodation è `lodging-${dayId}`. Null quando il cursore esce.
+   * Il consumer lo usa per evidenziare il pin corrispondente sulla
+   * mappa (sync bidirezionale con `hoveredRowId`).
+   */
+  onHoverRow?: (rowId: string | null) => void;
   onRemoveActivity?: (scheduledId: string) => void | Promise<void>;
   onMoveActivity?: (scheduledId: string, direction: "up" | "down") => void | Promise<void>;
   onDragMove?: (scheduledId: string, targetDayId: string, targetIndex: number) => void | Promise<void>;
@@ -458,11 +466,15 @@ function SortableActivityRow({
   scheduledId,
   dayId,
   index,
+  onMouseEnter,
+  onMouseLeave,
   children,
 }: {
   scheduledId: string;
   dayId: string;
   index: number;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   children: (handle: {
     dragHandleProps: import("react").HTMLAttributes<HTMLSpanElement> & {
       ref?: import("react").Ref<HTMLSpanElement>;
@@ -500,7 +512,13 @@ function SortableActivityRow({
   };
 
   return (
-    <div ref={setNodeRef} style={style} data-row-id={scheduledId}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-row-id={scheduledId}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       {children(handle)}
     </div>
   );
@@ -723,6 +741,7 @@ function NightBandV2({
   tone,
   onOpen,
   onClose,
+  onHover,
   onAddressChange,
   onIconChange,
   onTitleChange,
@@ -738,6 +757,9 @@ function NightBandV2({
   tone: "default" | "selected";
   onOpen: () => void;
   onClose: () => void;
+  /** Callback hover sulla banda (sia closed che open). Sincronizza col
+   *  pin del lodging sulla mappa. */
+  onHover?: (rowId: string | null) => void;
   onAddressChange?: (activityId: string, place: PlaceResult | null) => void | Promise<void>;
   onIconChange?: (activityId: string, iconKey: string) => void | Promise<void>;
   onTitleChange?: (activityId: string, title: string) => void | Promise<void>;
@@ -755,6 +777,8 @@ function NightBandV2({
         className="grid items-start gap-x-3"
         style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
         data-row-id={lodging.id}
+        onMouseEnter={() => onHover?.(lodging.id)}
+        onMouseLeave={() => onHover?.(null)}
       >
         <RailCell line="solid" tone={tone} />
         <div className="py-0.5">
@@ -812,6 +836,8 @@ function NightBandV2({
       className="grid items-center gap-x-3"
       style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
       data-row-id={lodging.id}
+      onMouseEnter={() => onHover?.(lodging.id)}
+      onMouseLeave={() => onHover?.(null)}
     >
       <RailCell line="solid" tone={tone} />
       <div className="py-0.5">
@@ -866,6 +892,7 @@ export function TimelineV2({
   onSelectActivity,
   onSelectTransfer,
   onHoverTransfer,
+  onHoverRow,
   onRemoveActivity,
   onMoveActivity,
   onDragMove,
@@ -1377,6 +1404,8 @@ export function TimelineV2({
                           data-row-id={a.id}
                           className="grid items-center gap-x-3"
                           style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
+                          onMouseEnter={() => onHoverRow?.(a.id)}
+                          onMouseLeave={() => onHoverRow?.(null)}
                         >
                           <RailCell line="solid" tone={tone} />
                           <div className="py-0.5">
@@ -1455,6 +1484,8 @@ export function TimelineV2({
                         scheduledId={a.id}
                         dayId={day.id}
                         index={sortableIndexOf.get(a.id) ?? 0}
+                        onMouseEnter={() => onHoverRow?.(a.id)}
+                        onMouseLeave={() => onHoverRow?.(null)}
                       >
                         {({ dragHandleProps, isDragging }) => {
                           const t = dayTimes.get(a.id);
@@ -1599,6 +1630,7 @@ export function TimelineV2({
                     stessa griglia. Niente footer fuso, niente full-bleed. */}
                 {lodging ? (
                   <NightBandV2
+                    onHover={onHoverRow}
                     lodging={lodging}
                     open={openId === lodging.id}
                     hovered={openId !== lodging.id && hoveredRowId === lodging.id}

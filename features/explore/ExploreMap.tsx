@@ -112,6 +112,9 @@ export const ExploreMap = forwardRef<MapHandle, {
   /** Static pins injected by the host (e.g. all trip activities). Rendered as a
    *  base layer — Go/category/night pins win on a key collision. */
   extraMarkers?: MapMarker[];
+  /** Id pin da evidenziare come hovered (proveniente dalla Timeline). Si
+   *  comporta come il mouseover sul pin: scala 1.25× per i roadmap. */
+  hoveredPinId?: string | null;
   /**
    * Pixel offset of the visible viewport relative to the map container — set it
    * when an overlapping panel (e.g. a left-side timeline) covers part of the
@@ -182,6 +185,7 @@ export const ExploreMap = forwardRef<MapHandle, {
   zoom: tripZoom,
   nightRoute,
   extraMarkers = [],
+  hoveredPinId = null,
   viewportInset,
   onExtraMarkerDragEnd,
   onAddToTripRequest,
@@ -699,6 +703,7 @@ export const ExploreMap = forwardRef<MapHandle, {
         zoom={zoom}
         zoomControlPosition="RIGHT_BOTTOM"
         markers={allMarkers}
+        hoveredMarkerId={hoveredPinId}
         // Selection precedence: search hit > night pin > Go focus > itinerary.
         // Itinerary va per ultimo perché ha un diverso "look" (no halo overlay,
         // bordo bianco + scala hover) — quando un pin è itinerario sopra agli
