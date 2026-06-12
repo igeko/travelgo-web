@@ -389,8 +389,6 @@ type Props = {
  */
 export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Props) {
   const router = useRouter();
-  const panelRef = useRef<HTMLElement>(null);
-  const [panelWidth, setPanelWidth] = useState(376);
   // Altezza del bottom sheet mobile: contribuisce al `viewportInset.bottom`
   // della mappa (così la ricerca per categoria si centra sull'area
   // effettivamente visibile, esattamente come per il pannello sinistro
@@ -1279,56 +1277,13 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     [effectiveDays],
   );
 
-  // ResizeObserver per il pannello sinistro.
-  useEffect(() => {
-    if (!panelRef.current) return;
-    const ro = new ResizeObserver(() =>
-      setPanelWidth(panelRef.current?.offsetWidth ?? 376),
-    );
-    ro.observe(panelRef.current);
-    return () => ro.disconnect();
-  }, []);
-
 
   return (
-    <div className="relative h-full w-full">
-      <ExploreMap
-        ref={mapRef}
-        tripId={tripId}
-        center={center}
-        zoom={zoom}
-        nightRoute={nightRoute}
-        extraMarkers={itineraryMarkers}
-        extraRoutes={mapRoutes}
-        viewportInset={{ left: panelWidth, bottom: effectiveSheetHeight }}
-        onAddToTripRequest={handleAddToTripRequest}
-        onExtraMarkerDragEnd={handlePinDragEnd}
-        // Sync row↔pin: lo stato selezionato del pin segue selectedActivityId,
-        // un click sul pin apre la row corrispondente (openOverride) E setta
-        // il selected (per il bordo bianco del pin).
-        selectedItineraryId={selectedActivityId}
-        onItineraryPinClick={(id) => {
-          setSelectedActivityId(id);
-          setOpenOverride(id);
-          // Il click apre la row → l'highlight di hover (riga in stato
-          // "selected ma non aperta") non serve più; la card aperta
-          // prende il sopravvento visivo.
-          setHoveredRowId(null);
-        }}
-        onItineraryPinHover={handleItineraryPinHover}
-        // Night-route off: la Timeline a sinistra mostra già l'alloggio
-        // giorno-per-giorno, l'overlay diventava solo rumore.
-        enableNightRoute={false}
-        // All'apertura del trip, inquadra l'intero percorso pianificato
-        // (markers + polyline) così l'utente vede tutto in un colpo. Una
-        // sola volta — dopo, lo zoom resta dell'utente.
-        fitAllOnMount
-      />
-
-      {/* Panel sinistro — card arrotondata desktop (≥ lg). */}
+    <div className="relative h-full w-full lg:flex lg:gap-2 lg:p-2">
+      {/* Panel sinistro — su desktop sta nel flex row accanto alla mappa
+          (niente più overlay/shadow). Mobile resta hidden. */}
       <aside
-        ref={panelRef}
-        className="absolute left-2 top-2 z-20 hidden max-h-[calc(100%-1rem)] w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-float lg:flex"
+        className="hidden w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface lg:flex"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TimelineV2
@@ -1357,6 +1312,45 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           />
         </div>
       </aside>
+
+      {/* Map container — full-bleed su mobile (assoluto dentro il relative
+          outer), card flex-1 con angoli arrotondati su desktop. La
+          ExploreToolbar resta dentro ExploreMap e si posiziona absolute
+          relativamente al suo container interno (rounded-clip safe). */}
+      <div className="absolute inset-0 lg:static lg:flex-1 lg:rounded-lg lg:border lg:border-border-strong lg:overflow-hidden">
+        <ExploreMap
+          ref={mapRef}
+          tripId={tripId}
+          center={center}
+          zoom={zoom}
+          nightRoute={nightRoute}
+          extraMarkers={itineraryMarkers}
+          extraRoutes={mapRoutes}
+          viewportInset={{ bottom: effectiveSheetHeight }}
+          onAddToTripRequest={handleAddToTripRequest}
+          onExtraMarkerDragEnd={handlePinDragEnd}
+          // Sync row↔pin: lo stato selezionato del pin segue selectedActivityId,
+          // un click sul pin apre la row corrispondente (openOverride) E setta
+          // il selected (per il bordo bianco del pin).
+          selectedItineraryId={selectedActivityId}
+          onItineraryPinClick={(id) => {
+            setSelectedActivityId(id);
+            setOpenOverride(id);
+            // Il click apre la row → l'highlight di hover (riga in stato
+            // "selected ma non aperta") non serve più; la card aperta
+            // prende il sopravvento visivo.
+            setHoveredRowId(null);
+          }}
+          onItineraryPinHover={handleItineraryPinHover}
+          // Night-route off: la Timeline a sinistra mostra già l'alloggio
+          // giorno-per-giorno, l'overlay diventava solo rumore.
+          enableNightRoute={false}
+          // All'apertura del trip, inquadra l'intero percorso pianificato
+          // (markers + polyline) così l'utente vede tutto in un colpo. Una
+          // sola volta — dopo, lo zoom resta dell'utente.
+          fitAllOnMount
+        />
+      </div>
 
       {/* Bottom sheet mobile (< lg) — drag-to-snap a 3 stati: peek/half/full.
           Il MobileSheet ha grip handle, snap, animazione e notifica
