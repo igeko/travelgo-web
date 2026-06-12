@@ -152,10 +152,13 @@ export function FuzzyStop({
       >
         <span
           className={cn(
-            "flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
+            // Bordo SOLIDO navy ink (brand) + transizione colors all'hover/
+            // filled → fill ink, icona bianca. Identica resa del pin sulla
+            // mappa (makeFuzzyPin) → identità 1:1 row↔pin.
+            "flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-solid border-ink transition-colors",
             filled
-              ? "border-solid border-ink bg-ink text-white"
-              : "border-dashed border-ink/40 bg-surface text-ink-soft group-hover:border-solid group-hover:border-ink group-hover:bg-ink group-hover:text-white",
+              ? "bg-ink text-white"
+              : "bg-surface text-ink group-hover:bg-ink group-hover:text-white",
           )}
         >
           <Icon size={13} className="shrink-0" />

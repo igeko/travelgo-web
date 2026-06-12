@@ -289,9 +289,12 @@ export function makeRoadmapPin(
 
 /* ─────────────────────────────────────────────────────────────────
    Fuzzy pin — marcatore unificato lista↔mappa per le tappe "fuzzy"
-   (no slot fisso). Cerchio 22×22 con bordo TRATTEGGIATO ink al 45%
-   e icona categoria centrata; hover/selected → bordo solido, fill ink,
-   icona bianca (stessa transizione di FuzzyStop collapsed).
+   (no slot fisso). Cerchio 26×26 con bordo SOLIDO navy ink (brand)
+   e icona categoria centrata; hover/selected → fill ink, icona bianca
+   (stessa transizione di FuzzyStop collapsed).
+
+   Diametro 26px = stessa size del badge FuzzyStop in lista (size-[26px])
+   → identità 1:1 fra row e pin a colpo d'occhio.
 
    Visibile solo a giorno selezionato (gating lato consumer). Niente
    tip teardrop: il pin è un "indicatore soft" centrato sul punto
@@ -311,26 +314,25 @@ export function makeFuzzyPin(
   isHovered = false,
   isSelected = false,
 ): google.maps.Icon {
-  const baseW = 22;
-  const baseH = 22;
+  const baseW = 26;
+  const baseH = 26;
   const w = baseW + 2 * SOFT_SHADOW_PAD_X;
   const h = baseH + SOFT_SHADOW_PAD_Y;
-  const cx = 11 + SOFT_SHADOW_PAD_X;
-  const cy = 11;
+  const cx = 13 + SOFT_SHADOW_PAD_X;
+  const cy = 13;
 
   const filled = isHovered || isSelected;
-  // Default = bianco con bordo tratteggiato ink al 45%; hover/selected =
-  // ink solido (gli stessi colori della FuzzyStop collapsed in lista).
+  // Default = bianco con bordo navy ink pieno; hover/selected = ink solido
+  // (gli stessi colori della FuzzyStop collapsed in lista).
   const fillColor = filled ? INK : "#ffffff";
   const strokeColor = INK;
-  const strokeOpacity = filled ? "1" : "0.45";
-  const strokeDasharray = filled ? "" : ` stroke-dasharray="3 2.5"`;
-  const iconColor = filled ? "#ffffff" : NEUTRAL;
+  const iconColor = filled ? "#ffffff" : INK;
   const circle =
-    `<circle cx="${cx}" cy="${cy}" r="10" fill="${fillColor}" stroke="${strokeColor}" stroke-opacity="${strokeOpacity}" stroke-width="1.5"${strokeDasharray}/>`;
+    `<circle cx="${cx}" cy="${cy}" r="12" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5"/>`;
 
-  // Icona categoria — 13/24 scale, centrata sul cerchio.
-  const iconSize = 13;
+  // Icona categoria — 14/24 scale, centrata sul cerchio (cresciuta da 13
+  // a 14 in proporzione al cerchio passato da 22 a 26 → ratio ~54% costante).
+  const iconSize = 14;
   const iconScale = iconSize / 24;
   const iconX = cx - iconSize / 2;
   const iconY = cy - iconSize / 2;
