@@ -124,9 +124,11 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK, 
   const body =
     `<path d="M20 4c-6.6 0-12 5.2-12 11.7 0 8.1 10.4 18.4 11.3 19.3a1 1 0 0 0 1.4 0C21.6 34.1 32 23.8 32 15.7 32 9.2 26.6 4 20 4z" ` +
     `fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
-  // Icon (24-box) scaled to ~18px and centred in the head.
+  // Icon (24-box) scaled to ~20px e centrata nel head (cresciuta da 18
+  // a 20 — bump leggibilità glifo). translate ricalcolato per mantenere
+  // il centro sull'optical center (20, 16): 20 - 20/2 = 10, 16 - 20/2 = 6.
   const icon =
-    `<g transform="translate(11 7) scale(0.75)" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
+    `<g transform="translate(10 6) scale(0.83)" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
 
   // viewBox esteso per ospitare il SOFT_SHADOW senza clipping: +PADX ai
   // lati, +PADY sotto. Il contenuto è traslato di +PADX in x in modo da
@@ -166,8 +168,10 @@ export function makePinIcon(role: StopRole, glyph: string, color: string = INK, 
 export function makeNightPin(glyph: string, color: string = NIGHT, isGhost = false): google.maps.Icon {
   const stem = `<path d="M14 30c2.5 4 6 8.5 8 12 2-3.5 5.5-8 8-12z" fill="${color}"/>`;
   const head = `<circle cx="22" cy="20" r="15" fill="${color}" stroke="#fff" stroke-width="3"/>`;
+  // Icona 24-box scalata a ~19.2px (era 16.8): translate ricalcolato per
+  // tenere il centro sul (22, 20) del head — bump leggibilità.
   const icon =
-    `<g transform="translate(13.6 11.6) scale(0.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+    `<g transform="translate(12.4 10.4) scale(0.8)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
   // Stronger shadow when ghost, otherwise the lift effect is barely visible
   // through the existing dy=1.2 / stdDeviation=1.1 filter.
   const filter = isGhost
@@ -205,9 +209,9 @@ export type RoadmapPinKind = "activity" | "accommodation";
 
 type RoadmapShape = { w: number; h: number; d: string; cx: number; iconSize: number };
 const ROADMAP_SHAPES: Record<RoadmapPinState, RoadmapShape> = {
-  default:  { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 13 },
-  dimmed:   { w: 22, h: 28, d: "M11 1C6 1 1 5.5 1 11c0 6.5 10 16 10 16s10-9.5 10-16C21 5.5 16 1 11 1Z", cx: 11, iconSize: 10 },
-  overflow: { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 13 },
+  default:  { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 15 },
+  dimmed:   { w: 22, h: 28, d: "M11 1C6 1 1 5.5 1 11c0 6.5 10 16 10 16s10-9.5 10-16C21 5.5 16 1 11 1Z", cx: 11, iconSize: 12 },
+  overflow: { w: 28, h: 36, d: "M14 1C7 1 1 7 1 14c0 8.5 13 21 13 21s13-12.5 13-21C27 7 21 1 14 1Z", cx: 14, iconSize: 15 },
 };
 
 type RoadmapPalette = { fill: string; stroke: string; strokeW: number; icon: string };
@@ -330,9 +334,10 @@ export function makeFuzzyPin(
   const circle =
     `<circle cx="${cx}" cy="${cy}" r="12" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5"/>`;
 
-  // Icona categoria — 14/24 scale, centrata sul cerchio (cresciuta da 13
-  // a 14 in proporzione al cerchio passato da 22 a 26 → ratio ~54% costante).
-  const iconSize = 14;
+  // Icona categoria — 15/24 scale, centrata sul cerchio (cresciuta in
+  // proporzione al cerchio 26px → ratio ~58% per migliorare la
+  // leggibilità del glifo sulla mappa).
+  const iconSize = 15;
   const iconScale = iconSize / 24;
   const iconX = cx - iconSize / 2;
   const iconY = cy - iconSize / 2;
@@ -385,8 +390,9 @@ export function makeCategoryPin(
   const fill = CATEGORY_PIN_PALETTE[kind];
   const teardrop =
     `<path d="${CATEGORY_PIN_TEARDROP}" fill="${fill}" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>`;
-  // 15/24 icon scale, centred on the teardrop head (cx=17, optical centre y=17).
-  const iconSize = 15;
+  // 17/24 icon scale (bump leggibilità), centrata sul head teardrop
+  // (cx=17, optical centre y=17).
+  const iconSize = 17;
   const iconScale = iconSize / 24;
   const iconX = 17 - iconSize / 2;
   const iconY = 17 - iconSize / 2;
@@ -414,8 +420,10 @@ export function makeCategoryPin(
 
 export function makeAdHocPin(color: string = ORANGE, dotColor: string = "#fff", glyph?: string, isGhost = false): google.maps.Icon {
   // Either the category icon (knocked out white, centred in the head) or a dot.
+  // Glyph 24-box scalato a ~14.9px (era 13) e centrato sull'optical
+  // centre del head (20, 16) — bump leggibilità in linea con gli altri pin.
   const center = glyph
-    ? `<g transform="translate(13.5 9.5) scale(0.54)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`
+    ? `<g transform="translate(12.5 8.5) scale(0.62)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`
     : `<circle cx="20" cy="16" r="4.2" fill="${dotColor}"/>`;
   const filter = isGhost
     ? GHOST_SHADOW
