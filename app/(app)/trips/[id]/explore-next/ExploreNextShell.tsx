@@ -620,16 +620,27 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const effectiveBridges = useMemo<Map<string, BridgeData>>(() => {
     const out = new Map<string, BridgeData>();
     const savedOutByActId = new Map<string, BridgeData>();
+    const savedInByActId = new Map<string, BridgeData>();
     for (const d of effectiveDays) {
       for (const a of d.activities) {
         if (a.bridge_out_json) savedOutByActId.set(a.id, a.bridge_out_json);
+        if (a.bridge_in_json) savedInByActId.set(a.id, a.bridge_in_json);
       }
     }
     for (let i = 1; i < chain.length; i++) {
       const prev = chain[i - 1];
       const curr = chain[i];
       const key = `${prev.id}|${curr.id}`;
-      const saved = savedOutByActId.get(prev.id);
+      // Priorità: bridge_out_json del prev (saved sull'activity di partenza)
+      // → bridge_in_json del curr (saved sull'activity ricevente) → computed.
+      // Il leg cross-day da accommodation → first activity NON ha out (stays
+      // non persistono bridge_out_json), quindi il transport scelto
+      // dall'utente vive solo nel bridge_in_json della prima activity. Senza
+      // questo fallback la mappa rendeva walk come car (default Google
+      // Routes DRIVING).
+      const savedOut = savedOutByActId.get(prev.id);
+      const savedIn = savedInByActId.get(curr.id);
+      const saved = savedOut ?? savedIn;
       const c = computedBridges.get(key);
       const merged = saved && c
         ? { ...saved, distance_m: saved.distance_m ?? c.distance_m ?? null }
