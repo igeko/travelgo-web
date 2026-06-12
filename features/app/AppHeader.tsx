@@ -6,29 +6,30 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import { FeedbackModal } from "./FeedbackModal";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
-import { IconMessageReport, IconNotes, IconPencil, IconKey } from "@/components/ui/icons";
+import { IconMessageReport, IconNotes, IconKey, IconCalendar, IconWorld } from "@/components/ui/icons";
 import { useShortcutBar } from "@/lib/hooks/useShortcutBar";
 import { useDebugMode } from "@/lib/hooks/useDebugMode";
 import { useYumejiDrawer } from "@/features/yumeji/YumejiFrame";
 import { YumejiGlyph } from "@/features/yumeji/YumejiGlyph";
 
 /* ─────────────────────────────────────────────────────────────────
-   AppHeader · two-row sticky header
-   Uses CSS container queries (@container) so the mobile layout
-   triggers based on the header's own width — not the viewport.
-   This lets the sandbox mobile-frame work correctly at 390px.
+   AppHeader · single-row sticky header
+   Trip context (nome, tabs, yume, kebab) lives in Row 1 right side.
+   Sub-bar removed — trip nav appears only when tripName is set.
+   At lg breakpoint trip tabs collapse to icons; main nav stays text.
 ───────────────────────────────────────────────────────────────── */
 
 export type AppHeaderTab = "trip" | "day-by-day" | "explore" | "explore-next" | "budget" | "notes";
 
 export type AppHeaderProps = {
   activeNav?: "trips" | "explore" | "yumeji";
-  /** Trip name, e.g. "Japan 2026". When absent the sub-bar is hidden. */
+  /** Trip name, e.g. "Japan 2026". When absent the trip group is hidden. */
   tripName?: string;
-  /** e.g. "Day 4 of 21" */
+  /** e.g. "Day 4 of 21" — kept for API compat, no longer displayed in header */
   tripProgress?: string;
   activeTab?: AppHeaderTab;
   onTabChange?: (tab: AppHeaderTab) => void;
+  /** Kept for API compat — edit mode now lives outside the header */
   editMode?: boolean;
   onToggleEditMode?: () => void;
   /** Parallel, trip-wide "full editor" mode toggled from the kebab menu. */
@@ -56,11 +57,11 @@ export type AppHeaderProps = {
 export function AppHeader({
   activeNav = "trips",
   tripName,
-  tripProgress,
+  tripProgress: _tripProgress,
   activeTab = "day-by-day",
   onTabChange,
-  editMode = false,
-  onToggleEditMode,
+  editMode: _editMode,
+  onToggleEditMode: _onToggleEditMode,
   fullEditMode = false,
   onToggleFullEdit,
   isDev = false,
@@ -75,8 +76,6 @@ export function AppHeader({
   className,
 }: AppHeaderProps) {
   const t = useTranslations("AppHeader");
-  // Fall back to the persisted app-wide debug toggle when a host page doesn't
-  // manage debug state itself (e.g. the Explore page).
   const [hookDebug, hookToggle] = useDebugMode();
   const debugMode = debugModeProp ?? hookDebug;
   const onToggleDebugMode = onToggleDebugModeProp ?? hookToggle;
@@ -88,9 +87,9 @@ export function AppHeader({
   const yumeji = useYumejiDrawer();
   const { dismissed: shortcutsDismissed, show: showShortcuts } = useShortcutBar();
 
-  // The shortcut hint bar is an edit-mode affordance; offer "show shortcuts"
-  // only when the user has previously dismissed it while editing.
-  const canRestoreShortcuts = editMode && shortcutsDismissed;
+  const canRestoreShortcuts = shortcutsDismissed;
+
+  const hasKebab = isDev || isTester || canRestoreShortcuts || !!onToggleFullEdit;
 
   const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
     { id: "trips",   label: t("nav.myTrips"), href: "/trips",   authRequired: true },
@@ -98,6 +97,7 @@ export function AppHeader({
     { id: "yumeji",  label: t("nav.yumeji"),  href: "/yumeji",  authRequired: true },
   ];
 
+  // Kept for mobile drawer
   const SECTION_TABS: { id: AppHeaderTab; label: string; href: (tripId: string) => string }[] = [
     { id: "trip",         label: t("tabs.trip"),         href: (id) => `/trips/${id}/overview` },
     { id: "day-by-day",   label: t("tabs.dayByDay"),     href: (id) => `/trips/${id}` },
@@ -109,7 +109,7 @@ export function AppHeader({
     <div className={cn("sticky top-0 z-50", className)}>
       <header className="bg-surface border-b border-border">
 
-        {/* ══ ROW 1 · brand + nav + account ════════════════════════ */}
+        {/* ══ ROW 1 · brand + main nav + [trip context] + account ══ */}
         <div className="flex items-center gap-6 px-5 h-[52px] max-w-[1280px] mx-auto">
 
           {/* Brand */}
@@ -137,7 +137,7 @@ export function AppHeader({
             </span>
           </Link>
 
-          {/* Main nav — hidden below @sm */}
+          {/* Main nav — always text, never icons, hidden below md */}
           <nav className="hidden md:flex items-center gap-[22px] text-meta text-ink-soft">
             {ALL_NAV.filter((item) => !item.authRequired || isLoggedIn).map((item) => (
               <Link
@@ -155,43 +155,252 @@ export function AppHeader({
             ))}
           </nav>
 
-          {/* Account — hidden below @sm */}
-          {isLoggedIn ? (
-            <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
-              {fullName && (
-                <span className="text-meta text-ink-soft">
-                  {t("greeting", { name: fullName.split(" ")[0] })}
-                </span>
-              )}
-              <LocaleSwitcher variant="chip" />
-              <Link href="/profile" aria-label={t("profileLabel")} className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-border transition-all">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={fullName ?? "Avatar"}
-                    className="w-[30px] h-[30px] rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-tiny font-semibold select-none">
-                    {initials}
-                  </div>
-                )}
-              </Link>
-            </div>
-          ) : (
-            <div className="hidden md:flex ml-auto items-center gap-2.5 shrink-0">
-              <LocaleSwitcher variant="chip" />
-              <Link
-                href="/login"
-                className="inline-flex items-center px-4 py-1.5 rounded-pill border border-border text-meta text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors"
-              >
-                {t("signIn")}
-              </Link>
-            </div>
-          )}
+          {/* ── Right side: trip context + account (desktop only) ── */}
+          <div className="hidden md:flex ml-auto items-center gap-3 shrink-0">
 
-          {/* Hamburger — visible only below @sm */}
+            {/* Trip context group */}
+            {hasTripContext && (
+              <>
+                <div className="flex items-center gap-1">
+
+                  {/* Trip name — always text, link to trip overview */}
+                  {tripId ? (
+                    <Link
+                      href={`/trips/${tripId}/overview`}
+                      className={cn(
+                        "px-3 py-[5px] text-mini whitespace-nowrap no-underline transition-colors",
+                        activeTab === "trip"
+                          ? "text-orange font-semibold"
+                          : "text-orange font-medium hover:opacity-80"
+                      )}
+                    >
+                      {tripName}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onTabChange?.("trip")}
+                      className="px-3 py-[5px] text-mini text-orange font-medium whitespace-nowrap border-0 bg-transparent cursor-pointer"
+                    >
+                      {tripName}
+                    </button>
+                  )}
+
+                  {/* Giornate — day-by-day · text at lg+, calendar icon below lg */}
+                  {tripId ? (
+                    <Link
+                      href={`/trips/${tripId}`}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap no-underline inline-flex items-center justify-center",
+                        activeTab === "day-by-day"
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink"
+                      )}
+                    >
+                      <span className="hidden lg:block">{t("tabs.dayByDay")}</span>
+                      <IconCalendar size={16} className="lg:hidden" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onTabChange?.("day-by-day")}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0 inline-flex items-center justify-center",
+                        activeTab === "day-by-day"
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink"
+                      )}
+                    >
+                      <span className="hidden lg:block">{t("tabs.dayByDay")}</span>
+                      <IconCalendar size={16} className="lg:hidden" />
+                    </button>
+                  )}
+
+                  {/* Esplora — explore-next · text at lg+, world icon below lg */}
+                  {tripId ? (
+                    <Link
+                      href={`/trips/${tripId}/explore-next`}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap no-underline inline-flex items-center justify-center",
+                        (activeTab === "explore" || activeTab === "explore-next")
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink"
+                      )}
+                    >
+                      <span className="hidden lg:block">{t("tabs.exploreNext")}</span>
+                      <IconWorld size={16} className="lg:hidden" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onTabChange?.("explore-next")}
+                      className={cn(
+                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0 inline-flex items-center justify-center",
+                        (activeTab === "explore" || activeTab === "explore-next")
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink"
+                      )}
+                    >
+                      <span className="hidden lg:block">{t("tabs.exploreNext")}</span>
+                      <IconWorld size={16} className="lg:hidden" />
+                    </button>
+                  )}
+
+                  {/* Yume — glyph + text at lg+, glyph only below lg */}
+                  {yumeji && (
+                    <button
+                      type="button"
+                      onClick={yumeji.toggle}
+                      aria-pressed={yumeji.isOpen}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
+                        yumeji.isOpen
+                          ? "bg-ink text-white font-medium"
+                          : "bg-transparent text-ink-soft hover:text-ink"
+                      )}
+                    >
+                      <YumejiGlyph size={13} />
+                      <span className="hidden lg:block">Yume</span>
+                    </button>
+                  )}
+
+                  {/* Kebab — moved from sub-bar */}
+                  {hasKebab && (
+                    <>
+                      <span aria-hidden className="w-px h-[22px] bg-border mx-1 shrink-0" />
+                      <div ref={kebabRef} className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setKebabOpen((v) => !v)}
+                          aria-label={t("tripActions")}
+                          title={t("tripActions")}
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                            <circle cx="12" cy="5"  r="1.5" />
+                            <circle cx="12" cy="12" r="1.5" />
+                            <circle cx="12" cy="19" r="1.5" />
+                          </svg>
+                        </button>
+
+                        {kebabOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
+                            <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
+
+                              {onToggleFullEdit && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => { onToggleFullEdit(); setKebabOpen(false); }}
+                                    aria-pressed={fullEditMode}
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                                  >
+                                    <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", fullEditMode ? "bg-orange" : "bg-ink-faint")} />
+                                    {fullEditMode ? t("disableFullEdit") : t("fullEdit")}
+                                  </button>
+                                  {(canRestoreShortcuts || isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
+                                </>
+                              )}
+
+                              {canRestoreShortcuts && (
+                                <button
+                                  type="button"
+                                  onClick={() => { showShortcuts(); setKebabOpen(false); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                                >
+                                  <IconKey size={15} className="shrink-0" />
+                                  {t("showShortcuts")}
+                                </button>
+                              )}
+
+                              {canRestoreShortcuts && (isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
+
+                              {isDev && (
+                                <button
+                                  type="button"
+                                  onClick={() => { onToggleDebugMode?.(); setKebabOpen(false); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                                >
+                                  <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
+                                  <span className="font-mono">{t("debug")}</span>
+                                </button>
+                              )}
+
+                              {isDev && isTester && <div aria-hidden className="my-1 h-px bg-border" />}
+
+                              {isTester && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setFeedbackOpen(true); setKebabOpen(false); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                                >
+                                  <IconMessageReport size={15} className="shrink-0" />
+                                  {t("feedback")}
+                                </button>
+                              )}
+
+                              {isTester && (
+                                <Link
+                                  href="/admin/tester-notes"
+                                  onClick={() => setKebabOpen(false)}
+                                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
+                                >
+                                  <IconNotes size={15} className="shrink-0" />
+                                  {t("allFeedback")}
+                                </Link>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Divider between trip group and account */}
+                <span aria-hidden className="w-px h-[22px] bg-border shrink-0" />
+              </>
+            )}
+
+            {/* Account */}
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2.5 shrink-0">
+                {fullName && (
+                  <span className="text-meta text-ink-soft">
+                    {t("greeting", { name: fullName.split(" ")[0] })}
+                  </span>
+                )}
+                <LocaleSwitcher variant="chip" />
+                <Link href="/profile" aria-label={t("profileLabel")} className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-border transition-all">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={fullName ?? "Avatar"}
+                      className="w-[30px] h-[30px] rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-[30px] h-[30px] rounded-full bg-ink flex items-center justify-center text-white text-tiny font-semibold select-none">
+                      {initials}
+                    </div>
+                  )}
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 shrink-0">
+                <LocaleSwitcher variant="chip" />
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-4 py-1.5 rounded-pill border border-border text-meta text-ink-soft font-medium no-underline hover:border-border-strong hover:text-ink transition-colors"
+                >
+                  {t("signIn")}
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Hamburger — visible only below md */}
           <button
             type="button"
             onClick={() => setDrawerOpen((v) => !v)}
@@ -282,204 +491,9 @@ export function AppHeader({
           </div>
         )}
 
-        {/* ══ ROW 2 · trip sub-bar ══════════════════════════════════ */}
-        {hasTripContext && (
-          <div className="bg-bg border-t border-b border-border">
-            <div className="flex items-center px-5 h-[42px] max-w-[1280px] mx-auto gap-3.5">
-
-              {/* Trip name + progress */}
-              <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
-                <span className="text-micro font-medium tracking-eyebrow uppercase text-orange truncate">
-                  {tripName}
-                </span>
-                {tripProgress && (
-                  <>
-                    <span className="text-ink-faint text-mini shrink-0">·</span>
-                    <span className="text-mini text-ink-soft whitespace-nowrap shrink-0">{tripProgress}</span>
-                  </>
-                )}
-              </div>
-
-              {/* Section tabs — hidden below @sm */}
-              <nav className="hidden md:flex items-center gap-1 ml-auto shrink-0">
-                {SECTION_TABS.map((tab) => (
-                  tripId ? (
-                    <Link
-                      key={tab.id}
-                      href={tab.href(tripId)}
-                      className={cn(
-                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap no-underline",
-                        tab.id === activeTab
-                          ? "bg-ink text-white font-medium"
-                          : "bg-transparent text-ink-soft hover:text-ink",
-                      )}
-                    >
-                      {tab.label}
-                    </Link>
-                  ) : (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => onTabChange?.(tab.id)}
-                      className={cn(
-                        "px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0",
-                        tab.id === activeTab
-                          ? "bg-ink text-white font-medium"
-                          : "bg-transparent text-ink-soft hover:text-ink",
-                      )}
-                    >
-                      {tab.label}
-                    </button>
-                  )
-                ))}
-              </nav>
-
-              {/* Divider — hidden below @sm */}
-              <span aria-hidden className="hidden md:block w-px h-[22px] bg-border shrink-0" />
-
-              {/* ── Action chips ── */}
-              <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
-
-                {/* Edit-state chip — always visible */}
-                <button
-                  type="button"
-                  onClick={onToggleEditMode}
-                  aria-pressed={editMode}
-                  title={editMode ? t("disableEditMode") : t("enableEditMode")}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border shrink-0",
-                    editMode
-                      ? "bg-warning-bg text-warning-fg border-warning-border font-medium"
-                      : "bg-transparent border-transparent text-ink-soft hover:text-ink",
-                  )}
-                >
-                  <IconPencil size={13} />
-                  <span>{t("editMode")}</span>
-                </button>
-
-              </div>
-              {/* ── end action chips ── */}
-
-              {/* Yume — tab al pari degli altri, con glifo */}
-              {yumeji && (
-                <button
-                  type="button"
-                  onClick={yumeji.toggle}
-                  aria-pressed={yumeji.isOpen}
-                  className={cn(
-                    "hidden md:inline-flex items-center gap-1.5 px-3 py-[5px] rounded-pill text-mini font-sans cursor-pointer transition-colors whitespace-nowrap border-0 shrink-0",
-                    yumeji.isOpen
-                      ? "bg-ink text-white font-medium"
-                      : "bg-transparent text-ink-soft hover:text-ink",
-                  )}
-                >
-                  <YumejiGlyph size={13} />
-                  Yume
-                </button>
-              )}
-
-              {/* Actions menu (kebab) — Full edit, Mostra scorciatoie, Debug, Feedback, tutti i feedback */}
-              {(isDev || isTester || canRestoreShortcuts || !!onToggleFullEdit) && (
-                <div ref={kebabRef} className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setKebabOpen((v) => !v)}
-                    aria-label={t("tripActions")}
-                    title={t("tripActions")}
-                    className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors cursor-pointer border-0 bg-transparent"
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                      <circle cx="12" cy="5"  r="1.5" />
-                      <circle cx="12" cy="12" r="1.5" />
-                      <circle cx="12" cy="19" r="1.5" />
-                    </svg>
-                  </button>
-
-                  {kebabOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
-                      <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
-
-                        {/* Full edit — modalità editor completa, trip-wide */}
-                        {onToggleFullEdit && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => { onToggleFullEdit(); setKebabOpen(false); }}
-                              aria-pressed={fullEditMode}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
-                            >
-                              <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", fullEditMode ? "bg-orange" : "bg-ink-faint")} />
-                              {fullEditMode ? t("disableFullEdit") : t("fullEdit")}
-                            </button>
-                            {(canRestoreShortcuts || isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
-                          </>
-                        )}
-
-                        {/* Mostra scorciatoie — solo in edit mode, se nascoste */}
-                        {canRestoreShortcuts && (
-                          <button
-                            type="button"
-                            onClick={() => { showShortcuts(); setKebabOpen(false); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
-                          >
-                            <IconKey size={15} className="shrink-0" />
-                            {t("showShortcuts")}
-                          </button>
-                        )}
-
-                        {canRestoreShortcuts && (isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
-
-                        {/* Debug toggle — solo per dev */}
-                        {isDev && (
-                          <button
-                            type="button"
-                            onClick={() => { onToggleDebugMode?.(); setKebabOpen(false); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
-                          >
-                            <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", debugMode ? "bg-[#7ee8a2]" : "bg-ink-faint")} />
-                            <span className="font-mono">{t("debug")}</span>
-                          </button>
-                        )}
-
-                        {isDev && isTester && <div aria-hidden className="my-1 h-px bg-border" />}
-
-                        {/* Feedback — solo per tester */}
-                        {isTester && (
-                          <button
-                            type="button"
-                            onClick={() => { setFeedbackOpen(true); setKebabOpen(false); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
-                          >
-                            <IconMessageReport size={15} className="shrink-0" />
-                            {t("feedback")}
-                          </button>
-                        )}
-
-                        {/* Tutti i feedback — solo per tester */}
-                        {isTester && (
-                          <Link
-                            href="/admin/tester-notes"
-                            onClick={() => setKebabOpen(false)}
-                            className="flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline"
-                          >
-                            <IconNotes size={15} className="shrink-0" />
-                            {t("allFeedback")}
-                          </Link>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-            </div>
-          </div>
-        )}
-
       </header>
 
-      {/* Feedback modal — portato fuori dall'header per evitare z-index issues */}
+      {/* Feedback modal */}
       {feedbackOpen && (
         <FeedbackModal
           tripId={tripId}

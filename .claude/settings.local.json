@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(grep *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(curl *)",
+      "Bash(echo *)",
+      "Bash(lsof *)",
+      "Bash(ps *)",
+      "Bash(xargs *)",
+      "Bash(cp *)",
+      "Read(/tmp/**)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Figma__get_screenshot",
+      "mcp__claude_ai_Figma__get_variable_defs",
+      "Skill(update-config)",
+      "mcp__claude_ai_Figma__get_design_context",
+      "mcp__claude_ai_Figma__get_metadata"
+    ],
+    "defaultMode": "auto"
+  },
+  "worktree": {
+    "baseRef": "head"
+  }
+}
