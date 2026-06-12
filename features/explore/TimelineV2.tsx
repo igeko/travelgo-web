@@ -61,6 +61,8 @@ import {
   IconBuildingCottage,
   IconChevronDown,
   IconHome,
+  IconLock,
+  IconLockOpen,
   IconMapPin,
   IconTent,
 } from "@/components/ui/icons";
@@ -203,16 +205,6 @@ function formatLongLabel(iso: string): string {
   const day = d.getDate();
   const monthLong = d.toLocaleDateString("it-IT", { month: "long" });
   return `${weekdayLong[0].toUpperCase()}${weekdayLong.slice(1)} ${day} ${monthLong[0].toUpperCase()}${monthLong.slice(1)}`;
-}
-
-/* ── Day load (fill bar input) ────────────────────────────────────── */
-
-function computeDayLoad(activities: Activity[]): { fillPct: number; overflow: boolean } {
-  const totalMinutes = activities.filter((a) => a.fuzzy !== true).length * 45;
-  return {
-    fillPct: Math.min(100, Math.round((totalMinutes / 600) * 100)),
-    overflow: totalMinutes > 600,
-  };
 }
 
 /* ── Bridge → Transfer mapping ────────────────────────────────────── */
@@ -624,47 +616,50 @@ function RailCell({
   );
 }
 
-/** FillBar — usata nell'header del giorno (replica del prototipo). */
-function FillBar({ pct, overflow }: { pct: number; overflow?: boolean }) {
-  return (
-    <span className="inline-block h-1 w-12 overflow-hidden rounded-full bg-ink/10">
-      <span
-        className={cn(
-          "block h-full rounded-full",
-          overflow ? "bg-warning-fg" : "bg-success-fg",
-        )}
-        style={{ width: `${pct}%` }}
-      />
-    </span>
-  );
-}
-
 /* ── DayHeader V2 ─────────────────────────────────────────────────── */
 
 function DayHeaderV2({
   dateIso,
   dayNumber,
-  fillPct,
-  overflow,
   expanded,
+  locked,
   onToggle,
+  onToggleLock,
 }: {
   dateIso: string | null;
   dayNumber: number;
-  fillPct: number;
-  overflow: boolean;
   expanded: boolean;
+  /** Day locked: header pinned in cima, deselezione disabilitata. */
+  locked: boolean;
   onToggle: () => void;
+  /** Toggle del lock. Mostrato solo quando il day è expanded. */
+  onToggleLock: () => void;
 }) {
   const parts = dateIso ? formatDayParts(dateIso) : { weekday: "", dayNum: dayNumber, monthShort: "" };
   const longLabel = dateIso ? formatLongLabel(dateIso) : `Giorno ${dayNumber}`;
+  // Wrapper non più <button> perché ospita il bottone annidato lock-toggle
+  // (button-in-button è HTML invalido). Restano semantica role+keyboard per
+  // mantenere l'accessibilità del click su tutto l'header.
+  const handleKey = (e: import("react").KeyboardEvent<HTMLDivElement>) => {
+    if (locked) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle();
+    }
+  };
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={locked ? -1 : 0}
       aria-expanded={expanded}
-      aria-label={`${longLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
-      onClick={onToggle}
-      className="group/day grid w-full cursor-pointer items-center gap-x-3 text-left"
+      aria-disabled={locked || undefined}
+      aria-label={`${longLabel} — ${locked ? "bloccato" : expanded ? "comprimi" : "espandi"} giorno`}
+      onClick={locked ? undefined : onToggle}
+      onKeyDown={handleKey}
+      className={cn(
+        "group/day grid w-full items-center gap-x-3 text-left",
+        locked ? "cursor-default" : "cursor-pointer",
+      )}
       style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
     >
       <div className="relative flex justify-center py-1">
@@ -705,22 +700,47 @@ function DayHeaderV2({
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors group-hover/day:bg-surface-soft">
+      <div
+        className={cn(
+          "flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors",
+          !locked && "group-hover/day:bg-surface-soft",
+        )}
+      >
         <span className="truncate text-[15px] font-semibold text-ink">
           {longLabel}
         </span>
         <span className="shrink-0 text-[11px] text-ink-soft">G{dayNumber}</span>
         <span className="flex-1" />
-        <FillBar pct={fillPct} overflow={overflow} />
-        <IconChevronDown
-          size={15}
-          className={cn(
-            "shrink-0 text-ink-faint transition-transform group-hover/day:text-ink",
-            expanded && "rotate-180 text-ink",
-          )}
-        />
+        {expanded ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLock();
+            }}
+            aria-pressed={locked}
+            aria-label={locked ? "Sblocca giorno" : "Blocca giorno"}
+            className={cn(
+              "inline-flex size-7 shrink-0 items-center justify-center rounded-sm transition-colors",
+              locked
+                ? "bg-ink text-white hover:bg-ink-hover"
+                : "text-ink-soft hover:bg-surface-soft hover:text-ink focus-visible:bg-surface-soft focus-visible:text-ink",
+            )}
+          >
+            {locked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
+          </button>
+        ) : null}
+        {!locked ? (
+          <IconChevronDown
+            size={15}
+            className={cn(
+              "shrink-0 text-ink-faint transition-transform group-hover/day:text-ink",
+              expanded && "rotate-180 text-ink",
+            )}
+          />
+        ) : null}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -914,7 +934,34 @@ export function TimelineV2({
   const t = useTranslations("Explore");
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  // Day "locked": l'header diventa primo elemento fisso, il container
+  // grigio prende tutta l'altezza e scrolla internamente. La deselezione
+  // del giorno è impedita finché non si fa unlock; le interazioni con la
+  // mappa relative a row di altri giorni non producono effetti sulla
+  // timeline (filtrate in `effectiveOpenOverride` / `scrollRowIntoView`).
+  const [lockedDayId, setLockedDayId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Set degli id di row che appartengono al day locked. Coverage:
+  //  - scheduled activity id: ogni `activities[i].id` del day;
+  //  - lodging: `lodging-${dayId}`.
+  // Calcolato presto (su `days` raw, non `sortedDays`) perché serve anche
+  // alla sync openOverride → openId che avviene in fase di render prima
+  // di sortedDays.
+  const lockedDayRowIds: Set<string> | null = (() => {
+    if (!lockedDayId) return null;
+    const day = days.find((d) => d.id === lockedDayId);
+    if (!day) return null;
+    const ids = new Set<string>();
+    for (const a of day.activities) ids.add(a.id);
+    ids.add(`lodging-${day.id}`);
+    return ids;
+  })();
+  const isRowInLockedDay = (rowId: string | null | undefined): boolean => {
+    if (!lockedDayRowIds) return true;
+    if (!rowId) return false;
+    return lockedDayRowIds.has(rowId);
+  };
 
   // Hover preselect dei transfer: dopo TRANSFER_HOVER_DWELL ms di
   // permanenza, l'id passa al consumer come "preview" (highlight mappa).
@@ -969,17 +1016,24 @@ export function TimelineV2({
 
   useEffect(() => {
     if (!hoveredRowId) return;
+    // Day bloccato: ignoriamo gli hover su row che non appartengono al day —
+    // la timeline è "ferma" e non risponde a pin di altri giorni.
+    if (lockedDayId && !isRowInLockedDay(hoveredRowId)) return;
     const timer = window.setTimeout(() => scrollRowIntoView(hoveredRowId), 300);
     return () => window.clearTimeout(timer);
-  }, [hoveredRowId, scrollRowIntoView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isRowInLockedDay è derivata per-render e i suoi input (lockedDayId, days) sono già nelle deps tramite lockedDayId / chiusura.
+  }, [hoveredRowId, scrollRowIntoView, lockedDayId]);
 
   useEffect(() => {
     if (!openOverride) return;
+    // Stesso filtro per il click su pin esterni al day bloccato.
+    if (lockedDayId && !isRowInLockedDay(openOverride)) return;
     // Aspetta un frame perché la row appena aggiunta potrebbe non essere
     // ancora montata nel DOM (l'ottimistico arriva nello stesso giro).
     const raf = window.requestAnimationFrame(() => scrollRowIntoView(openOverride));
     return () => window.cancelAnimationFrame(raf);
-  }, [openOverride, scrollRowIntoView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- vedi sopra.
+  }, [openOverride, scrollRowIntoView, lockedDayId]);
 
   // ── DnD: sensors + collision detection (copia dal Timeline v1) ───
   const collisionDetection: CollisionDetection = (args) => {
@@ -1131,18 +1185,42 @@ export function TimelineV2({
     }
   }, [openId, onSelectActivity, onSelectTransfer]);
 
-  // openOverride sync (pattern "adjust during render" — react.dev).
+  // openOverride sync (pattern "adjust during render" — react.dev). Quando
+  // un day è locked NON propaghiamo l'apertura di row esterne: la timeline
+  // resta ferma sui contenuti del day bloccato (vedi setLockedDayId).
   const [lastOpenOverride, setLastOpenOverride] = useState(openOverride);
   if (openOverride !== lastOpenOverride) {
     setLastOpenOverride(openOverride);
-    if (openOverride !== undefined) setOpenId(openOverride);
+    if (openOverride !== undefined) {
+      const blocked =
+        lockedDayId !== null && openOverride !== null && !isRowInLockedDay(openOverride);
+      if (!blocked) setOpenId(openOverride);
+    }
   }
 
   const selectDay = (id: string) => {
+    // Quando il day richiesto è quello bloccato, il toggle è bloccato:
+    // la deselezione passa solo dall'unlock esplicito (vedi `toggleLockDay`).
+    if (lockedDayId === id) return;
     const isCurrent = selectedDayId === id;
     const next = isCurrent ? null : id;
     setSelectedDayId(next);
     onSelectDay?.(next);
+  };
+
+  /** Toggle lock per il day passato. Lock implica anche selected:
+   *  forziamo `selectedDayId` per coerenza visiva. Unlock lascia il day
+   *  selected — l'utente potrà collassare con un click successivo. */
+  const toggleLockDay = (id: string) => {
+    if (lockedDayId === id) {
+      setLockedDayId(null);
+      return;
+    }
+    setLockedDayId(id);
+    if (selectedDayId !== id) {
+      setSelectedDayId(id);
+      onSelectDay?.(id);
+    }
   };
 
   // Drag preview projection sui days → sortedDays.
@@ -1245,11 +1323,22 @@ export function TimelineV2({
     >
       <div
         ref={rootRef}
-        className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}
+        className={cn(
+          "flex w-full flex-col rounded-lg bg-surface p-2",
+          // Day locked: la timeline occupa tutta l'altezza disponibile,
+          // così il container grigio del day può crescere a flex-1 e
+          // gestire lo scroll interno (vedi DayDropContainer più sotto).
+          lockedDayId && "h-full min-h-0",
+          className,
+        )}
       >
         {sortedDays.map((day) => {
+          // Day locked: nascondiamo tutti gli altri giorni — la riga giorno
+          // bloccata resta come primo elemento, e il suo container grigio
+          // riempie l'altezza della timeline.
+          if (lockedDayId && lockedDayId !== day.id) return null;
           const expanded = selectedDayId === day.id;
-          const dayLoad = computeDayLoad(day.activities);
+          const isLocked = lockedDayId === day.id;
           const items = buildItems(
             day.activities,
             expanded,
@@ -1283,14 +1372,24 @@ export function TimelineV2({
           const tone = expanded ? ("selected" as const) : ("default" as const);
 
           return (
-            <div key={day.id} className="flex flex-col" data-day-id={day.id}>
+            <div
+              key={day.id}
+              className={cn(
+                "flex flex-col",
+                // Day locked: il wrapper riempie l'altezza del root timeline
+                // (h-full) — l'header resta al top (primo elemento), il
+                // DayDropContainer sotto prende flex-1 e gestisce lo scroll.
+                isLocked && "min-h-0 flex-1",
+              )}
+              data-day-id={day.id}
+            >
               <DayHeaderV2
                 dateIso={day.date}
                 dayNumber={day.day_number}
-                fillPct={dayLoad.fillPct}
-                overflow={dayLoad.overflow}
                 expanded={expanded}
+                locked={isLocked}
                 onToggle={() => selectDay(day.id)}
+                onToggleLock={() => toggleLockDay(day.id)}
               />
               <DayDropContainer
                 dayId={day.id}
@@ -1298,6 +1397,9 @@ export function TimelineV2({
                 className={cn(
                   "flex flex-col",
                   expanded && "rounded-md bg-surface-soft ring-1 ring-ink/10",
+                  // Locked: il container grigio diventa fullheight della
+                  // timeline e scrolla internamente quando le row eccedono.
+                  isLocked && "min-h-0 flex-1 overflow-y-auto",
                 )}
               >
                 <SortableContext items={dayIds} strategy={verticalListSortingStrategy}>
@@ -1651,7 +1753,10 @@ export function TimelineV2({
           );
         })}
 
-        <EndOfTripV2 />
+        {/* Sentinel "Fine viaggio" — nascosto in lock mode (tutti gli altri
+            giorni sono nascosti, mostrarlo sotto il day bloccato sarebbe
+            fuorviante). */}
+        {lockedDayId ? null : <EndOfTripV2 />}
       </div>
 
       <DragOverlay dropAnimation={null}>

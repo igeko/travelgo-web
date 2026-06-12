@@ -67,6 +67,7 @@ export {
   IconLink,
   IconMail,
   IconLock,
+  IconLockOpen,
   IconLogin2,
   IconLogout2,
   IconList,
