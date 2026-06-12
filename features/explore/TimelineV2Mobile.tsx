@@ -572,7 +572,7 @@ function DayStripPlate({
       aria-pressed={selected}
       aria-label={`Giorno ${dayNumber}`}
       className={cn(
-        "flex aspect-square w-10 shrink-0 cursor-pointer flex-col items-center justify-center rounded-md border transition-colors",
+        "flex aspect-square w-11 shrink-0 cursor-pointer flex-col items-center justify-center rounded-md border transition-colors",
         selected
           ? "border-ink bg-ink text-white"
           : "border-border-strong bg-surface text-ink hover:border-ink/40",
@@ -580,18 +580,18 @@ function DayStripPlate({
     >
       <span
         className={cn(
-          "text-[8px] font-extrabold uppercase leading-none tracking-wide",
+          "text-micro font-extrabold uppercase leading-none tracking-wide",
           selected ? "text-primary-tint" : "text-ink/45",
         )}
       >
         {parts.weekday}
       </span>
-      <span className="mt-px text-[15px] font-bold leading-none">
+      <span className="mt-0.5 text-[18px] font-bold leading-none">
         {parts.dayNum}
       </span>
       <span
         className={cn(
-          "text-[7px] font-medium uppercase leading-none",
+          "text-[9px] font-medium uppercase leading-none",
           selected ? "text-white/60" : "text-ink/40",
         )}
       >
@@ -654,13 +654,13 @@ function MDayHeader({
       aria-expanded={expanded}
       aria-label={`${longLabel} — ${expanded ? "comprimi" : "espandi"} giorno`}
       onClick={onToggle}
-      className="group/day flex min-h-[32px] w-full cursor-pointer items-center gap-1.5 rounded-sm px-1 text-left transition-colors hover:bg-surface-soft"
+      className="group/day flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-sm px-1 text-left transition-colors hover:bg-surface-soft"
     >
-      <span className="truncate text-[12px] font-semibold text-ink">{longLabel}</span>
-      <span className="shrink-0 text-[10px] text-ink-faint">G{dayNumber}</span>
+      <span className="truncate text-[15px] font-semibold text-ink">{longLabel}</span>
+      <span className="shrink-0 text-tiny text-ink-faint">G{dayNumber}</span>
       <span className="flex-1" />
       <IconChevronDown
-        size={13}
+        size={16}
         className={cn(
           "shrink-0 text-ink-faint transition-transform",
           expanded && "rotate-180 text-ink",
@@ -759,15 +759,15 @@ function MNightCard({
     >
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+          "flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors",
           hovered ? "border-ink/50" : "border-border-strong hover:border-ink/50",
         )}
       >
-        <StopIconBadge icon={lodging.icon} tone="primary" size={20} />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
+        <StopIconBadge icon={lodging.icon} tone="primary" size={24} />
+        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
           {lodging.title}
         </span>
-        <span className="shrink-0 text-[10px] text-ink-soft">
+        <span className="shrink-0 text-tiny text-ink-soft">
           Notte {lodging.nightIndex} di {lodging.nightsTotal}
         </span>
       </div>
@@ -781,7 +781,7 @@ function MEndOfTrip() {
   return (
     <div className="mt-1 flex items-center gap-2 px-1 py-1">
       <div className="h-1 w-6 bg-ink/15" />
-      <span className="text-[10px] text-ink-faint">Fine viaggio</span>
+      <span className="text-tiny text-ink-faint">Fine viaggio</span>
     </div>
   );
 }
@@ -1307,10 +1307,10 @@ export function TimelineV2Mobile({
                   {showNotes ? (
                     <div className="px-1 py-1.5">
                       <div className="flex flex-col gap-1 rounded-sm bg-surface-warm/80 p-2">
-                        <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-primary">
+                        <p className="text-micro font-medium uppercase tracking-[0.08em] text-primary">
                           Today notes
                         </p>
-                        <p className="whitespace-pre-line text-[11px] leading-relaxed text-ink">
+                        <p className="whitespace-pre-line text-meta leading-relaxed text-ink">
                           {day.notes}
                         </p>
                       </div>

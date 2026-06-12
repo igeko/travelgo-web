@@ -124,7 +124,9 @@ export function FuzzyStop({
         onClick={onOpen}
         className={cn(
           "flex w-full items-center rounded-sm",
-          compact ? "gap-1.5 px-1 py-0.5" : "gap-2 p-1",
+          // Compact (mobile): solo padding leggermente più stretto, ma
+          // dimensioni icona/font allineate al default per leggibilità.
+          compact ? "gap-2 px-1 py-1" : "gap-2 p-1",
           onOpen && "cursor-pointer",
           state === "hover" && "bg-surface-soft",
           selected && "bg-ink",
@@ -132,13 +134,12 @@ export function FuzzyStop({
         )}
       >
         <Icon
-          size={compact ? 13 : 16}
+          size={16}
           className={cn("shrink-0", selected ? "text-white" : "text-ink-soft")}
         />
         <span
           className={cn(
-            "truncate font-medium capitalize",
-            compact ? "text-[11px]" : "text-mini",
+            "truncate font-medium capitalize text-mini",
             selected ? "text-white" : "text-ink-soft",
           )}
         >

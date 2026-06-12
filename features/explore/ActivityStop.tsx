@@ -362,8 +362,12 @@ export function ActivityStop({
         onClick={onOpen}
         className={cn(
           "group flex w-full items-center justify-between rounded-sm pl-1",
+          // Compact (mobile) tiene padding/gap leggermente più stretti per
+          // densità verticale nel bottom sheet, ma typography e badge sono
+          // identici alla variante default — sotto certi pixel le label non
+          // si leggono più su iPhone (Pro: 393px @3x).
           compact
-            ? "min-h-7 gap-1.5 py-0.5 pr-2"
+            ? "min-h-8 gap-2 py-1 pr-3"
             : "min-h-8 gap-3 py-1 pr-3.5",
           onOpen && "cursor-pointer",
           state === "hover" && "bg-surface-soft",
@@ -373,16 +377,15 @@ export function ActivityStop({
           className,
         )}
       >
-        <span className={cn("flex min-w-0 flex-1 items-center", compact ? "gap-1.5" : "gap-2")}>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
           <StopIconBadge
             icon={icon}
             tone={selected || accent === "primary" ? "primary" : "ink"}
-            size={compact ? 20 : 24}
+            size={24}
           />
           <span
             className={cn(
-              "truncate",
-              compact ? "text-[12px] font-medium" : "text-[14px]",
+              "truncate text-[14px]",
               selected ? "text-white" : "text-ink",
             )}
           >
@@ -392,8 +395,7 @@ export function ActivityStop({
         {time ? (
           <span
             className={cn(
-              "shrink-0 font-medium tabular-nums",
-              compact ? "text-tiny" : "text-mini",
+              "shrink-0 font-medium tabular-nums text-mini",
               selected ? "text-white/80" : "text-ink-soft",
             )}
           >
@@ -425,7 +427,7 @@ export function ActivityStop({
             aria-label={dragHandleProps ? "Trascina per riordinare" : undefined}
             role={dragHandleProps ? "button" : undefined}
           >
-            <IconGripVertical size={compact ? 12 : 16} />
+            <IconGripVertical size={16} />
           </span>
         ) : null}
       </Wrapper>
