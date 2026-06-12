@@ -1203,8 +1203,7 @@ export function TimelineV2({
         ref={rootRef}
         className={cn("flex w-full flex-col rounded-lg bg-surface p-2", className)}
       >
-        {sortedDays.map((day, dayIdx) => {
-          const isLastDay = dayIdx === sortedDays.length - 1;
+        {sortedDays.map((day) => {
           const expanded = selectedDayId === day.id;
           const dayLoad = computeDayLoad(day.activities);
           const items = buildItems(
@@ -1599,29 +1598,6 @@ export function TimelineV2({
                   />
                 ) : null}
               </DayDropContainer>
-
-              {/* Rail bridge — continua la spina dalla fine del giorno corrente
-                  alla DayHeader del giorno successivo. Senza questo segmento la
-                  ring/bg-soft del DayDropContainer espanso (o lo spazio fra
-                  giorni collapsed) interrompe visivamente la riga verticale.
-                  Saltato sull'ultimo giorno: lì EndOfTripV2 chiude la spina. */}
-              {!isLastDay ? (
-                <div
-                  className="grid gap-x-3"
-                  style={{ gridTemplateColumns: `${RAIL_COL} minmax(0,1fr)` }}
-                  aria-hidden
-                >
-                  <div className="relative flex h-3 justify-center">
-                    <div
-                      className={cn(
-                        "absolute inset-y-0 w-[3px] rounded-full",
-                        expanded ? "bg-ink" : "bg-timeline-rail",
-                      )}
-                    />
-                  </div>
-                  <div />
-                </div>
-              ) : null}
             </div>
           );
         })}
