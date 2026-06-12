@@ -1328,7 +1328,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           outer), card flex-1 con angoli arrotondati su desktop. La
           ExploreToolbar resta dentro ExploreMap e si posiziona absolute
           relativamente al suo container interno (rounded-clip safe). */}
-      <div className="absolute inset-0 lg:static lg:flex-1 lg:rounded-lg lg:border lg:border-border-strong lg:overflow-hidden">
+      <div className="absolute inset-0 lg:relative lg:inset-auto lg:flex-1 lg:rounded-lg lg:border lg:border-border lg:overflow-hidden">
         <ExploreMap
           ref={mapRef}
           tripId={tripId}

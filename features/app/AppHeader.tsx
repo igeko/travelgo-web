@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
@@ -60,8 +60,8 @@ export function AppHeader({
   tripProgress: _tripProgress,
   activeTab = "day-by-day",
   onTabChange,
-  editMode: _editMode,
-  onToggleEditMode: _onToggleEditMode,
+  editMode = false,
+  onToggleEditMode,
   fullEditMode = false,
   onToggleFullEdit,
   isDev = false,
@@ -84,12 +84,25 @@ export function AppHeader({
   const [kebabOpen, setKebabOpen] = useState(false);
   const kebabRef = useRef<HTMLDivElement>(null);
   const hasTripContext = !!tripName;
+
+  // Esc chiude il drawer mobile (e il kebab) — affordance attesa dagli utenti
+  // tastiera/desktop in resize verso mobile, e screen reader.
+  useEffect(() => {
+    if (!drawerOpen && !kebabOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setDrawerOpen(false);
+      setKebabOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen, kebabOpen]);
   const yumeji = useYumejiDrawer();
   const { dismissed: shortcutsDismissed, show: showShortcuts } = useShortcutBar();
 
   const canRestoreShortcuts = shortcutsDismissed;
 
-  const hasKebab = isDev || isTester || canRestoreShortcuts || !!onToggleFullEdit;
+  const hasKebab = isDev || isTester || canRestoreShortcuts || !!onToggleFullEdit || !!onToggleEditMode;
 
   const ALL_NAV: { id: AppHeaderProps["activeNav"]; label: string; href: string; authRequired: boolean }[] = [
     { id: "trips",   label: t("nav.myTrips"), href: "/trips",   authRequired: true },
@@ -288,6 +301,22 @@ export function AppHeader({
                             <div className="fixed inset-0 z-40" onClick={() => setKebabOpen(false)} />
                             <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] bg-surface border border-border rounded-xl shadow-lg py-1 overflow-hidden">
 
+                              {/* Edit mode */}
+                              {onToggleEditMode && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => { onToggleEditMode(); setKebabOpen(false); }}
+                                    aria-pressed={editMode}
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-meta text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors no-underline border-0 bg-transparent cursor-pointer text-left"
+                                  >
+                                    <span className={cn("w-[7px] h-[7px] rounded-full shrink-0", editMode ? "bg-orange" : "bg-ink-faint")} />
+                                    {editMode ? t("disableEditMode") : t("editMode")}
+                                  </button>
+                                  {(onToggleFullEdit || canRestoreShortcuts || isDev || isTester) && <div aria-hidden className="my-1 h-px bg-border" />}
+                                </>
+                              )}
+
                               {onToggleFullEdit && (
                                 <>
                                   <button
@@ -427,6 +456,7 @@ export function AppHeader({
                   <Link
                     key={item.id}
                     href={item.href}
+                    onClick={() => setDrawerOpen(false)}
                     className={cn(
                       "flex items-center px-[6px] py-[10px] rounded-lg text-[14px] no-underline transition-colors",
                       item.id === activeNav

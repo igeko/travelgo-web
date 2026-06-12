@@ -377,7 +377,10 @@ export const ExploreMap = forwardRef<MapHandle, {
   }, [extraMarkers, goFocus, goMarkers, categoryMarkers, nightMarkers, searchMarker]);
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
+    // Soglia: stessa del layout side-by-side in ExploreNextShell (lg=1024).
+    // Sotto lg il MobileSheet è attivo e la mappa è full-bleed → la toolbar
+    // sta in HORIZONTAL in alto; da lg in su la toolbar verticale a destra.
+    const mq = window.matchMedia("(min-width: 1024px)");
     const apply = () => setIsMobile(!mq.matches);
     apply();
     mq.addEventListener("change", apply);
@@ -885,10 +888,13 @@ export const ExploreMap = forwardRef<MapHandle, {
         </button>
       )}
 
-      {/* Yume — pinned: overlay sopra la mappa (Explore è full-bleed, tutto flotta) */}
+      {/* Yume — pinned: overlay sopra la mappa (Explore è full-bleed, tutto flotta).
+          Soglia lg (1024): sotto lg il MobileSheet è attivo e Yume con z-[1100]
+          coprirebbe i suoi contenuti — meglio nasconderlo finché non c'è davvero
+          spazio reale a destra del pannello Timeline. */}
       <YumejiPinnedColumn
         floating
-        className="hidden md:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
+        className="hidden lg:flex absolute top-3 right-3 bottom-3 w-[340px] z-[1100]"
       />
 
       {/* "Cerco …" pill — feedback per il toolbar↔mappa: dal click sulla
