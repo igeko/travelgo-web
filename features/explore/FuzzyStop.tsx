@@ -31,7 +31,6 @@ import { AddressField, type PlaceResult } from "@/components/ui/AddressField";
 import { EditableText } from "@/components/ui/EditableText";
 import { CategoryIconPicker } from "@/features/activity/IconPicker";
 import { StopEditorCard } from "./StopEditorCard";
-import { StopIconBadge } from "./StopIconBadge";
 import { InlineActivityTime, type ClockHM } from "./InlineActivityTime";
 import { type ActivityTime } from "./ArrivalDeparture";
 
@@ -115,7 +114,13 @@ export function FuzzyStop({
 
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
-    const selected = state === "selected";
+    // Marcatore unificato lista↔mappa (/design/timeline-readability it.17):
+    // cerchio tratteggiato col glifo della categoria. Hover (mouse) e
+    // selected (sync da hoveredRowId mappa) condividono la stessa resa
+    // ink-fill, così non c'è dissonanza fra le due provenienze di
+    // "evidenziato". Compact (mobile): stesso badge, solo padding row
+    // più stretto.
+    const filled = state === "selected" || state === "hover";
     const Wrapper = onOpen ? "button" : "div";
     const compact = size === "sm";
     return (
@@ -123,24 +128,27 @@ export function FuzzyStop({
         type={onOpen ? "button" : undefined}
         onClick={onOpen}
         className={cn(
-          "flex w-full items-center rounded-sm",
-          // Compact (mobile): solo padding leggermente più stretto, ma
-          // dimensioni icona/font allineate al default per leggibilità.
-          compact ? "gap-2 px-1 py-1" : "gap-2 p-1",
+          "group flex w-full items-center rounded-sm",
+          compact ? "gap-2.5 px-1 py-1" : "gap-2.5 px-2 py-1",
           onOpen && "cursor-pointer",
-          state === "hover" && "bg-surface-warm",
-          selected && "bg-ink",
+          !filled && "hover:bg-surface-warm",
           className,
         )}
       >
-        <Icon
-          size={16}
-          className={cn("shrink-0", selected ? "text-white" : "text-ink-soft")}
-        />
         <span
           className={cn(
-            "truncate font-medium capitalize text-mini",
-            selected ? "text-white" : "text-ink-soft",
+            "flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
+            filled
+              ? "border-solid border-ink bg-ink text-white"
+              : "border-dashed border-ink/40 bg-surface text-ink-soft group-hover:border-solid group-hover:border-ink group-hover:bg-ink group-hover:text-white",
+          )}
+        >
+          <Icon size={13} className="shrink-0" />
+        </span>
+        <span
+          className={cn(
+            "flex-1 truncate text-mini",
+            filled ? "text-ink" : "text-ink-soft",
           )}
         >
           {title}

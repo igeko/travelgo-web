@@ -9,10 +9,11 @@ import { TimelineV2Mobile } from "@/features/explore/TimelineV2Mobile";
 import { MobileSheet } from "@/features/explore/MobileSheet";
 import { AddedPill, type AddedPillState } from "@/features/explore/AddedPill";
 import { buildTripChain, chainToMarkers, chainToRouteSpecs } from "@/features/explore/tripChain";
+import { resolveGlyph } from "@/features/activity/resolveGlyph";
 import { useChainBridges } from "@/features/explore/useChainBridges";
 import type { NightWaypoint } from "@/lib/explore/nightRoute";
 import { api } from "@/lib/client";
-import type { Activity, BridgeData } from "@/lib/dal/domain";
+import type { Activity, BlockType, BridgeData } from "@/lib/dal/domain";
 import {
   applyOptStayActions,
   type OptStayAction,
@@ -677,6 +678,42 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   const itineraryMarkers = useMemo<MapMarker[]>(
     () => chainToMarkers(chain, stateOf),
     [chain, stateOf],
+  );
+
+  // Fuzzy markers — derivati a parte (i fuzzy non sono nel chain, vedi
+  // buildTripChain). Visibili SOLO quando un giorno è in focus e solo
+  // per quel giorno (spec /design/timeline-readability it.17): sono
+  // indicatori "soft" del giorno selezionato, non parte del percorso.
+  // L'id usato = scheduled_activities.id, coincide con hoveredRowId in
+  // TimelineV2 → hover-sync row↔pin gratis con il meccanismo esistente.
+  const fuzzyMarkers = useMemo<MapMarker[]>(() => {
+    if (!dayFocused || !selectedDayId) return [];
+    const day = effectiveDays.find((d) => d.id === selectedDayId);
+    if (!day) return [];
+    const out: MapMarker[] = [];
+    for (const a of day.activities) {
+      if (a.fuzzy !== true) continue;
+      if (a.location_lat == null || a.location_lng == null) continue;
+      out.push({
+        id: a.id,
+        lat: a.location_lat,
+        lng: a.location_lng,
+        title: a.title,
+        placeId: a.location_place_id ?? null,
+        glyph: resolveGlyph({
+          iconKey: a.icon ?? null,
+          type: (a.type ?? null) as BlockType | null,
+        }),
+        variant: "fuzzy",
+        draggable: true,
+      });
+    }
+    return out;
+  }, [dayFocused, selectedDayId, effectiveDays]);
+
+  const allItineraryMarkers = useMemo<MapMarker[]>(
+    () => (fuzzyMarkers.length > 0 ? [...itineraryMarkers, ...fuzzyMarkers] : itineraryMarkers),
+    [itineraryMarkers, fuzzyMarkers],
   );
 
   // Percorso reale lungo il chain — RouteSpec per giorno, leg "di
@@ -1357,7 +1394,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
           center={center}
           zoom={zoom}
           nightRoute={nightRoute}
-          extraMarkers={itineraryMarkers}
+          extraMarkers={allItineraryMarkers}
           hoveredPinId={hoveredPinFromList}
           extraRoutes={mapRoutes}
           viewportInset={{ bottom: effectiveSheetHeight }}

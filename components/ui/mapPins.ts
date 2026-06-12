@@ -288,6 +288,72 @@ export function makeRoadmapPin(
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Fuzzy pin — marcatore unificato lista↔mappa per le tappe "fuzzy"
+   (no slot fisso). Cerchio 22×22 con bordo TRATTEGGIATO ink al 45%
+   e icona categoria centrata; hover/selected → bordo solido, fill ink,
+   icona bianca (stessa transizione di FuzzyStop collapsed).
+
+   Visibile solo a giorno selezionato (gating lato consumer). Niente
+   tip teardrop: il pin è un "indicatore soft" centrato sul punto
+   geografico (anchor al centro del cerchio).
+───────────────────────────────────────────────────────────────── */
+
+const FUZZY_HOVER_SCALE = 1.25;
+
+/** Build a fuzzy pin marker. `glyph` è la stringa SVG interna (24-box)
+ *  della Tabler icon — stessa fonte usata dai roadmap pin. `isHovered`
+ *  (sync da hoveredMarkerId) e `isSelected` (selectedMarkerId) condividono
+ *  il fill ink + scala 1.25× così non c'è dissonanza fra hover mouse e
+ *  hover-da-row. */
+export function makeFuzzyPin(
+  glyph: string,
+  isGhost = false,
+  isHovered = false,
+  isSelected = false,
+): google.maps.Icon {
+  const baseW = 22;
+  const baseH = 22;
+  const w = baseW + 2 * SOFT_SHADOW_PAD_X;
+  const h = baseH + SOFT_SHADOW_PAD_Y;
+  const cx = 11 + SOFT_SHADOW_PAD_X;
+  const cy = 11;
+
+  const filled = isHovered || isSelected;
+  // Default = bianco con bordo tratteggiato ink al 45%; hover/selected =
+  // ink solido (gli stessi colori della FuzzyStop collapsed in lista).
+  const fillColor = filled ? INK : "#ffffff";
+  const strokeColor = INK;
+  const strokeOpacity = filled ? "1" : "0.45";
+  const strokeDasharray = filled ? "" : ` stroke-dasharray="3 2.5"`;
+  const iconColor = filled ? "#ffffff" : NEUTRAL;
+  const circle =
+    `<circle cx="${cx}" cy="${cy}" r="10" fill="${fillColor}" stroke="${strokeColor}" stroke-opacity="${strokeOpacity}" stroke-width="1.5"${strokeDasharray}/>`;
+
+  // Icona categoria — 13/24 scale, centrata sul cerchio.
+  const iconSize = 13;
+  const iconScale = iconSize / 24;
+  const iconX = cx - iconSize / 2;
+  const iconY = cy - iconSize / 2;
+  const icon =
+    `<g transform="translate(${iconX} ${iconY}) scale(${iconScale})" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`;
+
+  const filter = isGhost ? GHOST_SHADOW : softShadowDefs(w, h);
+  const filterId = isGhost ? "g" : "ss";
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<defs>${filter}</defs>` +
+    `<g filter="url(#${filterId})">${circle}${icon}</g></svg>`;
+
+  const s = (isGhost ? GHOST_SCALE : 1) * (filled ? FUZZY_HOVER_SCALE : 1);
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(w * s, h * s),
+    // Anchor al centro del cerchio — il fuzzy non è teardrop, non ha tip.
+    anchor: new google.maps.Point(cx * s, cy * s),
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Category pin — teardrop 34×43 con palette muted naturale per le
    macro-categorie di ricerca sulla mappa (spec /design/category-pins).
    Anchor sempre bottom-center (17, 43). Niente stati: la category

@@ -759,9 +759,9 @@ export const ExploreMap = forwardRef<MapHandle, {
           }
           const m = allMarkers.find((mk) => mk.id === id);
           if (!m || id === `${m.lat},${m.lng}`) return null;
-          // Itinerary pins (roadmap) are already in the trip — hide the
-          // "Add to trip" CTA. Search/Go/category pins keep the action.
-          const isItineraryPin = m.variant === "roadmap";
+          // Itinerary pins (roadmap + fuzzy) are already in the trip — hide
+          // the "Add to trip" CTA. Search/Go/category pins keep the action.
+          const isItineraryPin = m.variant === "roadmap" || m.variant === "fuzzy";
           return (
             <PlaceHoverCard
               key={id}

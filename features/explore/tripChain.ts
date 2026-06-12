@@ -91,9 +91,13 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
   const seenStays = new Set<string>();
 
   for (const day of ordered) {
-    // 1) Activities ordinate, con coords valide.
+    // 1) Activities ordinate, con coords valide. Le tappe `fuzzy` sono
+    //    escluse dal chain: non hanno uno slot fisso nel routing e sulla
+    //    mappa usano un marcatore dedicato (cerchio tratteggiato,
+    //    `makeFuzzyPin`) gestito a parte dal consumer.
     const acts = [...day.activities].sort((a, b) => a.position - b.position);
     for (const a of acts) {
+      if (a.fuzzy === true) continue;
       if (a.location_lat == null || a.location_lng == null) continue;
       chain.push({
         id: a.id,

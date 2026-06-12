@@ -16,6 +16,7 @@ import { api } from "@/lib/client";
 import {
   makeAdHocPin,
   makeCategoryPin,
+  makeFuzzyPin,
   makeNightPin,
   makePinIcon,
   makeRoadmapPin,
@@ -64,12 +65,15 @@ export type MapMarker = {
    * Pin style.
    *  - `"roadmap"` → teardrop `makeRoadmapPin` (itinerary activities — spec
    *                 /design/roadmap-pins). Drives shape/size via `roadmapState`.
+   *  - `"fuzzy"`   → cerchio tratteggiato `makeFuzzyPin` per le tappe fuzzy
+   *                 (no slot fisso) — spec /design/timeline-readability it.17.
+   *                 Stesso marcatore visivo della FuzzyStop collapsed in lista.
    *  - `"stop"`    → teardrop `makePinIcon` (legacy itinerary day stops).
    *                 Requires `stopRole`; optional `slot` colours the body.
    *  - `"night"`   → indigo `makeNightPin` (Explore night-route layer).
    *  - default     → dot `makeAdHocPin` (Go suggestions, category results).
    */
-  variant?: "roadmap" | "stop" | "night";
+  variant?: "roadmap" | "fuzzy" | "stop" | "night";
   /** Roadmap pin visual state (variant "roadmap"). Lo stato "selected"
    *  della spec NON è gestito qui — la selezione resta a carico del halo
    *  overlay (vedi `selectedMarkerId`). */
@@ -321,6 +325,12 @@ function iconForMarker(
       isHovered,
       isSelected,
     );
+  }
+  if (m.variant === "fuzzy") {
+    // Marcatore unificato lista↔mappa: cerchio dashed → ink fill su
+    // hover/selected (parity con FuzzyStop collapsed). Niente halo overlay
+    // decorativo: il pin gestisce internamente la transizione visiva.
+    return makeFuzzyPin(m.glyph ?? "", isGhost, isHovered, isSelected);
   }
   if (m.variant === "stop") {
     const color = m.slot ? SLOT_COLORS[m.slot] : INK;
@@ -1191,9 +1201,10 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         // cursor). Separate from the dwell-gated card lifecycle above.
         onMarkerHoverRef.current?.(key);
         // Itinerary pins grow 1.25× on hover. Other variants keep the size
-        // they have (their hover feedback is the card popping up).
+        // they have (their hover feedback is the card popping up). `fuzzy`
+        // condivide il pattern del roadmap (scala + cambio fill all'hover).
         const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
-        if (desc?.variant === "roadmap") {
+        if (desc?.variant === "roadmap" || desc?.variant === "fuzzy") {
           marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false, true));
         }
       });
@@ -1201,7 +1212,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         unhoverPin();
         onMarkerHoverRef.current?.(null);
         const desc = (markersRef.current ?? []).find((mk) => keyOf(mk) === key);
-        if (desc?.variant === "roadmap") {
+        if (desc?.variant === "roadmap" || desc?.variant === "fuzzy") {
           marker.setIcon(iconForMarker(desc, selectedIdRef.current === key, false, false));
         }
       });
@@ -1263,6 +1274,11 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
         const z = m.roadmapState === "overflow" ? 7 :
                   m.roadmapState === "dimmed"   ? 3 : 5;
         marker.setZIndex(isSelected ? 1000 : z);
+      } else if (m.variant === "fuzzy") {
+        // Fuzzy: visibili solo a giorno selezionato; sotto i roadmap del
+        // giorno (z=5) ma sopra i pin neutri (default 1) — il roadmap del
+        // giorno deve sempre vincere visivamente sul fuzzy "indicatore".
+        marker.setZIndex(isSelected ? 1000 : 4);
       } else if (m.variant === "stop") {
         marker.setZIndex(isSelected ? 1000 : 5);
       } else if (m.variant === "night") {
@@ -1306,7 +1322,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     if (prev) {
       const marker = markersByKey.current[prev];
       const desc = (markersRef.current ?? []).find((mk) => (mk.id ?? `${mk.lat},${mk.lng}`) === prev);
-      if (marker && desc && desc.variant === "roadmap") {
+      if (marker && desc && (desc.variant === "roadmap" || desc.variant === "fuzzy")) {
         marker.setIcon(iconForMarker(desc, selectedIdRef.current === prev, false, false));
       }
     }
@@ -1314,7 +1330,7 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
     if (next) {
       const marker = markersByKey.current[next];
       const desc = (markersRef.current ?? []).find((mk) => (mk.id ?? `${mk.lat},${mk.lng}`) === next);
-      if (marker && desc && desc.variant === "roadmap") {
+      if (marker && desc && (desc.variant === "roadmap" || desc.variant === "fuzzy")) {
         marker.setIcon(iconForMarker(desc, selectedIdRef.current === next, false, true));
       }
     }
@@ -1388,17 +1404,17 @@ export const Map = forwardRef<MapHandle, MapProps>(function Map(
   }, []);
 
   // Decorate the selected marker with the hero halo + name label overlay.
-  // I roadmap pin sono ESCLUSI: hanno la loro selezione "intrinseca" (bordo
-  // bianco + scala hover gestiti da makeRoadmapPin). L'halo overlay resta per
-  // i POI Google e i pin ad-hoc (click su mappa) — quello è il "selected
-  // standard" di cui parlava l'utente.
+  // I roadmap E i fuzzy pin sono ESCLUSI: gestiscono la loro selezione
+  // intrinseca (bordo / fill + scala via makeRoadmapPin / makeFuzzyPin).
+  // L'halo overlay resta per i POI Google e i pin ad-hoc — quello è il
+  // "selected standard" decorativo.
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     const map = mapRef.current;
     const sel = selectedMarkerId
       ? (markers ?? []).find((m) => (m.id ?? `${m.lat},${m.lng}`) === selectedMarkerId)
       : undefined;
-    if (!sel || sel.variant === "roadmap") {
+    if (!sel || sel.variant === "roadmap" || sel.variant === "fuzzy") {
       selectedOverlayRef.current?.setMap(null);
       return;
     }
