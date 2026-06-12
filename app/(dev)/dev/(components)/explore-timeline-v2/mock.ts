@@ -9,7 +9,7 @@
  */
 
 import type { Activity } from "@/lib/dal/domain";
-import type { TimelineDayData } from "@/features/explore/Timeline";
+import type { TimelineDayData } from "@/features/explore/TimelineV2";
 
 function act(p: Partial<Activity>): Activity {
   return {

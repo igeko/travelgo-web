@@ -37,7 +37,7 @@ import type { MapMarker, RoutePoint, RouteSpec, TransportMode } from "@/componen
 import { iconGlyph, INK, INK_LIGHT } from "@/components/ui/mapPins";
 import { IconBed } from "@/components/ui/icons";
 import { resolveGlyph } from "@/features/activity/resolveGlyph";
-import type { TimelineDayData } from "@/features/explore/Timeline";
+import type { TimelineDayData } from "@/features/explore/TimelineV2";
 import type { BlockType } from "@/lib/dal/domain";
 
 /** Tappa canonica del trip — atom di tutto il rendering mappa. */

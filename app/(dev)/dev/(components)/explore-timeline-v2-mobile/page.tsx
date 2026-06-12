@@ -23,7 +23,7 @@ import { resolveAccommodations } from "@/features/explore/resolveAccommodations"
 import { StatePicker } from "../_components/StatePicker";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { MOCK_DAYS } from "../explore-timeline/mock";
+import { MOCK_DAYS } from "../explore-timeline-v2/mock";
 
 const JAPAN_2026 = "47c851d1-ee78-4a85-99d0-431fb7c0bf8a";
 

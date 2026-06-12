@@ -182,13 +182,6 @@ export const sandboxRegistry: SandboxEntry[] = [
     description: "Versione mobile-compact della v2: day strip orizzontale sticky, rail 30px, row sm (ActivityStop/FuzzyStop size sm), NightCard padding ridotto. Drop-in dentro un bottom-sheet.",
   },
   {
-    slug: "explore-timeline",
-    title: "Timeline (v1, deprecated)",
-    group: "Features",
-    subgroup: "Explore",
-    description: "DEPRECATED — riferimento storico. La versione attiva è la v2 (DayBadge 36px nella colonna sinistra + spina warm-rail). Sostituita su /explore-next dalla v2.",
-  },
-  {
     slug: "place-hover",
     title: "PlaceHoverCard",
     group: "Features",

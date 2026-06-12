@@ -78,12 +78,21 @@ import { Transfer, type TransferDestination, type TransferLeg, type TransferStep
 import type { AccommodationDisplay } from "./resolveAccommodations";
 import { computeDayTimes, DEFAULT_ACTIVITY_DURATION_MIN } from "@/lib/scheduling/computeDayTimes";
 
-/* ── Public types — same shape as Timeline (drop-in) ──────────────── */
+/* ── Public types ─────────────────────────────────────────────────── */
 
 export type TimelineV2DayData = Day & {
   activities: Activity[];
   accommodation?: AccommodationDisplay | null;
 };
+
+/**
+ * Alias storico: prima esisteva una `features/explore/Timeline.tsx` (V1
+ * deprecated) che esportava `TimelineDayData` con la stessa shape. Dopo la
+ * cancellazione della V1 manteniamo questo alias così i consumer
+ * (optStayActions, tripChain, ExploreNextShell) continuano a riferirsi al
+ * tipo dal modulo V2 senza doverlo rinominare in cascata.
+ */
+export type TimelineDayData = TimelineV2DayData;
 
 type IconCmp = ComponentType<{ size?: number; className?: string }>;
 

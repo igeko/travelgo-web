@@ -12,7 +12,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { TimelineDayData } from "./Timeline";
+import type { TimelineDayData } from "./TimelineV2";
 import type { AccommodationDisplay } from "./resolveAccommodations";
 import type { Activity } from "@/lib/dal/domain";
 
