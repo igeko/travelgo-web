@@ -417,6 +417,43 @@ function legStyle(t: TransportMode | null | undefined, color: string = INK): goo
 }
 
 /**
+ * Scala TUTTE le opacità (stroke + icon fill/stroke) della PolylineOptions
+ * per un fattore = `opacity / 0.9` (0.9 = baseline solid usata da legStyle).
+ *
+ * Usato dal renderer di route per applicare l'opacity della RouteSpec
+ * anche quando il leg ha un transport noto (legStyle ignora `style.opacity`
+ * e ritorna valori fissi). Senza questo helper, i path dei giorni
+ * non-selezionati nella explore-next NON si dimmavano perché i transport
+ * salvati (car/walk/bus) sovrascrivevano la opacity da chainToRouteSpecs.
+ *
+ * No-op quando opacity ≥ 0.95 (nessun dimming richiesto).
+ */
+function applyOpacity(
+  style: google.maps.PolylineOptions,
+  opacity: number,
+): google.maps.PolylineOptions {
+  if (opacity >= 0.95) return style;
+  const scale = opacity / 0.9;
+  const out: google.maps.PolylineOptions = { ...style };
+  if (out.strokeOpacity != null) out.strokeOpacity = out.strokeOpacity * scale;
+  if (out.icons) {
+    out.icons = out.icons.map((it) => {
+      const icon = it.icon as google.maps.Symbol | undefined;
+      if (!icon) return it;
+      const nextIcon: google.maps.Symbol = { ...icon };
+      if (typeof nextIcon.fillOpacity === "number") {
+        nextIcon.fillOpacity = nextIcon.fillOpacity * scale;
+      }
+      if (typeof nextIcon.strokeOpacity === "number") {
+        nextIcon.strokeOpacity = nextIcon.strokeOpacity * scale;
+      }
+      return { ...it, icon: nextIcon };
+    });
+  }
+  return out;
+}
+
+/**
  * Draw one `RouteSpec` onto the given map. Picks single-call vs per-leg
  * based on transport/colour uniformity (and on the TRANSIT-multi-stop
  * carve-out, since Google's Routes API rejects intermediates in TRANSIT
@@ -522,7 +559,7 @@ function drawRouteSpec(
 
   if (singleCall) {
     const opts: google.maps.PolylineOptions = sharedTransport
-      ? legStyle(sharedTransport, effectiveLegColors[0] ?? sharedColor)
+      ? applyOpacity(legStyle(sharedTransport, effectiveLegColors[0] ?? sharedColor), sharedOpacity)
       : { strokeColor: sharedColor, strokeWeight: sharedWeight, strokeOpacity: sharedOpacity };
     api.routes
       .compute(points, sharedMode)
@@ -551,7 +588,7 @@ function drawRouteSpec(
     if (isCancelled()) return;
     const ok = legs.filter((l): l is { encoded: string; transport: TransportMode | null; color: string } => l != null);
     if (ok.length === 0) { spec.onError?.(); return; }
-    ok.forEach((l) => draw(l.encoded, legStyle(l.transport, l.color)));
+    ok.forEach((l) => draw(l.encoded, applyOpacity(legStyle(l.transport, l.color), sharedOpacity)));
     maybeFit(ok.map((l) => l.encoded));
     spec.onDraw?.();
   });
