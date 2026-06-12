@@ -325,7 +325,15 @@ function buildItems(
   if (incomingChainPrevId && visible.length > 0) {
     const first = visible[0];
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
-    const bridge = computedIn ?? first.bridge_in_json ?? null;
+    const savedIn = first.bridge_in_json ?? null;
+    // Saved vince su computed (stesso pattern dell'intra-day `-br`): l'utente
+    // ha appena scelto un transport via ModeSwitch e l'apply ha scritto
+    // bridge_in_json — non vogliamo che il computed di sessione (sempre "car"
+    // di default) lo shadowi al refresh. Backfill di distance_m dal computed
+    // per i record vecchi che non la portavano.
+    const bridge: BridgeData | null = savedIn && computedIn
+      ? { ...savedIn, distance_m: savedIn.distance_m ?? computedIn.distance_m ?? null }
+      : savedIn ?? computedIn ?? null;
     if (bridge) {
       items.push({
         kind: "transfer",
@@ -368,7 +376,16 @@ function buildItems(
       (a) => a.location_lat != null && a.location_lng != null,
     );
     if (lastAct) {
-      const bridge = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      // Stesso pattern di precedenza dell'intra-day e dell'`-in`: il bridge
+      // salvato sull'ultima activity (bridge_out_json) vince sul computed
+      // di sessione. Il leg di chiusura giornata punta ALL'accommodation,
+      // ma è memorizzato sull'activity (il modello canonico non scrive sui
+      // stays). Backfill distance_m per back-compat.
+      const savedOut = lastAct.bridge_out_json ?? null;
+      const computedOut = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      const bridge: BridgeData | null = savedOut && computedOut
+        ? { ...savedOut, distance_m: savedOut.distance_m ?? computedOut.distance_m ?? null }
+        : savedOut ?? computedOut ?? null;
       if (bridge) {
         items.push({
           kind: "transfer",
