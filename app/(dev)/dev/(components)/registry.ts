@@ -416,4 +416,16 @@ export const sandboxRegistry: SandboxEntry[] = [
     group: "Admin",
     description: "Viewer MD per i doc di design in docs/design/ · index + rendering via marked",
   },
+  {
+    slug: "trip-debug",
+    title: "Trip debug · Explore chain",
+    group: "Admin",
+    description: "Diagnosi pipeline days → buildTripChain → chainToRouteSpecs · coords numeric→string, chain entry mancanti, body POST /api/routes per ogni giorno. Usa ?trip=<uuid>.",
+  },
+  {
+    slug: "explore-next-mirror",
+    title: "Explore Next mirror",
+    group: "Admin",
+    description: "Mirror visivo di /trips/[id]/explore-next: Timeline V2 a sinistra + ExploreMap a destra coi pin/route derivati dal chain. Read-only. Usa ?trip=<uuid>.",
+  },
 ];
