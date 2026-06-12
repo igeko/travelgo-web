@@ -740,8 +740,13 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       ...(transport ? { perLegTransport: [transport] } : {}),
       style: {
         color: "#f47b3a", // --color-primary (brand orange) — vedi globals.css
-        weight: 4,        // più spesso del 2.5px base così "pop"
+        weight: 4,        // più spesso del 2.5px base così "pop" sulle solide
         opacity: 1,
+        // Bumpiamo sopra la linea base (default 2) per vincere la race
+        // visiva sui pattern dotted (walk/bike) e dashed (bus), dove i
+        // dots/dashes dell'overlay e della base cadono agli stessi
+        // offset e l'ordine dei polyline da solo non basta.
+        zIndex: 3,
       },
     };
   }, [hoveredTransferId, selectedTransferId, chain, getLegTransport]);

@@ -85,6 +85,15 @@ export type RouteSpec = {
     weight?: number;
     opacity?: number;
     /**
+     * Z-index del polyline principale. Default 2 (sopra il casing che è
+     * sempre a 1). Usato dagli overlay di "highlight" che devono vincere
+     * sulla linea base anche quando i pattern sono dotted/dashed e i
+     * dots dei due cadono agli stessi offset — senza un livello esplicito,
+     * Google Maps decide per "ultimo aggiunto vince" e la race async
+     * dei fetch può lasciare il base in cima.
+     */
+    zIndex?: number;
+    /**
      * Casing: polyline più scura e spessa disegnata SOTTO la linea principale
      * lungo lo stesso path. Crea l'effetto "bordo" tipico dei percorsi brand
      * (es. day-path di Explore Next: linea arancione 2.5px su casing ink 5px).

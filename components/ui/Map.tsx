@@ -436,6 +436,11 @@ function drawRouteSpec(
   const sharedColor = spec.style?.color ?? INK;
   const sharedWeight = spec.style?.weight ?? 3;
   const sharedOpacity = spec.style?.opacity ?? 0.9;
+  // Default 2 (sopra il casing che resta a 1). Gli overlay di highlight
+  // bumpano questo livello così vincono la race async dei fetch sulle
+  // polyline base con stesso pattern (es. due walk dotted negli stessi
+  // offset — senza zIndex esplicito l'ordine visivo è non-deterministico).
+  const sharedZIndex = spec.style?.zIndex ?? 2;
   const defaultMode: TravelMode = spec.travelMode ?? "WALKING";
 
   // Brand casing: linea più spessa e scura sotto il path principale (style:
@@ -471,7 +476,7 @@ function drawRouteSpec(
         strokeColor: sharedColor,
         strokeWeight: sharedWeight,
         strokeOpacity: sharedOpacity,
-        zIndex: 2,
+        zIndex: sharedZIndex,
       }),
     );
     if (spec.fitOnLoad) {
@@ -504,7 +509,7 @@ function drawRouteSpec(
     // `strokeOpacity: 0` e affida il rendering alle icone: aggiungere un
     // casing pieno sotto romperebbe l'effetto dotted/dashed.
     if (options.strokeOpacity && options.strokeOpacity > 0) pushCasing(path);
-    sink.push(new google.maps.Polyline({ path, map, zIndex: 2, ...options }));
+    sink.push(new google.maps.Polyline({ path, map, zIndex: sharedZIndex, ...options }));
   };
 
   const maybeFit = (encodedList: string[]) => {
