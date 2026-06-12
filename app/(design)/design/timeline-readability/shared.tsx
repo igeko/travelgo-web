@@ -184,7 +184,7 @@ export const DAYS: DayData[] = [
         pin: { x: 500, y: 110 },
         transferOut: { mode: "car", duration: "40 min", distance: "32 km" },
       },
-      { title: "Konbini Lawson", icon: IconBuildingStore, fuzzy: true },
+      { title: "Konbini Lawson", icon: IconBuildingStore, fuzzy: true, pin: { x: 455, y: 90 } },
     ],
     night: {
       name: "Hotel Tavinos Asakusa",
@@ -684,10 +684,13 @@ export function NightEditor({ night }: { night: NightData }) {
 
 export function MockMap() {
   const pins: { x: number; y: number; n?: number; night?: boolean }[] = [];
+  const fuzzyPins: { x: number; y: number }[] = [];
   let n = 0;
   for (const d of DAYS) {
     for (const s of d.stops) {
-      if (s.pin && !s.fuzzy) pins.push({ ...s.pin, n: ++n });
+      if (!s.pin) continue;
+      if (s.fuzzy) fuzzyPins.push(s.pin);
+      else pins.push({ ...s.pin, n: ++n });
     }
     if (d.night?.pin && !pins.some((p) => p.night && p.x === d.night?.pin?.x)) {
       pins.push({ ...d.night.pin, night: true });
@@ -778,6 +781,33 @@ export function MockMap() {
             </g>
           ),
         )}
+      </svg>
+      {/* Pin fuzzy — it.17: cerchio TRATTEGGIATO, lo stesso marcatore
+          della row in lista (identità 1:1). Visibili solo a giorno
+          selezionato, nel day-focus. Glifo semplificato nel mock; nel
+          reale è l'icona categoria della tappa. */}
+      <svg
+        viewBox="0 0 600 400"
+        preserveAspectRatio="xMidYMid slice"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden
+      >
+        {fuzzyPins.map((p, i) => (
+          <g key={i}>
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r="10"
+              fill="white"
+              stroke="var(--color-ink)"
+              strokeOpacity="0.45"
+              strokeWidth="1.5"
+              strokeDasharray="3 2.5"
+            />
+            <rect x={p.x - 3.5} y={p.y - 3} width="7" height="6" rx="1" fill="none" stroke="var(--color-ink-soft)" strokeWidth="1.2" />
+            <path d={`M ${p.x - 4.5} ${p.y - 3} L ${p.x} ${p.y - 6} L ${p.x + 4.5} ${p.y - 3}`} fill="none" stroke="var(--color-ink-soft)" strokeWidth="1.2" />
+          </g>
+        ))}
       </svg>
       <div className="absolute bottom-2 left-2 text-[9px] italic text-ink-faint/70">
         design mock · not a real map

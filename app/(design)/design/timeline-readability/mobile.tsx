@@ -166,15 +166,15 @@ function MStopRow({
   tone?: "default" | "selected";
 }) {
   if (stop.fuzzy) {
+    // It.17 — cerchio tratteggiato = stesso marcatore del pin mappa.
     return (
       <div className="grid items-center gap-x-2" style={M_GRID}>
         <MRail tone={tone} />
         <div className="flex min-h-[28px] items-center gap-1.5 px-1">
-          <StopIcon icon={stop.icon} fuzzy size="sm" />
-          <span className="flex-1 truncate text-[11px] text-ink-soft">{stop.title}</span>
-          <span className="shrink-0 rounded-full bg-surface-soft px-1.5 py-0.5 text-[8px] font-medium uppercase text-ink-faint">
-            fless.
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/40 bg-surface text-ink-soft">
+            <stop.icon size={12} />
           </span>
+          <span className="flex-1 truncate text-[11px] text-ink-soft">{stop.title}</span>
         </div>
       </div>
     );

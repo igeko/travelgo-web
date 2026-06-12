@@ -392,6 +392,28 @@ Valutate in chat 3 integrazioni col container del giorno selezionato
 Componenti sketch: `NightDivider` (collapsed) + `NightFooter` (expanded)
 in v1; `MNight` + `MNightFooter` in mobile.
 
+## Iterazione 17 (2026-06-11) — fuzzy: cerchio tratteggiato, lista↔mappa
+
+Valutate in chat 4 rese pin fuzzy (teardrop dashed / cerchietto dashed /
+teardrop spento — scartata: confligge col dimming day-focus / satellite
+con filo) e 3 coppie coordinate lista+mappa. **Scelta: cerchio
+tratteggiato con l'icona dentro — lo STESSO marcatore in timeline e in
+mappa** (identità 1:1). La geometria fa la semantica: quadrato = tappa,
+goccia = pin tappa, quadrato arancio = notte, CERCHIO DASHED = fuzzy.
+
+- **Timeline (row fuzzy)**: cerchio 26px `rounded-full border-[1.5px]
+  border-dashed border-ink/40 bg-surface text-ink-soft` con l'icona
+  categoria (13px) dentro; nome `text-mini text-ink-soft`; rimossa la
+  pill "flessibile" (la forma basta). Hover: il cerchio si riempie
+  (`border-solid border-ink bg-ink text-white`) = anteprima promozione
+  a tappa.
+- **Mappa (pin fuzzy)**: stesso cerchio (~20-22px, r=10) bianco con
+  bordo dashed ink/45 e icona categoria dentro; visibile SOLO a giorno
+  selezionato (day-focus), come da regola fuzzy. Hover → riempimento
+  ink (stessa transizione della row) + opzionale filo dotted verso il
+  path del giorno (parcheggiato).
+- Hover-sync row↔pin: invariato (stesso meccanismo delle tappe).
+
 ## Stato
 
 - [x] Sketch con entrambe le varianti (`/design/timeline-readability`)

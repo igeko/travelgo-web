@@ -164,15 +164,18 @@ function StopRow({
     );
   }
   if (stop.fuzzy) {
+    // It.17 — fuzzy = CERCHIO TRATTEGGIATO con l'icona dentro, lo
+    // stesso marcatore del pin mappa (identità 1:1 lista↔mappa).
+    // Hover: il cerchio si riempie ink, icona bianca — anteprima
+    // della promozione a tappa.
     return (
       <Row rail="solid" tone={tone}>
-        <div className="group flex items-center gap-2 rounded-sm px-2 py-1 hover:bg-surface-soft">
-          <StopIcon icon={stop.icon} fuzzy size="sm" />
+        <div className="group flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-1 hover:bg-surface-soft">
+          <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/40 bg-surface text-ink-soft transition-colors group-hover:border-solid group-hover:border-ink group-hover:bg-ink group-hover:text-white">
+            <stop.icon size={13} />
+          </span>
           <span className="flex-1 truncate text-mini text-ink-soft">
             {stop.title}
-          </span>
-          <span className="shrink-0 rounded-full bg-surface-soft px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ink-faint">
-            flessibile
           </span>
         </div>
       </Row>
