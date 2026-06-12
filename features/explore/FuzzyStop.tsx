@@ -132,8 +132,19 @@ export function FuzzyStop({
           // browser è text-align:center, che faceva centrare il titolo
           // dentro lo span flex-1 invece di farlo iniziare subito dopo
           // il badge icona.
-          "group flex w-full items-center rounded-sm text-left",
-          compact ? "gap-2.5 px-1 py-1" : "gap-2.5 px-2 py-1",
+          //
+          // Padding/min-h/gap allineati a ActivityStop collapsed:
+          //   - pl-1 (4px) → left edge del badge fuzzy combacia col
+          //     left edge del StopIconBadge delle activity (allineamento
+          //     verticale del marcatore nella timeline);
+          //   - min-h-8 (32px) → stessa altezza row delle activity;
+          //   - gap-2 (8px) badge↔titolo, identico al gap interno di
+          //     ActivityStop.
+          // Il badge circolare resta 26px per spec it.17, quindi il suo
+          // bordo destro sporge ~2px rispetto allo StopIconBadge 24px:
+          // l'allineamento di riferimento è sul LEFT EDGE.
+          "group flex w-full items-center rounded-sm pl-1 text-left",
+          compact ? "min-h-8 gap-2 pr-3" : "min-h-8 gap-2 pr-3.5",
           onOpen && "cursor-pointer",
           !filled && "hover:bg-surface-warm",
           className,
