@@ -1283,7 +1283,7 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       {/* Panel sinistro — su desktop sta nel flex row accanto alla mappa
           (niente più overlay/shadow). Mobile resta hidden. */}
       <aside
-        className="hidden w-[380px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface lg:flex"
+        className="hidden w-[380px] flex-col overflow-hidden rounded-lg border border-border bg-surface lg:flex"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TimelineV2
