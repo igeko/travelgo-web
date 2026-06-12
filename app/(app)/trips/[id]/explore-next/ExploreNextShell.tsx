@@ -606,13 +606,18 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
     return ids;
   }, [effectiveDays]);
 
-  // Bridge calcolati lazy per i leg del chain: ad ogni mount, ogni coppia
-  // consecutiva viene ricomputata via Google Routes (mode DRIVING). La
-  // cache localStorage 30gg condivisa con la mappa gestisce il dedup
-  // network — punti uguali → cache hit, zero call. Per i leg che già
-  // hanno un bridge salvato saltiamo la persistenza opportunistica, così
-  // la scelta dell'utente non viene clobbered (vedi savedOutActIds).
-  const computedBridges = useChainBridges(chain, savedOutActIds);
+  // Bridge calcolati LAZY: solo per i leg che entrano nel giorno
+  // attualmente in focus (`curr.dayId === focusedDayId`). La cache di
+  // sessione del hook (chain-aware, coords-tagged) garantisce che
+  // riaprire un giorno già visitato sia gratis. Niente focus = niente
+  // fetch — la mappa disegna comunque le polyline dei giorni non
+  // focused indipendentemente (vedi `dayPathRoutes`). Per i leg che
+  // già hanno un bridge salvato saltiamo la persistenza opportunistica,
+  // così la scelta dell'utente non viene clobbered (vedi savedOutActIds).
+  const computedBridges = useChainBridges(chain, {
+    focusedDayId: dayFocused ? selectedDayId : null,
+    skipPersistFor: savedOutActIds,
+  });
 
   // Effective bridges per leg, keyed by `${prevId}|${currId}`. Stessa
   // priorità di TimelineV2.buildItems: saved (bridge_out_json sulla
@@ -641,8 +646,19 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
       // dall'utente vive solo nel bridge_in_json della prima activity. Senza
       // questo fallback la mappa rendeva walk come car (default Google
       // Routes DRIVING).
-      const savedOut = savedOutByActId.get(prev.id);
-      const savedIn = savedInByActId.get(curr.id);
+      const savedOutRaw = savedOutByActId.get(prev.id);
+      const savedInRaw = savedInByActId.get(curr.id);
+      // Un saved è "valido" per questo leg solo se il suo target_id matcha
+      // l'other endpoint, oppure se è legacy (target_id assente → best-effort).
+      // Un saved stantio (es. fuzzy inserita in mezzo) viene scartato così
+      // la mappa NON applica il transport sbagliato a un leg che non
+      // descrive più. Vedi `isBridgeValid` in TimelineV2.tsx.
+      const savedOut = savedOutRaw && (savedOutRaw.target_id == null || savedOutRaw.target_id === curr.id)
+        ? savedOutRaw
+        : undefined;
+      const savedIn = savedInRaw && (savedInRaw.target_id == null || savedInRaw.target_id === prev.id)
+        ? savedInRaw
+        : undefined;
       const saved = savedOut ?? savedIn;
       const c = computedBridges.get(key);
       const merged = saved && c
@@ -723,8 +739,8 @@ export function ExploreNextShell({ tripId, days, center, zoom, nightRoute }: Pro
   // dal bridge effettivo (walk/bus/car/…), `perLegTransport` fa scattare
   // il rendering per-leg con `legStyle` dedicato (walk → puntinato).
   const dayPathRoutes = useMemo<RouteSpec[]>(
-    () => chainToRouteSpecs(chain, opacityOf, getLegTransport),
-    [chain, opacityOf, getLegTransport],
+    () => chainToRouteSpecs(chain, opacityOf, getLegTransport, dayFocused ? selectedDayId : null),
+    [chain, opacityOf, getLegTransport, dayFocused, selectedDayId],
   );
 
   /**

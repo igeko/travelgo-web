@@ -60,6 +60,13 @@ export type BridgeData = {
   line?: string | null;
   stops?: string | null;
   note?: string | null;
+  /** Scheduled-activity id della destinazione del leg al momento del save.
+   *  Permette al render di scartare il bridge se il next nel chain non
+   *  matcha più (es. inserita una fuzzy in mezzo, riordinato il giorno):
+   *  così evitiamo l'overwrite silenzioso storico e ricalcoliamo lazy.
+   *  Optional/null per i bridge salvati prima dello Step 1: il render li
+   *  tratta come legacy best-effort (vedi useChainBridges). */
+  target_id?: string | null;
 };
 
 export type Activity = {

@@ -70,6 +70,15 @@ export type TripStop = {
    * disegnare un secondo pin sopra al primo.
    */
   isPinHidden?: boolean;
+  /**
+   * `true` per le tappe `scheduled_activities.fuzzy = true`. Restano nel
+   * chain così, quando il giorno è in focus, il routing apre i leg
+   * `prev → fuzzy → next`. Fuori focus `chainToRouteSpecs` le "collassa"
+   * (salta lo stop, leg diretto fra i due fissi adiacenti) e
+   * `chainToMarkers` le esclude sempre (i marker fuzzy sono renderizzati
+   * separatamente con `variant: "fuzzy"`, vedi ExploreNextShell).
+   */
+  fuzzy?: boolean;
 };
 
 /**
@@ -92,12 +101,14 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
 
   for (const day of ordered) {
     // 1) Activities ordinate, con coords valide. Le tappe `fuzzy` sono
-    //    escluse dal chain: non hanno uno slot fisso nel routing e sulla
-    //    mappa usano un marcatore dedicato (cerchio tratteggiato,
-    //    `makeFuzzyPin`) gestito a parte dal consumer.
+    //    INCLUSE nel chain con `fuzzy: true`: il routing le considera
+    //    quando il giorno è in focus (leg `prev → fuzzy → next`) e le
+    //    collassa fuori focus (`chainToRouteSpecs(focusedDayId)`). I
+    //    pin per le fuzzy sono renderizzati separatamente con
+    //    `variant: "fuzzy"` (vedi ExploreNextShell.fuzzyMarkers), quindi
+    //    `chainToMarkers` le esclude sempre.
     const acts = [...day.activities].sort((a, b) => a.position - b.position);
     for (const a of acts) {
-      if (a.fuzzy === true) continue;
       if (a.location_lat == null || a.location_lng == null) continue;
       chain.push({
         id: a.id,
@@ -109,6 +120,7 @@ export function buildTripChain(days: TimelineDayData[]): TripStop[] {
         title: a.title,
         placeId: a.location_place_id ?? null,
         glyph: resolveGlyph({ iconKey: a.icon ?? null, type: (a.type ?? null) as BlockType | null }),
+        fuzzy: a.fuzzy === true ? true : undefined,
       });
     }
 
@@ -149,9 +161,11 @@ export type ChainStopState = (stop: TripStop) => "default" | "dimmed";
 /** Trasforma il chain in `MapMarker[]` (un pin per tappa, accommodation
  *  inclusa, niente duplicati multi-night). Le notti "ripetute" della
  *  stessa stay (`isPinHidden`) restano nel chain per i route ma non
- *  vengono materializzate come marker. */
+ *  vengono materializzate come marker. Anche le fuzzy sono escluse: il
+ *  loro pin (cerchio tratteggiato `variant: "fuzzy"`) è renderizzato a
+ *  parte dal consumer (vedi ExploreNextShell.fuzzyMarkers). */
 export function chainToMarkers(chain: TripStop[], stateOf: ChainStopState): MapMarker[] {
-  const visible = chain.filter((s) => !s.isPinHidden);
+  const visible = chain.filter((s) => !s.isPinHidden && !s.fuzzy);
   return visible.map((s) => ({
     id: s.id,
     lat: s.lat,
@@ -208,11 +222,19 @@ export function chainToRouteSpecs(
    * polyline resta uniforme DRIVING.
    */
   getLegTransport?: (fromId: string, toId: string) => TransportMode | null,
+  /**
+   * Giorno in focus. Le tappe `fuzzy` di un giorno DIVERSO da quello in
+   * focus vengono "collassate": saltate nel walk del chain, così il leg
+   * disegnato sulla mappa va direttamente dal prev visibile al next
+   * visibile (overview pulita). Le fuzzy del giorno in focus restano
+   * nel walk e generano leg `prev → fuzzy → next` regolari. `null` o
+   * `undefined` = nessun giorno in focus → tutte le fuzzy collassate.
+   */
+  focusedDayId?: string | null,
 ): RouteSpec[] {
   if (chain.length < 2) return [];
 
   // Walk the chain, raggruppando per dayId della destinazione.
-  // groups: { [dayId]: { firstIdx, points } }
   // `RoutePoint` porta opzionalmente il placeId — propagato dal TripStop
   // di provenienza così downstream (cache server-side, switch a Google
   // Routes con `{placeId}`) può consumarlo senza ri-derivare dai latlng.
@@ -223,22 +245,32 @@ export function chainToRouteSpecs(
     transports: (TransportMode | null)[];
   };
   const groups = new Map<string, Group>();
-  for (let i = 1; i < chain.length; i++) {
-    const prev = chain[i - 1];
+
+  // Walk usando "lastVisible" anziché chain[i-1]: così possiamo skippare
+  // le fuzzy fuori focus senza perdere l'aggancio col prev. Quando lo
+  // stop corrente è una fuzzy di un altro giorno, lo saltiamo: il leg
+  // disegnato sarà direttamente lastVisible → nextVisible.
+  let lastVisible: TripStop | null = null;
+  for (let i = 0; i < chain.length; i++) {
     const curr = chain[i];
-    const dayId = curr.dayId;
-    let g = groups.get(dayId);
-    if (!g) {
-      g = {
-        firstIdx: i,
-        dayId,
-        points: [{ lat: prev.lat, lng: prev.lng, placeId: prev.placeId }],
-        transports: [],
-      };
-      groups.set(dayId, g);
+    const isHiddenFuzzy = curr.fuzzy === true && curr.dayId !== focusedDayId;
+    if (isHiddenFuzzy) continue;
+    if (lastVisible !== null) {
+      const dayId = curr.dayId;
+      let g = groups.get(dayId);
+      if (!g) {
+        g = {
+          firstIdx: i,
+          dayId,
+          points: [{ lat: lastVisible.lat, lng: lastVisible.lng, placeId: lastVisible.placeId }],
+          transports: [],
+        };
+        groups.set(dayId, g);
+      }
+      g.points.push({ lat: curr.lat, lng: curr.lng, placeId: curr.placeId });
+      g.transports.push(getLegTransport?.(lastVisible.id, curr.id) ?? null);
     }
-    g.points.push({ lat: curr.lat, lng: curr.lng, placeId: curr.placeId });
-    g.transports.push(getLegTransport?.(prev.id, curr.id) ?? null);
+    lastVisible = curr;
   }
 
   // Costruisci RouteSpec, scartando quelli degeneri (es. zero-length).

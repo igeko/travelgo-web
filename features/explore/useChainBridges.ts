@@ -1,31 +1,40 @@
 /**
  * features/explore/useChainBridges.ts
  * ─────────────────────────────────────────────────────────────────
- * Hook: dato il `chain: TripStop[]` calcola per ogni leg consecutivo
- * (chain[i] → chain[i+1]) la duration via Google Routes (mode DRIVING)
- * e ritorna una `Map<legKey, BridgeData>` consumabile dalla Timeline
- * come fallback quando un `bridge_*_json` salvato non esiste.
+ * Hook: dato il `chain: TripStop[]` mantiene una `Map<legKey, BridgeData>`
+ * coi bridge calcolati via Google Routes per i leg consecutivi
+ * (chain[i] → chain[i+1]) e usati dalla Timeline come fallback quando
+ * non c'è un `bridge_*_json` salvato in DB.
  *
- * Comportamento:
- *   - `legKey = ${prev.id}|${curr.id}` — stabile per coppia di tappe.
- *   - Cache localStorage 30gg condivisa con la mappa (`api.routes.compute`):
- *     primo render = 1 call Google per leg; rimount = cache hit.
- *   - Persistenza opportunistica: per leg activity→activity (entrambi
- *     `kind === "activity"`, quindi entrambi mappati su scheduled.id),
- *     dopo il compute fa fire-and-forget PATCH `bridge_out_json` su DB
- *     così la prossima sessione carica i bridge dal snapshot e non
- *     deve ricalcolare. Leg che coinvolgono accommodation NON vengono
- *     persistiti (lo schema accommodation_stays oggi non porta bridge).
- *   - Skip silenzioso quando un endpoint manca coords. Skip quando il
- *     bridge_out_json del prev è già salvato (lo legge la Timeline
- *     direttamente, niente bisogno di fallback).
+ * Comportamento (post Step 2):
+ *   - **Cache di sessione chain-aware**. Una `Map` tenuta in stato locale,
+ *     chiavata per `${prev.id}|${curr.id}|coords`. Il `coords` include un
+ *     hash delle lat/lng (arrotondate ~1m) di prev e curr: se l'utente
+ *     sposta il POI sotto a uno stop, la chiave non matcha più e il leg
+ *     viene ricalcolato.
+ *   - **Ricalcolo lazy per giorno in focus**. Al cambio di `focusedDayId`,
+ *     calcola SOLO i leg che entrano nel giorno (curr.dayId === focused)
+ *     e che non sono già nella cache. Riaprire un giorno già visitato =
+ *     zero chiamate a Google. Niente focus = niente calcolo (la mappa
+ *     disegna comunque le polyline indipendentemente).
+ *   - **Persistenza opportunistica**. Per i leg appena calcolati che
+ *     hanno entrambi gli endpoint kind="activity" (cioè scheduled.id su
+ *     entrambi i lati, fuzzy o no — Step 3), salva fire-and-forget il
+ *     `bridge_out_json` su DB col `target_id` esplicito. I leg che
+ *     coinvolgono accommodation NON vengono persistiti (lo schema
+ *     accommodation_stays oggi non porta bridge). Skippa i leg in
+ *     `skipPersistFor`: hanno già un bridge salvato dall'utente e non
+ *     vogliamo sovrascriverlo col DRIVING default.
+ *   - **Map ritornato**. Costruito via useMemo filtrando la cache sui
+ *     legKey adiacenti nel chain attuale: niente entry "fantasma" da
+ *     chain passati (es. dopo drag&drop o inserimento di una fuzzy).
  *
- * Default mezzo: "car". Hardcoded — un selettore per-leg arriverà più
- * avanti (vedi PR scope: Hardcoded 'car' ora).
+ * Default mezzo: "car" (hardcoded — un selettore per-leg arriverà più
+ * avanti).
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import type { BridgeData } from "@/lib/dal/domain";
 import type { TripStop } from "./tripChain";
@@ -38,32 +47,53 @@ export function legKey(prevId: string, currId: string): string {
   return `${prevId}|${currId}`;
 }
 
-/**
- * `chain` deve essere stabile in identità per evitare re-fetch inutili —
- * passare l'output di `useMemo(buildTripChain(days), [days])`.
- *
- * Tutti i leg vengono ricomputati ad ogni mount del chain: la cache
- * localStorage (`api.routes.compute`) garantisce zero call Google quando
- * i punti non sono cambiati. Niente filtro su "bridge già salvato": il
- * dato persistito può essere stantio (un addPlace passato che puntava a
- * un'altra destinazione), quindi non possiamo fidarci come dedup. La
- * persistenza overwrite-sempre rimpiazza eventuali valori vecchi col
- * vero leg corrente del chain.
- */
-export function useChainBridges(
-  chain: TripStop[],
+/** Hash coords ad ~1m di precisione — sufficiente per invalidare la cache
+ *  quando l'utente sposta un POI, senza falsi positivi su float drift. */
+function coordsTag(stop: TripStop): string {
+  return `${stop.lat.toFixed(5)},${stop.lng.toFixed(5)}`;
+}
+
+function cacheKey(prev: TripStop, curr: TripStop): string {
+  return `${prev.id}|${curr.id}|${coordsTag(prev)}|${coordsTag(curr)}`;
+}
+
+type CacheEntry = { legKey: string; bridge: BridgeData };
+
+export type UseChainBridgesOptions = {
+  /**
+   * Giorno in focus. Il calcolo è limitato ai leg che ENTRANO nel giorno
+   * (curr.dayId === focusedDayId): è quello che l'utente sta vedendo in
+   * dettaglio. `null` = nessun focus → nessun fetch (la cache resta com'è
+   * e il Map ritornato riflette solo i leg già calcolati per il chain
+   * attuale).
+   */
+  focusedDayId?: string | null;
   /**
    * Set di activity id (lato `prev` del leg) che hanno già un
    * `bridge_out_json` persistito. Per questi NON facciamo la
    * persistenza opportunistica del computed: sovrascriveremmo la
    * scelta dell'utente (es. transport "walk" salvato dal RouteVerifier
    * tornerebbe a "car" che useChainBridges calcola sempre in DRIVING).
-   * Il computed resta comunque in-memory per backfillare distance_m
-   * dove serve, e per i leg che NON hanno ancora nessun salvato.
+   * Il computed resta comunque in cache per backfillare distance_m
+   * dove serve.
    */
-  skipPersistFor?: Set<string>,
+  skipPersistFor?: Set<string>;
+};
+
+/**
+ * `chain` deve essere stabile in identità per evitare re-fetch inutili —
+ * passare l'output di `useMemo(buildTripChain(days), [days])`.
+ */
+export function useChainBridges(
+  chain: TripStop[],
+  options?: UseChainBridgesOptions,
 ): Map<string, BridgeData> {
-  const [computed, setComputed] = useState<Map<string, BridgeData>>(new Map());
+  const { focusedDayId = null, skipPersistFor } = options ?? {};
+
+  // Cache cumulativa di sessione. State (non ref) così il useMemo che
+  // produce il Map ritornato può dipenderne in modo lint-pulito.
+  // Le mutazioni avvengono solo nel `then` async dell'effect.
+  const [cache, setCache] = useState<Map<string, CacheEntry>>(() => new Map());
 
   // Refs per leggere il valore corrente di skipPersistFor nel .then
   // del fetch (che può risolversi dopo che skipPersistFor è cambiato):
@@ -73,23 +103,25 @@ export function useChainBridges(
 
   useEffect(() => {
     if (chain.length < 2) return;
+    if (!focusedDayId) return; // niente focus = niente fetch
     let cancelled = false;
 
-    // Raccogli i leg da calcolare: consecutivi con entrambi gli endpoint
-    // geo-localizzati. La cache localStorage gestisce il dedup network.
-    type Leg = { key: string; prev: TripStop; curr: TripStop };
+    // Lazy: calcola SOLO i leg che entrano nel giorno focused e NON sono
+    // già in cache. Il dedup network resta gestito anche dalla cache
+    // localStorage di `api.routes.compute` (30gg).
+    type Leg = { key: string; cKey: string; prev: TripStop; curr: TripStop };
     const todo: Leg[] = [];
     for (let i = 1; i < chain.length; i++) {
       const prev = chain[i - 1];
       const curr = chain[i];
+      if (curr.dayId !== focusedDayId) continue;
       if (prev.lat == null || prev.lng == null || curr.lat == null || curr.lng == null) continue;
-      todo.push({ key: legKey(prev.id, curr.id), prev, curr });
+      const cKey = cacheKey(prev, curr);
+      if (cache.has(cKey)) continue;
+      todo.push({ key: legKey(prev.id, curr.id), cKey, prev, curr });
     }
     if (todo.length === 0) return;
 
-    // Fetch in parallelo. Ogni leg è una call indipendente verso /api/routes
-    // (con cache localStorage — la maggior parte sono cache-hit se la mappa
-    // ha già reso il path su questa sessione).
     Promise.all(
       todo.map(async (leg) => {
         try {
@@ -108,6 +140,9 @@ export function useChainBridges(
             line: null,
             stops: null,
             note: null,
+            // Address esplicito del leg: il render usa target_id+coords
+            // per decidere se il bridge salvato è ancora valido (Step 4).
+            target_id: leg.curr.id,
           };
           return { ...leg, bridge };
         } catch {
@@ -118,17 +153,17 @@ export function useChainBridges(
       if (cancelled) return;
       const settled = results.filter((r): r is Leg & { bridge: BridgeData } => r != null);
       if (settled.length === 0) return;
-      setComputed((prev) => {
+      setCache((prev) => {
         const next = new Map(prev);
-        for (const r of settled) next.set(r.key, r.bridge);
+        for (const r of settled) next.set(r.cKey, { legKey: r.key, bridge: r.bridge });
         return next;
       });
 
-      // Persistenza opportunistica: act→act con scheduled.id su entrambi i
-      // lati. accommodation legs vengono saltati (no posto naturale di
-      // persistenza nello schema attuale). Saltiamo anche i leg per cui
-      // esiste già un bridge salvato (vedi `skipPersistFor`): la scelta
-      // dell'utente vince sul computed DRIVING-default. Fire-and-forget.
+      // Persistenza opportunistica: solo leg "vivi" — entrambi gli endpoint
+      // sono scheduled_activities (kind === "activity"), fuzzy o no.
+      // Saltiamo i leg per cui esiste già un bridge salvato (vedi
+      // `skipPersistFor`): la scelta dell'utente vince sul computed
+      // DRIVING-default. Fire-and-forget.
       for (const r of settled) {
         if (r.prev.kind !== "activity" || r.curr.kind !== "activity") continue;
         if (skipPersistRef.current?.has(r.prev.id)) continue;
@@ -141,7 +176,28 @@ export function useChainBridges(
     return () => {
       cancelled = true;
     };
-  }, [chain]);
+  }, [chain, focusedDayId, cache]);
 
-  return computed;
+  // Map ritornato al consumer: ricostruito filtrando la cache sui legKey
+  // adiacenti nel chain attuale. Cumulativa nella sessione, ma il Map
+  // ritornato include solo i leg "vivi" — niente entry "fantasma" da
+  // chain passati.
+  return useMemo(() => buildComputedFromCache(cache, chain), [chain, cache]);
+}
+
+/** Costruisce la Map ritornata al consumer filtrando la cache cumulativa
+ *  sui soli legKey adiacenti nel chain attuale. */
+function buildComputedFromCache(
+  cache: Map<string, CacheEntry>,
+  chain: TripStop[],
+): Map<string, BridgeData> {
+  const alive = new Set<string>();
+  for (let i = 1; i < chain.length; i++) {
+    alive.add(legKey(chain[i - 1].id, chain[i].id));
+  }
+  const out = new Map<string, BridgeData>();
+  for (const entry of cache.values()) {
+    if (alive.has(entry.legKey)) out.set(entry.legKey, entry.bridge);
+  }
+  return out;
 }
