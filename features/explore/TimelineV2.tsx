@@ -297,6 +297,24 @@ function destinationFromActivity(a: Activity): TransferDestination | undefined {
   return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, label: a.title };
 }
 
+/**
+ * Un bridge salvato è "valido" per il leg corrente se il suo `target_id`
+ * matcha l'id dell'OTHER endpoint del leg (la tappa opposta a quella che
+ * possiede il record). Se `target_id` manca è un bridge legacy salvato
+ * prima dello Step 1: accettato come best-effort (retrocompat). Altrimenti
+ * è stantio — tipico caso: tra il save e il render è stata inserita una
+ * fuzzy che ha cambiato il next, oppure un riordino ha cambiato la coppia.
+ * In quel caso viene scartato a favore del computed di sessione.
+ */
+function isBridgeValid(
+  saved: BridgeData | null | undefined,
+  otherEndpointId: string | null | undefined,
+): boolean {
+  if (!saved) return false;
+  if (saved.target_id == null) return true;
+  return saved.target_id === otherEndpointId;
+}
+
 /* ── Item model (stop column) ─────────────────────────────────────── */
 
 type Item =
@@ -350,12 +368,14 @@ function buildItems(
   if (expanded && incomingChainPrevId && visible.length > 0) {
     const first = visible[0];
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
-    const savedIn = first.bridge_in_json ?? null;
-    // Saved vince su computed (stesso pattern dell'intra-day `-br`): l'utente
-    // ha appena scelto un transport via ModeSwitch e l'apply ha scritto
-    // bridge_in_json — non vogliamo che il computed di sessione (sempre "car"
-    // di default) lo shadowi al refresh. Backfill di distance_m dal computed
-    // per i record vecchi che non la portavano.
+    const savedInRaw = first.bridge_in_json ?? null;
+    // Saved vince su computed solo se è ancora "addressato" sul leg attuale:
+    // `target_id` deve matchare l'other endpoint (qui = incomingChainPrevId).
+    // Se stantio (target_id presente ma non matcha) lo scartiamo e usiamo
+    // solo il computed: l'utente ha riordinato il chain o inserito una
+    // fuzzy in mezzo e il vecchio bridge non vale più. Bridge senza
+    // target_id sono legacy pre-Step1, accettati best-effort.
+    const savedIn = isBridgeValid(savedInRaw, incomingChainPrevId) ? savedInRaw : null;
     const bridge: BridgeData | null = savedIn && computedIn
       ? { ...savedIn, distance_m: savedIn.distance_m ?? computedIn.distance_m ?? null }
       : savedIn ?? computedIn ?? null;
@@ -374,12 +394,13 @@ function buildItems(
     if (last) return;
     if (!expanded) return; // collapsed: niente transfer fra le tappe.
     const next = visible[i + 1];
-    const saved = activity.bridge_out_json;
+    const savedRaw = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
-    // Saved vince su tutto tranne distance_m: i bridge persistiti pre-feature
-    // non hanno la distanza salvata, e il computed di sessione ce l'ha — la
-    // backfillamo così l'utente vede subito i km senza un refresh "magico"
-    // dopo che useChainBridges riscrive il bridge.
+    // Saved vince su computed solo se ancora addressato sul leg attuale.
+    // Se `target_id` non matcha `next.id` lo scartiamo: il chain è cambiato
+    // (es. fuzzy inserita tra activity e next) e il bridge salvato non
+    // descrive più questo leg.
+    const saved = isBridgeValid(savedRaw, next.id) ? savedRaw : null;
     const bridge: BridgeData | null = saved && computed
       ? { ...saved, distance_m: saved.distance_m ?? computed.distance_m ?? null }
       : saved ?? computed ?? null;
@@ -414,8 +435,12 @@ function buildItems(
       // di sessione. Il leg di chiusura giornata punta ALL'accommodation,
       // ma è memorizzato sull'activity (il modello canonico non scrive sui
       // stays). Backfill distance_m per back-compat.
-      const savedOut = lastAct.bridge_out_json ?? null;
+      const savedOutRaw = lastAct.bridge_out_json ?? null;
       const computedOut = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      // Validità del saved sul leg "activity → accommodation": target_id
+      // deve matchare il chainId dell'accommodation. Bridge legacy
+      // (target_id assente) accettato best-effort.
+      const savedOut = isBridgeValid(savedOutRaw, outgoingLodging.chainId) ? savedOutRaw : null;
       const bridge: BridgeData | null = savedOut && computedOut
         ? { ...savedOut, distance_m: savedOut.distance_m ?? computedOut.distance_m ?? null }
         : savedOut ?? computedOut ?? null;
@@ -1448,10 +1473,18 @@ export function TimelineV2({
                       // (edge case fuzzy/accommodation).
                       const applyTarget = isIncoming ? nextAct : prevAct;
                       const applyDirection: "in" | "out" = isIncoming ? "in" : "out";
+                      // target_id = id dell'OTHER endpoint del leg (opposto a chi
+                      // possiede il record). Necessario al render per scartare
+                      // bridge stantii quando il chain attorno cambia (es. una
+                      // fuzzy inserita in mezzo). Vedi BridgeData.target_id.
+                      const applyTargetId = isIncoming
+                        ? prevAct?.id ?? incomingPrevStop?.id ?? null
+                        : nextAct?.id ?? null;
                       const onApply = applyTarget
                         ? async (bridge: BridgeData) => {
                             try {
-                              await api.activities.setBridge(applyTarget.id, applyDirection, bridge as unknown as Record<string, unknown>);
+                              const payload: BridgeData = { ...bridge, target_id: applyTargetId };
+                              await api.activities.setBridge(applyTarget.id, applyDirection, payload as unknown as Record<string, unknown>);
                               setOpenId(null);
                               router.refresh();
                             } catch (err) {

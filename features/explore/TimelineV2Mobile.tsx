@@ -278,6 +278,17 @@ function destinationFromActivity(a: Activity): TransferDestination | undefined {
   return { lat: a.location_lat, lng: a.location_lng, placeId: a.location_place_id, label: a.title };
 }
 
+/** Vedi `isBridgeValid` in TimelineV2.tsx — stessa logica di matching
+ *  target_id ↔ other endpoint per scartare bridge stantii. */
+function isBridgeValid(
+  saved: BridgeData | null | undefined,
+  otherEndpointId: string | null | undefined,
+): boolean {
+  if (!saved) return false;
+  if (saved.target_id == null) return true;
+  return saved.target_id === otherEndpointId;
+}
+
 /* ── Item model ───────────────────────────────────────────────────── */
 
 type Item =
@@ -325,12 +336,10 @@ function buildItems(
   if (incomingChainPrevId && visible.length > 0) {
     const first = visible[0];
     const computedIn = computedBridges?.get(`${incomingChainPrevId}|${first.id}`);
-    const savedIn = first.bridge_in_json ?? null;
-    // Saved vince su computed (stesso pattern dell'intra-day `-br`): l'utente
-    // ha appena scelto un transport via ModeSwitch e l'apply ha scritto
-    // bridge_in_json — non vogliamo che il computed di sessione (sempre "car"
-    // di default) lo shadowi al refresh. Backfill di distance_m dal computed
-    // per i record vecchi che non la portavano.
+    const savedInRaw = first.bridge_in_json ?? null;
+    // Saved valido solo se ancora addressato sul leg corrente (target_id ↔
+    // incomingChainPrevId). Stantio → scartato a favore del computed.
+    const savedIn = isBridgeValid(savedInRaw, incomingChainPrevId) ? savedInRaw : null;
     const bridge: BridgeData | null = savedIn && computedIn
       ? { ...savedIn, distance_m: savedIn.distance_m ?? computedIn.distance_m ?? null }
       : savedIn ?? computedIn ?? null;
@@ -348,10 +357,10 @@ function buildItems(
     const last = i === visible.length - 1;
     if (last) return;
     const next = visible[i + 1];
-    const saved = activity.bridge_out_json;
+    const savedRaw = activity.bridge_out_json;
     const computed = computedBridges?.get(`${activity.id}|${next.id}`);
-    // Backfill di distance_m dal computed quando il saved persistito è
-    // pre-feature (non aveva la distanza). Vedi nota in TimelineV2.tsx.
+    // Saved valido solo se target_id ↔ next.id (vedi nota in TimelineV2.tsx).
+    const saved = isBridgeValid(savedRaw, next.id) ? savedRaw : null;
     const bridge: BridgeData | null = saved && computed
       ? { ...saved, distance_m: saved.distance_m ?? computed.distance_m ?? null }
       : saved ?? computed ?? null;
@@ -381,8 +390,10 @@ function buildItems(
       // di sessione. Il leg di chiusura giornata punta ALL'accommodation,
       // ma è memorizzato sull'activity (il modello canonico non scrive sui
       // stays). Backfill distance_m per back-compat.
-      const savedOut = lastAct.bridge_out_json ?? null;
+      const savedOutRaw = lastAct.bridge_out_json ?? null;
       const computedOut = computedBridges?.get(`${lastAct.id}|${outgoingLodging.chainId}`);
+      // Saved valido solo se target_id ↔ chainId dell'accommodation.
+      const savedOut = isBridgeValid(savedOutRaw, outgoingLodging.chainId) ? savedOutRaw : null;
       const bridge: BridgeData | null = savedOut && computedOut
         ? { ...savedOut, distance_m: savedOut.distance_m ?? computedOut.distance_m ?? null }
         : savedOut ?? computedOut ?? null;
