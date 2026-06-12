@@ -128,7 +128,7 @@ export function FuzzyStop({
           // dimensioni icona/font allineate al default per leggibilità.
           compact ? "gap-2 px-1 py-1" : "gap-2 p-1",
           onOpen && "cursor-pointer",
-          state === "hover" && "bg-surface-soft",
+          state === "hover" && "bg-surface-warm",
           selected && "bg-ink",
           className,
         )}

@@ -245,7 +245,7 @@ export function Transfer({
         className={cn(
           "flex min-h-[22px] w-full items-center rounded-sm py-1",
           onOpen && "cursor-pointer",
-          state === "hover" && "bg-surface-soft",
+          state === "hover" && "bg-surface-warm",
           className,
         )}
       >

@@ -847,7 +847,7 @@ function NightBandV2({
           aria-label={`Pernottamento ${lodging.title} — apri editor`}
           className={cn(
             "group flex min-h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-sm pl-1 pr-3.5 py-1 text-left transition-colors",
-            hovered ? "bg-surface-soft" : "hover:bg-surface-soft",
+            hovered ? "bg-surface-warm" : "hover:bg-surface-warm",
           )}
         >
           <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -1362,7 +1362,7 @@ export function TimelineV2({
                           >
                             <Transfer
                               mode={item.transfer.mode}
-                              state={open ? "open" : "default"}
+                              state={open ? "open" : hoveredTransferId === item.id ? "hover" : "default"}
                               duration={item.transfer.duration}
                               distance={item.transfer.distance}
                               legs={item.transfer.legs}

@@ -370,8 +370,8 @@ export function ActivityStop({
             ? "min-h-8 gap-2 py-1 pr-3"
             : "min-h-8 gap-3 py-1 pr-3.5",
           onOpen && "cursor-pointer",
-          state === "hover" && "bg-surface-soft",
-          interactive && "hover:bg-surface-soft focus-visible:bg-surface-soft",
+          state === "hover" && "bg-surface-warm",
+          interactive && "hover:bg-surface-warm focus-visible:bg-surface-warm",
           selected && "bg-ink",
           isDragging && "opacity-40",
           className,
