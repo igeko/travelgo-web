@@ -110,7 +110,10 @@ export function FuzzyStop({
   size?: FuzzyStopSize;
   className?: string;
 }) {
-  const t = useTranslations("HeroBanner");
+  // Namespace "Explore": titlePlaceholder / descriptionPlaceholder vivono
+  // qui, esattamente come per ActivityStop (sibling component). Il vecchio
+  // "HeroBanner" era un residuo che lanciava MISSING_MESSAGE.
+  const t = useTranslations("Explore");
 
   /* ── Collapsed rows ─────────────────────────────────────────── */
   if (state !== "open") {
