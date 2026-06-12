@@ -128,7 +128,11 @@ export function FuzzyStop({
         type={onOpen ? "button" : undefined}
         onClick={onOpen}
         className={cn(
-          "group flex w-full items-center rounded-sm",
+          // text-left esplicito: quando Wrapper è <button> il default
+          // browser è text-align:center, che faceva centrare il titolo
+          // dentro lo span flex-1 invece di farlo iniziare subito dopo
+          // il badge icona.
+          "group flex w-full items-center rounded-sm text-left",
           compact ? "gap-2.5 px-1 py-1" : "gap-2.5 px-2 py-1",
           onOpen && "cursor-pointer",
           !filled && "hover:bg-surface-warm",
